@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            id: windows-x64
+          - os: ubuntu-latest
+            id: linux-x64
+          - os: macos-latest
+            id: macos-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libx11-dev
+
+      - name: Install macOS packages
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Config Release -Tests
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: ./scripts/build-linux.sh --release --tests
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: ./scripts/build-macos.sh --release --tests
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $id = '${{ matrix.id }}'
+          $bin = Get-ChildItem -Path 'build\windows' -Recurse -Filter 'wilfred.exe' |
+            Where-Object { $_.FullName -notmatch 'CMakeFiles' } |
+            Select-Object -First 1
+          if (-not $bin) { throw 'Could not find wilfred.exe' }
+          $staging = "dist\wilfred-$tag-$id"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          New-Item -ItemType Directory -Force -Path "$staging\ui" | Out-Null
+          Copy-Item $bin.FullName $staging
+          Copy-Item -Recurse 'ui\overlay' "$staging\ui\overlay"
+          Copy-Item 'README.md' $staging -ErrorAction SilentlyContinue
+          Copy-Item 'config\wilfred.default.yml' $staging -ErrorAction SilentlyContinue
+          Compress-Archive -Path $staging -DestinationPath "dist\wilfred-$tag-$id.zip" -Force
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          ID="${{ matrix.id }}"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ROOT=build/linux
+          else
+            ROOT=build/macos
+          fi
+          BIN="$(find "${ROOT}" -maxdepth 2 -type f -name wilfred -not -path '*/CMakeFiles/*' | head -n 1)"
+          if [[ -z "${BIN}" || ! -f "${BIN}" ]]; then
+            echo "Could not find wilfred binary" >&2
+            find build -name 'wilfred*' || true
+            exit 1
+          fi
+          STAGING="dist/wilfred-${TAG}-${ID}"
+          mkdir -p "${STAGING}/ui"
+          cp "${BIN}" "${STAGING}/"
+          cp -R ui/overlay "${STAGING}/ui/overlay"
+          cp README.md "${STAGING}/" || true
+          cp config/wilfred.default.yml "${STAGING}/" || true
+          tar -C dist -czf "dist/wilfred-${TAG}-${ID}.tar.gz" "wilfred-${TAG}-${ID}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-${{ github.ref_name }}-${{ matrix.id }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(artifacts/*.zip artifacts/*.tar.gz)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "No release files found" >&2
+            find artifacts -type f || true
+            exit 1
+          fi
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${files[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+          else
+            gh release create "${TAG}" "${files[@]}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Wilfred ${TAG}" \
+              --generate-notes \
+              --verify-tag
+          fi

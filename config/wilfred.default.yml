@@ -1,0 +1,119 @@
+# Wilfred default configuration
+# Copy to the user config directory and edit. Invalid values produce
+# human-readable errors at startup instead of crashing.
+
+search:
+  include_system_files: false
+  include_hidden_files: true
+  show_system_in_results: false
+  max_results: 40
+  debounce_ms: 12
+  web_search_fallback: true
+  treat_urls_as_open: true
+  min_query_length: 1
+  fuzzy: true
+  acronyms: true
+
+index:
+  # Empty paths means platform defaults (home, applications, common data).
+  paths: []
+  exclude:
+    - node_modules
+    - .git
+    - .svn
+    - .hg
+    - __pycache__
+    - .cache
+    - Cache
+    - caches
+    - CMakeFiles
+    - .Trash
+    - $Recycle.Bin
+    - System Volume Information
+  exclude_globs:
+    - "*.tmp"
+    - "*.swp"
+    - "*~"
+  system_directories: []
+  follow_symlinks: false
+  index_hidden: true
+  index_system: false
+  max_file_size_bytes: 0
+  content_indexing: false
+  content_max_bytes: 65536
+  workers: 0
+  cpu_percent_limit: 45
+  memory_limit_mb: 384
+  batch_size: 2048
+  debounce_fs_ms: 80
+  rescan_interval_seconds: 0
+  persist_every_records: 50000
+  wal_compact_bytes: 8388608
+
+  extensions:
+    include: []
+    exclude:
+      - .tmp
+      - .temp
+      - .part
+      - .crdownload
+      - .bak
+      - .cache
+
+ranking:
+  exact_name: 1200
+  prefix_name: 700
+  substring_name: 420
+  fuzzy_name: 280
+  acronym: 640
+  path_component: 180
+  extension: 90
+  application: 350
+  recency: 220
+  frequency: 260
+  previous_selection: 400
+  word_boundary: 160
+  token_proximity: 140
+  directory_bonus: 40
+  alias: 500
+
+aliases:
+  browser: default-browser
+  code: Visual Studio Code
+  vscode: Visual Studio Code
+  explorer: file-manager
+
+# Named directory groups referenced as `scope:projects` in queries.
+scopes:
+  home: []
+
+# Optional extra key/value tags consumed by plugins or custom rankers.
+custom_metadata: {}
+
+history:
+  enabled: true
+  max_entries: 8000
+  persist: true
+
+hotkey:
+  enabled: true
+  modifiers:
+    - ctrl
+    - alt
+  # On macOS, ctrl is mapped to Command for the default binding.
+  key: W
+  use_command_on_macos: true
+
+browser:
+  provider: auto
+  search_template: "https://www.google.com/search?q={query}"
+
+logging:
+  level: info
+  file: ""
+  max_file_bytes: 2097152
+
+ui:
+  theme: dark
+  max_visible: 9
+  width: 720
