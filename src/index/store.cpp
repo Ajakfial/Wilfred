@@ -258,11 +258,13 @@ bool IndexStore::rename_path(std::string_view from, std::string_view to) {
 }
 
 const IndexRecord* IndexStore::get(std::uint32_t id) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   if (id >= records_.size() || id >= live_.size() || !live_[id]) return nullptr;
   return &records_[id];
 }
 
 const IndexRecord* IndexStore::by_path(std::string_view path) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto pid = pool_.find(std::string(path));
   if (pid == StringPool::kInvalid) return nullptr;
   auto it = path_to_id_.find(pid);
@@ -270,14 +272,19 @@ const IndexRecord* IndexStore::by_path(std::string_view path) const {
   return get(it->second);
 }
 
-std::uint32_t IndexStore::path_id(std::string_view path) const { return pool_.find(std::string(path)); }
+std::uint32_t IndexStore::path_id(std::string_view path) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  return pool_.find(std::string(path));
+}
 
 const std::vector<std::uint32_t>& IndexStore::posting(std::uint32_t token_id) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto it = token_postings_.find(token_id);
   return it == token_postings_.end() ? kEmpty : it->second;
 }
 
 const std::vector<std::uint32_t>& IndexStore::trigram(std::uint32_t tri_id) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto it = tri_postings_.find(tri_id);
   return it == tri_postings_.end() ? kEmpty : it->second;
 }
