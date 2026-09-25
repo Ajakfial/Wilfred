@@ -18,6 +18,7 @@ struct SearchFilter {
   std::vector<std::string> in_dirs;
   std::vector<std::string> scope_names;
   std::vector<std::string> name_contains;
+  std::vector<std::string> phrases;
   std::optional<std::uint64_t> min_size;
   std::optional<std::uint64_t> max_size;
   std::optional<std::int64_t> min_mtime;
@@ -27,6 +28,8 @@ struct SearchFilter {
   std::optional<bool> directories_only;
   std::optional<bool> files_only;
   std::optional<bool> apps_only;
+  std::vector<std::string> content_contains;
+  std::optional<bool> content_only;
 };
 
 bool record_matches_filter(const SearchFilter& f, const IndexStore& store,

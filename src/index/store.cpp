@@ -127,7 +127,7 @@ void IndexStore::unindex_record_locked(const IndexRecord& rec) {
 }
 
 std::uint32_t IndexStore::upsert(IndexRecord rec, std::string_view path) {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto path_id = pool_.intern(path);
   auto name = std::string(path);
   auto slash = name.find_last_of("/\\");
@@ -170,21 +170,65 @@ std::uint32_t IndexStore::upsert(IndexRecord rec, std::string_view path) {
 }
 
 void IndexStore::add_content_tokens(std::uint32_t id, const std::vector<std::string>& tokens) {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   if (id >= records_.size() || id >= live_.size() || !live_[id]) return;
   auto& rec = records_[id];
   unindex_record_locked(rec);
   auto& extra = extra_tokens_[id];
   extra.clear();
   for (auto& tok : tokens) {
-    if (tok.size() < 3) continue;
+    if (tok.size() < 2) continue;
     extra.push_back(pool_.intern(tok));
   }
   index_record_locked(rec);
 }
 
+bool IndexStore::has_content_tokens(std::uint32_t id) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  auto it = extra_tokens_.find(id);
+  return it != extra_tokens_.end() && !it->second.empty();
+}
+
+int IndexStore::content_token_hits(std::uint32_t id, const std::vector<std::string>& tokens) const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  auto it = extra_tokens_.find(id);
+  if (it == extra_tokens_.end() || it->second.empty()) return 0;
+  int hits = 0;
+  for (auto& t : tokens) {
+    if (t.size() < 2) continue;
+    auto tid = pool_.find(t);
+    if (tid == StringPool::kInvalid) continue;
+    for (auto et : it->second)
+      if (et == tid) {
+        ++hits;
+        break;
+      }
+  }
+  return hits;
+}
+
+bool IndexStore::content_covers_tokens(std::uint32_t id, const std::vector<std::string>& tokens) const {
+  if (tokens.empty()) return false;
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  auto it = extra_tokens_.find(id);
+  if (it == extra_tokens_.end()) return false;
+  for (auto& t : tokens) {
+    if (t.size() < 2) continue;
+    auto tid = pool_.find(t);
+    if (tid == StringPool::kInvalid) return false;
+    bool ok = false;
+    for (auto et : it->second)
+      if (et == tid) {
+        ok = true;
+        break;
+      }
+    if (!ok) return false;
+  }
+  return true;
+}
+
 bool IndexStore::remove_path(std::string_view path) {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   auto pid = pool_.find(std::string(path));
   if (pid == StringPool::kInvalid) return false;
   auto it = path_to_id_.find(pid);
@@ -201,7 +245,7 @@ bool IndexStore::remove_path(std::string_view path) {
 bool IndexStore::rename_path(std::string_view from, std::string_view to) {
   IndexRecord copy;
   {
-    std::lock_guard<std::mutex> lock(mu_);
+    std::lock_guard<std::recursive_mutex> lock(mu_);
     auto pid = pool_.find(std::string(from));
     if (pid == StringPool::kInvalid) return false;
     auto it = path_to_id_.find(pid);
@@ -258,7 +302,7 @@ void IndexStore::rebuild_secondary_unlocked() {
 }
 
 void IndexStore::rebuild_secondary() {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   rebuild_secondary_unlocked();
 }
 
@@ -277,16 +321,16 @@ void IndexStore::clear_unlocked() {
 }
 
 void IndexStore::clear() {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   clear_unlocked();
 }
 
 bool IndexStore::save(const std::string& snapshot_path) const {
-  std::lock_guard<std::mutex> lock(mu_);
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   std::vector<std::uint8_t> buf;
   buf.reserve(64 + pool_.bytes() + records_.size() * 80);
   buf.insert(buf.end(), {'W', 'I', 'L', 'F'});
-  write_u32(buf, 1);  // version
+  write_u32(buf, 2);  // version: extras persisted
   write_u32(buf, next_id_);
   write_u32(buf, static_cast<std::uint32_t>(records_.size()));
 
@@ -314,6 +358,12 @@ bool IndexStore::save(const std::string& snapshot_path) const {
     write_u32(buf, static_cast<std::uint32_t>(r.kind));
     write_u32(buf, r.mode);
   }
+  write_u32(buf, static_cast<std::uint32_t>(extra_tokens_.size()));
+  for (auto& [id, toks] : extra_tokens_) {
+    write_u32(buf, id);
+    write_u32(buf, static_cast<std::uint32_t>(toks.size()));
+    for (auto t : toks) write_u32(buf, t);
+  }
   auto c = crc32(buf.data(), buf.size());
   write_u32(buf, c);
   return write_file_atomic(snapshot_path, buf.data(), buf.size());
@@ -328,8 +378,8 @@ bool IndexStore::load(const std::string& snapshot_path) {
   auto crc_calc = crc32(p, mf.size() - 4);
   if (crc_stored != crc_calc) return false;
   std::uint32_t ver = rd32(p + 4);
-  if (ver != 1) return false;
-  std::lock_guard<std::mutex> lock(mu_);
+  if (ver != 1 && ver != 2) return false;
+  std::lock_guard<std::recursive_mutex> lock(mu_);
   clear_unlocked();
   next_id_ = rd32(p + 8);
   std::uint32_t nrec = rd32(p + 12);
@@ -366,6 +416,25 @@ bool IndexStore::load(const std::string& snapshot_path) {
     rec.mode = rd32(r + 64);
     off += rec_bytes;
     if (rec.id < records_.size()) records_[rec.id] = rec;
+  }
+  if (ver >= 2) {
+    if (off + 4 > mf.size() - 4) return false;
+    std::uint32_t nextra = rd32(p + off);
+    off += 4;
+    for (std::uint32_t i = 0; i < nextra; ++i) {
+      if (off + 8 > mf.size() - 4) return false;
+      std::uint32_t id = rd32(p + off);
+      std::uint32_t ntok = rd32(p + off + 4);
+      off += 8;
+      if (off + static_cast<std::size_t>(ntok) * 4 > mf.size() - 4) return false;
+      std::vector<std::uint32_t> toks;
+      toks.reserve(ntok);
+      for (std::uint32_t t = 0; t < ntok; ++t) {
+        toks.push_back(rd32(p + off));
+        off += 4;
+      }
+      extra_tokens_[id] = std::move(toks);
+    }
   }
   rebuild_secondary_unlocked();
   return true;

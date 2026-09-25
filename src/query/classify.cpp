@@ -4,6 +4,8 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/math/expr.hpp"
+#include "wilfred/search/macros.hpp"
+#include "wilfred/search/minis.hpp"
 
 #include <cctype>
 
@@ -116,6 +118,28 @@ QueryClass classify_query(std::string_view raw) {
     q.kind = QueryKind::Command;
     q.confident = true;
     return q;
+  }
+  auto mini = parse_mini_intent(s);
+  if (mini.kind != MiniKind::None) {
+    q.kind = QueryKind::Mini;
+    q.remainder = mini.remainder;
+    q.confident = true;
+    return q;
+  }
+  if (!s.empty() && (s[0] == '!' || s[0] == '/')) {
+    q.kind = QueryKind::Macro;
+    q.confident = true;
+    return q;
+  }
+  {
+    Config cfg;
+    auto m = match_macro(s, cfg);
+    if (m.matched && !m.argument.empty()) {
+      q.kind = QueryKind::Macro;
+      q.remainder = m.argument;
+      q.confident = true;
+      return q;
+    }
   }
   if (s.find(':') != std::string::npos || s.find("*.") != std::string::npos) {
     q.kind = QueryKind::FilteredSearch;

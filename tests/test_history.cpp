@@ -20,12 +20,22 @@ void test_history() {
   CHECK_EQ(h.frequency("/apps/Code"), 2);
   CHECK(h.last_selected("/apps/Code") != 0);
 
+  CHECK_EQ(h.query_frequency("firefox"), 2);
+  h.record_choice("code", "/apps/Code");
+  h.record_choice("code", "/apps/Code");
+  CHECK_EQ(h.choice_count("code", "/apps/Code"), 2);
+  auto sug = h.suggest_queries("fir", 4);
+  CHECK(!sug.empty());
+  CHECK_EQ(sug.front(), "firefox");
+
   auto p = (std::filesystem::temp_directory_path() / "wilfred_hist.dat").string();
   CHECK(h.save(p));
   HistoryStore h2;
   CHECK(h2.load(p));
   CHECK_EQ(h2.frequency("/apps/Code"), 2);
   CHECK(!h2.recent_queries().empty());
+  CHECK_EQ(h2.query_frequency("firefox"), 2);
+  CHECK_EQ(h2.choice_count("code", "/apps/Code"), 2);
 
   h2.clear();
   CHECK_EQ(h2.frequency("/apps/Code"), 0);

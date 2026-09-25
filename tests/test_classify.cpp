@@ -19,7 +19,9 @@ void test_classify() {
   CHECK_EQ(classify_query("25 * 42").kind, QueryKind::Math);
   CHECK_EQ(classify_query("*.cpp in Projects").kind, QueryKind::FilteredSearch);
   CHECK_EQ(classify_query("> notepad").kind, QueryKind::Command);
-  CHECK_EQ(classify_query("firefox").kind, QueryKind::FileSearch);
+  CHECK_EQ(classify_query("weather").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("!yt cats").kind, QueryKind::Macro);
+  CHECK_EQ(classify_query("yt cats").kind, QueryKind::Macro);
 
   Config cfg;
   IndexEngine index;

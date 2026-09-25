@@ -26,10 +26,10 @@ void test_filter() {
   CHECK(!f2.name_contains.empty());
   CHECK(f2.hidden.has_value() && *f2.hidden);
 
-  std::string q3 = "applications containing browser";
-  auto f3 = parse_filter_clauses(q3);
-  CHECK(f3.apps_only.has_value() || !f3.kinds.empty());
-  CHECK(!f3.name_contains.empty());
+  std::string q4 = "notes is:app";
+  auto f4 = parse_filter_clauses(q4);
+  CHECK(f4.apps_only.has_value() && *f4.apps_only);
+  CHECK_EQ(q4, "notes");
 
   bool ok = false;
   CHECK_EQ(parse_size_token("10mb", ok), 10ull * 1024 * 1024);
@@ -60,4 +60,10 @@ void test_filter() {
   scoped.scope_names.push_back("home");
   apply_named_scopes(scoped, cfg);
   CHECK_EQ(scoped.in_dirs.size(), 1u);
+
+  std::string q5 = "content:widget notes";
+  auto f5 = parse_filter_clauses(q5);
+  CHECK(!f5.content_contains.empty());
+  CHECK(f5.content_only.has_value() && *f5.content_only);
+  CHECK_EQ(q5, "notes");
 }

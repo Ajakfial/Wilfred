@@ -17,6 +17,9 @@ enum class QueryKind {
   FilteredSearch,
   Alias,
   Command,
+  Mini,
+  Macro,
+  Clipboard,
 };
 
 struct QueryClass {

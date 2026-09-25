@@ -38,6 +38,11 @@ void test_rank() {
   int sa3 = rank_record(ctx, store, *appr, w);
   CHECK(sa3 >= sa2);
 
+  RankContext learned = ctx;
+  learned.learned_paths["/Applications/Visual Studio Code.app"] = 3;
+  int saLearn = rank_record(learned, store, *appr, w);
+  CHECK(saLearn > sa3);
+
   default_rank_pipeline().clear();
   default_rank_pipeline().add("boost_apps", [](const RankContext&, const IndexStore&,
                                                const IndexRecord& rec, const RankingWeights&) {

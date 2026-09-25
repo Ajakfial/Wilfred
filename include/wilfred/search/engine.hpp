@@ -11,7 +11,7 @@
 
 namespace wilfred {
 
-enum class ResultAction { Open, Reveal, Copy, WebSearch, Calculate, Convert, None };
+enum class ResultAction { Open, Reveal, Copy, WebSearch, Calculate, Convert, None, Habit, Mini };
 
 struct SearchResult {
   std::uint32_t id{0};
@@ -22,6 +22,9 @@ struct SearchResult {
   std::string path;
   ResultAction action{ResultAction::Open};
   std::string payload;
+  std::string kind_label;
+  std::string category;
+  int meter{-1};
 };
 
 class SearchEngine {

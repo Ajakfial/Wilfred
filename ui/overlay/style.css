@@ -167,10 +167,69 @@ html.preview .shell {
   backdrop-filter: blur(28px) saturate(1.25);
   -webkit-backdrop-filter: blur(28px) saturate(1.25);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(52vh, 480px);
 }
 
 .results[hidden] {
   display: none;
+}
+
+.habits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px 8px;
+}
+
+.habit {
+  border: 0;
+  cursor: pointer;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: 500 12px/1.2 inherit;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit:hover,
+.habit:focus {
+  background: var(--sel);
+  outline: none;
+}
+
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 10px 6px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rows {
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.rows::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rows::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
 }
 
 .row {
@@ -197,6 +256,18 @@ html.preview .shell {
   place-items: center;
   font-size: 15px;
   background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.badge img.icon {
+  width: 28px;
+  height: 28px;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .meta {
@@ -209,6 +280,14 @@ html.preview .shell {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.title mark {
+  background: rgba(155, 182, 255, 0.32);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+  font-weight: 700;
 }
 
 .sub {
@@ -225,4 +304,27 @@ html.preview .shell {
   color: var(--muted);
   text-transform: capitalize;
   padding-right: 6px;
+}
+
+.row.is-mini .badge {
+  background: rgba(122, 162, 255, 0.18);
+}
+
+.row.is-clip .badge {
+  background: rgba(120, 200, 160, 0.16);
+}
+
+.meter {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #7aa2ff, #9fd4c0);
 }

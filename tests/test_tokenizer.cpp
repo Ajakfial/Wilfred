@@ -11,7 +11,14 @@ void test_tokenizer() {
   CHECK(!tri.empty());
   CHECK(wilfred::glob_match("file.tmp", "*.tmp"));
   CHECK(wilfred::glob_match("MyFile.CPP", "*.cpp"));
-  CHECK(!wilfred::glob_match("file.cpp", "*.tmp"));
+  CHECK(wilfred::glob_match("file.cpp", "*.tmp") == false);
   auto camel = wilfred::tokenize_name("MyProject");
   CHECK_EQ(camel.size(), 2u);
+  auto content = wilfred::tokenize_content("The WidgetFactory builds widgets", 40);
+  bool has_widget = false;
+  for (auto& t : content)
+    if (t == "widgetfactory" || t == "widgets") has_widget = true;
+  CHECK(has_widget);
+  CHECK(!wilfred::content_stopword("ui"));
+  CHECK(wilfred::content_stopword("the"));
 }

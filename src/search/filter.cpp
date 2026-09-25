@@ -51,6 +51,18 @@ bool record_matches_filter(const SearchFilter& f, const IndexStore& store,
   }
   for (auto& n : f.name_contains)
     if (!contains_ci(name, n)) return false;
+  for (auto& p : f.phrases) {
+    if (!contains_ci(name, p) && !contains_ci(path, p)) return false;
+  }
+  if (!f.content_contains.empty()) {
+    if (!store.content_covers_tokens(rec.id, f.content_contains)) return false;
+  }
+  if (f.content_only && *f.content_only) {
+    if (!store.has_content_tokens(rec.id)) return false;
+    if (!f.content_contains.empty() &&
+        !store.content_covers_tokens(rec.id, f.content_contains))
+      return false;
+  }
   if (f.min_size && rec.size < *f.min_size) return false;
   if (f.max_size && rec.size > *f.max_size) return false;
   if (f.min_mtime && rec.mtime < *f.min_mtime) return false;
@@ -67,8 +79,21 @@ bool record_matches_filter(const SearchFilter& f, const IndexStore& store,
 static std::vector<std::string> split_ws(const std::string& s) {
   std::vector<std::string> o;
   std::string cur;
+  bool in_quote = false;
   for (char c : s) {
-    if (c == ' ' || c == '\t') {
+    if (c == '"') {
+      if (in_quote) {
+        o.push_back(std::string("\"") + cur + "\"");
+        cur.clear();
+        in_quote = false;
+      } else {
+        if (!cur.empty()) {
+          o.push_back(cur);
+          cur.clear();
+        }
+        in_quote = true;
+      }
+    } else if (!in_quote && (c == ' ' || c == '\t')) {
       if (!cur.empty()) {
         o.push_back(cur);
         cur.clear();
@@ -76,7 +101,7 @@ static std::vector<std::string> split_ws(const std::string& s) {
     } else
       cur.push_back(c);
   }
-  if (!cur.empty()) o.push_back(cur);
+  if (!cur.empty()) o.push_back(in_quote ? std::string("\"") + cur + "\"" : cur);
   return o;
 }
 
@@ -187,6 +212,28 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
         f.name_contains.push_back(val);
         continue;
       }
+      if (key == "content" || key == "text" || key == "intext") {
+        auto toks = tokenize_name(val);
+        if (toks.empty() && !val.empty()) toks.push_back(to_lower_utf8(val));
+        for (auto& t : toks) f.content_contains.push_back(t);
+        f.content_only = true;
+        continue;
+      }
+      if (key == "is") {
+        auto v = to_lower_utf8(val);
+        if (v == "app" || v == "apps" || v == "application") {
+          f.apps_only = true;
+          f.kinds.push_back(FileKind::Application);
+        } else if (v == "folder" || v == "dir" || v == "directory") {
+          f.directories_only = true;
+        } else if (v == "file" || v == "files") {
+          f.files_only = true;
+        } else {
+          auto k = kind_from_name(v);
+          if (k != FileKind::Unknown) f.kinds.push_back(k);
+        }
+        continue;
+      }
       if (key == "size") {
         bool ok = false;
         if (!val.empty() && val[0] == '>') {
@@ -219,6 +266,12 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
     }
     if (pl == "containing" && i + 1 < parts.size()) {
       f.name_contains.push_back(parts[++i]);
+      continue;
+    }
+    if ((pl == "intext" || pl == "contents") && i + 1 < parts.size()) {
+      auto toks = tokenize_name(parts[++i]);
+      for (auto& t : toks) f.content_contains.push_back(t);
+      f.content_only = true;
       continue;
     }
     if (pl.size() >= 2 && pl[0] == '*' && pl[1] == '.') {
@@ -295,6 +348,14 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
     }
     if (pl == "modified") continue;
     if (pl == "files") continue;
+    if (p.size() >= 2 && p.front() == '"' && p.back() == '"') {
+      auto inner = p.substr(1, p.size() - 2);
+      if (!inner.empty()) {
+        f.phrases.push_back(inner);
+        f.name_contains.push_back(inner);
+      }
+      continue;
+    }
     leftover += leftover.empty() ? p : " " + p;
   }
   query_inout = leftover;

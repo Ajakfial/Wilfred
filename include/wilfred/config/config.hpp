@@ -23,6 +23,13 @@ struct RankingWeights {
   int token_proximity{140};
   int directory_bonus{40};
   int alias{500};
+  int learned_choice{520};
+  int context_parent{200};
+  int context_extension{90};
+  int access_recency{150};
+  int clipboard_overlap{240};
+  int content_hit{190};
+  int hour_affinity{70};
 };
 
 struct Config {
@@ -37,6 +44,10 @@ struct Config {
     int min_query_length{1};
     bool fuzzy{true};
     bool acronyms{true};
+    bool context_aware{true};
+    bool clipboard{true};
+    bool minis{true};
+    bool macros{true};
   } search;
 
   struct Index {
@@ -48,8 +59,9 @@ struct Config {
     bool index_hidden{true};
     bool index_system{false};
     std::uint64_t max_file_size_bytes{0};
-    bool content_indexing{false};
-    std::uint64_t content_max_bytes{65536};
+    bool content_indexing{true};
+    std::uint64_t content_max_bytes{131072};
+    int content_max_tokens{480};
     int workers{0};
     int cpu_percent_limit{45};
     int memory_limit_mb{384};
@@ -64,6 +76,7 @@ struct Config {
 
   RankingWeights ranking;
   std::unordered_map<std::string, std::string> aliases;
+  std::unordered_map<std::string, std::string> macros;
   std::unordered_map<std::string, std::vector<std::string>> scopes;
   std::unordered_map<std::string, std::string> custom_metadata;
 

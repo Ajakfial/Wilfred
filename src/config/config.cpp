@@ -55,6 +55,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.search.min_query_length = static_cast<int>(search->integer("min_query_length", 1));
     c.search.fuzzy = search->boolean("fuzzy", true);
     c.search.acronyms = search->boolean("acronyms", true);
+    c.search.context_aware = search->boolean("context_aware", true);
+    c.search.clipboard = search->boolean("clipboard", true);
+    c.search.minis = search->boolean("minis", true);
+    c.search.macros = search->boolean("macros", true);
     if (c.search.max_results < 1 || c.search.max_results > 500) {
       err.message = "search.max_results must be between 1 and 500";
       return false;
@@ -79,9 +83,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.index.index_system = index->boolean("index_system", false);
     c.index.max_file_size_bytes =
         static_cast<std::uint64_t>(std::max<std::int64_t>(0, index->integer("max_file_size_bytes", 0)));
-    c.index.content_indexing = index->boolean("content_indexing", false);
+    c.index.content_indexing = index->boolean("content_indexing", true);
     c.index.content_max_bytes =
-        static_cast<std::uint64_t>(index->integer("content_max_bytes", 65536));
+        static_cast<std::uint64_t>(index->integer("content_max_bytes", 131072));
+    c.index.content_max_tokens = static_cast<int>(index->integer("content_max_tokens", 480));
     c.index.workers = static_cast<int>(index->integer("workers", 0));
     c.index.cpu_percent_limit = static_cast<int>(index->integer("cpu_percent_limit", 45));
     c.index.memory_limit_mb = static_cast<int>(index->integer("memory_limit_mb", 384));
@@ -143,6 +148,19 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.ranking.directory_bonus =
         static_cast<int>(r->integer("directory_bonus", c.ranking.directory_bonus));
     c.ranking.alias = static_cast<int>(r->integer("alias", c.ranking.alias));
+    c.ranking.learned_choice =
+        static_cast<int>(r->integer("learned_choice", c.ranking.learned_choice));
+    c.ranking.context_parent =
+        static_cast<int>(r->integer("context_parent", c.ranking.context_parent));
+    c.ranking.context_extension =
+        static_cast<int>(r->integer("context_extension", c.ranking.context_extension));
+    c.ranking.access_recency =
+        static_cast<int>(r->integer("access_recency", c.ranking.access_recency));
+    c.ranking.clipboard_overlap =
+        static_cast<int>(r->integer("clipboard_overlap", c.ranking.clipboard_overlap));
+    c.ranking.content_hit = static_cast<int>(r->integer("content_hit", c.ranking.content_hit));
+    c.ranking.hour_affinity =
+        static_cast<int>(r->integer("hour_affinity", c.ranking.hour_affinity));
   }
 
   if (auto* a = root.get("aliases")) {
@@ -156,6 +174,20 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         return false;
       }
       c.aliases[to_lower_utf8(k)] = v.as_string();
+    }
+  }
+
+  if (auto* macros = root.get("macros")) {
+    if (!macros->is_map()) {
+      err.message = "macros: must be a mapping of name -> URL template";
+      return false;
+    }
+    for (auto& [k, v] : macros->as_map()) {
+      if (!v.is_string()) {
+        err.message = "macro '" + k + "' must be a string";
+        return false;
+      }
+      c.macros[to_lower_utf8(k)] = v.as_string();
     }
   }
 

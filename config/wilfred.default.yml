@@ -13,6 +13,10 @@ search:
   min_query_length: 1
   fuzzy: true
   acronyms: true
+  context_aware: true
+  clipboard: true
+  minis: true
+  macros: true
 
 index:
   # Empty paths means platform defaults (home, applications, common data).
@@ -39,8 +43,9 @@ index:
   index_hidden: true
   index_system: false
   max_file_size_bytes: 0
-  content_indexing: false
-  content_max_bytes: 65536
+  content_indexing: true
+  content_max_bytes: 131072
+  content_max_tokens: 480
   workers: 0
   cpu_percent_limit: 45
   memory_limit_mb: 384
@@ -76,12 +81,25 @@ ranking:
   token_proximity: 140
   directory_bonus: 40
   alias: 500
+  learned_choice: 520
+  context_parent: 200
+  context_extension: 90
+  access_recency: 150
+  clipboard_overlap: 240
+  content_hit: 190
+  hour_affinity: 70
 
 aliases:
   browser: default-browser
   code: Visual Studio Code
   vscode: Visual Studio Code
   explorer: file-manager
+
+macros:
+  yt: "https://www.youtube.com/results?search_query={query}"
+  gh: "https://github.com/search?q={query}"
+  # Placeholders: {query} {query_enc} {clipboard} {clipboard_enc}
+  # Bang form: !yt cats   or   yt:cats
 
 # Named directory groups referenced as `scope:projects` in queries.
 scopes:

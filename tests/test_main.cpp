@@ -19,6 +19,7 @@ int main() {
   test_history();
   test_apps();
   test_protocol();
+  test_search_extras();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

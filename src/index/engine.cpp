@@ -9,6 +9,7 @@
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/fs/walker.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/content.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -150,22 +151,23 @@ bool IndexEngine::upsert_file(const std::string& path) {
         st.size > cfg_.index.max_file_size_bytes)
       return false;
     auto rec = record_from_stat(path, st, cfg_);
+    const bool want_content = cfg_.index.content_indexing && !st.is_dir &&
+                              content_indexable(rec.kind, path) &&
+                              st.size <= cfg_.index.content_max_bytes;
     if (const IndexRecord* old = store_.by_path(path)) {
       if (old->size == rec.size && old->mtime == rec.mtime && old->ctime == rec.ctime &&
           old->kind == rec.kind && old->flags == rec.flags &&
-          !cfg_.index.content_indexing)
+          (!want_content || store_.has_content_tokens(old->id)))
         return true;
     }
     bool existed = store_.by_path(path) != nullptr;
     auto id = store_.upsert(rec, path);
-    if (cfg_.index.content_indexing && !st.is_dir &&
-        (rec.kind == FileKind::Source || rec.kind == FileKind::Config ||
-         rec.kind == FileKind::Document) &&
-        st.size <= cfg_.index.content_max_bytes) {
+    if (want_content) {
       std::string text;
-      if (read_file_all(path, text)) {
-        auto extra = tokenize_name(text.substr(0, static_cast<std::size_t>(cfg_.index.content_max_bytes)));
-        store_.add_content_tokens(id, extra);
+      if (read_file_all(path, text) && !looks_binary(text)) {
+        if (text.size() > cfg_.index.content_max_bytes)
+          text.resize(static_cast<std::size_t>(cfg_.index.content_max_bytes));
+        store_.add_content_tokens(id, extract_content_tokens(text, cfg_.index.content_max_tokens));
       }
     }
     wal_.append_upsert(rec, path);

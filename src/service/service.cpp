@@ -115,13 +115,24 @@ int Service::run_search(const std::string& query, int limit) {
 int Service::launch_by_query(const std::string& query) {
   if (!boot()) return 1;
   auto iq = interpreter_.interpret(query, cfg_, &history_);
-  if (iq.results.empty()) {
+  const SearchResult* pick = nullptr;
+  for (auto& r : iq.results) {
+    if (r.action != ResultAction::Habit) {
+      pick = &r;
+      break;
+    }
+  }
+  if (!pick) {
     std::cerr << "no results\n";
     return 1;
   }
   history_.record_query(query);
-  history_.record_selection(iq.results.front().path);
-  bool ok = execute_result(iq.results.front(), cfg_);
+  auto key = pick->path.empty() ? pick->payload : pick->path;
+  if (!key.empty() && result_is_launchable(*pick)) {
+    history_.record_selection(key);
+    history_.record_choice(query, key);
+  }
+  bool ok = execute_result(*pick, cfg_);
   if (cfg_.history.persist) history_.save(default_history_path());
   return ok ? 0 : 1;
 }
@@ -168,12 +179,24 @@ int Service::run_daemon() {
 
   overlay_bind(
       [this](const std::string& q) {
-        history_.record_query(q);
+        last_overlay_query_ = q;
         auto iq = interpreter_.interpret(q, cfg_, &history_);
         return iq.results;
       },
       [this](const SearchResult& r) {
-        history_.record_selection(r.path.empty() ? r.payload : r.path);
+        if (r.action == ResultAction::Habit) return;
+        if (r.category == "mini" || r.category == "macro" || r.category == "clipboard" ||
+            r.action == ResultAction::Copy || r.action == ResultAction::Mini) {
+          execute_result(r, cfg_);
+          if (ui_) ui_->hide();
+          return;
+        }
+        if (!last_overlay_query_.empty()) history_.record_query(last_overlay_query_);
+        auto key = r.path.empty() ? r.payload : r.path;
+        if (!key.empty() && result_is_launchable(r)) {
+          history_.record_selection(key);
+          history_.record_choice(last_overlay_query_, key);
+        }
         execute_result(r, cfg_);
         if (ui_) ui_->hide();
         if (cfg_.history.persist) history_.save(default_history_path());

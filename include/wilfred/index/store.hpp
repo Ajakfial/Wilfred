@@ -18,6 +18,9 @@ public:
 
   std::uint32_t upsert(IndexRecord rec, std::string_view path);
   void add_content_tokens(std::uint32_t id, const std::vector<std::string>& tokens);
+  bool has_content_tokens(std::uint32_t id) const;
+  int content_token_hits(std::uint32_t id, const std::vector<std::string>& tokens) const;
+  bool content_covers_tokens(std::uint32_t id, const std::vector<std::string>& tokens) const;
   bool remove_path(std::string_view path);
   bool rename_path(std::string_view from, std::string_view to);
   const IndexRecord* get(std::uint32_t id) const;
@@ -41,7 +44,7 @@ public:
   void rebuild_secondary();
   void clear();
 
-  std::mutex& mutex() { return mu_; }
+  std::recursive_mutex& mutex() { return mu_; }
 
 private:
   void clear_unlocked();
@@ -53,7 +56,7 @@ private:
   void remove_posting(std::unordered_map<std::uint32_t, std::vector<std::uint32_t>>& m,
                       std::uint32_t key, std::uint32_t id);
 
-  mutable std::mutex mu_;
+  mutable std::recursive_mutex mu_;
   StringPool pool_;
   std::vector<IndexRecord> records_;
   std::vector<std::uint8_t> live_;

@@ -50,6 +50,11 @@ set(WILFRED_CORE_SOURCES
   src/search/rank.cpp
   src/search/filter.cpp
   src/search/engine.cpp
+  src/search/clipboard.cpp
+  src/search/context.cpp
+  src/search/content.cpp
+  src/search/macros.cpp
+  src/search/minis.cpp
   src/query/classify.cpp
   src/query/interpreter.cpp
   src/math/expr.cpp
@@ -63,6 +68,7 @@ set(WILFRED_CORE_SOURCES
   src/platform/platform.cpp
   src/service/service.cpp
   src/ui/web_ui.cpp
+  src/ui/icon.cpp
 )
 
 set(WILFRED_CORE_HEADERS
@@ -90,6 +96,11 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/rank.hpp
   include/wilfred/search/filter.hpp
   include/wilfred/search/engine.hpp
+  include/wilfred/search/clipboard.hpp
+  include/wilfred/search/context.hpp
+  include/wilfred/search/content.hpp
+  include/wilfred/search/macros.hpp
+  include/wilfred/search/minis.hpp
   include/wilfred/query/classify.hpp
   include/wilfred/query/interpreter.hpp
   include/wilfred/math/expr.hpp
@@ -103,6 +114,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/service/service.hpp
   include/wilfred/ui/overlay.hpp
   include/wilfred/ui/web_ui.hpp
+  include/wilfred/ui/icon.hpp
   include/wilfred/platform/native.hpp
   include/wilfred/providers/provider.hpp
 )
@@ -143,7 +155,8 @@ add_library(wilfred_core STATIC ${WILFRED_CORE_SOURCES} ${WILFRED_CORE_HEADERS})
 target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if(WIN32)
-  target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version)
+  target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version
+    winhttp psapi iphlpapi ws2_32)
 
   include(FetchContent)
   if(POLICY CMP0169)
@@ -229,6 +242,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_history.cpp
   tests/test_apps.cpp
   tests/test_protocol.cpp
+  tests/test_search_extras.cpp
 )
 
 if(WILFRED_BUILD_TESTS)

@@ -12,6 +12,11 @@ single summonable search bar.
 - Incremental, persistent filename/path/metadata index with a write-ahead log
 - Filesystem watchers (ReadDirectoryChangesW, FSEvents, inotify) plus rescan fallback
 - Fuzzy matching, acronyms, token/path ranking, recency and frequency signals
+- Context-aware ranking (recent folders, file types, time-of-day, session queries)
+- Clipboard as a secondary source (text match, copied paths, clip history)
+- Intelligent content indexing for source, config, and text documents
+- Mini results for weather, time, disk, RAM, CPU, processes, and more
+- Search macros (`!yt`, `gh`, `wiki`, custom templates in config)
 - Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 - Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 - Default-browser detection, URL open, and web-search fallback
@@ -69,8 +74,14 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `? cats` / `g cats` | Web search in the default browser |
 | `*.cpp in Projects` | Extension + directory filter |
 | `type:image name:logo` | Kind + filename |
+| `content:widget` / `intext foo` | Search indexed file contents |
 | `> notepad` | Command / launch style |
 | `scope:home notes` | Named directory group from config |
+| `weather` / `weather London` | Mini card: local or city forecast |
+| `time` `disk` `disku` `ram` `cpu` | Clock, drives, memory, processor |
+| `process chrome` / `top` | Live process CPU, RAM, threads |
+| `clip` / `clips` | Clipboard and recent clips |
+| `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |
 
 ## Architecture
 

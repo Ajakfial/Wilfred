@@ -33,5 +33,6 @@ private:
 };
 
 bool execute_result(const SearchResult& r, const Config& cfg);
+bool result_is_launchable(const SearchResult& r);
 
 }  // namespace wilfred

@@ -57,6 +57,7 @@ private:
   std::unique_ptr<IpcServer> ipc_;
   std::unique_ptr<OverlayUi> ui_;
   std::atomic<bool> running_{false};
+  std::string last_overlay_query_;
 };
 
 }  // namespace wilfred

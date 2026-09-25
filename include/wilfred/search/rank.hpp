@@ -20,6 +20,18 @@ struct RankContext {
   std::unordered_map<std::string, int> frequency;
   std::unordered_map<std::string, std::int64_t> last_selected;
   std::unordered_map<std::string, std::string> aliases;
+  std::unordered_map<std::string, int> learned_paths;
+  int hour{12};
+  int weekday{0};
+  std::string clipboard_folded;
+  std::vector<std::string> clipboard_tokens;
+  std::vector<std::string> clipboard_paths;
+  std::vector<std::string> recent_parents;
+  std::vector<std::string> recent_exts;
+  std::vector<std::string> recent_names;
+  std::vector<std::string> session_tokens;
+  bool context_aware{true};
+  bool allow_content{true};
 };
 
 struct ScoredHit {

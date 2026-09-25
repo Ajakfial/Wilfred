@@ -3,6 +3,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/record.hpp"
+#include "wilfred/ui/icon.hpp"
 
 #include <filesystem>
 #include <vector>
@@ -56,12 +57,17 @@ const char* overlay_action_name(ResultAction a) {
       return "convert";
     case ResultAction::None:
       return "none";
+    case ResultAction::Habit:
+      return "habit";
+    case ResultAction::Mini:
+      return "mini";
     default:
       return "open";
   }
 }
 
-std::string overlay_results_json(const std::vector<SearchResult>& items) {
+std::string overlay_results_json(const std::vector<SearchResult>& items,
+                                 const std::vector<std::string>& habits) {
   std::string o = "{\"type\":\"results\",\"items\":[";
   bool first = true;
   for (auto& it : items) {
@@ -74,10 +80,38 @@ std::string overlay_results_json(const std::vector<SearchResult>& items) {
     o += "\",\"path\":\"";
     o += overlay_json_escape(it.path);
     o += "\",\"kind\":\"";
-    o += overlay_json_escape(std::string(kind_name(it.kind)));
+    o += overlay_json_escape(it.kind_label.empty() ? std::string(kind_name(it.kind)) : it.kind_label);
     o += "\",\"action\":\"";
     o += overlay_action_name(it.action);
-    o += "\"}";
+    o += "\",\"category\":\"";
+    o += overlay_json_escape(it.category);
+    o += "\"";
+    if (it.meter >= 0) {
+      o += ",\"meter\":";
+      o += std::to_string(it.meter);
+    }
+    if (it.category != "mini" && it.category != "macro" && it.category != "clipboard" &&
+        it.action != ResultAction::Copy && it.action != ResultAction::Calculate &&
+        it.action != ResultAction::Convert && it.action != ResultAction::WebSearch &&
+        it.action != ResultAction::Habit) {
+      auto icon = file_icon_data_url(it.path, it.kind);
+      if (!icon.empty()) {
+        o += ",\"icon\":\"";
+        o += overlay_json_escape(icon);
+        o += "\"";
+      }
+    }
+    o += "}";
+  }
+  o += "],\"habits\":[";
+  first = true;
+  for (auto& h : habits) {
+    if (h.empty()) continue;
+    if (!first) o += ',';
+    first = false;
+    o += "\"";
+    o += overlay_json_escape(h);
+    o += "\"";
   }
   o += "]}";
   return o;
