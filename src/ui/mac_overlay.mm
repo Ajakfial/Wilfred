@@ -86,14 +86,14 @@ static WilfredCtl* g_ctl = nil;
   }
   if (type == "query") {
     std::string q;
-    overlay_json_field(json, "q", q);
+    wilfred::overlay_json_field(json, "q", q);
     if (g_query) g_results = g_query(q);
     [self sendJson:wilfred::overlay_results_json(g_results)];
     return;
   }
   if (type == "submit") {
     std::string idxs;
-    overlay_json_field(json, "index", idxs);
+    wilfred::overlay_json_field(json, "index", idxs);
     int idx = 0;
     try {
       idx = std::stoi(idxs);
@@ -113,8 +113,8 @@ static WilfredCtl* g_ctl = nil;
   }
   if (type == "resize") {
     std::string ws, hs;
-    overlay_json_field(json, "width", ws);
-    overlay_json_field(json, "height", hs);
+    wilfred::overlay_json_field(json, "width", ws);
+    wilfred::overlay_json_field(json, "height", hs);
     int w = 704, h = 140;
     try {
       if (!ws.empty()) w = std::stoi(ws);
