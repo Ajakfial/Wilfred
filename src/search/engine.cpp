@@ -84,8 +84,16 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
     return cache_;
   }
 
+  // Use the filter-stripped query text (q) for ranking context, not the raw
+  // input. When a query is made up entirely of filter clauses (e.g. "*.cpp in
+  // Projects"), q is legitimately empty here even though the original query
+  // string was not; falling back to the raw query would leak filter syntax
+  // ("in", "*.cpp", ...) into the free-text ranker, which then requires
+  // filenames to fuzzy/substring match that filter syntax and rejects every
+  // otherwise-matching, filtered result. An empty q is handled by
+  // fill_rank_context/rank_record as a filter-only search.
   RankContext ctx;
-  fill_rank_context(ctx, q.empty() ? query : q, cfg, history, cfg.search.clipboard ? clip.text : "");
+  fill_rank_context(ctx, q, cfg, history, cfg.search.clipboard ? clip.text : "");
   ctx.clipboard_paths = clipboard_path_hints(clip);
   if (!cfg.search.context_aware) {
     ctx.recent_parents.clear();

@@ -101,7 +101,9 @@ CMAKE_ARGS=(
 if [[ -n "$ARCH" ]]; then
   CMAKE_ARGS+=(-DCMAKE_OSX_ARCHITECTURES="$ARCH")
 fi
-CMAKE_ARGS+=("${EXTRA_CMAKE[@]}")
+if [[ ${#EXTRA_CMAKE[@]} -gt 0 ]]; then
+  CMAKE_ARGS+=("${EXTRA_CMAKE[@]}")
+fi
 
 cmake "${CMAKE_ARGS[@]}"
 
