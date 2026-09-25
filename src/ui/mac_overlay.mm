@@ -8,12 +8,17 @@
 #import <WebKit/WebKit.h>
 #include <vector>
 
-namespace wilfred {
 #ifdef __APPLE__
 
-static OverlayQuery g_query;
-static OverlaySubmit g_submit;
-static std::vector<SearchResult> g_results;
+// Objective-C @interface/@implementation declarations are only legal at
+// global scope, so this block (and the statics it touches) lives outside
+// namespace wilfred. The C++-facing pieces below (MacOverlay, create_overlay,
+// overlay_bind, ...) still live in namespace wilfred as declared in the
+// headers; they reach these globals by qualifying wilfred:: on the types.
+
+static wilfred::OverlayQuery g_query;
+static wilfred::OverlaySubmit g_submit;
+static std::vector<wilfred::SearchResult> g_results;
 static bool g_visible = false;
 
 @interface WilfredPanel : NSWindow
@@ -67,7 +72,7 @@ static WilfredCtl* g_ctl = nil;
 }
 - (void)handleJson:(const std::string&)json {
   std::string type;
-  overlay_json_field(json, "type", type);
+  wilfred::overlay_json_field(json, "type", type);
   if (type == "ready") {
     self.ready = YES;
     if (self.wantShow) {
@@ -83,7 +88,7 @@ static WilfredCtl* g_ctl = nil;
     std::string q;
     overlay_json_field(json, "q", q);
     if (g_query) g_results = g_query(q);
-    [self sendJson:overlay_results_json(g_results)];
+    [self sendJson:wilfred::overlay_results_json(g_results)];
     return;
   }
   if (type == "submit") {
@@ -124,6 +129,8 @@ static WilfredCtl* g_ctl = nil;
   (void)nav;
 }
 @end
+
+namespace wilfred {
 
 class MacOverlay final : public OverlayUi {
 public:
