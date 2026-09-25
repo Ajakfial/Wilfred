@@ -39,13 +39,29 @@ std::string norm_unit(std::string u) {
   while (!u.empty() && u.back() == ' ') u.pop_back();
   std::string o;
   o.reserve(u.size());
-  for (unsigned char c : u) {
+  for (std::size_t i = 0; i < u.size(); ++i) {
+    unsigned char c = static_cast<unsigned char>(u[i]);
     if (c == ' ' || c == '.' || c == '-') continue;
-    if (c == '²' || c == 0xB2) {
+    // UTF-8 encoding of U+00B2 (²) is 0xC2 0xB2, and U+00B3 (³) is 0xC2 0xB3.
+    if (c == 0xC2 && i + 1 < u.size()) {
+      unsigned char c2 = static_cast<unsigned char>(u[i + 1]);
+      if (c2 == 0xB2) {
+        o += "2";
+        ++i;
+        continue;
+      }
+      if (c2 == 0xB3) {
+        o += "3";
+        ++i;
+        continue;
+      }
+    }
+    // Also tolerate a raw single-byte 0xB2/0xB3 (e.g. Latin-1 input).
+    if (c == 0xB2) {
       o += "2";
       continue;
     }
-    if (c == '³' || c == 0xB3) {
+    if (c == 0xB3) {
       o += "3";
       continue;
     }
