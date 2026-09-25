@@ -235,7 +235,8 @@ std::vector<std::string> default_system_directories() {
 
 bool path_equals(std::string_view a, std::string_view b) {
 #ifdef _WIN32
-  return to_lower_utf8(a) == to_lower_utf8(b);
+  return to_lower_utf8(replace_slashes(std::string(a))) ==
+         to_lower_utf8(replace_slashes(std::string(b)));
 #else
   return a == b;
 #endif

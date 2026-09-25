@@ -47,36 +47,24 @@ struct Parser {
   }
 
   int skip_blank_and_comments() {
-    int indent = 0;
     for (;;) {
-      skip_ws_inline();
+      int ind = 0;
+      while (peek() == ' ') {
+        get();
+        ++ind;
+      }
+      while (peek() == '\t') {
+        get();
+        ind += 2;
+      }
       skip_comment();
       if (peek() == '\r') get();
       if (peek() == '\n') {
         get();
-        indent = 0;
         continue;
       }
-      indent = 0;
-      std::size_t j = i;
-      int ccol = 0;
-      while (j < t.size() && (t[j] == ' ' || t[j] == '\t')) {
-        ccol += (t[j] == '\t') ? 2 : 1;
-        ++j;
-      }
-      (void)ccol;
-      break;
+      return ind;
     }
-    int ind = 0;
-    while (peek() == ' ') {
-      get();
-      ++ind;
-    }
-    while (peek() == '\t') {
-      get();
-      ind += 2;
-    }
-    return ind;
   }
 
   int current_indent() const {
@@ -170,6 +158,10 @@ struct Parser {
       return v;
     }
     auto s = parse_plain();
+    if (!s.empty() && (s.front() == '[' || s.front() == '{')) {
+      char close = s.front() == '[' ? ']' : '}';
+      if (s.size() < 2 || s.back() != close) fail("unclosed flow collection");
+    }
     v.data = s;
     return v;
   }
@@ -181,13 +173,16 @@ struct Parser {
     root.data = YamlMap{};
     auto& m = std::get<YamlMap>(root.data);
     while (i < t.size()) {
+      std::size_t save = i;
+      int sl = line, sc = col;
       int ind = skip_blank_and_comments();
       if (!peek()) break;
-      if (ind < indent && peek() != '\0') {
-        // unconsume indent is hard; if we skipped spaces of a shallower key, stop by checking
+      if (ind < indent || peek() == '-') {
+        i = save;
+        line = sl;
+        col = sc;
+        break;
       }
-      if (ind < indent) break;
-      if (peek() == '-') break;
       skip_ws_inline();
       if (!peek() || peek() == '\n') continue;
       std::string key;
@@ -225,10 +220,16 @@ struct Parser {
     root.data = YamlList{};
     auto& l = std::get<YamlList>(root.data);
     while (i < t.size()) {
+      std::size_t save = i;
+      int sl = line, sc = col;
       int ind = skip_blank_and_comments();
       if (!peek()) break;
-      if (ind < indent) break;
-      if (peek() != '-') break;
+      if (ind < indent || peek() != '-') {
+        i = save;
+        line = sl;
+        col = sc;
+        break;
+      }
       get();
       skip_ws_inline();
       if (peek() == '\n' || peek() == '\0') {
@@ -264,9 +265,21 @@ struct Parser {
   }
 
   bool looks_like_inline_map() const {
+    if (peek() == '"' || peek() == '\'') return false;
     std::size_t j = i;
-    while (j < t.size() && t[j] != '\n' && t[j] != '#') {
-      if (t[j] == ':') return true;
+    bool in_quote = false;
+    char q = 0;
+    while (j < t.size() && t[j] != '\n' && t[j] != '\r') {
+      char c = t[j];
+      if (!in_quote && c == '#') break;
+      if (!in_quote && (c == '"' || c == '\'')) {
+        in_quote = true;
+        q = c;
+      } else if (in_quote && c == q) {
+        in_quote = false;
+      } else if (!in_quote && c == ':') {
+        return true;
+      }
       ++j;
     }
     return false;
@@ -278,7 +291,12 @@ YamlValue Parser::parse_value(int indent) {
   int iline = line, icol = col;
   int ind = skip_blank_and_comments();
   (void)ind;
-  if (peek() == '-') return parse_list(indent);
+  if (peek() == '-') {
+    i = save;
+    line = iline;
+    col = icol;
+    return parse_list(indent);
+  }
   // map vs scalar: if line has key:
   std::size_t j = i;
   bool map = false;
@@ -297,7 +315,6 @@ YamlValue Parser::parse_value(int indent) {
     i = save;
     line = iline;
     col = icol;
-    skip_blank_and_comments();
     return parse_map(indent);
   }
   i = save;

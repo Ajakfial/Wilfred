@@ -47,11 +47,13 @@ jobs:
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
-        run: ./scripts/build-linux.sh --release --tests
+        shell: bash
+        run: bash ./scripts/build-linux.sh --release --tests
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
-        run: ./scripts/build-macos.sh --release --tests
+        shell: bash
+        run: bash ./scripts/build-macos.sh --release --tests
 
       - name: Package (Windows)
         if: runner.os == 'Windows'

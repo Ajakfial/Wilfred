@@ -35,8 +35,13 @@ struct Parser {
   explicit Parser(std::string e) {
     std::string n;
     n.reserve(e.size());
+    int depth = 0;
     for (std::size_t i = 0; i < e.size(); ++i) {
-      if (e[i] == ',' && i > 0 && i + 1 < e.size() &&
+      if (e[i] == '(') ++depth;
+      else if (e[i] == ')') {
+        if (depth > 0) --depth;
+      }
+      if (e[i] == ',' && depth == 0 && i > 0 && i + 1 < e.size() &&
           std::isdigit(static_cast<unsigned char>(e[i - 1])) &&
           std::isdigit(static_cast<unsigned char>(e[i + 1])))
         n.push_back('.');
