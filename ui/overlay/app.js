@@ -12,6 +12,12 @@
   let seq = 0;
   let visible = false;
   let hideTimer = 0;
+  let menuOpen = false;
+  let menuSel = 0;
+
+  function actionsOf(item) {
+    return item && Array.isArray(item.actions) ? item.actions : [];
+  }
 
   const badges = {
     application: "bi-app",
@@ -45,7 +51,9 @@
     ip: "bi-ethernet",
     uptime: "bi-hourglass-split",
     user: "bi-person",
-    clips: "bi-clipboard-plus",
+    clip: "bi-clipboard-check",
+    snippet: "bi-card-text",
+    plugin: "bi-puzzle",
     os: "bi-windows",
     cores: "bi-cpu-fill",
     screen: "bi-display",
@@ -75,6 +83,8 @@
   }
 
   function kindOf(item) {
+    if (item.action === "expand" || item.category === "snippet") return item.kind === "clip" ? "clip" : "snippet";
+    if (item.action === "plugin" || item.category === "plugin") return "plugin";
     if (item.action === "calc") return "calc";
     if (item.action === "convert") return "convert";
     if (item.action === "web") return "web";
@@ -124,7 +134,12 @@
 
   function paintSelection() {
     const rows = [...resultsEl.querySelectorAll(".row")];
-    rows.forEach((row, i) => row.classList.toggle("is-sel", i === sel));
+    rows.forEach((row, i) => {
+      row.classList.toggle("is-sel", i === sel);
+      const menu = row.querySelector(".action-menu");
+      if (menu) menu.hidden = !(menuOpen && i === sel);
+      menu?.querySelectorAll(".action").forEach((btn, j) => btn.classList.toggle("is-sel", j === menuSel));
+    });
     const cur = rows[sel];
     if (cur) cur.scrollIntoView({ block: "nearest" });
   }
@@ -140,9 +155,11 @@
       return;
     }
     resultsEl.hidden = false;
-    hint.textContent = rows.length ? "↵" : "esc";
+    hint.textContent = rows.length ? "↵  tab" : "esc";
     const needle = input.value.trim();
     if (sel >= rows.length) sel = 0;
+    menuOpen = false;
+    menuSel = 0;
     let html = "";
     if (habits.length) {
       html += `<div class="habits">${habits
@@ -175,6 +192,23 @@
             }
           </div>
           <div class="kind"></div>
+          ${
+            actionsOf(entry.item).length
+              ? `<button type="button" class="more" data-more="${entry.index}" aria-label="Actions">
+                   <i class="bi bi-three-dots"></i>
+                 </button>
+                 <div class="action-menu" hidden>
+                   ${actionsOf(entry.item)
+                     .map(
+                       (a, j) =>
+                         `<button type="button" class="action${j === 0 ? " is-sel" : ""}" data-action="${a.id}">${
+                           a.label || a.id
+                         }</button>`
+                     )
+                     .join("")}
+                 </div>`
+              : ""
+          }
         </div>`
         )
         .join("")}</div>`;
@@ -216,7 +250,7 @@
     if (!window.chrome && !window.webkit) demoQuery(q, id);
   }
 
-  function submit() {
+  function submit(actionId) {
     const rows = rowsOf();
     if (!rows.length) return;
     const item = rows[sel].item;
@@ -224,7 +258,17 @@
       applyHabit((item.payload || item.title || "").trimEnd() + " ");
       return;
     }
-    nativeSend({ type: "submit", index: rows[sel].index });
+    menuOpen = false;
+    nativeSend({ type: "submit", index: rows[sel].index, action: actionId || "" });
+  }
+
+  function toggleMenu() {
+    const rows = rowsOf();
+    const item = rows[sel] && rows[sel].item;
+    if (!actionsOf(item).length) return;
+    menuOpen = !menuOpen;
+    menuSel = 0;
+    paintSelection();
   }
 
   function dismiss() {
@@ -286,12 +330,38 @@
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
+      if (menuOpen) {
+        menuOpen = false;
+        paintSelection();
+        return;
+      }
       dismiss();
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      toggleMenu();
+    } else if (e.key === "ArrowRight" && menuOpen) {
+      e.preventDefault();
+      const rows = rowsOf();
+      const n = actionsOf(rows[sel] && rows[sel].item).length;
+      if (n) {
+        menuSel = (menuSel + 1) % n;
+        paintSelection();
+      }
+    } else if (e.key === "ArrowLeft" && menuOpen) {
+      e.preventDefault();
+      const rows = rowsOf();
+      const n = actionsOf(rows[sel] && rows[sel].item).length;
+      if (n) {
+        menuSel = (menuSel - 1 + n) % n;
+        paintSelection();
+      }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       const n = rowsOf().length;
       if (n) {
         sel = (sel + 1) % n;
+        menuOpen = false;
+        menuSel = 0;
         paintSelection();
       }
     } else if (e.key === "ArrowUp") {
@@ -299,11 +369,23 @@
       const n = rowsOf().length;
       if (n) {
         sel = (sel - 1 + n) % n;
+        menuOpen = false;
+        menuSel = 0;
         paintSelection();
       }
     } else if (e.key === "Enter") {
       e.preventDefault();
-      submit();
+      const rows = rowsOf();
+      const item = rows[sel] && rows[sel].item;
+      if (menuOpen) {
+        const act = actionsOf(item)[menuSel];
+        submit(act ? act.id : "");
+      } else if (e.shiftKey || e.altKey) {
+        const acts = actionsOf(item);
+        submit(acts[1] ? acts[1].id : acts[0] ? acts[0].id : "");
+      } else {
+        submit();
+      }
     }
   });
 
@@ -314,6 +396,25 @@
       const habits = habitsOf();
       const i = Number(habit.dataset.habit);
       if (habits[i]) applyHabit(habits[i].title);
+      return;
+    }
+    const more = e.target.closest(".more");
+    if (more) {
+      e.preventDefault();
+      const rows = rowsOf();
+      const idx = rows.findIndex((x) => x.index === Number(more.dataset.more));
+      if (idx >= 0) sel = idx;
+      toggleMenu();
+      return;
+    }
+    const action = e.target.closest(".action");
+    if (action) {
+      e.preventDefault();
+      const row = action.closest(".row");
+      const rows = rowsOf();
+      const idx = rows.findIndex((x) => x.index === Number(row.dataset.i));
+      if (idx >= 0) sel = idx;
+      submit(action.dataset.action || "");
       return;
     }
     const row = e.target.closest(".row");
@@ -395,6 +496,11 @@
       );
     sample.forEach((x) => {
       if (x.kind === "application") x.icon = demoIcon;
+      x.actions = [
+        { id: "open", label: "Open" },
+        { id: "reveal", label: "Show in folder" },
+        { id: "copy_path", label: "Copy path" },
+      ];
     });
     const habits = [
       { title: "firefox", action: "habit", subtitle: "Typed often" },
@@ -419,6 +525,34 @@
       category: "clipboard",
       action: "copy",
     };
+    const snippets = [
+      {
+        title: "sig",
+        subtitle: "Snippet · sig · enter pastes",
+        kind: "snippet",
+        category: "snippet",
+        action: "expand",
+        payload: "Best regards,\nJay",
+        actions: [
+          { id: "paste", label: "Paste" },
+          { id: "copy_text", label: "Copy text" },
+        ],
+      },
+    ];
+    const plugins = [
+      {
+        title: "Ping host",
+        subtitle: "Plugin · demo",
+        kind: "plugin",
+        category: "plugin",
+        action: "plugin",
+        path: "8.8.8.8",
+        actions: [
+          { id: "open", label: "Run" },
+          { id: "copy_path", label: "Copy path" },
+        ],
+      },
+    ];
     const matched = needle
       ? sample.filter((x) => ((x.title || "") + (x.path || "")).toLowerCase().includes(needle))
       : sample;
@@ -435,7 +569,11 @@
           ? macros
           : needle === "clip" || needle === "clipboard"
             ? [clip]
-            : [];
+            : needle.startsWith(";") || needle.startsWith("snip")
+              ? snippets
+              : needle === "plugin" || needle === "ping"
+                ? plugins
+                : [];
     const typed = needle
       ? habits.filter((h) => h.title.includes(needle) && h.title !== needle)
       : habits;

@@ -9,7 +9,7 @@
 
 namespace wilfred {
 
-using OverlaySubmit = std::function<void(const SearchResult&)>;
+using OverlaySubmit = std::function<void(const SearchResult&, const std::string& action_id)>;
 using OverlayQuery = std::function<std::vector<SearchResult>(const std::string&)>;
 
 void overlay_bind(OverlayQuery q, OverlaySubmit s);

@@ -233,8 +233,9 @@ html.preview .shell {
 }
 
 .row {
+  position: relative;
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 36px 1fr auto auto;
   gap: 10px;
   align-items: center;
   min-height: 48px;
@@ -303,7 +304,58 @@ html.preview .shell {
   font-size: 11px;
   color: var(--muted);
   text-transform: capitalize;
-  padding-right: 6px;
+  padding-right: 2px;
+}
+
+.more {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.more:hover,
+.row.is-sel .more {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+}
+
+.action-menu {
+  position: absolute;
+  right: 10px;
+  top: calc(100% - 6px);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(22, 24, 32, 0.96);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.action-menu[hidden] {
+  display: none;
+}
+
+.action {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: 500 12px/1 inherit;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.action.is-sel,
+.action:hover {
+  background: var(--sel);
 }
 
 .row.is-mini .badge {

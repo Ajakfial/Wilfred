@@ -871,6 +871,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         "process <name>  ·  app CPU and RAM",
         "battery / ip / hostname / uptime / user",
         "clip / clips  ·  clipboard",
+        "snip / ;keyword  ·  text snippets",
+        "snip save <name>  ·  save clipboard as snippet",
         "os / cores / screen",
         "macros  ·  bang searches  (!yt cats)",
         nullptr};

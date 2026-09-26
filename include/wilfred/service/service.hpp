@@ -3,8 +3,10 @@
 #include "wilfred/config/config.hpp"
 #include "wilfred/history/history.hpp"
 #include "wilfred/index/engine.hpp"
+#include "wilfred/plugin/host.hpp"
 #include "wilfred/query/interpreter.hpp"
 #include "wilfred/search/engine.hpp"
+#include "wilfred/search/snippets.hpp"
 
 #include <atomic>
 #include <memory>
@@ -14,6 +16,7 @@ namespace wilfred {
 
 class FsWatcher;
 class GlobalHotkey;
+class HttpApiServer;
 class IpcServer;
 
 class OverlayUi {
@@ -38,6 +41,9 @@ public:
   int run_index_now();
   int run_status();
   int launch_by_query(const std::string& query);
+  int run_backup(const std::string& dest, bool include_index);
+  int run_restore(const std::string& src);
+  int run_sync(bool push);
 
   Config& config() { return cfg_; }
   IndexEngine& index() { return index_; }
@@ -50,11 +56,14 @@ private:
   Config cfg_;
   IndexEngine index_;
   SearchEngine search_;
+  SnippetStore snippets_;
+  PluginHost plugins_;
   QueryInterpreter interpreter_;
   HistoryStore history_;
   std::unique_ptr<FsWatcher> watcher_;
   std::unique_ptr<GlobalHotkey> hotkey_;
   std::unique_ptr<IpcServer> ipc_;
+  std::unique_ptr<HttpApiServer> http_;
   std::unique_ptr<OverlayUi> ui_;
   std::atomic<bool> running_{false};
   std::string last_overlay_query_;

@@ -1,53 +1,37 @@
 #include "wilfred/ipc/protocol.hpp"
 
-#include "wilfred/core/utf8.hpp"
+#include "wilfred/core/json.hpp"
+#include "wilfred/index/record.hpp"
 
 #include <sstream>
 
 namespace wilfred {
 
-static std::string json_escape(const std::string& s) {
-  std::string o;
-  o.reserve(s.size() + 8);
-  for (unsigned char c : s) {
-    if (c == '"')
-      o += "\\\"";
-    else if (c == '\\')
-      o += "\\\\";
-    else if (c == '\n')
-      o += "\\n";
-    else if (c == '\r')
-      o += "\\r";
-    else
-      o.push_back(static_cast<char>(c));
+static const char* ipc_action_name(ResultAction a) {
+  switch (a) {
+    case ResultAction::Reveal:
+      return "reveal";
+    case ResultAction::Copy:
+      return "copy";
+    case ResultAction::WebSearch:
+      return "web";
+    case ResultAction::Calculate:
+      return "calc";
+    case ResultAction::Convert:
+      return "convert";
+    case ResultAction::None:
+      return "none";
+    case ResultAction::Habit:
+      return "habit";
+    case ResultAction::Mini:
+      return "mini";
+    case ResultAction::Expand:
+      return "expand";
+    case ResultAction::Plugin:
+      return "plugin";
+    default:
+      return "open";
   }
-  return o;
-}
-
-static std::string json_get_string(const std::string& s, const char* key) {
-  std::string k = std::string("\"") + key + "\"";
-  auto pos = s.find(k);
-  if (pos == std::string::npos) return {};
-  pos = s.find(':', pos + k.size());
-  if (pos == std::string::npos) return {};
-  ++pos;
-  while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) ++pos;
-  if (pos >= s.size()) return {};
-  if (s[pos] == '"') {
-    ++pos;
-    std::string v;
-    while (pos < s.size() && s[pos] != '"') {
-      if (s[pos] == '\\' && pos + 1 < s.size()) {
-        v.push_back(s[pos + 1]);
-        pos += 2;
-      } else
-        v.push_back(s[pos++]);
-    }
-    return v;
-  }
-  std::string v;
-  while (pos < s.size() && s[pos] != ',' && s[pos] != '}' && s[pos] != ' ') v.push_back(s[pos++]);
-  return v;
 }
 
 std::string encode_response(const IpcResponse& r) {
@@ -60,7 +44,22 @@ std::string encode_response(const IpcResponse& r) {
     first = false;
     os << "{\"id\":" << it.id << ",\"score\":" << it.score << ",\"title\":\""
        << json_escape(it.title) << "\",\"path\":\"" << json_escape(it.path) << "\",\"kind\":\""
-       << json_escape(std::string(kind_name(it.kind))) << "\"}";
+       << json_escape(it.kind_label.empty() ? std::string(kind_name(it.kind)) : it.kind_label)
+       << "\",\"subtitle\":\"" << json_escape(it.subtitle) << "\",\"action\":\""
+       << ipc_action_name(it.action) << "\",\"category\":\"" << json_escape(it.category)
+       << "\",\"payload\":\"" << json_escape(it.payload) << "\",\"plugin\":\""
+       << json_escape(it.plugin_id) << "\"";
+    if (!it.actions.empty()) {
+      os << ",\"actions\":[";
+      bool af = true;
+      for (auto& a : it.actions) {
+        if (!af) os << ',';
+        af = false;
+        os << "{\"id\":\"" << json_escape(a.id) << "\",\"label\":\"" << json_escape(a.label) << "\"}";
+      }
+      os << "]";
+    }
+    os << "}";
   }
   os << "]}";
   return os.str();
@@ -83,11 +82,23 @@ bool decode_request(const std::string& line, IpcRequest& out) {
     out.cmd = "status";
     return true;
   }
+  if (line.rfind("BACKUP", 0) == 0) {
+    out.cmd = "backup";
+    if (line.size() > 7 && line[6] == '\t') out.path = line.substr(7);
+    return true;
+  }
+  if (line.rfind("RESTORE", 0) == 0) {
+    out.cmd = "restore";
+    if (line.size() > 8 && line[7] == '\t') out.path = line.substr(8);
+    return true;
+  }
   out.cmd = json_get_string(line, "cmd");
   if (out.cmd.empty()) out.cmd = json_get_string(line, "command");
   out.query = json_get_string(line, "q");
   if (out.query.empty()) out.query = json_get_string(line, "query");
   out.path = json_get_string(line, "path");
+  out.action = json_get_string(line, "action");
+  out.token = json_get_string(line, "token");
   auto lim = json_get_string(line, "n");
   if (lim.empty()) lim = json_get_string(line, "limit");
   if (!lim.empty()) {

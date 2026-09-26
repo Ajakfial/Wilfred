@@ -34,6 +34,7 @@ set(WILFRED_CORE_SOURCES
   src/core/thread_pool.cpp
   src/core/mmap.cpp
   src/core/crc32.cpp
+  src/core/json.cpp
   src/config/yaml.cpp
   src/config/config.cpp
   src/index/string_pool.cpp
@@ -55,6 +56,10 @@ set(WILFRED_CORE_SOURCES
   src/search/content.cpp
   src/search/macros.cpp
   src/search/minis.cpp
+  src/search/snippets.cpp
+  src/search/actions.cpp
+  src/plugin/host.cpp
+  src/sync/backup.cpp
   src/query/classify.cpp
   src/query/interpreter.cpp
   src/math/expr.cpp
@@ -64,6 +69,7 @@ set(WILFRED_CORE_SOURCES
   src/history/history.cpp
   src/ipc/protocol.cpp
   src/ipc/server.cpp
+  src/ipc/http.cpp
   src/hotkey/hotkey.cpp
   src/platform/platform.cpp
   src/service/service.cpp
@@ -79,6 +85,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/core/thread_pool.hpp
   include/wilfred/core/mmap.hpp
   include/wilfred/core/crc32.hpp
+  include/wilfred/core/json.hpp
   include/wilfred/core/span.hpp
   include/wilfred/config/yaml.hpp
   include/wilfred/config/config.hpp
@@ -101,6 +108,11 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/content.hpp
   include/wilfred/search/macros.hpp
   include/wilfred/search/minis.hpp
+  include/wilfred/search/snippets.hpp
+  include/wilfred/search/actions.hpp
+  include/wilfred/plugin/abi.hpp
+  include/wilfred/plugin/host.hpp
+  include/wilfred/sync/backup.hpp
   include/wilfred/query/classify.hpp
   include/wilfred/query/interpreter.hpp
   include/wilfred/math/expr.hpp
@@ -109,6 +121,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/history/history.hpp
   include/wilfred/ipc/protocol.hpp
   include/wilfred/ipc/server.hpp
+  include/wilfred/ipc/http.hpp
   include/wilfred/hotkey/hotkey.hpp
   include/wilfred/platform/platform.hpp
   include/wilfred/service/service.hpp
@@ -243,6 +256,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_apps.cpp
   tests/test_protocol.cpp
   tests/test_search_extras.cpp
+  tests/test_extensibility.cpp
 )
 
 if(WILFRED_BUILD_TESTS)

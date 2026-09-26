@@ -93,10 +93,10 @@ static void do_query(const std::string& q) {
   }).detach();
 }
 
-static void accept_index(int idx) {
+static void accept_index(int idx, const std::string& action) {
   std::lock_guard<std::mutex> lock(g_res_mu);
   if (idx >= 0 && idx < static_cast<int>(g_results.size()) && g_submit)
-    g_submit(g_results[static_cast<std::size_t>(idx)]);
+    g_submit(g_results[static_cast<std::size_t>(idx)], action);
 }
 
 static void hide_now() {
@@ -175,16 +175,16 @@ static void handle_web_message(const std::string& json) {
     return;
   }
   if (type == "submit") {
-    std::string idxs;
+    std::string idxs, action;
     overlay_json_field(json, "index", idxs);
+    overlay_json_field(json, "action", action);
     int idx = 0;
     try {
       idx = std::stoi(idxs);
     } catch (...) {
       idx = 0;
     }
-    accept_index(idx);
-    hide_now();
+    accept_index(idx, action);
     return;
   }
   if (type == "hidden") {

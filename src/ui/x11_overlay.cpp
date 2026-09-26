@@ -94,8 +94,21 @@ public:
         XLookupString(&e.xkey, buf, sizeof(buf), &ks, nullptr);
         if (ks == XK_Escape) hide();
         else if (ks == XK_Return && sel < static_cast<int>(results.size()) && submit) {
-          submit(results[static_cast<std::size_t>(sel)]);
-          hide();
+          auto& r = results[static_cast<std::size_t>(sel)];
+          std::string act;
+          if ((e.xkey.state & ShiftMask) || (e.xkey.state & Mod1Mask)) {
+            if (r.actions.size() >= 2)
+              act = r.actions[1].id;
+            else if (!r.actions.empty())
+              act = r.actions[0].id;
+            else
+              act = "reveal";
+          }
+          submit(r, act);
+        } else if (ks == XK_Tab && sel < static_cast<int>(results.size()) && submit) {
+          auto& r = results[static_cast<std::size_t>(sel)];
+          std::string act = r.actions.size() >= 2 ? r.actions[1].id : (r.actions.empty() ? "reveal" : r.actions[0].id);
+          submit(r, act);
         } else if (ks == XK_Down && !results.empty()) {
           sel = (sel + 1) % static_cast<int>(results.size());
           draw();

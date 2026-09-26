@@ -24,6 +24,10 @@ static void print_help() {
       << "  wilfred launch <query>  Search and open the top result\n"
       << "  wilfred index           Scan configured roots and persist the index\n"
       << "  wilfred status          Print index statistics\n"
+      << "  wilfred backup [path]   Write config/snippets/index archive\n"
+      << "  wilfred restore [path]  Restore from a backup archive\n"
+      << "  wilfred sync-push       Upload backup to sync.url\n"
+      << "  wilfred sync-pull       Download backup from sync.url\n"
       << "  wilfred history-clear   Erase local search history\n"
       << "  wilfred help            Show this message\n\n"
       << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
@@ -83,6 +87,21 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "index") return svc.run_index_now();
     if (cmd == "status") return svc.run_status();
+    if (cmd == "backup") {
+      bool include_index = true;
+      std::string dest;
+      for (int i = 2; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--no-index")
+          include_index = false;
+        else
+          dest = a;
+      }
+      return svc.run_backup(dest, include_index);
+    }
+    if (cmd == "restore") return svc.run_restore(query);
+    if (cmd == "sync-push" || cmd == "sync_push") return svc.run_sync(true);
+    if (cmd == "sync-pull" || cmd == "sync_pull") return svc.run_sync(false);
     if (cmd == "history-clear" || cmd == "clear-history") {
       wilfred::HistoryStore h;
       auto p = wilfred::default_history_path();

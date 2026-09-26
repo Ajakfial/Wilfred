@@ -17,6 +17,8 @@ search:
   clipboard: true
   minis: true
   macros: true
+  snippets: true
+  plugins: true
 
 index:
   # Empty paths means platform defaults (home, applications, common data).
@@ -135,3 +137,27 @@ ui:
   theme: dark
   max_visible: 9
   width: 720
+
+plugins:
+  enabled: true
+  directories: []
+  timeout_ms: 400
+
+api:
+  enabled: false
+  bind: 127.0.0.1
+  port: 17380
+  token: ""
+
+sync:
+  enabled: false
+  url: ""
+  token: ""
+  interval_seconds: 0
+  include_index: true
+
+snippets:
+  expansion: true
+  prefix: ";"
+  auto_paste: false
+  items: {}

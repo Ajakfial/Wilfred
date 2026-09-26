@@ -61,6 +61,10 @@ const char* overlay_action_name(ResultAction a) {
       return "habit";
     case ResultAction::Mini:
       return "mini";
+    case ResultAction::Expand:
+      return "expand";
+    case ResultAction::Plugin:
+      return "plugin";
     default:
       return "open";
   }
@@ -85,7 +89,28 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     o += overlay_action_name(it.action);
     o += "\",\"category\":\"";
     o += overlay_json_escape(it.category);
+    o += "\",\"payload\":\"";
+    o += overlay_json_escape(it.payload);
     o += "\"";
+    if (!it.plugin_id.empty()) {
+      o += ",\"plugin\":\"";
+      o += overlay_json_escape(it.plugin_id);
+      o += "\"";
+    }
+    if (!it.actions.empty()) {
+      o += ",\"actions\":[";
+      bool af = true;
+      for (auto& a : it.actions) {
+        if (!af) o += ',';
+        af = false;
+        o += "{\"id\":\"";
+        o += overlay_json_escape(a.id);
+        o += "\",\"label\":\"";
+        o += overlay_json_escape(a.label);
+        o += "\"}";
+      }
+      o += "]";
+    }
     if (it.meter >= 0) {
       o += ",\"meter\":";
       o += std::to_string(it.meter);

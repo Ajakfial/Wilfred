@@ -100,10 +100,10 @@ static WilfredCtl* g_ctl = nil;
     } catch (...) {
       idx = 0;
     }
+    std::string action;
+    wilfred::overlay_json_field(json, "action", action);
     if (idx >= 0 && idx < static_cast<int>(g_results.size()) && g_submit)
-      g_submit(g_results[static_cast<std::size_t>(idx)]);
-    [self.window orderOut:nil];
-    g_visible = false;
+      g_submit(g_results[static_cast<std::size_t>(idx)], action);
     return;
   }
   if (type == "hidden") {

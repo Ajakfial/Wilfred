@@ -59,6 +59,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.search.clipboard = search->boolean("clipboard", true);
     c.search.minis = search->boolean("minis", true);
     c.search.macros = search->boolean("macros", true);
+    c.search.snippets = search->boolean("snippets", true);
+    c.search.plugins = search->boolean("plugins", true);
     if (c.search.max_results < 1 || c.search.max_results > 500) {
       err.message = "search.max_results must be between 1 and 500";
       return false;
@@ -297,6 +299,82 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.ui.theme = ui->str("theme", "dark");
     c.ui.max_visible = static_cast<int>(ui->integer("max_visible", 9));
     c.ui.width = static_cast<int>(ui->integer("width", 720));
+  }
+
+  if (auto* pl = root.get("plugins")) {
+    if (!pl->is_map()) {
+      err.message = "plugins: must be a mapping";
+      return false;
+    }
+    c.plugins.enabled = pl->boolean("enabled", true);
+    c.plugins.directories = pl->string_list("directories");
+    c.plugins.timeout_ms = static_cast<int>(pl->integer("timeout_ms", 400));
+    if (c.plugins.timeout_ms < 50 || c.plugins.timeout_ms > 30000) {
+      err.message = "plugins.timeout_ms must be between 50 and 30000";
+      return false;
+    }
+  }
+
+  if (auto* api = root.get("api")) {
+    if (!api->is_map()) {
+      err.message = "api: must be a mapping";
+      return false;
+    }
+    c.api.enabled = api->boolean("enabled", false);
+    c.api.bind = api->str("bind", "127.0.0.1");
+    c.api.port = static_cast<int>(api->integer("port", 17380));
+    c.api.token = api->str("token", "");
+    if (c.api.port < 1 || c.api.port > 65535) {
+      err.message = "api.port must be between 1 and 65535";
+      return false;
+    }
+  }
+
+  if (auto* sy = root.get("sync")) {
+    if (!sy->is_map()) {
+      err.message = "sync: must be a mapping";
+      return false;
+    }
+    c.sync.enabled = sy->boolean("enabled", false);
+    c.sync.url = sy->str("url", "");
+    c.sync.token = sy->str("token", "");
+    c.sync.interval_seconds = static_cast<int>(sy->integer("interval_seconds", 0));
+    c.sync.include_index = sy->boolean("include_index", true);
+    if (c.sync.interval_seconds < 0) {
+      err.message = "sync.interval_seconds must be >= 0";
+      return false;
+    }
+  }
+
+  if (auto* sn = root.get("snippets")) {
+    if (!sn->is_map()) {
+      err.message = "snippets: must be a mapping";
+      return false;
+    }
+    c.snippets.expansion = sn->boolean("expansion", true);
+    c.snippets.prefix = sn->str("prefix", ";");
+    c.snippets.auto_paste = sn->boolean("auto_paste", false);
+    if (auto* items = sn->get("items")) {
+      if (!items->is_map()) {
+        err.message = "snippets.items must be a mapping of trigger -> text";
+        return false;
+      }
+      for (auto& [k, v] : items->as_map()) {
+        if (v.is_string())
+          c.snippets.items[k] = v.as_string();
+        else if (v.is_map())
+          c.snippets.items[k] = v.str("body", v.str("text", ""));
+        else {
+          err.message = "snippets.items '" + k + "' must be a string";
+          return false;
+        }
+      }
+    } else {
+      for (auto& [k, v] : sn->as_map()) {
+        if (k == "expansion" || k == "prefix" || k == "auto_paste" || k == "items") continue;
+        if (v.is_string()) c.snippets.items[k] = v.as_string();
+      }
+    }
   }
 
   if (c.index.system_directories.empty())

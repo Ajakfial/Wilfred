@@ -12,6 +12,8 @@ struct IpcRequest {
   std::string cmd;
   std::string query;
   std::string path;
+  std::string action;
+  std::string token;
   int limit{40};
 };
 

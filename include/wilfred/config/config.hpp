@@ -48,6 +48,8 @@ struct Config {
     bool clipboard{true};
     bool minis{true};
     bool macros{true};
+    bool snippets{true};
+    bool plugins{true};
   } search;
 
   struct Index {
@@ -109,6 +111,34 @@ struct Config {
     int max_visible{9};
     int width{720};
   } ui;
+
+  struct Plugins {
+    bool enabled{true};
+    std::vector<std::string> directories;
+    int timeout_ms{400};
+  } plugins;
+
+  struct Api {
+    bool enabled{false};
+    std::string bind{"127.0.0.1"};
+    int port{17380};
+    std::string token;
+  } api;
+
+  struct Sync {
+    bool enabled{false};
+    std::string url;
+    std::string token;
+    int interval_seconds{0};
+    bool include_index{true};
+  } sync;
+
+  struct Snippets {
+    bool expansion{true};
+    std::string prefix{";"};
+    bool auto_paste{false};
+    std::unordered_map<std::string, std::string> items;
+  } snippets;
 
   std::string source_path;
 };
