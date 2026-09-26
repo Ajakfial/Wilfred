@@ -28,19 +28,15 @@ single summonable search bar.
 
 
 
-\## Star History
-
-
-
-<a href="https://www.star-history.com/?repos=ajakfial%2Fwilfred\&type=date\&legend=top-left">
+<a href="https://www.star-history.com/?repos=ajakfial%2Fwilfred\&type=timeline\&logscale=\&releases=\&legend=bottom-right">
 
 &#x20;<picture>
 
-&#x20;  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=date\&theme=dark\&legend=top-left" />
+&#x20;  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=timeline\&theme=dark\&logscale\&legend=bottom-right" />
 
-&#x20;  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=date\&legend=top-left" />
+&#x20;  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=timeline\&logscale\&legend=bottom-right" />
 
-&#x20;  <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=date\&legend=top-left" />
+&#x20;  <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ajakfial/wilfred\&type=timeline\&logscale\&legend=bottom-right" />
 
 &#x20;</picture>
 
