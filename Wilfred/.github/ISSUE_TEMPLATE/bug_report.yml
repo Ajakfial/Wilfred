@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in Wilfred isn't working the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please check the
+        [existing issues](../../issues) first to avoid duplicates.
+
+        **Security issues:** please do not file them here — see
+        [SECURITY.md](../../blob/main/SECURITY.md) instead.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Wilfred is involved?
+      options:
+        - Daemon / index / search engine
+        - CLI (wilfred search / launch / index / status)
+        - Overlay UI
+        - Build / packaging
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and version
+      description: e.g. Windows 11 23H2, macOS 15.1, Ubuntu 24.04
+      placeholder: Windows 11 23H2
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: wilfred status output
+      description: Output of `wilfred status` (and `wilfred --help` if relevant).
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant wilfred.yml
+      description: >
+        Only if the issue is config-related. Please redact anything sensitive
+        — in particular the `sync.token` and `api.token` fields.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+
+        Expected: ...
+        Actual: ...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: This is not a security-sensitive issue (see SECURITY.md).
+          required: true

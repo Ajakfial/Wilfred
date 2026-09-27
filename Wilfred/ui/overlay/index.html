@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wilfred</title>
+    <link rel="stylesheet" href="vendor/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <div class="launcher" id="launcher" aria-hidden="true">
+        <div class="pill" role="search">
+          <span class="icon-search" aria-hidden="true">
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            id="q"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search files, apps, and more"
+            aria-label="Search"
+          />
+          <kbd class="hint" id="hint">esc</kbd>
+        </div>
+        <div class="results" id="results" hidden></div>
+      </div>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
