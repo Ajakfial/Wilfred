@@ -1,9 +1,12 @@
 name: Lint
 
-# Checks changed C/C++ files against .clang-format and .clang-tidy.
-# Scoped to the diff (not the whole tree) since most of the codebase
-# predates these configs — see ROADMAP.md's ".clang-format rollout to
-# existing files" item and CONTRIBUTING.md's formatting guidance.
+# Checks changed C/C++ lines against .clang-format and .clang-tidy, scoped
+# to the diff rather than whole files: most of the codebase predates these
+# configs (see ROADMAP.md's ".clang-format rollout to existing files"
+# item), and a whole-file check would fail on pre-existing style in any
+# file a PR happens to touch. git-clang-format and clang-tidy-diff.py
+# (both ship with the clang-format/clang-tidy packages) restrict analysis
+# to the lines actually changed since the PR's base commit.
 
 on:
   pull_request:
@@ -38,6 +41,7 @@ jobs:
     outputs:
       files: ${{ steps.diff.outputs.files }}
       any: ${{ steps.diff.outputs.any }}
+      base: ${{ steps.diff.outputs.base }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,6 +70,7 @@ jobs:
             echo "$FILES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
           if [ -z "$FILES" ]; then
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
@@ -73,72 +78,87 @@ jobs:
           fi
 
   clang-format:
-    name: clang-format
+    name: clang-format (changed lines)
     needs: changed-files
     if: needs.changed-files.outputs.any == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install clang-format
         run: |
           sudo apt-get update
           sudo apt-get install -y "clang-format-${CLANG_VERSION}"
 
-      - name: Check formatting of changed files
+      - name: Fetch base commit
+        run: git fetch --no-tags --depth=1 origin "${{ needs.changed-files.outputs.base }}" || true
+
+      - name: Check formatting of changed lines
         env:
+          BASE: ${{ needs.changed-files.outputs.base }}
           FILES: ${{ needs.changed-files.outputs.files }}
         run: |
           set -euo pipefail
-          echo "$FILES" | xargs -r "clang-format-${CLANG_VERSION}" --dry-run --Werror --style=file
+          DIFF="$(git-clang-format-${CLANG_VERSION} --binary "clang-format-${CLANG_VERSION}" \
+            --diff "$BASE" -- $FILES)"
+          if [ "$DIFF" != "no modified files to format" ] && \
+             [ "$DIFF" != "clang-format did not modify any files" ] && \
+             [ -n "$DIFF" ]; then
+            echo "$DIFF"
+            echo "::error::Changed lines are not clang-format clean. Run: git clang-format $BASE"
+            exit 1
+          fi
+          echo "Changed lines are clang-format clean."
 
   clang-tidy:
-    name: clang-tidy (Linux build)
+    name: clang-tidy (changed lines, Linux build)
     needs: changed-files
     if: needs.changed-files.outputs.any == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build pkg-config libx11-dev "clang-tidy-${CLANG_VERSION}"
 
+      - name: Fetch base commit
+        run: git fetch --no-tags --depth=1 origin "${{ needs.changed-files.outputs.base }}" || true
+
+      # Tests/benches are enabled purely so their sources land in
+      # compile_commands.json below — configuring costs nothing here (this
+      # does not build anything), and it gets them clang-tidy coverage too.
       - name: Configure (generates compile_commands.json)
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DWILFRED_BUILD_TESTS=OFF \
-            -DWILFRED_BUILD_BENCH=OFF
+            -DWILFRED_BUILD_TESTS=ON \
+            -DWILFRED_BUILD_BENCH=ON
 
-      - name: Run clang-tidy on changed sources
+      # Per CONTRIBUTING.md, compiler warnings are informative rather than
+      # build-breaking ("PRs that introduce new warnings will be asked to
+      # fix them"); clang-tidy follows the same policy here (.clang-tidy
+      # leaves WarningsAsErrors empty), so this reports new findings as an
+      # annotation rather than failing the check. Files that only exist
+      # for another platform (src/platform/win/*, *.mm under
+      # src/platform/mac/) have no compile_commands.json entry on this
+      # Linux runner; clang-tidy-diff.py skips what it can't analyze.
+      - name: Run clang-tidy on changed lines
         env:
+          BASE: ${{ needs.changed-files.outputs.base }}
           FILES: ${{ needs.changed-files.outputs.files }}
         run: |
           set -euo pipefail
-          status=0
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            # Skip Objective-C++ and other-platform backends: this runner
-            # only configures the Linux build, so Windows (src/platform/win,
-            # *.mm under src/platform/mac) sources have no entry in
-            # compile_commands.json. Those still need review/build on their
-            # native platform, per CONTRIBUTING.md's per-platform testing note.
-            case "$f" in
-              *.mm|src/platform/win/*)
-                echo "::notice::Skipping $f (not part of the Linux build)"
-                continue
-                ;;
-            esac
-            abs="$(realpath "$f")"
-            if ! jq -e --arg f "$abs" 'any(.[]; .file == $f)' build/compile_commands.json >/dev/null; then
-              echo "::notice::Skipping $f (no compile_commands.json entry on this runner)"
-              continue
-            fi
-            echo "::group::clang-tidy $f"
-            "clang-tidy-${CLANG_VERSION}" -p build "$f" || status=1
-            echo "::endgroup::"
-          done <<< "$FILES"
-          exit $status
+          OUT="$(git diff -U0 "$BASE" -- $FILES | \
+            "clang-tidy-diff-${CLANG_VERSION}.py" -p1 -path build -quiet 2>/tmp/tidy.err || true)"
+          cat /tmp/tidy.err >&2 || true
+          echo "$OUT"
+          if echo "$OUT" | grep -q "warning:\|error:"; then
+            echo "::warning::clang-tidy found issues in changed lines — see job log above."
+          fi

@@ -10,7 +10,6 @@
 # `.clang-format` over a module for the first time, per ROADMAP.md's
 # "`.clang-format` rollout to existing files" item). One hash per line,
 # full 40-character SHA, with a short comment above it.
- 
+
 # Example (remove once a real formatting commit lands):
 # 0000000000000000000000000000000000000000
- 
