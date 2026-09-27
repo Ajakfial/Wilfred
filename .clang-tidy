@@ -1,0 +1,64 @@
+---
+# Wilfred clang-tidy config.
+# Warnings are informative, not build-breaking (see CONTRIBUTING.md) —
+# WarningsAsErrors is intentionally left empty.
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-length,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '(include/wilfred|src)/.*\.hpp$'
+FormatStyle: file
+
+CheckOptions:
+  # snake_case functions and variables, matching CONTRIBUTING.md.
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+
+  # PascalCase types, matching CONTRIBUTING.md.
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+
+  # `cfg_`, `dir_`, `stats_mu_` — private/protected members carry a
+  # trailing underscore, as used throughout src/.
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: _
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+
+  - key: modernize-use-override.IgnoreDestructors
+    value: '1'

@@ -1,0 +1,52 @@
+---
+# Wilfred clang-format config.
+# Base style approximates the existing codebase; run `clang-format -i`
+# on files you touch rather than reformatting the whole tree in one PR
+# (see CONTRIBUTING.md).
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++20
+
+IndentWidth: 2
+ColumnLimit: 100
+UseTab: Never
+
+# `class Foo {` / `public:` at column 0, members indented by IndentWidth.
+AccessModifierOffset: -2
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+# Braces attached to the statement that opens them (if/for/while/functions).
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: All
+
+# `Type* name` / `Type& name`, not `Type *name`.
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignOperands: Align
+AlignTrailingComments: true
+
+BinPackArguments: true
+BinPackParameters: true
+AllowAllParametersOfDeclarationOnNextLine: true
+
+# `#include "wilfred/..."` group first, then a blank line, then system
+# `<...>` headers — matches the existing include blocks.
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: Never
+Cpp11BracedListStyle: true
+
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyReturnTypeOnItsOwnLine: 1000
