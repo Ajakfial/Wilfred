@@ -104,10 +104,11 @@ add new cases to the matching file, or create a new one and add it to the
 `WILFRED_TEST_SOURCES` list in `CMakeLists.txt` if you're covering a new
 module.
 
-Note that the repository's only GitHub Actions workflow
-(`.github/workflows/release.yml`) builds release binaries on tagged pushes —
-it does not currently run tests on pull requests. Please run
-`ctest` locally before opening a PR.
+Note that `.github/workflows/release.yml` builds release binaries on tagged
+pushes but does not run the test suite on pull requests. PRs do get a
+`clang-format`/`clang-tidy` check on changed files
+(`.github/workflows/lint.yml`), but please run `ctest` locally before
+opening a PR — see ROADMAP.md for the plan to add it to CI too.
 
 ## Coding conventions
 
@@ -124,8 +125,10 @@ it does not currently run tests on pull requests. Please run
   layout when adding a module.
 * **Formatting**: match the existing style in the file you're editing
   (2-space indent, braces on the same line, `snake_case` for functions and
-  variables, `PascalCase` for types). There is no `.clang-format` yet — if
-  you add one, do it as its own PR.
+  variables, `PascalCase` for types), enforced by `.clang-format` and
+  `.clang-tidy`. If you land a formatting-only commit (no logic change),
+  add its hash to `.git-blame-ignore-revs` in the same PR so `git blame`
+  keeps pointing at the commit that actually changed behavior.
 * **Warnings**: the build treats warnings as informative, not fatal, but PRs
   that introduce new `-Wall -Wextra -Wpedantic` (or `/W4`) warnings will be
   asked to fix them.

@@ -1,0 +1,144 @@
+name: Lint
+
+# Checks changed C/C++ files against .clang-format and .clang-tidy.
+# Scoped to the diff (not the whole tree) since most of the codebase
+# predates these configs — see ROADMAP.md's ".clang-format rollout to
+# existing files" item and CONTRIBUTING.md's formatting guidance.
+
+on:
+  pull_request:
+    paths:
+      - "**/*.c"
+      - "**/*.cc"
+      - "**/*.cxx"
+      - "**/*.cpp"
+      - "**/*.h"
+      - "**/*.hpp"
+      - "**/*.mm"
+      - ".clang-format"
+      - ".clang-tidy"
+      - ".github/workflows/lint.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLANG_VERSION: "18"
+
+jobs:
+  changed-files:
+    name: Determine changed C/C++ files
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.diff.outputs.files }}
+      any: ${{ steps.diff.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diff against base
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          # First push to a branch (or a force-push) can give an all-zero
+          # `before` SHA; fall back to diffing against the parent commit.
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="HEAD~1"
+          fi
+          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- \
+            '*.c' '*.cc' '*.cxx' '*.cpp' '*.h' '*.hpp' '*.mm' | \
+            while read -r f; do [ -f "$f" ] && echo "$f"; done || true)
+          {
+            echo "files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -z "$FILES" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  clang-format:
+    name: clang-format
+    needs: changed-files
+    if: needs.changed-files.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "clang-format-${CLANG_VERSION}"
+
+      - name: Check formatting of changed files
+        env:
+          FILES: ${{ needs.changed-files.outputs.files }}
+        run: |
+          set -euo pipefail
+          echo "$FILES" | xargs -r "clang-format-${CLANG_VERSION}" --dry-run --Werror --style=file
+
+  clang-tidy:
+    name: clang-tidy (Linux build)
+    needs: changed-files
+    if: needs.changed-files.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libx11-dev "clang-tidy-${CLANG_VERSION}"
+
+      - name: Configure (generates compile_commands.json)
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DWILFRED_BUILD_TESTS=OFF \
+            -DWILFRED_BUILD_BENCH=OFF
+
+      - name: Run clang-tidy on changed sources
+        env:
+          FILES: ${{ needs.changed-files.outputs.files }}
+        run: |
+          set -euo pipefail
+          status=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            # Skip Objective-C++ and other-platform backends: this runner
+            # only configures the Linux build, so Windows (src/platform/win,
+            # *.mm under src/platform/mac) sources have no entry in
+            # compile_commands.json. Those still need review/build on their
+            # native platform, per CONTRIBUTING.md's per-platform testing note.
+            case "$f" in
+              *.mm|src/platform/win/*)
+                echo "::notice::Skipping $f (not part of the Linux build)"
+                continue
+                ;;
+            esac
+            abs="$(realpath "$f")"
+            if ! jq -e --arg f "$abs" 'any(.[]; .file == $f)' build/compile_commands.json >/dev/null; then
+              echo "::notice::Skipping $f (no compile_commands.json entry on this runner)"
+              continue
+            fi
+            echo "::group::clang-tidy $f"
+            "clang-tidy-${CLANG_VERSION}" -p build "$f" || status=1
+            echo "::endgroup::"
+          done <<< "$FILES"
+          exit $status

@@ -26,9 +26,10 @@ overlay UI, and the CLI — is implemented today. See
   pushes; it does not run `ctest` on pull requests yet (contributors run
   it locally per CONTRIBUTING.md). Adding a CI job for this is the
   highest-priority infra gap.
-* **Enforce formatting/linting in CI.** `.clang-format` and `.clang-tidy`
-  now exist; wire them into a CI check (format-diff on changed files
-  rather than a full-tree reformat).
+* ~~**Enforce formatting/linting in CI.**~~ Done —
+  `.github/workflows/lint.yml` runs `clang-format` and `clang-tidy` on
+  changed C/C++ files for every PR (scoped to the diff, not a full-tree
+  reformat, since most of the codebase predates these configs).
 * **Packaged installers.** Releases currently ship as a zip/tar.gz per
   platform (see the release workflow). A Homebrew formula, a winget/
   Scoop manifest, and a `.deb`/AppImage would lower the install barrier.
