@@ -1,3 +1,5 @@
+# (THIS README IS MADE BY CURSOR AI, EVERYTHING ELSE, INCLUDING CODE, IS WRITTEN BY HUMAN HAND.)
+
 # Wilfred
 
 Wilfred is a fast, lightweight, cross-platform desktop search engine and
