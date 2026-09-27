@@ -23,9 +23,6 @@ preference:
    [private security advisory](../../security/advisories/new) on this
    repository. This is the preferred channel — it lets maintainers
    collaborate with you on a fix before any public disclosure.
-2. **Email**: if you cannot use GitHub's advisory flow, email
-   `security@example.invalid` (replace with the project's real contact
-   address) with a description of the issue.
 
 Please include as much of the following as you can:
 
