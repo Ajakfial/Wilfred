@@ -1,0 +1,46 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# C++ (see CONTRIBUTING.md: 2-space indent, braces on the same line,
+# snake_case functions/variables, PascalCase types)
+[*.{c,h,cpp,hpp,cc,cxx,mm}]
+indent_size = 2
+
+# CMake
+[{CMakeLists.txt,*.cmake}]
+indent_size = 2
+
+[CMakePresets.json]
+indent_size = 2
+
+# Config / data
+[*.{yml,yaml,json}]
+indent_size = 2
+
+# Overlay UI
+[*.{js,css,html}]
+indent_size = 2
+
+# Docs
+[*.md]
+indent_size = 2
+trim_trailing_whitespace = false
+
+# Shell scripts
+[*.sh]
+indent_size = 2
+
+# Windows scripts use CRLF and native conventions
+[*.{ps1,cmd,bat}]
+end_of_line = crlf
+indent_size = 4
+
+[Makefile]
+indent_style = tab
