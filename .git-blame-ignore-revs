@@ -1,0 +1,16 @@
+# Commits listed here are ignored by `git blame` (and GitHub's blame view,
+# which reads this file automatically). Use it for commits that are pure
+# reformatting/rename and change no logic, so blame keeps pointing at the
+# commit that actually changed behavior.
+#
+# Configure git to use this locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Add an entry whenever you land a formatting-only commit (e.g. running
+# `.clang-format` over a module for the first time, per ROADMAP.md's
+# "`.clang-format` rollout to existing files" item). One hash per line,
+# full 40-character SHA, with a short comment above it.
+ 
+# Example (remove once a real formatting commit lands):
+# 0000000000000000000000000000000000000000
+ 
