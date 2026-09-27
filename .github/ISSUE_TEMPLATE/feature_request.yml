@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a new feature, query type, mini, or platform backend.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Per [CONTRIBUTING.md](../../blob/main/CONTRIBUTING.md), anything
+        non-trivial (a new query type, a new mini, a new platform backend, a
+        change to the on-disk index format) should be discussed here before
+        a PR is opened, to avoid wasted work if the approach needs to change.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that Wilfred doesn't support today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would this work from a user's perspective (config, CLI, overlay UI)?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area affected
+      options:
+        - New query type / filter
+        - New mini
+        - New search provider / macro
+        - Platform backend (Windows / macOS / Linux)
+        - Index format
+        - Config
+        - Overlay UI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about, and why you preferred this one.
+    validations:
+      required: false
