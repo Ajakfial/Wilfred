@@ -22,6 +22,7 @@
 #include <shellapi.h>
 #else
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #endif
 
