@@ -22,7 +22,7 @@ single summonable search bar.
 * Composable filters (`\*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Default-browser detection, URL open, and web-search fallback
-* Safe expression parser (arithmetic, functions, unit conversion) — no eval/code
+* Safe expression parser (arithmetic, functions, unit/currency/color/date conversion) — no eval/code
 * YAML configuration with validation and human-readable errors
 * Global hotkey: `Ctrl+Alt+W` (Windows/Linux), `⌘+Alt+W` (macOS), configurable
 * Local search history (optional, disable or clear)
@@ -102,6 +102,9 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 |`process chrome` / `top`|Live process CPU, RAM, threads|
 |`emoji smile` / `symbol euro`|Emoji and symbol picker (enter copies)|
 |`100 usd to eur` / `fx 25 gbp jpy`|Currency conversion|
+|`#ff5500` / `rgb(255, 85, 0)` / `color coral`|Color conversion (hex / rgb / hsl)|
+|`3pm est to pst` / `now in tokyo` / `tz london`|Timezones|
+|`today + 7 days` / `2024-01-31 + 1 month`|Date math|
 |`clip` / `clips`|Clipboard and recent clips|
 |`!yt cats` / `gh wilfred`|Search macros (`macros` lists them)|
 

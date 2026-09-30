@@ -53,6 +53,14 @@ convert 5 gb to mb
 100 usd to eur
 $50 to gbp
 10 dollars in euros
+#ff5500
+rgb(255, 85, 0) to hsl
+3pm est to pst
+now in tokyo
+today + 7 days
+2024-01-31 + 1 month
+in 3 weeks
+unix 1700000000
 ```
 
 Unit conversion covers SI and common US customary units (length, mass,
@@ -62,6 +70,17 @@ power, angle). Currency pairs use ISO codes or names (`usd`/`dollar`,
 `£`, `¥`, `₹`). Rates are fetched from Frankfurter when the network is
 reachable, with a built-in approximate USD table used offline. Enter copies
 the converted amount.
+
+Color conversion accepts `#RGB` / `#RRGGBB` / `#RRGGBBAA`, `rgb()`/`rgba()`,
+`hsl()`/`hsla()`, `hsv()`, CSS color names with `to hex`/`rgb`/`hsl`, and
+shows hex, RGB, and HSL (enter copies the selected form).
+
+Date and time conversion covers ISO dates, `today`/`tomorrow`/`yesterday`,
+`+`/`-` duration math (`days`, `weeks`, `months`, `hours`, …),
+`in 3 days` / `5 days ago`, `days until 2026-12-25`, unix timestamps, and
+timezone conversion (`3pm est to utc`, `now in tokyo`, `12:00 utc to utc+1`).
+Offsets for named cities apply a simplified DST rule (US / EU / AU / NZ);
+abbreviations like `EST`/`PDT` are fixed offsets. Enter copies the result.
 
 The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) —
 there is no `eval`/scripting backdoor.
@@ -107,6 +126,8 @@ synthetic result card instead of searching the index
 | `emoji [name]` | `emojis`, `emote`, `emotes` | Emoji picker (enter copies the character) |
 | `symbol [name]` | `symbols`, `glyph`, `glyphs` | Punctuation, math, and currency signs |
 | `fx [amount from to]` | `currency`, `forex`, `ccy` | Currency conversion (`fx 100 usd to eur` or `fx 25 gbp jpy`); bare `fx` lists spot rates |
+| `tz [zone]` | `timezone`, `worldclock` | World clock (`tz tokyo`) or zone convert (`tz 3pm est to pst`) |
+| `color [value]` | `colour` | Color convert (`color #ff5500`); enter copies hex/rgb/hsl |
 
 Minis can be disabled entirely with `search.minis: false`. `weather` and
 live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`

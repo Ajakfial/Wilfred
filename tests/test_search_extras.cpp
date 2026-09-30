@@ -48,6 +48,10 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("fx").kind, MiniKind::Fx);
   CHECK_EQ(parse_mini_intent("currency 100 usd to eur").kind, MiniKind::Fx);
   CHECK_EQ(parse_mini_intent("fx 100 usd eur").remainder, "100 usd eur");
+  CHECK_EQ(parse_mini_intent("tz").kind, MiniKind::Tz);
+  CHECK_EQ(parse_mini_intent("tz tokyo").remainder, "tokyo");
+  CHECK_EQ(parse_mini_intent("color").kind, MiniKind::Color);
+  CHECK_EQ(parse_mini_intent("colour #fff").remainder, "#fff");
 
   Config cfg;
   auto time_cards = mini_results("time", cfg, "");
@@ -80,6 +84,14 @@ void test_search_extras() {
   CHECK_EQ(fx_short.front().kind_label, "fx");
   auto fx_board = mini_results("fx", cfg, "");
   CHECK(fx_board.size() >= 4);
+  auto tz_cards = mini_results("tz tokyo", cfg, "");
+  CHECK(!tz_cards.empty());
+  CHECK_EQ(tz_cards.front().kind_label, "tz");
+  auto color_cards = mini_results("color #00ff00", cfg, "");
+  CHECK(color_cards.size() >= 3);
+  CHECK_EQ(color_cards.front().kind_label, "color");
+  auto time_zone = mini_results("time london", cfg, "");
+  CHECK(time_zone.size() >= 2);
 
   Config cfg_off;
   cfg_off.search.minis = false;

@@ -570,6 +570,10 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Symbol, true);
   else if (key == "fx" || key == "currency" || key == "forex" || key == "ccy")
     set(MiniKind::Fx, true);
+  else if (key == "tz" || key == "timezone" || key == "timezones" || key == "worldclock")
+    set(MiniKind::Tz, true);
+  else if (key == "color" || key == "colour")
+    set(MiniKind::Color, true);
   return it;
 }
 
@@ -581,6 +585,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::None) return out;
 
   if (intent.kind == MiniKind::Time) {
+    if (!intent.remainder.empty()) {
+      MathResult m;
+      auto q = intent.remainder;
+      if (convert_datetime(q, m) || convert_datetime("now in " + q, m)) {
+        out.push_back(card(m.display, "Time · " + intent.remainder, m.display, "time"));
+      }
+    }
     auto t = static_cast<std::time_t>(unix_seconds());
     std::tm local{};
 #ifdef _WIN32
@@ -980,9 +991,52 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Tz) {
+    auto rest = trim_sv(intent.remainder);
+    MathResult m;
+    if (!rest.empty() &&
+        (convert_datetime(rest, m) || convert_datetime("now in " + rest, m))) {
+      out.push_back(card(m.display, "Timezone · enter copies", m.display, "tz", 10000,
+                         ResultAction::Convert));
+      return out;
+    }
+    const char* cities[] = {"tokyo", "london", "new york", "los angeles", "sydney",
+                            "utc",   "paris",  "mumbai",   "dubai",       nullptr};
+    int n = 0;
+    for (auto** p = cities; *p; ++p) {
+      MathResult r;
+      if (!convert_datetime(std::string("now in ") + *p, r) || !r.ok) continue;
+      out.push_back(card(r.display, *p, r.display, "tz", 10000 - n, ResultAction::Convert));
+      ++n;
+    }
+    if (out.empty())
+      out.push_back(
+          card("Timezones", "Type tz tokyo  or  3pm est to pst", "", "tz", 8000, ResultAction::None));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Color) {
+    auto rest = trim_sv(intent.remainder);
+    MathResult m;
+    if (!rest.empty() && convert_color(rest, m) && m.ok) {
+      out.push_back(card(m.color_hex, "Hex · enter copies", m.color_hex, "color", 10000,
+                         ResultAction::Convert));
+      out.push_back(card(m.color_rgb, "RGB · enter copies", m.color_rgb, "color", 9990,
+                         ResultAction::Convert));
+      out.push_back(card(m.color_hsl, "HSL · enter copies", m.color_hsl, "color", 9980,
+                         ResultAction::Convert));
+      return out;
+    }
+    out.push_back(card("Color", "Type #ff5500  or  rgb(255, 85, 0)", "", "color", 8000,
+                       ResultAction::None));
+    return out;
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
-                                  "time  ·  clock and date",
+                                  "time [zone]  ·  clock and date",
+                                  "tz tokyo  ·  world clock / zone convert",
+                                  "color #ff5500  ·  hex / rgb / hsl",
                                   "disk / disku  ·  drive space",
                                   "ram / cpu / swap  ·  memory and load",
                                   "process <name>  ·  app CPU and RAM",

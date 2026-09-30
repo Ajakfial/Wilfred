@@ -109,4 +109,57 @@ void test_math() {
 
   CHECK(!evaluate_math("100 usd to km").ok);
   set_currency_network_enabled(true);
+
+  auto hex = evaluate_math("#ff0000");
+  CHECK(hex.ok);
+  CHECK(hex.color);
+  CHECK_EQ(hex.color_hex, "#FF0000");
+  CHECK(hex.color_rgb.find("255") != std::string::npos);
+
+  auto rgb = evaluate_math("rgb(0, 255, 0) to hex");
+  CHECK(rgb.ok);
+  CHECK(rgb.color);
+  CHECK_EQ(rgb.display, "#00FF00");
+
+  auto hsl = evaluate_math("hsl(0, 100%, 50%)");
+  CHECK(hsl.ok);
+  CHECK(hsl.color);
+  CHECK_EQ(hsl.color_hex, "#FF0000");
+
+  auto named = evaluate_math("rebeccapurple to hex");
+  CHECK(named.ok);
+  CHECK_EQ(named.display, "#663399");
+
+  auto epoch = evaluate_math("unix 0");
+  CHECK(epoch.ok);
+  CHECK(epoch.datetime);
+  CHECK(epoch.display.find("1970-01-01") != std::string::npos);
+
+  auto plus = evaluate_math("2024-01-31 + 1 day");
+  CHECK(plus.ok);
+  CHECK(plus.datetime);
+  CHECK(plus.display.find("2024-02-01") != std::string::npos);
+
+  auto month = evaluate_math("2024-01-31 + 1 month");
+  CHECK(month.ok);
+  CHECK(month.display.find("2024-02-29") != std::string::npos);
+
+  auto zone = evaluate_math("12:00 utc to utc+1");
+  CHECK(zone.ok);
+  CHECK(zone.datetime);
+  CHECK(zone.display.find("1:00 PM") != std::string::npos);
+
+  auto est = evaluate_math("3pm est to utc");
+  CHECK(est.ok);
+  CHECK(est.display.find("8:00 PM") != std::string::npos);
+
+  auto tokyo = evaluate_math("now in tokyo");
+  CHECK(tokyo.ok);
+  CHECK(tokyo.datetime);
+
+  auto ago = evaluate_math("in 3 days");
+  CHECK(ago.ok);
+  CHECK(ago.datetime);
+
+  CHECK(!evaluate_math("10 minutes").ok);
 }

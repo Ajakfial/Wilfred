@@ -127,9 +127,37 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
 
   if (iq.classification.kind == QueryKind::Math) {
     auto m = evaluate_math(iq.classification.text);
+    if (m.color) {
+      auto push_color = [&](const std::string& title, const char* kind) {
+        if (title.empty()) return;
+        SearchResult r;
+        r.title = title;
+        r.subtitle = std::string("Color ") + kind + " · " + iq.classification.text;
+        r.payload = title;
+        r.path = title;
+        r.action = ResultAction::Convert;
+        r.score = 10000 - static_cast<int>(iq.results.size());
+        r.kind_label = "color";
+        iq.results.push_back(std::move(r));
+      };
+      push_color(m.color_hex, "hex");
+      push_color(m.color_rgb, "rgb");
+      push_color(m.color_hsl, "hsl");
+      if (iq.results.empty()) {
+        SearchResult r;
+        r.title = m.display;
+        r.subtitle = "Color · " + iq.classification.text;
+        r.payload = m.display;
+        r.action = ResultAction::Convert;
+        r.score = 10000;
+        iq.results.push_back(std::move(r));
+      }
+      return finish();
+    }
     SearchResult r;
     r.title = m.display;
     r.subtitle = (m.currency     ? "Currency · "
+                  : m.datetime   ? "Date/time · "
                   : m.conversion ? "Metric conversion · "
                                  : "Calculator · ") +
                  iq.classification.text;

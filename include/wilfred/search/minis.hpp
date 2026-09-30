@@ -35,6 +35,8 @@ enum class MiniKind {
   Emoji,
   Symbol,
   Fx,
+  Tz,
+  Color,
 };
 
 struct MiniIntent {

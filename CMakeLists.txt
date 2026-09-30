@@ -65,6 +65,8 @@ set(WILFRED_CORE_SOURCES
   src/query/interpreter.cpp
   src/math/expr.cpp
   src/math/convert.cpp
+  src/math/color.cpp
+  src/math/datetime.cpp
   src/apps/discovery.cpp
   src/browser/browser.cpp
   src/history/history.cpp

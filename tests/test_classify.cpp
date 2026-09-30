@@ -31,6 +31,13 @@ void test_classify() {
   CHECK(looks_like_math("100 usd to eur"));
   CHECK_EQ(classify_query("100 usd to eur").kind, QueryKind::Math);
   CHECK_EQ(classify_query("10 dollars in euros").kind, QueryKind::Math);
+  CHECK(looks_like_math("#ff5500"));
+  CHECK_EQ(classify_query("#00ff00").kind, QueryKind::Math);
+  CHECK(looks_like_math("rgb(1, 2, 3)"));
+  CHECK(looks_like_math("2024-01-01 + 10 days"));
+  CHECK(looks_like_math("3pm est to pst"));
+  CHECK(looks_like_math("now in tokyo"));
+  CHECK_EQ(classify_query("now in london").kind, QueryKind::Math);
   set_currency_network_enabled(true);
   CHECK_EQ(classify_query("!yt cats").kind, QueryKind::Macro);
   CHECK_EQ(classify_query("yt cats").kind, QueryKind::Macro);
@@ -62,6 +69,13 @@ void test_classify() {
   CHECK(!ccy.results.empty());
   CHECK_EQ(ccy.results.front().action, ResultAction::Convert);
   CHECK(ccy.results.front().subtitle.find("Currency") != std::string::npos);
+  auto col = interp.interpret("#ff0000", cfg, nullptr);
+  CHECK_EQ(col.classification.kind, QueryKind::Math);
+  CHECK(col.results.size() >= 3);
+  CHECK_EQ(col.results.front().action, ResultAction::Convert);
+  auto dt = interp.interpret("2024-06-15 + 1 day", cfg, nullptr);
+  CHECK_EQ(dt.classification.kind, QueryKind::Math);
+  CHECK(dt.results.front().subtitle.find("Date/time") != std::string::npos);
   auto em = interp.interpret("emoji fire", cfg, nullptr);
   CHECK_EQ(em.classification.kind, QueryKind::Mini);
   CHECK(!em.results.empty());

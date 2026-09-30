@@ -263,6 +263,8 @@ struct Parser {
 MathResult evaluate_math(std::string_view expr) {
   MathResult r;
   std::string s(expr);
+  if (convert_color(s, r)) return r;
+  if (convert_datetime(s, r)) return r;
   if (convert_metric(s, r)) return r;
   Parser p(s);
   double v = p.parse();
