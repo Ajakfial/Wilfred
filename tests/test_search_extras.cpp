@@ -9,6 +9,7 @@
 #include "wilfred/search/context.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/platform/native.hpp"
+#include "wilfred/math/expr.hpp"
 #include "wilfred/search/minis.hpp"
 #include "wilfred/search/rank.hpp"
 #include "wilfred/index/tokenizer.hpp"
@@ -17,6 +18,7 @@ void test_search_extras() {
   using namespace wilfred;
 
   set_mini_network_enabled(false);
+  set_currency_network_enabled(false);
 
   auto w = parse_mini_intent("weather");
   CHECK_EQ(w.kind, MiniKind::Weather);
@@ -37,6 +39,15 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("window chrome").remainder, "chrome");
   CHECK_EQ(parse_mini_intent("switch").kind, MiniKind::Windows);
   CHECK_EQ(parse_mini_intent("firefox").kind, MiniKind::None);
+  CHECK_EQ(parse_mini_intent("emoji").kind, MiniKind::Emoji);
+  CHECK_EQ(parse_mini_intent("emoji fire").kind, MiniKind::Emoji);
+  CHECK_EQ(parse_mini_intent("emoji fire").remainder, "fire");
+  CHECK_EQ(parse_mini_intent("emojis").kind, MiniKind::Emoji);
+  CHECK_EQ(parse_mini_intent("symbol").kind, MiniKind::Symbol);
+  CHECK_EQ(parse_mini_intent("symbols arrow").remainder, "arrow");
+  CHECK_EQ(parse_mini_intent("fx").kind, MiniKind::Fx);
+  CHECK_EQ(parse_mini_intent("currency 100 usd to eur").kind, MiniKind::Fx);
+  CHECK_EQ(parse_mini_intent("fx 100 usd eur").remainder, "100 usd eur");
 
   Config cfg;
   auto time_cards = mini_results("time", cfg, "");
@@ -50,6 +61,25 @@ void test_search_extras() {
   CHECK(!wins.empty());
   CHECK(wins.front().category == "window" || wins.front().kind_label == "window");
   (void)native_list_windows();
+
+  auto emoji_cards = mini_results("emoji smile", cfg, "");
+  CHECK(!emoji_cards.empty());
+  CHECK_EQ(emoji_cards.front().kind_label, "emoji");
+  CHECK_EQ(emoji_cards.front().action, ResultAction::Copy);
+  CHECK(!emoji_cards.front().payload.empty());
+  auto smile = mini_results("emoji", cfg, "");
+  CHECK(smile.size() >= 8);
+  auto sym_cards = mini_results("symbol euro", cfg, "");
+  CHECK(!sym_cards.empty());
+  CHECK_EQ(sym_cards.front().kind_label, "symbol");
+  auto fx_cards = mini_results("fx 100 usd to eur", cfg, "");
+  CHECK(!fx_cards.empty());
+  CHECK(fx_cards.front().action == ResultAction::Convert);
+  auto fx_short = mini_results("fx 25 gbp jpy", cfg, "");
+  CHECK(!fx_short.empty());
+  CHECK_EQ(fx_short.front().kind_label, "fx");
+  auto fx_board = mini_results("fx", cfg, "");
+  CHECK(fx_board.size() >= 4);
 
   Config cfg_off;
   cfg_off.search.minis = false;
@@ -134,4 +164,5 @@ void test_search_extras() {
 
   set_clipboard_override(std::nullopt);
   set_mini_network_enabled(true);
+  set_currency_network_enabled(true);
 }

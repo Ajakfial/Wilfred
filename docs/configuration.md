@@ -35,7 +35,7 @@ editing.
 | `acronyms` | `true` | Enable acronym matching (e.g. `vsc` → Visual Studio Code) |
 | `context_aware` | `true` | Factor recent folders/extensions/session tokens into ranking |
 | `clipboard` | `true` | Enable clipboard as a search source/ranking signal |
-| `minis` | `true` | Enable mini results (`weather`, `time`, `ram`, ...) |
+| `minis` | `true` | Enable mini results (`weather`, `time`, `ram`, `emoji`, `fx`, ...) |
 | `macros` | `true` | Enable macro expansion (`!yt`, `gh`, ...) |
 | `snippets` | `true` | Enable text-expansion snippet matching |
 | `plugins` | `true` | Enable querying loaded plugins |

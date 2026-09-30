@@ -2,6 +2,7 @@
 #include "wilfred/query/classify.hpp"
 #include "wilfred/query/interpreter.hpp"
 #include "wilfred/index/engine.hpp"
+#include "wilfred/math/expr.hpp"
 #include "wilfred/search/engine.hpp"
 
 void test_classify() {
@@ -22,6 +23,15 @@ void test_classify() {
   CHECK_EQ(classify_query("weather").kind, QueryKind::Mini);
   CHECK_EQ(classify_query("windows").kind, QueryKind::Mini);
   CHECK_EQ(classify_query("switch chrome").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("emoji").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("symbol arrow").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("fx").kind, QueryKind::Mini);
+
+  set_currency_network_enabled(false);
+  CHECK(looks_like_math("100 usd to eur"));
+  CHECK_EQ(classify_query("100 usd to eur").kind, QueryKind::Math);
+  CHECK_EQ(classify_query("10 dollars in euros").kind, QueryKind::Math);
+  set_currency_network_enabled(true);
   CHECK_EQ(classify_query("!yt cats").kind, QueryKind::Macro);
   CHECK_EQ(classify_query("yt cats").kind, QueryKind::Macro);
 
@@ -45,4 +55,16 @@ void test_classify() {
   CHECK_EQ(conv.classification.kind, QueryKind::Math);
   CHECK(!conv.results.empty());
   CHECK_EQ(conv.results.front().action, ResultAction::Convert);
+
+  set_currency_network_enabled(false);
+  auto ccy = interp.interpret("100 usd to eur", cfg, nullptr);
+  CHECK_EQ(ccy.classification.kind, QueryKind::Math);
+  CHECK(!ccy.results.empty());
+  CHECK_EQ(ccy.results.front().action, ResultAction::Convert);
+  CHECK(ccy.results.front().subtitle.find("Currency") != std::string::npos);
+  auto em = interp.interpret("emoji fire", cfg, nullptr);
+  CHECK_EQ(em.classification.kind, QueryKind::Mini);
+  CHECK(!em.results.empty());
+  CHECK_EQ(em.results.front().action, ResultAction::Copy);
+  set_currency_network_enabled(true);
 }

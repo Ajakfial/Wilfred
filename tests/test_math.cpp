@@ -3,6 +3,8 @@
 
 void test_math() {
   using namespace wilfred;
+  set_currency_network_enabled(false);
+
   auto a = evaluate_math("25 * 42");
   CHECK(a.ok);
   CHECK_NEAR(a.value, 1050.0, 1e-9);
@@ -85,4 +87,26 @@ void test_math() {
   CHECK_NEAR(spd.value, 10.0, 1e-9);
 
   CHECK(!evaluate_math("10 km to kg").ok);
+
+  auto usd = evaluate_math("100 usd to eur");
+  CHECK(usd.ok);
+  CHECK(usd.conversion);
+  CHECK(usd.currency);
+  CHECK(usd.value > 50.0 && usd.value < 150.0);
+
+  auto bucks = evaluate_math("10 dollars to euros");
+  CHECK(bucks.ok);
+  CHECK(bucks.currency);
+
+  auto dollar = evaluate_math("$50 to gbp");
+  CHECK(dollar.ok);
+  CHECK(dollar.currency);
+
+  MathResult direct;
+  CHECK(convert_currency(1, "usd", "jpy", direct));
+  CHECK(direct.currency);
+  CHECK(direct.value > 50.0);
+
+  CHECK(!evaluate_math("100 usd to km").ok);
+  set_currency_network_enabled(true);
 }

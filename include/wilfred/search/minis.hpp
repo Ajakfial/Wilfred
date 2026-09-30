@@ -32,6 +32,9 @@ enum class MiniKind {
   Help,
   MacrosList,
   Windows,
+  Emoji,
+  Symbol,
+  Fx,
 };
 
 struct MiniIntent {

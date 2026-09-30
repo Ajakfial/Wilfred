@@ -129,7 +129,8 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     auto m = evaluate_math(iq.classification.text);
     SearchResult r;
     r.title = m.display;
-    r.subtitle = (m.conversion ? "Metric conversion · " : "Calculator · ") + iq.classification.text;
+    r.subtitle = (m.currency ? "Currency · " : m.conversion ? "Metric conversion · " : "Calculator · ") +
+                 iq.classification.text;
     r.payload = m.display;
     r.action = m.conversion ? ResultAction::Convert : ResultAction::Calculate;
     r.score = 10000;
@@ -185,7 +186,7 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     iq.classification.kind = QueryKind::Mini;
     iq.results.insert(iq.results.end(), minis.begin(), minis.end());
     auto intent = parse_mini_intent(effective);
-    if (intent.exact && intent.remainder.empty()) return finish();
+    if (intent.exact) return finish();
   }
 
   auto macro = match_macro(effective, cfg);

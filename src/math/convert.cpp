@@ -1,13 +1,26 @@
 #include "wilfred/math/expr.hpp"
 
+#include "wilfred/core/json.hpp"
+#include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
 
 #include <cctype>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
 #include <initializer_list>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <winhttp.h>
+#else
+#include <cstdio>
+#endif
 
 namespace wilfred {
 namespace {
@@ -211,6 +224,41 @@ std::string format_value(double v) {
   return os.str();
 }
 
+bool starts_utf8(const std::string& s, std::size_t i, std::string_view seq) {
+  if (i + seq.size() > s.size()) return false;
+  return s.compare(i, seq.size(), seq.data(), seq.size()) == 0;
+}
+
+bool consume_money_sym(const std::string& s, std::size_t& i, std::string& sym) {
+  if (i >= s.size()) return false;
+  if (s[i] == '$') {
+    sym = "$";
+    ++i;
+    return true;
+  }
+  if (starts_utf8(s, i, "\xE2\x82\xAC")) {  // €
+    sym = "eur";
+    i += 3;
+    return true;
+  }
+  if (starts_utf8(s, i, "\xC2\xA3")) {  // £
+    sym = "gbp";
+    i += 2;
+    return true;
+  }
+  if (starts_utf8(s, i, "\xC2\xA5")) {  // ¥
+    sym = "jpy";
+    i += 2;
+    return true;
+  }
+  if (starts_utf8(s, i, "\xE2\x82\xB9")) {  // ₹
+    sym = "inr";
+    i += 3;
+    return true;
+  }
+  return false;
+}
+
 bool parse_conversion(std::string s, double& value, std::string& from, std::string& to) {
   auto lower = to_lower_utf8(s);
   while (!lower.empty() && (lower.front() == ' ' || lower.front() == '\t')) lower.erase(lower.begin());
@@ -227,8 +275,10 @@ bool parse_conversion(std::string s, double& value, std::string& from, std::stri
   while (!left.empty() && left.back() == ' ') left.pop_back();
   while (!right.empty() && (right.front() == ' ' || right.front() == '\t')) right.erase(right.begin());
   while (!right.empty() && right.back() == ' ') right.pop_back();
-  std::string num;
+  std::string lead;
   std::size_t i = 0;
+  consume_money_sym(left, i, lead);
+  std::string num;
   if (i < left.size() && (left[i] == '-' || left[i] == '+')) num.push_back(left[i++]);
   bool dot = false;
   while (i < left.size()) {
@@ -245,18 +295,294 @@ bool parse_conversion(std::string s, double& value, std::string& from, std::stri
     break;
   }
   while (i < left.size() && (left[i] == ' ' || left[i] == '\t')) ++i;
+  std::string trail;
+  consume_money_sym(left, i, trail);
+  while (i < left.size() && (left[i] == ' ' || left[i] == '\t')) ++i;
   from = left.substr(i);
-  to = right;
-  if (num.empty() || from.empty() || to.empty()) return false;
-  try {
-    value = std::stod(num);
-  } catch (...) {
-    return false;
+  if (from.empty()) from = !lead.empty() ? lead : trail;
+  std::string to_sym;
+  std::size_t ti = 0;
+  if (consume_money_sym(right, ti, to_sym) && ti >= right.size())
+    to = to_sym;
+  else
+    to = right;
+  if (from.empty() || to.empty()) return false;
+  if (num.empty()) {
+    value = 1;
+  } else {
+    try {
+      value = std::stod(num);
+    } catch (...) {
+      return false;
+    }
   }
   return true;
 }
 
+bool g_fx_net = true;
+std::mutex fx_mu;
+std::unordered_map<std::string, double> fx_usd;
+std::string fx_date;
+std::int64_t fx_cache_at{0};
+
+const std::unordered_map<std::string, std::string>& ccy_alias() {
+  static const auto m = [] {
+    std::unordered_map<std::string, std::string> a;
+    auto add = [&](const char* code, std::initializer_list<const char*> names) {
+      for (auto n : names) a.emplace(n, code);
+    };
+    add("usd", {"usd", "dollar", "dollars", "buck", "bucks", "$", "usdollar", "usdollars"});
+    add("eur", {"eur", "euro", "euros"});
+    add("gbp", {"gbp", "pound", "pounds", "sterling", "quid"});
+    add("jpy", {"jpy", "yen"});
+    add("cny", {"cny", "yuan", "rmb", "renminbi"});
+    add("cad", {"cad", "loonie"});
+    add("aud", {"aud", "aussie"});
+    add("chf", {"chf", "franc", "francs", "swissfranc"});
+    add("inr", {"inr", "rupee", "rupees"});
+    add("krw", {"krw", "won"});
+    add("mxn", {"mxn"});
+    add("brl", {"brl", "real", "reais"});
+    add("zar", {"zar", "rand"});
+    add("nzd", {"nzd", "kiwi"});
+    add("sek", {"sek", "krona", "kronor"});
+    add("nok", {"nok", "krone", "kroner"});
+    add("dkk", {"dkk"});
+    add("pln", {"pln", "zloty", "zlotys"});
+    add("hkd", {"hkd"});
+    add("sgd", {"sgd"});
+    add("try", {"try", "lira", "liras"});
+    add("thb", {"thb", "baht"});
+    add("czk", {"czk", "koruna"});
+    add("huf", {"huf", "forint"});
+    add("ron", {"ron", "leu"});
+    add("bgn", {"bgn", "lev"});
+    add("ils", {"ils", "shekel", "shekels"});
+    add("php", {"php"});
+    add("myr", {"myr", "ringgit"});
+    add("idr", {"idr", "rupiah"});
+    add("isk", {"isk"});
+    return a;
+  }();
+  return m;
+}
+
+void seed_fx_fallback(std::unordered_map<std::string, double>& m) {
+  // Approximate USD cross rates used offline until a live table is fetched.
+  m["usd"] = 1;
+  m["eur"] = 0.92;
+  m["gbp"] = 0.79;
+  m["jpy"] = 149.0;
+  m["cny"] = 7.24;
+  m["cad"] = 1.36;
+  m["aud"] = 1.53;
+  m["chf"] = 0.88;
+  m["inr"] = 83.5;
+  m["krw"] = 1335.0;
+  m["mxn"] = 17.1;
+  m["brl"] = 5.05;
+  m["zar"] = 18.4;
+  m["nzd"] = 1.66;
+  m["sek"] = 10.5;
+  m["nok"] = 10.7;
+  m["dkk"] = 6.86;
+  m["pln"] = 3.98;
+  m["hkd"] = 7.82;
+  m["sgd"] = 1.34;
+  m["try"] = 32.3;
+  m["thb"] = 36.1;
+  m["czk"] = 23.2;
+  m["huf"] = 360.0;
+  m["ron"] = 4.57;
+  m["bgn"] = 1.80;
+  m["ils"] = 3.72;
+  m["php"] = 56.2;
+  m["myr"] = 4.72;
+  m["idr"] = 15400.0;
+  m["isk"] = 138.0;
+}
+
+#ifdef _WIN32
+std::string fx_http_get(const wchar_t* host, const wchar_t* path) {
+  std::string body;
+  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  if (!ses) return body;
+  WinHttpSetTimeouts(ses, 1200, 1200, 1200, 1800);
+  HINTERNET con = WinHttpConnect(ses, host, INTERNET_DEFAULT_HTTPS_PORT, 0);
+  if (!con) {
+    WinHttpCloseHandle(ses);
+    return body;
+  }
+  HINTERNET req = WinHttpOpenRequest(con, L"GET", path, nullptr, WINHTTP_NO_REFERER,
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+  if (!req) {
+    WinHttpCloseHandle(con);
+    WinHttpCloseHandle(ses);
+    return body;
+  }
+  BOOL ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+  if (ok) ok = WinHttpReceiveResponse(req, nullptr);
+  if (ok) {
+    DWORD avail = 0;
+    while (WinHttpQueryDataAvailable(req, &avail) && avail) {
+      std::string chunk(avail, '\0');
+      DWORD read = 0;
+      if (!WinHttpReadData(req, chunk.data(), avail, &read)) break;
+      chunk.resize(read);
+      body += chunk;
+      if (body.size() > 16384) break;
+    }
+  }
+  WinHttpCloseHandle(req);
+  WinHttpCloseHandle(con);
+  WinHttpCloseHandle(ses);
+  return body;
+}
+#else
+std::string fx_http_get(const char* url) {
+  std::string cmd = std::string("curl -fsS --max-time 2 -A Wilfred/1.0 \"") + url + "\" 2>/dev/null";
+  FILE* f = popen(cmd.c_str(), "r");
+  if (!f) return {};
+  std::string body;
+  char buf[512];
+  while (fgets(buf, sizeof(buf), f)) {
+    body += buf;
+    if (body.size() > 16384) break;
+  }
+  pclose(f);
+  return body;
+}
+#endif
+
+bool parse_fx_rates(const std::string& body, std::unordered_map<std::string, double>& out,
+                    std::string& date) {
+  date = json_get_string(body, "date");
+  auto pos = body.find("\"rates\"");
+  if (pos == std::string::npos) return false;
+  auto brace = body.find('{', pos);
+  if (brace == std::string::npos) return false;
+  auto end = body.find('}', brace);
+  if (end == std::string::npos) return false;
+  auto blob = body.substr(brace + 1, end - brace - 1);
+  std::size_t i = 0;
+  while (i < blob.size()) {
+    auto q1 = blob.find('"', i);
+    if (q1 == std::string::npos) break;
+    auto q2 = blob.find('"', q1 + 1);
+    if (q2 == std::string::npos) break;
+    auto code = to_lower_utf8(blob.substr(q1 + 1, q2 - q1 - 1));
+    auto colon = blob.find(':', q2);
+    if (colon == std::string::npos) break;
+    i = colon + 1;
+    while (i < blob.size() && (blob[i] == ' ' || blob[i] == '\t')) ++i;
+    std::string num;
+    if (i < blob.size() && blob[i] == '-') num.push_back(blob[i++]);
+    while (i < blob.size()) {
+      char c = blob[i];
+      if ((c >= '0' && c <= '9') || c == '.' || c == 'e' || c == 'E' || c == '+') {
+        num.push_back(c);
+        ++i;
+        continue;
+      }
+      break;
+    }
+    try {
+      if (!code.empty() && !num.empty()) out[code] = std::stod(num);
+    } catch (...) {
+    }
+    auto comma = blob.find(',', i);
+    if (comma == std::string::npos) break;
+    i = comma + 1;
+  }
+  return !out.empty();
+}
+
+void ensure_fx() {
+  std::lock_guard<std::mutex> lock(fx_mu);
+  if (fx_usd.empty()) {
+    seed_fx_fallback(fx_usd);
+    fx_date = "approx";
+  }
+  if (!g_fx_net) return;
+  auto now = unix_seconds();
+  if (fx_cache_at && now - fx_cache_at < 3600) return;
+#ifdef _WIN32
+  auto body = fx_http_get(L"api.frankfurter.app", L"/latest?from=USD");
+#else
+  auto body = fx_http_get("https://api.frankfurter.app/latest?from=USD");
+#endif
+  std::unordered_map<std::string, double> parsed;
+  std::string date;
+  if (!parse_fx_rates(body, parsed, date)) return;
+  parsed["usd"] = 1;
+  fx_usd = std::move(parsed);
+  fx_date = date.empty() ? "live" : date;
+  fx_cache_at = now;
+}
+
+std::string iso_ccy(std::string_view raw) {
+  auto n = norm_unit(std::string(raw));
+  auto& al = ccy_alias();
+  auto it = al.find(n);
+  if (it != al.end()) return it->second;
+  if (n.size() == 3) {
+    bool letters = true;
+    for (char c : n)
+      if (!std::isalpha(static_cast<unsigned char>(c))) letters = false;
+    if (letters) return n;
+  }
+  return {};
+}
+
+std::string format_ccy(double v, const std::string& iso, const std::string& raw) {
+  bool zero_dec = iso == "jpy" || iso == "krw" || iso == "isk" || iso == "idr";
+  char buf[80];
+  if (zero_dec)
+    std::snprintf(buf, sizeof(buf), "%.0f", v);
+  else if (std::fabs(v) >= 100)
+    std::snprintf(buf, sizeof(buf), "%.2f", v);
+  else if (std::fabs(v) >= 1)
+    std::snprintf(buf, sizeof(buf), "%.4f", v);
+  else
+    std::snprintf(buf, sizeof(buf), "%.6f", v);
+  std::string label = raw;
+  if (label.size() == 3) {
+    for (char& c : label) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  }
+  return std::string(buf) + " " + label;
+}
+
+bool apply_currency(double amount, std::string_view from_raw, std::string_view to_raw, MathResult& out) {
+  auto from = iso_ccy(from_raw);
+  auto to = iso_ccy(to_raw);
+  if (from.empty() || to.empty() || from == to) return false;
+  ensure_fx();
+  std::lock_guard<std::mutex> lock(fx_mu);
+  auto fa = fx_usd.find(from);
+  auto ta = fx_usd.find(to);
+  if (fa == fx_usd.end() || ta == fx_usd.end()) return false;
+  if (fa->second == 0) return false;
+  double dest = amount * (ta->second / fa->second);
+  if (!std::isfinite(dest)) return false;
+  out.ok = true;
+  out.conversion = true;
+  out.currency = true;
+  out.value = dest;
+  out.display = format_ccy(dest, to, std::string(to_raw));
+  out.error.clear();
+  return true;
+}
+
 }  // namespace
+
+void set_currency_network_enabled(bool enabled) {
+  g_fx_net = enabled;
+}
+
+bool convert_currency(double amount, std::string_view from, std::string_view to, MathResult& out) {
+  return apply_currency(amount, from, to, out);
+}
 
 bool convert_metric(std::string_view expr, MathResult& out) {
   double v = 0;
@@ -267,17 +593,20 @@ bool convert_metric(std::string_view expr, MathResult& out) {
   auto& tab = units();
   auto fa = tab.find(from_n);
   auto ta = tab.find(to_n);
-  if (fa == tab.end() || ta == tab.end()) return false;
-  if (fa->second.qty != ta->second.qty) return false;
-  double si = v * fa->second.mul + fa->second.add;
-  double dest = (si - ta->second.add) / ta->second.mul;
-  if (!std::isfinite(dest)) return false;
-  out.ok = true;
-  out.conversion = true;
-  out.value = dest;
-  out.display = format_value(dest) + " " + to_raw;
-  out.error.clear();
-  return true;
+  if (fa != tab.end() && ta != tab.end()) {
+    if (fa->second.qty != ta->second.qty) return false;
+    double si = v * fa->second.mul + fa->second.add;
+    double dest = (si - ta->second.add) / ta->second.mul;
+    if (!std::isfinite(dest)) return false;
+    out.ok = true;
+    out.conversion = true;
+    out.currency = false;
+    out.value = dest;
+    out.display = format_value(dest) + " " + to_raw;
+    out.error.clear();
+    return true;
+  }
+  return apply_currency(v, from_raw, to_raw, out);
 }
 
 }  // namespace wilfred

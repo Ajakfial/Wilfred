@@ -100,6 +100,8 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 |`weather` / `weather London`|Mini card: local or city forecast|
 |`time` `disk` `disku` `ram` `cpu`|Clock, drives, memory, processor|
 |`process chrome` / `top`|Live process CPU, RAM, threads|
+|`emoji smile` / `symbol euro`|Emoji and symbol picker (enter copies)|
+|`100 usd to eur` / `fx 25 gbp jpy`|Currency conversion|
 |`clip` / `clips`|Clipboard and recent clips|
 |`!yt cats` / `gh wilfred`|Search macros (`macros` lists them)|
 

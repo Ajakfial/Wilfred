@@ -8,9 +8,12 @@
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/fuzzy.hpp"
+#include "wilfred/math/expr.hpp"
+#include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/macros.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -550,6 +553,12 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "windows" || key == "window" || key == "winswitch" || key == "wswitch" ||
            key == "switchto" || key == "switch")
     set(MiniKind::Windows, rest.empty());
+  else if (key == "emoji" || key == "emojis" || key == "emote" || key == "emotes")
+    set(MiniKind::Emoji, true);
+  else if (key == "symbol" || key == "symbols" || key == "glyph" || key == "glyphs")
+    set(MiniKind::Symbol, true);
+  else if (key == "fx" || key == "currency" || key == "forex" || key == "ccy")
+    set(MiniKind::Fx, true);
   return it;
 }
 
@@ -908,6 +917,53 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Emoji) return glyph_results(intent.remainder, false);
+  if (intent.kind == MiniKind::Symbol) return glyph_results(intent.remainder, true);
+
+  if (intent.kind == MiniKind::Fx) {
+    auto try_fx = [](const std::string& rest, MathResult& m) -> bool {
+      auto t = trim_sv(rest);
+      if (t.empty()) return false;
+      if (convert_metric(t, m) && m.currency) return true;
+      if (m.ok && m.conversion && !m.currency) return false;
+      auto sp = t.find_last_of(' ');
+      if (sp == std::string::npos || sp == 0 || sp + 1 >= t.size()) return false;
+      auto rewritten = t.substr(0, sp) + " to " + t.substr(sp + 1);
+      return convert_metric(rewritten, m) && m.currency;
+    };
+    MathResult m;
+    if (try_fx(intent.remainder, m)) {
+      out.push_back(card(m.display, "Currency · enter copies", m.display, "fx", 10000,
+                         ResultAction::Convert));
+      return out;
+    }
+    if (!intent.remainder.empty()) {
+      out.push_back(card("Can't convert that", "Try 100 usd to eur  or  50 gbp jpy", "", "fx", 9000,
+                         ResultAction::None));
+      return out;
+    }
+    static const char* pairs[][2] = {{"usd", "eur"}, {"usd", "gbp"}, {"usd", "jpy"},
+                                     {"eur", "usd"}, {"gbp", "usd"}, {"usd", "cad"},
+                                     {"usd", "inr"}, {"usd", "aud"}};
+    auto iso_up = [](const char* s) {
+      std::string o(s);
+      for (char& c : o) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      return o;
+    };
+    int n = 0;
+    for (auto& p : pairs) {
+      MathResult r;
+      if (!convert_currency(1, p[0], p[1], r) || !r.ok) continue;
+      auto title = "1 " + iso_up(p[0]) + "  →  " + r.display;
+      out.push_back(card(title, "Spot rate · enter copies", r.display, "fx", 10000 - n,
+                         ResultAction::Convert));
+      ++n;
+    }
+    if (out.empty())
+      out.push_back(card("Currency", "Type fx 100 usd to eur", "", "fx", 8000, ResultAction::None));
+    return out;
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {
         "weather [city]  ·  local forecast",
@@ -916,6 +972,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         "ram / cpu / swap  ·  memory and load",
         "process <name>  ·  app CPU and RAM",
         "windows [name]  ·  switch to an open window",
+        "emoji [name]  ·  emoji picker",
+        "symbol [name]  ·  punctuation and signs",
+        "fx 100 usd to eur  ·  currency conversion",
         "battery / ip / hostname / uptime / user",
         "clip / clips  ·  clipboard",
         "snip / ;keyword  ·  text snippets",

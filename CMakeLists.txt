@@ -56,6 +56,7 @@ set(WILFRED_CORE_SOURCES
   src/search/content.cpp
   src/search/macros.cpp
   src/search/minis.cpp
+  src/search/glyphs.cpp
   src/search/snippets.cpp
   src/search/actions.cpp
   src/plugin/host.cpp
@@ -108,6 +109,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/content.hpp
   include/wilfred/search/macros.hpp
   include/wilfred/search/minis.hpp
+  include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
   include/wilfred/search/actions.hpp
   include/wilfred/plugin/abi.hpp

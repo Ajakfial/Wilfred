@@ -50,7 +50,18 @@ sqrt(2)
 (3 + 4) * 2
 10 km in miles
 convert 5 gb to mb
+100 usd to eur
+$50 to gbp
+10 dollars in euros
 ```
+
+Unit conversion covers SI and common US customary units (length, mass,
+volume, area, temperature, speed, energy, pressure, time, data, force,
+power, angle). Currency pairs use ISO codes or names (`usd`/`dollar`,
+`eur`/`euro`, `gbp`/`pound`, …) and optional leading symbols (`$`, `€`,
+`£`, `¥`, `₹`). Rates are fetched from Frankfurter when the network is
+reachable, with a built-in approximate USD table used offline. Enter copies
+the converted amount.
 
 The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) —
 there is no `eval`/scripting backdoor.
@@ -93,12 +104,15 @@ synthetic result card instead of searching the index
 | `swap` | `pagefile`, `vmem` | Swap/page-file usage |
 | `help` | `minis`, `cmds`, `commands` | List of available minis |
 | `macros` | `bangs` | List of configured macros |
+| `emoji [name]` | `emojis`, `emote`, `emotes` | Emoji picker (enter copies the character) |
+| `symbol [name]` | `symbols`, `glyph`, `glyphs` | Punctuation, math, and currency signs |
+| `fx [amount from to]` | `currency`, `forex`, `ccy` | Currency conversion (`fx 100 usd to eur` or `fx 25 gbp jpy`); bare `fx` lists spot rates |
 
-Minis can be disabled entirely with `search.minis: false`. `weather` makes
-an outbound network request (a `curl`-based fetch with a short timeout) —
-see [configuration.md](configuration.md) if you want to disable network
-access; there's no dedicated flag for weather alone today, so disable
-`search.minis` if you need to suppress it.
+Minis can be disabled entirely with `search.minis: false`. `weather` and
+live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`
+fetch). Currency still works offline from an approximate table. There's no
+dedicated flag for those requests today, so disable `search.minis` if you
+need to suppress the weather mini.
 
 ## 6. Macros — query templates
 
