@@ -7,6 +7,7 @@
 #include "wilfred/fs/watcher.hpp"
 #include "wilfred/hotkey/hotkey.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,5 +39,14 @@ bool native_launch(const std::string& path);
 bool native_reveal(const std::string& path);
 bool native_open_url(const std::string& url);
 std::vector<VolumeInfo> native_list_volumes();
+
+struct NativeWindowInfo {
+  std::uint64_t id{0};
+  std::string title;
+  std::string owner;
+};
+
+std::vector<NativeWindowInfo> native_list_windows();
+bool native_focus_window(std::uint64_t id);
 
 }  // namespace wilfred

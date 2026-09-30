@@ -31,6 +31,7 @@ enum class MiniKind {
   Swap,
   Help,
   MacrosList,
+  Windows,
 };
 
 struct MiniIntent {

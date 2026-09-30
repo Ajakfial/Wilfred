@@ -29,6 +29,8 @@ static const char* ipc_action_name(ResultAction a) {
       return "expand";
     case ResultAction::Plugin:
       return "plugin";
+    case ResultAction::SwitchWindow:
+      return "open";
     default:
       return "open";
   }

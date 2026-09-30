@@ -4,8 +4,10 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/macros.hpp"
 
 #include <algorithm>
@@ -545,6 +547,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Help, true);
   else if (key == "macros" || key == "bangs")
     set(MiniKind::MacrosList, true);
+  else if (key == "windows" || key == "window" || key == "winswitch" || key == "wswitch" ||
+           key == "switchto" || key == "switch")
+    set(MiniKind::Windows, rest.empty());
   return it;
 }
 
@@ -643,6 +648,47 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       out.insert(out.begin(), card(sum, "Total disk usage", sum, "disku", 10050, ResultAction::Copy, pct));
     }
     return out;
+  }
+
+  if (intent.kind == MiniKind::Windows) {
+    auto wins = native_list_windows();
+    auto needle = fold_search(intent.remainder);
+    std::vector<SearchResult> hits;
+    int idx = 0;
+    for (auto& w : wins) {
+      SearchResult r;
+      r.title = w.title;
+      r.subtitle = w.owner.empty() ? "Open window" : w.owner;
+      r.payload = std::to_string(w.id);
+      r.path = r.payload;
+      r.action = ResultAction::SwitchWindow;
+      r.kind_label = "window";
+      r.category = "window";
+      if (needle.empty()) {
+        r.score = 10000 - idx;
+      } else {
+        auto title_sc = score_fuzzy(needle, fold_search(w.title), w.title);
+        auto owner_sc = score_fuzzy(needle, fold_search(w.owner), w.owner);
+        int sc = std::max(title_sc.score, owner_sc.score);
+        if (!title_sc.matched && !owner_sc.matched &&
+            to_lower_utf8(w.title).find(to_lower_utf8(intent.remainder)) == std::string::npos &&
+            to_lower_utf8(w.owner).find(to_lower_utf8(intent.remainder)) == std::string::npos)
+          continue;
+        r.score = 10000 + sc;
+      }
+      hits.push_back(std::move(r));
+      ++idx;
+    }
+    if (hits.empty()) {
+      out.push_back(card(intent.remainder.empty() ? "No open windows" : "No matching window",
+                         intent.remainder.empty() ? "Type windows to list them"
+                                                  : "No window matching \"" + intent.remainder + "\"",
+                         "", "window", 9000, ResultAction::None));
+      return out;
+    }
+    std::sort(hits.begin(), hits.end(), [](auto& a, auto& b) { return a.score > b.score; });
+    if (hits.size() > 16) hits.resize(16);
+    return hits;
   }
 
   if (intent.kind == MiniKind::Process) {
@@ -869,6 +915,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         "disk / disku  ·  drive space",
         "ram / cpu / swap  ·  memory and load",
         "process <name>  ·  app CPU and RAM",
+        "windows [name]  ·  switch to an open window",
         "battery / ip / hostname / uptime / user",
         "clip / clips  ·  clipboard",
         "snip / ;keyword  ·  text snippets",

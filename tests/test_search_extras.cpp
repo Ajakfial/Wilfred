@@ -8,6 +8,7 @@
 #include "wilfred/search/content.hpp"
 #include "wilfred/search/context.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/platform/native.hpp"
 #include "wilfred/search/minis.hpp"
 #include "wilfred/search/rank.hpp"
 #include "wilfred/index/tokenizer.hpp"
@@ -31,6 +32,10 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("ps").kind, MiniKind::Process);
   CHECK_EQ(parse_mini_intent("help").kind, MiniKind::Help);
   CHECK_EQ(parse_mini_intent("macros").kind, MiniKind::MacrosList);
+  CHECK_EQ(parse_mini_intent("windows").kind, MiniKind::Windows);
+  CHECK_EQ(parse_mini_intent("window chrome").kind, MiniKind::Windows);
+  CHECK_EQ(parse_mini_intent("window chrome").remainder, "chrome");
+  CHECK_EQ(parse_mini_intent("switch").kind, MiniKind::Windows);
   CHECK_EQ(parse_mini_intent("firefox").kind, MiniKind::None);
 
   Config cfg;
@@ -41,6 +46,10 @@ void test_search_extras() {
   CHECK(!ram_cards.empty());
   auto help_cards = mini_results("help", cfg, "");
   CHECK(help_cards.size() >= 4);
+  auto wins = mini_results("windows", cfg, "");
+  CHECK(!wins.empty());
+  CHECK(wins.front().category == "window" || wins.front().kind_label == "window");
+  (void)native_list_windows();
 
   Config cfg_off;
   cfg_off.search.minis = false;

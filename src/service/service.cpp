@@ -258,6 +258,11 @@ int Service::run_daemon() {
       [this](const SearchResult& r, const std::string& action_id) {
         if (r.action == ResultAction::Habit) return;
         auto hide = action_hides_overlay(action_id);
+        if (r.action == ResultAction::SwitchWindow || r.category == "window") {
+          if (hide && ui_) ui_->hide();
+          execute_result(r, cfg_, action_id);
+          return;
+        }
         if (r.category == "mini" || r.category == "macro" || r.category == "clipboard" ||
             r.action == ResultAction::Copy || r.action == ResultAction::Mini) {
           execute_result(r, cfg_, action_id);

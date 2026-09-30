@@ -38,6 +38,13 @@ void test_extensibility() {
   attach_result_actions(file);
   CHECK(file.actions.size() >= 3);
   CHECK_EQ(file.actions[0].id, "open");
+  SearchResult win;
+  win.action = ResultAction::SwitchWindow;
+  win.category = "window";
+  win.title = "Demo";
+  attach_result_actions(win);
+  CHECK_EQ(win.actions[0].id, "open");
+  CHECK_EQ(win.actions[0].label, "Switch");
   CHECK(action_hides_overlay("open"));
   CHECK(!action_hides_overlay("copy_path"));
 

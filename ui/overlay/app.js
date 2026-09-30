@@ -46,6 +46,7 @@
     ram: "bi-memory",
     cpu: "bi-cpu",
     process: "bi-activity",
+    window: "bi-window-stack",
     battery: "bi-battery-half",
     host: "bi-pc",
     ip: "bi-ethernet",

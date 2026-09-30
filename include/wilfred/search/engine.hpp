@@ -11,7 +11,20 @@
 
 namespace wilfred {
 
-enum class ResultAction { Open, Reveal, Copy, WebSearch, Calculate, Convert, None, Habit, Mini, Expand, Plugin };
+enum class ResultAction {
+  Open,
+  Reveal,
+  Copy,
+  WebSearch,
+  Calculate,
+  Convert,
+  None,
+  Habit,
+  Mini,
+  Expand,
+  Plugin,
+  SwitchWindow
+};
 
 struct ResultActionItem {
   std::string id;

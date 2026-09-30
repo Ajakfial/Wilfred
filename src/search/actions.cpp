@@ -3,11 +3,13 @@
 #include "wilfred/apps/discovery.hpp"
 #include "wilfred/browser/browser.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/platform/native.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
 
-#include <thread>
 #include <chrono>
+#include <cstdlib>
+#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -50,6 +52,11 @@ void attach_result_actions(SearchResult& r) {
   if (r.action == ResultAction::Plugin || r.category == "plugin") {
     add("open", "Run");
     add("copy_path", "Copy path");
+    return;
+  }
+  if (r.action == ResultAction::SwitchWindow || r.category == "window") {
+    add("open", "Switch");
+    add("copy_name", "Copy title");
     return;
   }
   add("open", "Open");
@@ -145,6 +152,13 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     if (g_plugin_exec && g_plugin_exec->execute(r, id)) return true;
   }
   if (r.action == ResultAction::WebSearch) return open_in_default_browser(r.payload);
+  if (r.action == ResultAction::SwitchWindow || r.category == "window") {
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    char* end = nullptr;
+    auto wid = std::strtoull(raw.c_str(), &end, 10);
+    if (!end || end == raw.c_str()) return false;
+    return native_focus_window(static_cast<std::uint64_t>(wid));
+  }
   if (r.path.rfind("http://", 0) == 0 || r.path.rfind("https://", 0) == 0) return open_url(r.path);
   return launch_path(r.path.empty() ? r.payload : r.path);
 }

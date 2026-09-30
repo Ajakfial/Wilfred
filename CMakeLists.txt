@@ -139,6 +139,7 @@ if(WIN32)
     src/platform/win/browser.cpp
     src/platform/win/hotkey.cpp
     src/platform/win/launch.cpp
+    src/platform/win/windows.cpp
     src/platform/win/volumes.cpp
     src/ui/win_overlay.cpp
   )
@@ -149,6 +150,7 @@ elseif(APPLE)
     src/platform/mac/browser.mm
     src/platform/mac/hotkey.mm
     src/platform/mac/launch.mm
+    src/platform/mac/windows.mm
     src/platform/mac/volumes.mm
     src/ui/mac_overlay.mm
   )
@@ -159,6 +161,7 @@ else()
     src/platform/linux/browser.cpp
     src/platform/linux/hotkey.cpp
     src/platform/linux/launch.cpp
+    src/platform/linux/windows.cpp
     src/platform/linux/volumes.cpp
     src/ui/x11_overlay.cpp
   )

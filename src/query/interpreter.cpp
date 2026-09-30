@@ -230,7 +230,8 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
 
 bool result_is_launchable(const SearchResult& r) {
   return r.action != ResultAction::Habit && r.action != ResultAction::Calculate &&
-         r.action != ResultAction::Convert && r.action != ResultAction::None;
+         r.action != ResultAction::Convert && r.action != ResultAction::None &&
+         r.action != ResultAction::SwitchWindow && r.category != "window";
 }
 
 bool execute_result(const SearchResult& r, const Config& cfg, const std::string& action_id) {
