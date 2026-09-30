@@ -50,16 +50,16 @@ bool looks_like_url(std::string_view s) {
 bool looks_like_math(std::string_view s) {
   std::string t(s);
   auto l = to_lower_utf8(t);
-  bool conv_phrase = t.find(" to ") != std::string::npos || t.find(" in ") != std::string::npos ||
-                     l.rfind("convert ", 0) == 0 || (!t.empty() && t.front() == '#') ||
-                     l.rfind("rgb", 0) == 0 || l.rfind("hsl", 0) == 0 || l.rfind("hsv", 0) == 0 ||
-                     l.rfind("hex ", 0) == 0 || l.rfind("color ", 0) == 0 ||
-                     l.rfind("colour ", 0) == 0 || l.find("days until") != std::string::npos ||
-                     l.find("days since") != std::string::npos || l.find(" until ") != std::string::npos ||
-                     l.find(" since ") != std::string::npos || l.rfind("unix ", 0) == 0 ||
-                     l.rfind("epoch ", 0) == 0 || l.find(" from now") != std::string::npos ||
-                     l.find(" ago") != std::string::npos || l.rfind("in ", 0) == 0 || l == "today" ||
-                     l == "tomorrow" || l == "yesterday";
+  bool conv_phrase =
+      t.find(" to ") != std::string::npos || t.find(" in ") != std::string::npos ||
+      l.rfind("convert ", 0) == 0 || (!t.empty() && t.front() == '#') || l.rfind("rgb", 0) == 0 ||
+      l.rfind("hsl", 0) == 0 || l.rfind("hsv", 0) == 0 || l.rfind("hex ", 0) == 0 ||
+      l.rfind("color ", 0) == 0 || l.rfind("colour ", 0) == 0 ||
+      l.find("days until") != std::string::npos || l.find("days since") != std::string::npos ||
+      l.find(" until ") != std::string::npos || l.find(" since ") != std::string::npos ||
+      l.rfind("unix ", 0) == 0 || l.rfind("epoch ", 0) == 0 ||
+      l.find(" from now") != std::string::npos || l.find(" ago") != std::string::npos ||
+      l.rfind("in ", 0) == 0 || l == "today" || l == "tomorrow" || l == "yesterday";
   if (conv_phrase) {
     auto m = evaluate_math(t);
     return m.ok;
@@ -77,9 +77,8 @@ bool looks_like_math(std::string_view s) {
   }
   if (!has_digit) return false;
   if (!has_op && letters == 0) return false;  // bare numbers are not calculator queries
-  static const char* fn[] = {"sin",  "cos",  "tan", "sqrt", "log", "ln",  "abs",
-                             "pow",  "ceil", "floor", "exp", "pi", nullptr};
-  auto l = to_lower_utf8(t);
+  static const char* fn[] = {"sin", "cos",  "tan",   "sqrt", "log", "ln",   "abs",
+                             "pow", "ceil", "floor", "exp",  "pi",  nullptr};
   bool fnish = false;
   for (auto** p = fn; *p; ++p)
     if (l.find(*p) != std::string::npos) fnish = true;

@@ -994,8 +994,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Tz) {
     auto rest = trim_sv(intent.remainder);
     MathResult m;
-    if (!rest.empty() &&
-        (convert_datetime(rest, m) || convert_datetime("now in " + rest, m))) {
+    if (!rest.empty() && (convert_datetime(rest, m) || convert_datetime("now in " + rest, m))) {
       out.push_back(card(m.display, "Timezone · enter copies", m.display, "tz", 10000,
                          ResultAction::Convert));
       return out;
@@ -1010,8 +1009,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       ++n;
     }
     if (out.empty())
-      out.push_back(
-          card("Timezones", "Type tz tokyo  or  3pm est to pst", "", "tz", 8000, ResultAction::None));
+      out.push_back(card("Timezones", "Type tz tokyo  or  3pm est to pst", "", "tz", 8000,
+                         ResultAction::None));
     return out;
   }
 
@@ -1027,8 +1026,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          ResultAction::Convert));
       return out;
     }
-    out.push_back(card("Color", "Type #ff5500  or  rgb(255, 85, 0)", "", "color", 8000,
-                       ResultAction::None));
+    out.push_back(
+        card("Color", "Type #ff5500  or  rgb(255, 85, 0)", "", "color", 8000, ResultAction::None));
     return out;
   }
 

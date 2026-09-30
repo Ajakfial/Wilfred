@@ -134,15 +134,15 @@ const std::unordered_map<std::string, Zone>& zones() {
         u.emplace(norm_token(n), z);
     };
     add({0, 0, DstRule::None, "UTC"}, {"utc", "gmt", "z", "zulu", "universal"});
-    add({0, 60, DstRule::EU, "London"},
-        {"london", "uk", "britain", "england", "europelondon"});
+    add({0, 60, DstRule::EU, "London"}, {"london", "uk", "britain", "england", "europelondon"});
     add({60, 0, DstRule::None, "CET"}, {"cet", "westafrica"});
     add({60, 60, DstRule::EU, "Paris"},
-        {"paris", "berlin", "amsterdam", "madrid", "rome", "brussels", "prague", "vienna",
-         "zurich", "stockholm", "oslo", "copenhagen", "warsaw", "budapest", "europe"});
+        {"paris", "berlin", "amsterdam", "madrid", "rome", "brussels", "prague", "vienna", "zurich",
+         "stockholm", "oslo", "copenhagen", "warsaw", "budapest", "europe"});
     add({120, 60, DstRule::EU, "Helsinki"},
         {"helsinki", "athens", "bucharest", "kyiv", "kiev", "riga", "tallinn", "sofia"});
-    add({120, 0, DstRule::None, "Cairo"}, {"cairo", "eet", "southafrica", "johannesburg", "harare"});
+    add({120, 0, DstRule::None, "Cairo"},
+        {"cairo", "eet", "southafrica", "johannesburg", "harare"});
     add({180, 0, DstRule::None, "Moscow"}, {"moscow", "istanbul", "msk"});
     add({-300, 0, DstRule::None, "EST"}, {"est"});
     add({-240, 0, DstRule::None, "EDT"}, {"edt"});
@@ -153,22 +153,20 @@ const std::unordered_map<std::string, Zone>& zones() {
     add({-480, 0, DstRule::None, "PST"}, {"pst"});
     add({-420, 0, DstRule::None, "PDT"}, {"pdt"});
     add({-300, 60, DstRule::US, "Eastern"},
-        {"et", "eastern", "nyc", "newyork", "boston", "miami", "atlanta", "toronto",
-         "montreal", "washington", "philadelphia", "americanewyork", "usaeastern"});
+        {"et", "eastern", "nyc", "newyork", "boston", "miami", "atlanta", "toronto", "montreal",
+         "washington", "philadelphia", "americanewyork", "usaeastern"});
     add({-360, 60, DstRule::US, "Central"},
         {"ct", "central", "chicago", "dallas", "houston", "winnipeg", "mexico", "mexicocity"});
     add({-420, 60, DstRule::US, "Mountain"}, {"mt", "mountain", "denver", "calgary", "edmonton"});
     add({-420, 0, DstRule::None, "Phoenix"}, {"phoenix", "arizona"});
-    add({-480, 60, DstRule::US, "Pacific"},
-        {"pt", "pacific", "la", "losangeles", "seattle", "portland", "vancouver", "sanfrancisco",
-         "sf"});
+    add({-480, 60, DstRule::US, "Pacific"}, {"pt", "pacific", "la", "losangeles", "seattle",
+                                             "portland", "vancouver", "sanfrancisco", "sf"});
     add({-540, 60, DstRule::US, "Alaska"}, {"akst", "akdt", "alaska", "anchorage"});
     add({-600, 0, DstRule::None, "Hawaii"}, {"hst", "hawaii", "honolulu"});
     add({540, 0, DstRule::None, "Tokyo"}, {"jst", "tokyo", "japan", "osaka", "asiatokyo"});
     add({540, 0, DstRule::None, "Seoul"}, {"kst", "seoul", "korea"});
-    add({480, 0, DstRule::None, "China"},
-        {"cstchina", "shanghai", "beijing", "hongkong", "taipei", "singapore", "perth", "manila",
-         "hkt", "sgt", "cstcn"});
+    add({480, 0, DstRule::None, "China"}, {"cstchina", "shanghai", "beijing", "hongkong", "taipei",
+                                           "singapore", "perth", "manila", "hkt", "sgt", "cstcn"});
     add({330, 0, DstRule::None, "India"},
         {"ist", "india", "mumbai", "delhi", "kolkata", "bangalore", "chennai", "hyderabad"});
     add({480, 0, DstRule::None, "AWST"}, {"awst"});
@@ -177,20 +175,18 @@ const std::unordered_map<std::string, Zone>& zones() {
     add({240, 0, DstRule::None, "Dubai"}, {"gst", "dubai", "abudhabi", "muscat"});
     add({720, 60, DstRule::NZ, "Auckland"}, {"nzst", "nzdt", "auckland", "wellington", "nz"});
     add({180, 0, DstRule::None, "East Africa"}, {"eat", "nairobi", "doha", "riyadh"});
-    add({420, 0, DstRule::None, "Bangkok"}, {"ict", "bangkok", "jakarta", "hanoi", "saigon",
-                                            "hochiminh", "wib"});
+    add({420, 0, DstRule::None, "Bangkok"},
+        {"ict", "bangkok", "jakarta", "hanoi", "saigon", "hochiminh", "wib"});
     add({-180, 0, DstRule::None, "São Paulo"},
         {"saopaulo", "brasilia", "brt", "rio", "saobrazil", "americasaopaulo"});
     add({-180, 0, DstRule::None, "Buenos Aires"}, {"buenosaires", "art", "americabuenosaires"});
     add({0, 60, DstRule::EU, "Lisbon"}, {"weti", "lisbon", "europelisbon", "portugal"});
     add({0, 0, DstRule::None, "Casablanca"}, {"casablanca", "morocco"});
     add({60, 0, DstRule::None, "Lagos"}, {"wat", "lagos", "africalagos"});
-    add({-240, 60, DstRule::US, "Atlantic"},
-        {"atlantic", "halifax", "americahalifax"});
+    add({-240, 60, DstRule::US, "Atlantic"}, {"atlantic", "halifax", "americahalifax"});
     add({-240, 0, DstRule::None, "AST"}, {"ast", "puertorico"});
     add({-180, 0, DstRule::None, "ADT"}, {"adt"});
-    add({-150, 60, DstRule::US, "Newfoundland"},
-        {"newfoundland", "stjohns", "americastjohns"});
+    add({-150, 60, DstRule::US, "Newfoundland"}, {"newfoundland", "stjohns", "americastjohns"});
     add({-210, 0, DstRule::None, "NST"}, {"nst"});
     add({-150, 0, DstRule::None, "NDT"}, {"ndt"});
     return u;
@@ -253,7 +249,7 @@ bool find_zone(std::string_view raw, Zone& z) {
 }
 
 const char* weekday_name(unsigned wd) {
-  static const char* n[] = {"Sunday",   "Monday", "Tuesday",  "Wednesday",
+  static const char* n[] = {"Sunday",   "Monday", "Tuesday", "Wednesday",
                             "Thursday", "Friday", "Saturday"};
   return n[wd % 7];
 }
@@ -264,9 +260,13 @@ const char* month_name(unsigned m) {
   return n[(m - 1) % 12];
 }
 
-sys_seconds unix_to_sys(std::int64_t s) { return sys_seconds{seconds{s}}; }
+sys_seconds unix_to_sys(std::int64_t s) {
+  return sys_seconds{seconds{s}};
+}
 
-std::int64_t sys_to_unix(sys_seconds t) { return duration_cast<seconds>(t.time_since_epoch()).count(); }
+std::int64_t sys_to_unix(sys_seconds t) {
+  return duration_cast<seconds>(t.time_since_epoch()).count();
+}
 
 void civil_from_unix(std::int64_t s, int& y, unsigned& mo, unsigned& d, int& h, int& mi, int& se) {
   auto tp = unix_to_sys(s);
@@ -415,7 +415,8 @@ bool parse_iso_date(const std::string& s, std::size_t& i, int& y, unsigned& mo, 
   if (!(std::isdigit(static_cast<unsigned char>(s[i])) &&
         std::isdigit(static_cast<unsigned char>(s[i + 1])) &&
         std::isdigit(static_cast<unsigned char>(s[i + 2])) &&
-        std::isdigit(static_cast<unsigned char>(s[i + 3])) && (s[i + 4] == '-' || s[i + 4] == '/') &&
+        std::isdigit(static_cast<unsigned char>(s[i + 3])) &&
+        (s[i + 4] == '-' || s[i + 4] == '/') &&
         std::isdigit(static_cast<unsigned char>(s[i + 5])) &&
         std::isdigit(static_cast<unsigned char>(s[i + 6])) && s[i + 7] == s[i + 4] &&
         std::isdigit(static_cast<unsigned char>(s[i + 8])) &&
@@ -445,8 +446,9 @@ bool parse_iso_date(const std::string& s, std::size_t& i, int& y, unsigned& mo, 
 }
 
 int month_from_name(const std::string& s, std::size_t i, std::size_t& len) {
-  static const char* names[] = {"january", "february", "march",     "april",   "may",      "june",
-                                "july",    "august",   "september", "october", "november", "december"};
+  static const char* names[] = {"january",   "february", "march",    "april",
+                                "may",       "june",     "july",     "august",
+                                "september", "october",  "november", "december"};
   static const char* abbr[] = {"jan", "feb", "mar", "apr", "may", "jun",
                                "jul", "aug", "sep", "oct", "nov", "dec"};
   auto rest = to_lower_utf8(s.substr(i));
@@ -541,7 +543,8 @@ bool parse_written_date(const std::string& s, std::size_t& i, int& y, unsigned& 
     i = save;
     return false;
   }
-  auto ymd = year{year} / month{static_cast<unsigned>(month)} / day{static_cast<unsigned>(day)};
+  auto ymd = std::chrono::year{year} / std::chrono::month{static_cast<unsigned>(month)} /
+             std::chrono::day{static_cast<unsigned>(day)};
   if (!ymd.ok()) {
     i = save;
     return false;
@@ -558,8 +561,7 @@ bool consume_word(const std::string& s, std::size_t& i, const char* word) {
   auto w = std::string_view(word);
   if (i + w.size() > s.size()) return false;
   for (std::size_t k = 0; k < w.size(); ++k) {
-    if (std::tolower(static_cast<unsigned char>(s[i + k])) !=
-        static_cast<unsigned char>(w[k]))
+    if (std::tolower(static_cast<unsigned char>(s[i + k])) != static_cast<unsigned char>(w[k]))
       return false;
   }
   std::size_t after = i + w.size();
@@ -818,7 +820,8 @@ bool try_until_since(const std::string& l, MathResult& out) {
   bool until = false, since = false;
   if (have_unit) {
     until = consume_word(l, i, "until") || consume_word(l, i, "to") || consume_word(l, i, "before");
-    since = consume_word(l, i, "since") || consume_word(l, i, "after") || consume_word(l, i, "from");
+    since =
+        consume_word(l, i, "since") || consume_word(l, i, "after") || consume_word(l, i, "from");
     if (!until && !since) return false;
   } else {
     i = 0;

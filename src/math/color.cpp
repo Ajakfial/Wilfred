@@ -40,9 +40,7 @@ bool parse_hex_color(std::string_view raw, int& r, int& g, int& b, int& a, bool&
   if (s.size() != 3 && s.size() != 4 && s.size() != 6 && s.size() != 8) return false;
   for (char c : s)
     if (!is_hex_char(c)) return false;
-  auto byte_at = [&](std::size_t i) {
-    return hex_val(s[i]) * 16 + hex_val(s[i + 1]);
-  };
+  auto byte_at = [&](std::size_t i) { return hex_val(s[i]) * 16 + hex_val(s[i + 1]); };
   auto nibble = [&](std::size_t i) {
     int v = hex_val(s[i]);
     return v * 16 + v;
@@ -93,7 +91,8 @@ bool parse_num_list(const std::string& inner, std::vector<ColorNum>& nums) {
     std::size_t start = i;
     if (inner[i] == '+' || inner[i] == '-') ++i;
     bool any = false;
-    while (i < inner.size() && (std::isdigit(static_cast<unsigned char>(inner[i])) || inner[i] == '.')) {
+    while (i < inner.size() &&
+           (std::isdigit(static_cast<unsigned char>(inner[i])) || inner[i] == '.')) {
       any = true;
       ++i;
     }
