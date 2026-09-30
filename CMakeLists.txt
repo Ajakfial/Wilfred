@@ -79,6 +79,11 @@ set(WILFRED_CORE_SOURCES
   src/service/service.cpp
   src/ui/web_ui.cpp
   src/ui/icon.cpp
+  src/updater/updater.cpp
+  src/updater/version.cpp
+  src/updater/zip.cpp
+  src/updater/tarball.cpp
+  src/updater/inflate.cpp
 )
 
 set(WILFRED_CORE_HEADERS
@@ -135,6 +140,8 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/ui/icon.hpp
   include/wilfred/platform/native.hpp
   include/wilfred/providers/provider.hpp
+  include/wilfred/updater/updater.hpp
+  include/wilfred/updater/inflate.hpp
 )
 
 if(WIN32)
@@ -174,6 +181,14 @@ endif()
 
 add_library(wilfred_core STATIC ${WILFRED_CORE_SOURCES} ${WILFRED_CORE_HEADERS})
 target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Generate version header
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/include/wilfred/updater/version.hpp
+  @ONLY
+)
+target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 if(WIN32)
   target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version

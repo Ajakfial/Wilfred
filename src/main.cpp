@@ -3,6 +3,7 @@
 #include "wilfred/history/history.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/service/service.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include <iostream>
 #include <string>
@@ -29,6 +30,7 @@ static void print_help() {
       << "  wilfred sync-push       Upload backup to sync.url\n"
       << "  wilfred sync-pull       Download backup from sync.url\n"
       << "  wilfred history-clear   Erase local search history\n"
+      << "  wilfred update [--check] Check for and install updates\n"
       << "  wilfred help            Show this message\n\n"
       << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
       << "On Windows the daemon has no console; quit from the tray icon.\n";
@@ -110,6 +112,16 @@ static int wilfred_main(int argc, char** argv) {
       h.save(p);
       std::cout << "cleared " << p << "\n";
       return 0;
+    }
+    if (cmd == "update" || cmd == "upgrade") {
+      bool check_only = false;
+      bool auto_yes = false;
+      for (int i = 2; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--check" || a == "-c") check_only = true;
+        else if (a == "--yes" || a == "-y") auto_yes = true;
+      }
+      return wilfred::run_update_command(check_only, auto_yes);
     }
     // Treat unknown first argument as a search query: `wilfred firefox`
     if (argc >= 2) {

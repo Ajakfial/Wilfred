@@ -15,6 +15,7 @@
 #include "wilfred/search/actions.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -237,6 +238,9 @@ int Service::run_daemon() {
   if (!boot()) return 1;
   running_ = true;
   g_running = &running_;
+
+  // Background update check on startup
+  startup_update_check();
 #ifdef _WIN32
   SetConsoleCtrlHandler(console_handler, TRUE);
 #else
