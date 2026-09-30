@@ -48,8 +48,10 @@ struct UnitDef {
 };
 
 std::string norm_unit(std::string u) {
-  while (!u.empty() && u.front() == ' ') u.erase(u.begin());
-  while (!u.empty() && u.back() == ' ') u.pop_back();
+  while (!u.empty() && u.front() == ' ')
+    u.erase(u.begin());
+  while (!u.empty() && u.back() == ' ')
+    u.pop_back();
   std::string o;
   o.reserve(u.size());
   for (std::size_t i = 0; i < u.size(); ++i) {
@@ -86,7 +88,8 @@ std::string norm_unit(std::string u) {
 void add_unit(std::unordered_map<std::string, UnitDef>& m, Qty q, double mul, double add,
               std::initializer_list<const char*> names) {
   UnitDef d{q, mul, add};
-  for (auto n : names) m.emplace(n, d);
+  for (auto n : names)
+    m.emplace(n, d);
 }
 
 const std::unordered_map<std::string, UnitDef>& units() {
@@ -94,9 +97,12 @@ const std::unordered_map<std::string, UnitDef>& units() {
     std::unordered_map<std::string, UnitDef> u;
     // Length — SI metre
     add_unit(u, Qty::Length, 1e-9, 0, {"nm", "nanometer", "nanometers", "nanometre", "nanometres"});
-    add_unit(u, Qty::Length, 1e-6, 0, {"um", "µm", "micrometer", "micrometers", "micrometre", "micrometres"});
-    add_unit(u, Qty::Length, 1e-3, 0, {"mm", "millimeter", "millimeters", "millimetre", "millimetres"});
-    add_unit(u, Qty::Length, 0.01, 0, {"cm", "centimeter", "centimeters", "centimetre", "centimetres"});
+    add_unit(u, Qty::Length, 1e-6, 0,
+             {"um", "µm", "micrometer", "micrometers", "micrometre", "micrometres"});
+    add_unit(u, Qty::Length, 1e-3, 0,
+             {"mm", "millimeter", "millimeters", "millimetre", "millimetres"});
+    add_unit(u, Qty::Length, 0.01, 0,
+             {"cm", "centimeter", "centimeters", "centimetre", "centimetres"});
     add_unit(u, Qty::Length, 0.1, 0, {"dm", "decimeter", "decimeters", "decimetre", "decimetres"});
     add_unit(u, Qty::Length, 1, 0, {"m", "meter", "meters", "metre", "metres"});
     add_unit(u, Qty::Length, 10, 0, {"dam", "decameter", "decameters"});
@@ -120,12 +126,15 @@ const std::unordered_map<std::string, UnitDef>& units() {
 
     // Volume — SI cubic metre
     add_unit(u, Qty::Volume, 1e-9, 0, {"mm3", "cubicmillimeter", "cubicmillimeters"});
-    add_unit(u, Qty::Volume, 1e-6, 0, {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "cc",
-                                       "cm3", "cubiccentimeter", "cubiccentimeters"});
+    add_unit(u, Qty::Volume, 1e-6, 0,
+             {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "cc", "cm3",
+              "cubiccentimeter", "cubiccentimeters"});
     add_unit(u, Qty::Volume, 0.001, 0, {"l", "liter", "liters", "litre", "litres"});
-    add_unit(u, Qty::Volume, 1, 0, {"m3", "cubicmeter", "cubicmeters", "cubicmetre", "cubicmetres"});
+    add_unit(u, Qty::Volume, 1, 0,
+             {"m3", "cubicmeter", "cubicmeters", "cubicmetre", "cubicmetres"});
     add_unit(u, Qty::Volume, 1e-3, 0, {"dm3", "cubicdecimeter"});
-    add_unit(u, Qty::Volume, 0.00454609, 0, {"impgal", "imperialgallon", "imperialgallons", "ukgal"});
+    add_unit(u, Qty::Volume, 0.00454609, 0,
+             {"impgal", "imperialgallon", "imperialgallons", "ukgal"});
     add_unit(u, Qty::Volume, 0.003785411784, 0, {"gal", "gallon", "gallons", "usgal"});
     add_unit(u, Qty::Volume, 0.000946352946, 0, {"qt", "quart", "quarts"});
     add_unit(u, Qty::Volume, 0.000473176473, 0, {"pt", "pint", "pints"});
@@ -137,8 +146,9 @@ const std::unordered_map<std::string, UnitDef>& units() {
     // Area — SI square metre
     add_unit(u, Qty::Area, 1e-6, 0, {"mm2", "sqmm", "squaremillimeter", "squaremillimeters"});
     add_unit(u, Qty::Area, 1e-4, 0, {"cm2", "sqcm", "squarecentimeter", "squarecentimeters"});
-    add_unit(u, Qty::Area, 1, 0, {"m2", "sqm", "sqmeter", "squaremeter", "squaremeters", "squaremetre",
-                                 "squaremetres"});
+    add_unit(
+        u, Qty::Area, 1, 0,
+        {"m2", "sqm", "sqmeter", "squaremeter", "squaremeters", "squaremetre", "squaremetres"});
     add_unit(u, Qty::Area, 1e6, 0, {"km2", "sqkm", "squarekilometer", "squarekilometers"});
     add_unit(u, Qty::Area, 1e4, 0, {"ha", "hectare", "hectares"});
     add_unit(u, Qty::Area, 4046.8564224, 0, {"acre", "acres", "ac"});
@@ -155,7 +165,8 @@ const std::unordered_map<std::string, UnitDef>& units() {
 
     // Speed — SI m/s
     add_unit(u, Qty::Speed, 1, 0, {"mps", "m/s", "meterpersecond", "meterspersecond"});
-    add_unit(u, Qty::Speed, 1000.0 / 3600.0, 0, {"kmh", "km/h", "kph", "kilometerperhour", "kilometersperhour"});
+    add_unit(u, Qty::Speed, 1000.0 / 3600.0, 0,
+             {"kmh", "km/h", "kph", "kilometerperhour", "kilometersperhour"});
     add_unit(u, Qty::Speed, 1609.344 / 3600.0, 0, {"mph", "mi/h", "mileperhour", "milesperhour"});
     add_unit(u, Qty::Speed, 1852.0 / 3600.0, 0, {"kn", "kt", "knot", "knots"});
     add_unit(u, Qty::Speed, 0.3048, 0, {"fps", "ft/s", "feetpersecond"});
@@ -261,7 +272,8 @@ bool consume_money_sym(const std::string& s, std::size_t& i, std::string& sym) {
 
 bool parse_conversion(std::string s, double& value, std::string& from, std::string& to) {
   auto lower = to_lower_utf8(s);
-  while (!lower.empty() && (lower.front() == ' ' || lower.front() == '\t')) lower.erase(lower.begin());
+  while (!lower.empty() && (lower.front() == ' ' || lower.front() == '\t'))
+    lower.erase(lower.begin());
   if (lower.rfind("convert ", 0) == 0) lower = lower.substr(8);
   auto topos = lower.find(" to ");
   std::size_t seplen = 4;
@@ -272,9 +284,12 @@ bool parse_conversion(std::string s, double& value, std::string& from, std::stri
   if (topos == std::string::npos) return false;
   auto left = lower.substr(0, topos);
   auto right = lower.substr(topos + seplen);
-  while (!left.empty() && left.back() == ' ') left.pop_back();
-  while (!right.empty() && (right.front() == ' ' || right.front() == '\t')) right.erase(right.begin());
-  while (!right.empty() && right.back() == ' ') right.pop_back();
+  while (!left.empty() && left.back() == ' ')
+    left.pop_back();
+  while (!right.empty() && (right.front() == ' ' || right.front() == '\t'))
+    right.erase(right.begin());
+  while (!right.empty() && right.back() == ' ')
+    right.pop_back();
   std::string lead;
   std::size_t i = 0;
   consume_money_sym(left, i, lead);
@@ -294,10 +309,12 @@ bool parse_conversion(std::string s, double& value, std::string& from, std::stri
     }
     break;
   }
-  while (i < left.size() && (left[i] == ' ' || left[i] == '\t')) ++i;
+  while (i < left.size() && (left[i] == ' ' || left[i] == '\t'))
+    ++i;
   std::string trail;
   consume_money_sym(left, i, trail);
-  while (i < left.size() && (left[i] == ' ' || left[i] == '\t')) ++i;
+  while (i < left.size() && (left[i] == ' ' || left[i] == '\t'))
+    ++i;
   from = left.substr(i);
   if (from.empty()) from = !lead.empty() ? lead : trail;
   std::string to_sym;
@@ -329,7 +346,8 @@ const std::unordered_map<std::string, std::string>& ccy_alias() {
   static const auto m = [] {
     std::unordered_map<std::string, std::string> a;
     auto add = [&](const char* code, std::initializer_list<const char*> names) {
-      for (auto n : names) a.emplace(n, code);
+      for (auto n : names)
+        a.emplace(n, code);
     };
     add("usd", {"usd", "dollar", "dollars", "buck", "bucks", "$", "usdollar", "usdollars"});
     add("eur", {"eur", "euro", "euros"});
@@ -421,7 +439,8 @@ std::string fx_http_get(const wchar_t* host, const wchar_t* path) {
     WinHttpCloseHandle(ses);
     return body;
   }
-  BOOL ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+  BOOL ok =
+      WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
   if (ok) {
     DWORD avail = 0;
@@ -441,7 +460,8 @@ std::string fx_http_get(const wchar_t* host, const wchar_t* path) {
 }
 #else
 std::string fx_http_get(const char* url) {
-  std::string cmd = std::string("curl -fsS --max-time 2 -A Wilfred/1.0 \"") + url + "\" 2>/dev/null";
+  std::string cmd =
+      std::string("curl -fsS --max-time 2 -A Wilfred/1.0 \"") + url + "\" 2>/dev/null";
   FILE* f = popen(cmd.c_str(), "r");
   if (!f) return {};
   std::string body;
@@ -475,7 +495,8 @@ bool parse_fx_rates(const std::string& body, std::unordered_map<std::string, dou
     auto colon = blob.find(':', q2);
     if (colon == std::string::npos) break;
     i = colon + 1;
-    while (i < blob.size() && (blob[i] == ' ' || blob[i] == '\t')) ++i;
+    while (i < blob.size() && (blob[i] == ' ' || blob[i] == '\t'))
+      ++i;
     std::string num;
     if (i < blob.size() && blob[i] == '-') num.push_back(blob[i++]);
     while (i < blob.size()) {
@@ -548,12 +569,14 @@ std::string format_ccy(double v, const std::string& iso, const std::string& raw)
     std::snprintf(buf, sizeof(buf), "%.6f", v);
   std::string label = raw;
   if (label.size() == 3) {
-    for (char& c : label) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    for (char& c : label)
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
   }
   return std::string(buf) + " " + label;
 }
 
-bool apply_currency(double amount, std::string_view from_raw, std::string_view to_raw, MathResult& out) {
+bool apply_currency(double amount, std::string_view from_raw, std::string_view to_raw,
+                    MathResult& out) {
   auto from = iso_ccy(from_raw);
   auto to = iso_ccy(to_raw);
   if (from.empty() || to.empty() || from == to) return false;

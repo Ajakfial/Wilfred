@@ -1583,8 +1583,10 @@ int score_glyph(std::string_view q, const Glyph& g) {
 
 std::vector<SearchResult> glyph_results(std::string_view query, bool symbols) {
   std::string q = std::string(query);
-  while (!q.empty() && (q.front() == ' ' || q.front() == '\t')) q.erase(q.begin());
-  while (!q.empty() && (q.back() == ' ' || q.back() == '\t')) q.pop_back();
+  while (!q.empty() && (q.front() == ' ' || q.front() == '\t'))
+    q.erase(q.begin());
+  while (!q.empty() && (q.back() == ' ' || q.back() == '\t'))
+    q.pop_back();
 
   struct Hit {
     const Glyph* g;

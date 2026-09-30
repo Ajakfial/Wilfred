@@ -4,11 +4,11 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/math/expr.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/fuzzy.hpp"
-#include "wilfred/math/expr.hpp"
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/macros.hpp"
 
@@ -25,19 +25,19 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
+#include <windows.h>
 #include <winhttp.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
 #include <dirent.h>
-#include <fstream>
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <fstream>
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -52,8 +52,8 @@ std::mutex weather_mu;
 std::string weather_cache;
 std::int64_t weather_cache_at{0};
 
-static SearchResult card(const std::string& title, const std::string& sub, const std::string& payload,
-                         const std::string& label, int score = 10000,
+static SearchResult card(const std::string& title, const std::string& sub,
+                         const std::string& payload, const std::string& label, int score = 10000,
                          ResultAction action = ResultAction::Copy, int meter = -1) {
   SearchResult r;
   r.title = title;
@@ -85,8 +85,10 @@ static std::string human_bytes(std::uint64_t n) {
 }
 
 static std::string trim_sv(std::string s) {
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+    s.pop_back();
   return s;
 }
 
@@ -119,7 +121,8 @@ static std::string http_get_https(const wchar_t* host, const std::wstring& path)
     WinHttpCloseHandle(ses);
     return body;
   }
-  BOOL ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+  BOOL ok =
+      WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
   if (ok) {
     DWORD avail = 0;
@@ -139,7 +142,8 @@ static std::string http_get_https(const wchar_t* host, const std::wstring& path)
 }
 #else
 static std::string http_get_https(const char* url) {
-  std::string cmd = std::string("curl -fsS --max-time 2 -A Wilfred/1.0 \"") + url + "\" 2>/dev/null";
+  std::string cmd =
+      std::string("curl -fsS --max-time 2 -A Wilfred/1.0 \"") + url + "\" 2>/dev/null";
   FILE* f = popen(cmd.c_str(), "r");
   if (!f) return {};
   std::string body;
@@ -176,7 +180,8 @@ static std::string fetch_weather(const std::string& where) {
   url += "?format=%l:+%c+%t+%h+%w+%C";
   auto body = http_get_https(url.c_str());
 #endif
-  while (!body.empty() && (body.back() == '\n' || body.back() == '\r')) body.pop_back();
+  while (!body.empty() && (body.back() == '\n' || body.back() == '\r'))
+    body.pop_back();
   if (body.empty() || body.find("Unknown") != std::string::npos) return {};
   std::lock_guard<std::mutex> lock(weather_mu);
   weather_cache = key + "|" + body;
@@ -338,13 +343,12 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
       p.pid = pe.th32ProcessID;
       p.name = name;
       p.threads = pe.cntThreads;
-      HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION |
-                                 PROCESS_VM_READ,
-                             FALSE, pe.th32ProcessID);
+      HANDLE h = OpenProcess(
+          PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE,
+          pe.th32ProcessID);
       if (h) {
         PROCESS_MEMORY_COUNTERS pmc{};
-        if (GetProcessMemoryInfo(h, &pmc, sizeof(pmc)))
-          p.working_set = pmc.WorkingSetSize;
+        if (GetProcessMemoryInfo(h, &pmc, sizeof(pmc))) p.working_set = pmc.WorkingSetSize;
         FILETIME c{}, e{}, k{}, u{};
         if (GetProcessTimes(h, &c, &e, &k, &u)) {
           auto qw = [](FILETIME f) {
@@ -448,15 +452,15 @@ static std::string first_ipv4() {
   WSADATA wsa{};
   WSAStartup(MAKEWORD(2, 2), &wsa);
   ULONG sz = 0;
-  GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
-                                    GAA_FLAG_SKIP_DNS_SERVER,
+  GetAdaptersAddresses(AF_INET,
+                       GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
                        nullptr, nullptr, &sz);
   if (!sz) return {};
   std::vector<char> buf(sz);
   auto* addrs = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buf.data());
-  if (GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
-                                        GAA_FLAG_SKIP_DNS_SERVER,
-                           nullptr, addrs, &sz) != NO_ERROR)
+  if (GetAdaptersAddresses(
+          AF_INET, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+          nullptr, addrs, &sz) != NO_ERROR)
     return {};
   for (auto* a = addrs; a; a = a->Next) {
     if (a->OperStatus != IfOperStatusUp) continue;
@@ -484,14 +488,17 @@ static std::string first_ipv4() {
   std::string s(buf);
   auto sp = s.find(' ');
   if (sp != std::string::npos) s.resize(sp);
-  while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+  while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+    s.pop_back();
   return s;
 }
 #endif
 
 }  // namespace
 
-void set_mini_network_enabled(bool enabled) { g_net = enabled; }
+void set_mini_network_enabled(bool enabled) {
+  g_net = enabled;
+}
 
 MiniIntent parse_mini_intent(std::string_view query) {
   MiniIntent it;
@@ -511,7 +518,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
     it.remainder = rest;
     it.exact = exact;
   };
-  if (key == "weather" || key == "wttr" || key == "forecast") set(MiniKind::Weather, rest.empty());
+  if (key == "weather" || key == "wttr" || key == "forecast")
+    set(MiniKind::Weather, rest.empty());
   else if (key == "time" || key == "date" || key == "clock" || key == "now")
     set(MiniKind::Time, true);
   else if (key == "disku" || key == "diskusage" || key == "disk-usage")
@@ -589,14 +597,15 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Weather) {
     auto w = fetch_weather(intent.remainder);
     if (!w.empty()) {
-      out.push_back(card(w, intent.remainder.empty() ? "Local weather · enter copies"
-                                                     : "Weather · " + intent.remainder,
+      out.push_back(card(w,
+                         intent.remainder.empty() ? "Local weather · enter copies"
+                                                  : "Weather · " + intent.remainder,
                          w, "weather"));
     } else {
       std::string url = "https://wttr.in/";
       if (!intent.remainder.empty()) url += percent_encode(intent.remainder);
-      SearchResult r = card("Weather", "Open live forecast", url, "weather", 9900,
-                            ResultAction::WebSearch);
+      SearchResult r =
+          card("Weather", "Open live forecast", url, "weather", 9900, ResultAction::WebSearch);
       r.path = url;
       out.push_back(std::move(r));
     }
@@ -624,7 +633,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     else
       std::snprintf(title, sizeof(title), "CPU  %.0f%%", pct);
     out.push_back(card(title, "Processor load", title, "cpu", 10000, ResultAction::Copy,
-                      pct < 0 ? -1 : static_cast<int>(pct)));
+                       pct < 0 ? -1 : static_cast<int>(pct)));
     return out;
   }
 
@@ -639,8 +648,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       char line[192];
       std::snprintf(line, sizeof(line), "%s  %d%% used  ·  %s free of %s", d.path.c_str(), pct,
                     human_bytes(d.free).c_str(), human_bytes(d.total).c_str());
-      auto r = card(line, d.name, line, intent.kind == MiniKind::DiskUsage ? "disku" : "disk", 10000,
-                    ResultAction::Copy, pct);
+      auto r = card(line, d.name, line, intent.kind == MiniKind::DiskUsage ? "disku" : "disk",
+                    10000, ResultAction::Copy, pct);
 #ifdef _WIN32
       r.action = ResultAction::Open;
       r.path = d.path;
@@ -654,7 +663,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       char sum[160];
       std::snprintf(sum, sizeof(sum), "All drives  %d%% used  ·  %s of %s", pct,
                     human_bytes(used).c_str(), human_bytes(ttot).c_str());
-      out.insert(out.begin(), card(sum, "Total disk usage", sum, "disku", 10050, ResultAction::Copy, pct));
+      out.insert(out.begin(),
+                 card(sum, "Total disk usage", sum, "disku", 10050, ResultAction::Copy, pct));
     }
     return out;
   }
@@ -690,8 +700,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     if (hits.empty()) {
       out.push_back(card(intent.remainder.empty() ? "No open windows" : "No matching window",
-                         intent.remainder.empty() ? "Type windows to list them"
-                                                  : "No window matching \"" + intent.remainder + "\"",
+                         intent.remainder.empty()
+                             ? "Type windows to list them"
+                             : "No window matching \"" + intent.remainder + "\"",
                          "", "window", 9000, ResultAction::None));
       return out;
     }
@@ -733,7 +744,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       } else {
         char title[80];
         const char* src = st.ACLineStatus == 1 ? "plugged in" : "on battery";
-        std::snprintf(title, sizeof(title), "Battery  %d%%  ·  %s", (int)st.BatteryLifePercent, src);
+        std::snprintf(title, sizeof(title), "Battery  %d%%  ·  %s", (int)st.BatteryLifePercent,
+                      src);
         out.push_back(card(title, "Power", title, "battery", 10000, ResultAction::Copy,
                            st.BatteryLifePercent <= 100 ? (int)st.BatteryLifePercent : -1));
       }
@@ -758,8 +770,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       std::snprintf(title, sizeof(title), "Battery  %d%%  ·  %s", pct, status.c_str());
       out.push_back(card(title, "Power", title, "battery", 10000, ResultAction::Copy, pct));
     } else {
-      out.push_back(card("Battery", "Unavailable on this platform", "", "battery", 8000,
-                         ResultAction::None));
+      out.push_back(
+          card("Battery", "Unavailable on this platform", "", "battery", 8000, ResultAction::None));
     }
 #endif
     return out;
@@ -826,8 +838,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Clips) {
     auto hist = clipboard_history_texts();
     if (hist.empty()) {
-      out.push_back(card("No clipboard history yet", "Copy text, then type clips", "", "clips", 9000,
-                         ResultAction::None));
+      out.push_back(card("No clipboard history yet", "Copy text, then type clips", "", "clips",
+                         9000, ResultAction::None));
     } else {
       int n = 0;
       for (auto& t : hist) {
@@ -876,8 +888,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     std::snprintf(title, sizeof(title), "%d × %d", w, h);
     out.push_back(card(title, "Primary display", title, "screen"));
 #else
-    out.push_back(card("Display", "Resolution unavailable here", "", "screen", 8000,
-                       ResultAction::None));
+    out.push_back(
+        card("Display", "Resolution unavailable here", "", "screen", 8000, ResultAction::None));
 #endif
     return out;
   }
@@ -947,7 +959,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                      {"usd", "inr"}, {"usd", "aud"}};
     auto iso_up = [](const char* s) {
       std::string o(s);
-      for (char& c : o) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      for (char& c : o)
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
       return o;
     };
     int n = 0;
@@ -965,23 +978,22 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   }
 
   if (intent.kind == MiniKind::Help) {
-    static const char* lines[] = {
-        "weather [city]  ·  local forecast",
-        "time  ·  clock and date",
-        "disk / disku  ·  drive space",
-        "ram / cpu / swap  ·  memory and load",
-        "process <name>  ·  app CPU and RAM",
-        "windows [name]  ·  switch to an open window",
-        "emoji [name]  ·  emoji picker",
-        "symbol [name]  ·  punctuation and signs",
-        "fx 100 usd to eur  ·  currency conversion",
-        "battery / ip / hostname / uptime / user",
-        "clip / clips  ·  clipboard",
-        "snip / ;keyword  ·  text snippets",
-        "snip save <name>  ·  save clipboard as snippet",
-        "os / cores / screen",
-        "macros  ·  bang searches  (!yt cats)",
-        nullptr};
+    static const char* lines[] = {"weather [city]  ·  local forecast",
+                                  "time  ·  clock and date",
+                                  "disk / disku  ·  drive space",
+                                  "ram / cpu / swap  ·  memory and load",
+                                  "process <name>  ·  app CPU and RAM",
+                                  "windows [name]  ·  switch to an open window",
+                                  "emoji [name]  ·  emoji picker",
+                                  "symbol [name]  ·  punctuation and signs",
+                                  "fx 100 usd to eur  ·  currency conversion",
+                                  "battery / ip / hostname / uptime / user",
+                                  "clip / clips  ·  clipboard",
+                                  "snip / ;keyword  ·  text snippets",
+                                  "snip save <name>  ·  save clipboard as snippet",
+                                  "os / cores / screen",
+                                  "macros  ·  bang searches  (!yt cats)",
+                                  nullptr};
     for (auto** p = lines; *p; ++p)
       out.push_back(card(*p, "Mini commands · enter copies", *p, "help", 10000));
     return out;

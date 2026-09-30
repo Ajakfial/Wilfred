@@ -3,16 +3,16 @@
 #include "wilfred/history/history.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/index/store.hpp"
+#include "wilfred/index/tokenizer.hpp"
+#include "wilfred/math/expr.hpp"
+#include "wilfred/platform/native.hpp"
 #include "wilfred/query/interpreter.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/content.hpp"
 #include "wilfred/search/context.hpp"
 #include "wilfred/search/macros.hpp"
-#include "wilfred/platform/native.hpp"
-#include "wilfred/math/expr.hpp"
 #include "wilfred/search/minis.hpp"
 #include "wilfred/search/rank.hpp"
-#include "wilfred/index/tokenizer.hpp"
 
 void test_search_extras() {
   using namespace wilfred;

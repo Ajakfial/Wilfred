@@ -129,7 +129,9 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     auto m = evaluate_math(iq.classification.text);
     SearchResult r;
     r.title = m.display;
-    r.subtitle = (m.currency ? "Currency · " : m.conversion ? "Metric conversion · " : "Calculator · ") +
+    r.subtitle = (m.currency     ? "Currency · "
+                  : m.conversion ? "Metric conversion · "
+                                 : "Calculator · ") +
                  iq.classification.text;
     r.payload = m.display;
     r.action = m.conversion ? ResultAction::Convert : ResultAction::Calculate;
@@ -141,12 +143,14 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
   if (iq.classification.kind == QueryKind::Command) {
     auto l = to_lower_utf8(effective);
     std::string rest = effective;
-    if (l.rfind(">", 0) == 0) rest = effective.substr(1);
+    if (l.rfind(">", 0) == 0)
+      rest = effective.substr(1);
     else if (l.rfind("cmd ", 0) == 0)
       rest = effective.substr(4);
     else if (l.rfind("run ", 0) == 0)
       rest = effective.substr(4);
-    while (!rest.empty() && rest.front() == ' ') rest.erase(rest.begin());
+    while (!rest.empty() && rest.front() == ' ')
+      rest.erase(rest.begin());
     auto limit = static_cast<std::size_t>(cfg.search.max_results);
     auto found = search_.search(rest, cfg, history, limit);
     iq.results.insert(iq.results.end(), found.begin(), found.end());

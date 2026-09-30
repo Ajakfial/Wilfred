@@ -1,8 +1,8 @@
 #include "test.hpp"
-#include "wilfred/query/classify.hpp"
-#include "wilfred/query/interpreter.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/math/expr.hpp"
+#include "wilfred/query/classify.hpp"
+#include "wilfred/query/interpreter.hpp"
 #include "wilfred/search/engine.hpp"
 
 void test_classify() {
