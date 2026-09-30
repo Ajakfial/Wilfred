@@ -4,7 +4,6 @@
 # on files you touch rather than reformatting the whole tree in one PR
 # (see CONTRIBUTING.md).
 BasedOnStyle: Google
-Language: Cpp
 Standard: c++20
 
 IndentWidth: 2
