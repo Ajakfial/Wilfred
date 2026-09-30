@@ -25,13 +25,16 @@
 #include <vector>
 
 #ifdef _WIN32
+// Order matters: winsock2.h and windows.h must precede iphlpapi.h and friends.
+// clang-format off
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
-#include <windows.h>
 #include <winhttp.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+// clang-format on
 #else
 #include <dirent.h>
 #include <sys/statvfs.h>
