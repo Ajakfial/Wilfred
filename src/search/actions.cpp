@@ -43,6 +43,18 @@ void attach_result_actions(SearchResult& r) {
     add("copy_text", "Copy");
     return;
   }
+  if (r.action == ResultAction::System || r.category == "system") {
+    auto sid = r.payload.empty() ? r.path : r.payload;
+    const char* lab = "Run";
+    if (sid == "lock") lab = "Lock";
+    else if (sid == "sleep") lab = "Sleep";
+    else if (sid == "shutdown") lab = "Shut down";
+    else if (sid == "restart") lab = "Restart";
+    else if (sid == "logout") lab = "Log out";
+    else if (sid == "empty_trash") lab = "Empty";
+    add("open", lab);
+    return;
+  }
   if (r.action == ResultAction::WebSearch || r.path.rfind("http://", 0) == 0 ||
       r.path.rfind("https://", 0) == 0) {
     add("open", "Open");
@@ -148,6 +160,10 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   }
   if (r.action == ResultAction::Habit || r.action == ResultAction::None) return false;
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return true;
+  if (r.action == ResultAction::System || r.category == "system") {
+    auto id = r.payload.empty() ? r.path : r.payload;
+    return native_system_action(id);
+  }
   if (r.action == ResultAction::Plugin || r.category == "plugin") {
     if (g_plugin_exec && g_plugin_exec->execute(r, id)) return true;
   }

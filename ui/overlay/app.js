@@ -61,6 +61,23 @@
     swap: "bi-layers",
     help: "bi-question-circle",
     content: "bi-file-text",
+    emoji: "bi-emoji-smile",
+    symbol: "bi-asterisk",
+    fx: "bi-currency-exchange",
+    tz: "bi-globe2",
+    color: "bi-palette",
+    uuid: "bi-key",
+    base64: "bi-type",
+    sha256: "bi-hash",
+    lorem: "bi-text-paragraph",
+    json: "bi-code-square",
+    system: "bi-power",
+    lock: "bi-lock",
+    sleep: "bi-moon",
+    shutdown: "bi-power",
+    restart: "bi-arrow-repeat",
+    logout: "bi-box-arrow-right",
+    empty_trash: "bi-trash",
   };
 
   function nativeSend(msg) {
@@ -87,8 +104,12 @@
     if (item.action === "expand" || item.category === "snippet") return item.kind === "clip" ? "clip" : "snippet";
     if (item.action === "plugin" || item.category === "plugin") return "plugin";
     if (item.action === "calc") return "calc";
-    if (item.action === "convert") return "convert";
+    if (item.action === "convert") {
+      if (item.kind && badges[item.kind]) return item.kind;
+      return "convert";
+    }
     if (item.action === "web") return "web";
+    if (item.category === "system") return item.kind || "system";
     if (item.action === "habit") return "habit";
     if (item.category === "clipboard" || item.kind === "clipboard") return "clipboard";
     if (item.category === "macro" || item.kind === "macro") return "macro";

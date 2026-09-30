@@ -41,8 +41,10 @@ index.
 `sqrt`, `log`, `ln`, `abs`, `pow`, `ceil`, `floor`, `exp`, `pi`), or a
 `" to "` / `" in "` / `convert ` phrase for unit conversion — and the
 expression must actually evaluate successfully
-(`math::evaluate_math()` / `convert_metric()`, see below). A bare number like
-`42` is deliberately **not** treated as math (it would just be a search).
+(`math::evaluate_math()` / `convert_metric()`, see below). Successful
+dev-utility commands (`convert_devutil()`) also count, even with no
+digits (`uuid`, `base64 hi`). A bare number like `42` is deliberately
+**not** treated as math (it would just be a search).
 
 ```
 25 * 42
@@ -61,6 +63,14 @@ today + 7 days
 2024-01-31 + 1 month
 in 3 weeks
 unix 1700000000
+uuid
+guid
+base64 hello
+base64d aGVsbG8=
+sha256 abc
+lorem 12
+json {"a":1,"b":[true,null]}
+json minify {"a": 1}
 ```
 
 Unit conversion covers SI and common US customary units (length, mass,
@@ -81,6 +91,13 @@ Date and time conversion covers ISO dates, `today`/`tomorrow`/`yesterday`,
 timezone conversion (`3pm est to utc`, `now in tokyo`, `12:00 utc to utc+1`).
 Offsets for named cities apply a simplified DST rule (US / EU / AU / NZ);
 abbreviations like `EST`/`PDT` are fixed offsets. Enter copies the result.
+
+Dev utilities live next to the calculator (`src/math/dev.cpp` /
+`convert_devutil()`). `uuid`/`guid` generates a UUID v4. `base64` /
+`base64d` encode or decode (clipboard is used if you type the command
+with no payload). `sha256 <text>` hashes the rest of the query. `lorem`
+/`lorem 40` emits placeholder words. `json {…}` pretty-prints; `json
+minify {…}` compact-prints. Enter copies the result.
 
 The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) —
 there is no `eval`/scripting backdoor.
@@ -128,6 +145,18 @@ synthetic result card instead of searching the index
 | `fx [amount from to]` | `currency`, `forex`, `ccy` | Currency conversion (`fx 100 usd to eur` or `fx 25 gbp jpy`); bare `fx` lists spot rates |
 | `tz [zone]` | `timezone`, `worldclock` | World clock (`tz tokyo`) or zone convert (`tz 3pm est to pst`) |
 | `color [value]` | `colour` | Color convert (`color #ff5500`); enter copies hex/rgb/hsl |
+| `uuid` | `uuid4`, `guid`, `uuidv4` | Generate a UUID v4 (enter copies) |
+| `base64 [text]` | `b64`, `encode64` | Base64-encode the argument or clipboard |
+| `base64d [text]` | `b64d`, `decode64` | Base64-decode the argument or clipboard |
+| `sha256 [text]` | `sha`, `hash` (with text) | SHA-256 of the argument or clipboard |
+| `lorem [n]` | `ipsum`, `loremipsum` | Placeholder text (`n` words, default 30) |
+| `json [value]` | `prettyjson`, `pretty {…}` | Pretty-print JSON; `json minify {…}` compact-prints |
+| `lock` | `lockscreen` | Lock the session (enter runs) |
+| `sleep` | `suspend` | Sleep / suspend the machine |
+| `shutdown` | `poweroff`, `halt`, `power off` | Power off |
+| `restart` | `reboot` | Reboot |
+| `logout` | `logoff`, `signout`, `log out` | Sign out of this session |
+| `empty trash` | `emptyrecycle`, `empty bin` | Empty the recycle bin / trash |
 
 Minis can be disabled entirely with `search.minis: false`. `weather` and
 live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`

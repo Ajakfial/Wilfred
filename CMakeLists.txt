@@ -67,6 +67,7 @@ set(WILFRED_CORE_SOURCES
   src/math/convert.cpp
   src/math/color.cpp
   src/math/datetime.cpp
+  src/math/dev.cpp
   src/apps/discovery.cpp
   src/browser/browser.cpp
   src/history/history.cpp
@@ -176,7 +177,7 @@ target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 
 if(WIN32)
   target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version
-    winhttp psapi iphlpapi ws2_32)
+    winhttp psapi iphlpapi ws2_32 powrprof)
 
   include(FetchContent)
   if(POLICY CMP0169)

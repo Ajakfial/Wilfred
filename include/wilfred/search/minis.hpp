@@ -37,6 +37,12 @@ enum class MiniKind {
   Fx,
   Tz,
   Color,
+  Uuid,
+  Base64,
+  Sha256,
+  Lorem,
+  Json,
+  System,
 };
 
 struct MiniIntent {

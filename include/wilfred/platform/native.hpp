@@ -49,4 +49,7 @@ struct NativeWindowInfo {
 std::vector<NativeWindowInfo> native_list_windows();
 bool native_focus_window(std::uint64_t id);
 
+// lock | sleep | shutdown | restart | logout | empty_trash
+bool native_system_action(const std::string& id);
+
 }  // namespace wilfred

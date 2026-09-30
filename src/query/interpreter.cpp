@@ -158,12 +158,29 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     r.title = m.display;
     r.subtitle = (m.currency     ? "Currency · "
                   : m.datetime   ? "Date/time · "
+                  : m.devutil    ? "Dev · "
                   : m.conversion ? "Metric conversion · "
                                  : "Calculator · ") +
                  iq.classification.text;
     r.payload = m.display;
     r.action = m.conversion ? ResultAction::Convert : ResultAction::Calculate;
     r.score = 10000;
+    if (m.devutil) {
+      auto l = to_lower_utf8(iq.classification.text);
+      if (l.rfind("uuid", 0) == 0 || l.rfind("guid", 0) == 0)
+        r.kind_label = "uuid";
+      else if (l.rfind("base64", 0) == 0 || l.rfind("b64", 0) == 0 || l.rfind("decode64", 0) == 0 ||
+               l.rfind("encode64", 0) == 0)
+        r.kind_label = "base64";
+      else if (l.rfind("sha256", 0) == 0 || l.rfind("sha ", 0) == 0 || l.rfind("hash ", 0) == 0)
+        r.kind_label = "sha256";
+      else if (l.rfind("lorem", 0) == 0 || l.rfind("ipsum", 0) == 0)
+        r.kind_label = "lorem";
+      else if (l.rfind("json", 0) == 0 || l.rfind("pretty", 0) == 0)
+        r.kind_label = "json";
+      else
+        r.kind_label = "dev";
+    }
     iq.results.push_back(r);
     return finish();
   }
@@ -264,7 +281,8 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
 bool result_is_launchable(const SearchResult& r) {
   return r.action != ResultAction::Habit && r.action != ResultAction::Calculate &&
          r.action != ResultAction::Convert && r.action != ResultAction::None &&
-         r.action != ResultAction::SwitchWindow && r.category != "window";
+         r.action != ResultAction::SwitchWindow && r.action != ResultAction::System &&
+         r.category != "window";
 }
 
 bool execute_result(const SearchResult& r, const Config& cfg, const std::string& action_id) {

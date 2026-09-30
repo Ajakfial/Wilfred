@@ -50,6 +50,10 @@ bool looks_like_url(std::string_view s) {
 bool looks_like_math(std::string_view s) {
   std::string t(s);
   auto l = to_lower_utf8(t);
+  {
+    MathResult d;
+    if (convert_devutil(t, d) && d.ok) return true;
+  }
   bool conv_phrase =
       t.find(" to ") != std::string::npos || t.find(" in ") != std::string::npos ||
       l.rfind("convert ", 0) == 0 || (!t.empty() && t.front() == '#') || l.rfind("rgb", 0) == 0 ||

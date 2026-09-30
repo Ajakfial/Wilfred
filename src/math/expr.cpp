@@ -266,6 +266,7 @@ MathResult evaluate_math(std::string_view expr) {
   if (convert_color(s, r)) return r;
   if (convert_datetime(s, r)) return r;
   if (convert_metric(s, r)) return r;
+  if (convert_devutil(s, r)) return r;
   Parser p(s);
   double v = p.parse();
   if (p.failed || !std::isfinite(v)) {

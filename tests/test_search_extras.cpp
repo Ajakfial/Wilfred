@@ -52,6 +52,21 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("tz tokyo").remainder, "tokyo");
   CHECK_EQ(parse_mini_intent("color").kind, MiniKind::Color);
   CHECK_EQ(parse_mini_intent("colour #fff").remainder, "#fff");
+  CHECK_EQ(parse_mini_intent("uuid").kind, MiniKind::Uuid);
+  CHECK_EQ(parse_mini_intent("base64 hello").kind, MiniKind::Base64);
+  CHECK_EQ(parse_mini_intent("sha256 abc").kind, MiniKind::Sha256);
+  CHECK_EQ(parse_mini_intent("lorem 12").kind, MiniKind::Lorem);
+  CHECK_EQ(parse_mini_intent("json {\"a\":1}").kind, MiniKind::Json);
+  CHECK_EQ(parse_mini_intent("lock").kind, MiniKind::System);
+  CHECK_EQ(parse_mini_intent("lock").remainder, "lock");
+  CHECK_EQ(parse_mini_intent("shutdown").kind, MiniKind::System);
+  CHECK_EQ(parse_mini_intent("empty trash").remainder, "empty_trash");
+  CHECK_EQ(parse_mini_intent("sleep").remainder, "sleep");
+  CHECK_EQ(parse_mini_intent("restart now").remainder, "restart");
+  CHECK_EQ(parse_mini_intent("log out").remainder, "logout");
+  CHECK_EQ(parse_mini_intent("lock firefox").kind, MiniKind::None);
+  CHECK_EQ(parse_mini_intent("hash").kind, MiniKind::None);
+  CHECK_EQ(parse_mini_intent("hash abc").kind, MiniKind::Sha256);
 
   Config cfg;
   auto time_cards = mini_results("time", cfg, "");
@@ -92,6 +107,27 @@ void test_search_extras() {
   CHECK_EQ(color_cards.front().kind_label, "color");
   auto time_zone = mini_results("time london", cfg, "");
   CHECK(time_zone.size() >= 2);
+
+  CHECK(looks_like_math("uuid"));
+  CHECK(looks_like_math("sha256 abc"));
+  auto uuid_cards = mini_results("uuid", cfg, "");
+  CHECK(!uuid_cards.empty());
+  CHECK_EQ(uuid_cards.front().kind_label, "uuid");
+  auto b64_cards = mini_results("base64 hi", cfg, "");
+  CHECK(!b64_cards.empty());
+  CHECK_EQ(b64_cards.front().payload, "aGk=");
+  auto lock_cards = mini_results("lock", cfg, "");
+  CHECK(!lock_cards.empty());
+  CHECK_EQ(lock_cards.front().action, ResultAction::System);
+  CHECK_EQ(lock_cards.front().payload, "lock");
+  CHECK_EQ(lock_cards.front().kind_label, "lock");
+  auto json_cards = mini_results("json {\"a\":1}", cfg, "");
+  CHECK(!json_cards.empty());
+  CHECK(json_cards.front().payload.find("\"a\"") != std::string::npos);
+  auto trash_cards = mini_results("empty trash", cfg, "");
+  CHECK(!trash_cards.empty());
+  CHECK_EQ(trash_cards.front().payload, "empty_trash");
+  CHECK(!native_system_action("not-a-system-action"));
 
   Config cfg_off;
   cfg_off.search.minis = false;

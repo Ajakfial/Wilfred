@@ -535,7 +535,11 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Cpu, true);
   else if (key == "process" || key == "proc" || key == "ps" || key == "top" || key == "processes")
     set(MiniKind::Process, rest.empty());
-  else if (key == "battery" || key == "power")
+  else if (key == "power" && (rest == "off" || rest == "down")) {
+    it.kind = MiniKind::System;
+    it.remainder = "shutdown";
+    it.exact = true;
+  } else if (key == "battery" || key == "power")
     set(MiniKind::Battery, true);
   else if (key == "hostname" || key == "host")
     set(MiniKind::Hostname, true);
@@ -574,6 +578,62 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Tz, true);
   else if (key == "color" || key == "colour")
     set(MiniKind::Color, true);
+  else if (key == "uuid" || key == "uuid4" || key == "guid" || key == "uuidv4")
+    set(MiniKind::Uuid, true);
+  else if (key == "base64" || key == "b64" || key == "base64encode" || key == "encode64" ||
+           key == "b64e")
+    set(MiniKind::Base64, rest.empty());
+  else if (key == "base64decode" || key == "base64d" || key == "b64d" || key == "decode64" ||
+           key == "b64decode")
+    set(MiniKind::Base64, rest.empty());
+  else if (key == "sha256")
+    set(MiniKind::Sha256, rest.empty());
+  else if ((key == "sha" || key == "hash") && !rest.empty())
+    set(MiniKind::Sha256, false);
+  else if (key == "lorem" || key == "ipsum" || key == "loremipsum")
+    set(MiniKind::Lorem, true);
+  else if (key == "json" || key == "prettyjson" || key == "jsonfmt")
+    set(MiniKind::Json, rest.empty());
+  else if (key == "pretty" && !rest.empty())
+    set(MiniKind::Json, true);
+  else if (key == "lock" || key == "lockscreen") {
+    if (rest.empty() || rest == "screen" || rest == "pc" || rest == "computer") {
+      it.kind = MiniKind::System;
+      it.remainder = "lock";
+      it.exact = true;
+    }
+  } else if (key == "sleep" || key == "suspend") {
+    if (rest.empty() || rest == "now" || rest == "computer" || rest == "pc") {
+      it.kind = MiniKind::System;
+      it.remainder = "sleep";
+      it.exact = true;
+    }
+  } else if (key == "shutdown" || key == "poweroff" || key == "halt" ||
+             (key == "shut" && (rest == "down" || rest.rfind("down", 0) == 0)) ||
+             (key == "power" && (rest == "off" || rest == "down"))) {
+    it.kind = MiniKind::System;
+    it.remainder = "shutdown";
+    it.exact = true;
+  } else if (key == "restart" || key == "reboot") {
+    if (rest.empty() || rest == "now" || rest == "computer" || rest == "pc") {
+      it.kind = MiniKind::System;
+      it.remainder = "restart";
+      it.exact = true;
+    }
+  } else if (key == "logout" || key == "logoff" || key == "signout" ||
+             (key == "log" && (rest == "out" || rest == "off")) ||
+             (key == "sign" && rest == "out")) {
+    it.kind = MiniKind::System;
+    it.remainder = "logout";
+    it.exact = true;
+  } else if (key == "emptytrash" || key == "emptyrecycle" ||
+             (key == "empty" && (rest == "trash" || rest == "recycle" || rest == "bin" ||
+                                 rest == "recycle bin" || rest == "recyclebin" ||
+                                 rest == "the trash" || rest == "the bin"))) {
+    it.kind = MiniKind::System;
+    it.remainder = "empty_trash";
+    it.exact = true;
+  }
   return it;
 }
 
@@ -1031,6 +1091,121 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Uuid) {
+    MathResult m;
+    if (convert_devutil("uuid", m) && m.ok)
+      out.push_back(card(m.display, "UUID v4 · enter copies", m.display, "uuid", 10000,
+                         ResultAction::Convert));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Base64) {
+    auto l = to_lower_utf8(query);
+    bool decode = l.rfind("base64d", 0) == 0 || l.rfind("b64d", 0) == 0 ||
+                  l.rfind("decode64", 0) == 0 || l.rfind("base64decode", 0) == 0 ||
+                  l.rfind("b64decode", 0) == 0;
+    auto payload = intent.remainder.empty() ? clipboard : intent.remainder;
+    if (payload.empty()) {
+      out.push_back(card(decode ? "Base64 decode" : "Base64 encode",
+                         "Type text after the command, or copy something first", "", "base64", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    MathResult m;
+    auto expr = std::string(decode ? "base64d " : "base64 ") + payload;
+    if (convert_devutil(expr, m) && m.ok) {
+      out.push_back(card(m.display, decode ? "Base64 decode · enter copies"
+                                           : "Base64 encode · enter copies",
+                         m.display, "base64", 10000, ResultAction::Convert));
+      if (!decode) {
+        MathResult d;
+        if (convert_devutil("base64d " + payload, d) && d.ok && d.display != payload)
+          out.push_back(card(d.display, "Looks like Base64 · decoded", d.display, "base64", 9900,
+                             ResultAction::Convert));
+      }
+    } else {
+      out.push_back(card("Can't convert that", "Need plain text to encode, or valid Base64 to decode",
+                         "", "base64", 8000, ResultAction::None));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Sha256) {
+    auto payload = intent.remainder.empty() ? clipboard : intent.remainder;
+    if (payload.empty()) {
+      out.push_back(card("SHA-256", "Type sha256 <text>, or copy text first", "", "sha256", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    MathResult m;
+    if (convert_devutil("sha256 " + payload, m) && m.ok)
+      out.push_back(card(m.display, "SHA-256 · enter copies", m.display, "sha256", 10000,
+                         ResultAction::Convert));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Lorem) {
+    MathResult m;
+    auto expr = intent.remainder.empty() ? std::string("lorem") : ("lorem " + intent.remainder);
+    if (convert_devutil(expr, m) && m.ok)
+      out.push_back(card(m.display, "Lorem ipsum · enter copies", m.display, "lorem", 10000,
+                         ResultAction::Convert));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Json) {
+    auto payload = intent.remainder;
+    auto pl = to_lower_utf8(payload);
+    if (pl.rfind("pretty ", 0) == 0) payload = payload.substr(7);
+    else if (pl == "pretty") payload.clear();
+    if (payload.empty()) payload = clipboard;
+    if (payload.empty()) {
+      out.push_back(card("JSON pretty-print", "Type json {\"a\":1}  or copy JSON first", "", "json",
+                         8000, ResultAction::None));
+      return out;
+    }
+    MathResult pretty, compact;
+    if (convert_devutil("json " + payload, pretty) && pretty.ok) {
+      out.push_back(card(pretty.display, "Pretty JSON · enter copies", pretty.display, "json", 10000,
+                         ResultAction::Convert));
+      if (convert_devutil("json minify " + payload, compact) && compact.ok &&
+          compact.display != pretty.display)
+        out.push_back(card(compact.display, "Minified JSON · enter copies", compact.display, "json",
+                           9900, ResultAction::Convert));
+    } else {
+      out.push_back(card("Invalid JSON", "Couldn't parse that object or array", "", "json", 8000,
+                         ResultAction::None));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::System) {
+    auto id = intent.remainder;
+    struct SysRow {
+      const char* id;
+      const char* title;
+      const char* sub;
+    };
+    static const SysRow rows[] = {
+        {"lock", "Lock screen", "Enter to lock this computer"},
+        {"sleep", "Sleep", "Enter to suspend this computer"},
+        {"shutdown", "Shut down", "Enter to power off this computer"},
+        {"restart", "Restart", "Enter to reboot this computer"},
+        {"logout", "Log out", "Enter to sign out of this session"},
+        {"empty_trash", "Empty recycle bin", "Enter to empty the trash / recycle bin"},
+        {nullptr, nullptr, nullptr},
+    };
+    for (auto* p = rows; p->id; ++p) {
+      if (id == p->id) {
+        auto r = card(p->title, p->sub, p->id, p->id, 10000, ResultAction::System);
+        r.category = "system";
+        out.push_back(std::move(r));
+        return out;
+      }
+    }
+    return out;
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
                                   "time [zone]  ·  clock and date",
@@ -1043,6 +1218,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "emoji [name]  ·  emoji picker",
                                   "symbol [name]  ·  punctuation and signs",
                                   "fx 100 usd to eur  ·  currency conversion",
+                                  "uuid / base64 / sha256 <text> / lorem / json",
+                                  "lock / sleep / shutdown / restart / logout",
+                                  "empty trash  ·  recycle bin",
                                   "battery / ip / hostname / uptime / user",
                                   "clip / clips  ·  clipboard",
                                   "snip / ;keyword  ·  text snippets",

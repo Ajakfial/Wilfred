@@ -31,6 +31,8 @@ static const char* ipc_action_name(ResultAction a) {
       return "plugin";
     case ResultAction::SwitchWindow:
       return "open";
+    case ResultAction::System:
+      return "open";
     default:
       return "open";
   }

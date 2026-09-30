@@ -162,4 +162,44 @@ void test_math() {
   CHECK(ago.datetime);
 
   CHECK(!evaluate_math("10 minutes").ok);
+
+  auto uid = evaluate_math("uuid");
+  CHECK(uid.ok);
+  CHECK(uid.devutil);
+  CHECK_EQ(uid.display.size(), 36u);
+  CHECK_EQ(uid.display[8], '-');
+  CHECK_EQ(uid.display[13], '-');
+  CHECK(uid.display[14] == '4');
+
+  auto b64 = evaluate_math("base64 hi");
+  CHECK(b64.ok);
+  CHECK_EQ(b64.display, "aGk=");
+  auto b64d = evaluate_math("base64d aGk=");
+  CHECK(b64d.ok);
+  CHECK_EQ(b64d.display, "hi");
+
+  auto sha = evaluate_math("sha256 abc");
+  CHECK(sha.ok);
+  CHECK_EQ(sha.display, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+
+  auto lip = evaluate_math("lorem 8");
+  CHECK(lip.ok);
+  CHECK(lip.display.find("Lorem") != std::string::npos);
+  CHECK(lip.display.find(' ') != std::string::npos);
+
+  auto js = evaluate_math("json {\"a\":1,\"b\":[true,null]}");
+  CHECK(js.ok);
+  CHECK(js.display.find('\n') != std::string::npos);
+  CHECK(js.display.find("\"a\"") != std::string::npos);
+  auto jmin = evaluate_math("json minify {\"a\": 1}");
+  CHECK(jmin.ok);
+  CHECK_EQ(jmin.display, "{\"a\":1}");
+
+  CHECK(!evaluate_math("base64").ok);
+  CHECK(!evaluate_math("sha256").ok);
+  CHECK(!evaluate_math("json not-json").ok);
+  CHECK(!evaluate_math("hash").ok);
+  auto hash = evaluate_math("hash abc");
+  CHECK(hash.ok);
+  CHECK_EQ(hash.display, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 }

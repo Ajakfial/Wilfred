@@ -23,7 +23,8 @@ enum class ResultAction {
   Mini,
   Expand,
   Plugin,
-  SwitchWindow
+  SwitchWindow,
+  System
 };
 
 struct ResultActionItem {

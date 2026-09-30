@@ -26,6 +26,13 @@ void test_classify() {
   CHECK_EQ(classify_query("emoji").kind, QueryKind::Mini);
   CHECK_EQ(classify_query("symbol arrow").kind, QueryKind::Mini);
   CHECK_EQ(classify_query("fx").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("uuid").kind, QueryKind::Math);
+  CHECK_EQ(classify_query("sha256 abc").kind, QueryKind::Math);
+  CHECK_EQ(classify_query("json {\"a\":1}").kind, QueryKind::Math);
+  CHECK_EQ(classify_query("lorem 8").kind, QueryKind::Math);
+  CHECK_EQ(classify_query("lock").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("shutdown").kind, QueryKind::Mini);
+  CHECK_EQ(classify_query("empty trash").kind, QueryKind::Mini);
 
   set_currency_network_enabled(false);
   CHECK(looks_like_math("100 usd to eur"));
@@ -76,6 +83,19 @@ void test_classify() {
   auto dt = interp.interpret("2024-06-15 + 1 day", cfg, nullptr);
   CHECK_EQ(dt.classification.kind, QueryKind::Math);
   CHECK(dt.results.front().subtitle.find("Date/time") != std::string::npos);
+  auto uid = interp.interpret("uuid", cfg, nullptr);
+  CHECK_EQ(uid.classification.kind, QueryKind::Math);
+  CHECK(!uid.results.empty());
+  CHECK_EQ(uid.results.front().action, ResultAction::Convert);
+  CHECK_EQ(uid.results.front().kind_label, "uuid");
+  CHECK(uid.results.front().subtitle.find("Dev") != std::string::npos);
+  auto js = interp.interpret("json {\"a\":1}", cfg, nullptr);
+  CHECK_EQ(js.classification.kind, QueryKind::Math);
+  CHECK_EQ(js.results.front().kind_label, "json");
+  auto lk = interp.interpret("lock", cfg, nullptr);
+  CHECK_EQ(lk.classification.kind, QueryKind::Mini);
+  CHECK_EQ(lk.results.front().action, ResultAction::System);
+  CHECK_EQ(lk.results.front().kind_label, "lock");
   auto em = interp.interpret("emoji fire", cfg, nullptr);
   CHECK_EQ(em.classification.kind, QueryKind::Mini);
   CHECK(!em.results.empty());

@@ -263,6 +263,11 @@ int Service::run_daemon() {
           execute_result(r, cfg_, action_id);
           return;
         }
+        if (r.action == ResultAction::System || r.category == "system") {
+          if (hide && ui_) ui_->hide();
+          execute_result(r, cfg_, action_id);
+          return;
+        }
         if (r.category == "mini" || r.category == "macro" || r.category == "clipboard" ||
             r.action == ResultAction::Copy || r.action == ResultAction::Mini) {
           execute_result(r, cfg_, action_id);
