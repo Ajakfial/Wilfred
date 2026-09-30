@@ -3,6 +3,8 @@
   const input = document.getElementById("q");
   const resultsEl = document.getElementById("results");
   const hint = document.getElementById("hint");
+  const foot = document.getElementById("foot");
+  const countEl = document.getElementById("count");
 
   const params = new URLSearchParams(location.search);
   if (params.has("preview")) document.documentElement.classList.add("preview");
@@ -79,6 +81,17 @@
     logout: "bi-box-arrow-right",
     empty_trash: "bi-trash",
   };
+
+  const groups = {
+    application: "app", executable: "app", directory: "folder",
+    document: "doc", content: "doc", file: "doc", archive: "doc",
+    image: "media", video: "media", audio: "media",
+    source: "code", config: "code",
+    calc: "calc", convert: "calc", fx: "calc", tz: "calc", color: "calc",
+    web: "web", browser: "web", macro: "web",
+    system: "sys", lock: "sys", sleep: "sys", shutdown: "sys", restart: "sys", logout: "sys", empty_trash: "sys",
+  };
+  const tips = ["25 * 42", "weather", "type:image", "content:todo", "!yt cats", "clip"];
 
   function nativeSend(msg) {
     const obj = typeof msg === "string" ? JSON.parse(msg) : msg;
@@ -170,13 +183,28 @@
     const habits = habitsOf();
     const rows = rowsOf();
     if (!habits.length && !rows.length) {
-      resultsEl.hidden = true;
-      resultsEl.innerHTML = "";
       hint.textContent = "esc";
+      foot.hidden = true;
+      if (!visible) {
+        resultsEl.hidden = true;
+        resultsEl.innerHTML = "";
+        reportSize();
+        return;
+      }
+      const q = input.value.trim();
+      resultsEl.hidden = false;
+      resultsEl.innerHTML = `<div class="empty"><strong></strong><span></span>${
+        q ? "" : `<div class="habits">${tips.map((t, i) => `<button type="button" class="tip" data-tip="${i}"></button>`).join("")}</div>`
+      }</div>`;
+      resultsEl.querySelector("strong").textContent = q ? `No matches for “${q}”` : "Search files, apps, and more";
+      resultsEl.querySelector("span").textContent = q ? "Start with ? to search the web instead." : "Try one of these";
+      resultsEl.querySelectorAll(".tip").forEach((b, i) => (b.textContent = tips[i]));
       reportSize();
       return;
     }
     resultsEl.hidden = false;
+    foot.hidden = !rows.length;
+    countEl.textContent = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
     hint.textContent = rows.length ? "↵  tab" : "esc";
     const needle = input.value.trim();
     if (sel >= rows.length) sel = 0;
@@ -192,9 +220,6 @@
         .join("")}</div>`;
     }
     if (rows.length) {
-      html += `<div class="results-head"><span>${rows.length} result${
-        rows.length === 1 ? "" : "s"
-      }</span></div>`;
       html += `<div class="rows">${rows
         .map(
           (entry, i) => `<div class="row${i === sel ? " is-sel" : ""}${
@@ -258,6 +283,11 @@
       fillHighlight(row.querySelector(".title"), item.title || "", needle);
       row.querySelector(".sub").textContent = item.subtitle || item.path || "";
       row.querySelector(".kind").textContent = k === "habit" ? "" : k;
+      row.dataset.g = groups[k] || (item.category === "mini" ? "mini" : "doc");
+      if (item.action === "calc" || item.action === "convert") row.classList.add("is-answer");
+      if (["disk", "disku", "ram", "cpu", "swap"].includes(k) && Number.isFinite(item.meter)) {
+        row.dataset.level = item.meter >= 85 ? "high" : item.meter >= 65 ? "mid" : "low";
+      }
     });
     paintSelection();
     reportSize();
@@ -412,6 +442,12 @@
   });
 
   resultsEl.addEventListener("mousedown", (e) => {
+    const tip = e.target.closest(".tip");
+    if (tip) {
+      e.preventDefault();
+      applyHabit(tips[Number(tip.dataset.tip)]);
+      return;
+    }
     const habit = e.target.closest(".habit");
     if (habit) {
       e.preventDefault();
