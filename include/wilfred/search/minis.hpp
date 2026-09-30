@@ -30,6 +30,7 @@ enum class MiniKind {
   Screen,
   Swap,
   Help,
+  Speedtest,
   MacrosList,
   Windows,
   Emoji,

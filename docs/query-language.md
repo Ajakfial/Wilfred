@@ -138,6 +138,7 @@ synthetic result card instead of searching the index
 | `cores` | `nproc`, `threads` | CPU core/thread count |
 | `screen` | `resolution`, `display` | Display resolution |
 | `swap` | `pagefile`, `vmem` | Swap/page-file usage |
+| `speedtest` | `speed-test`, `netspeed`, `bandwidth`, `internetspeed` | Live download, upload, and ping |
 | `help` | `minis`, `cmds`, `commands` | List of available minis |
 | `macros` | `bangs` | List of configured macros |
 | `emoji [name]` | `emojis`, `emote`, `emotes` | Emoji picker (enter copies the character) |
@@ -158,11 +159,13 @@ synthetic result card instead of searching the index
 | `logout` | `logoff`, `signout`, `log out` | Sign out of this session |
 | `empty trash` | `emptyrecycle`, `empty bin` | Empty the recycle bin / trash |
 
-Minis can be disabled entirely with `search.minis: false`. `weather` and
-live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`
+Minis can be disabled entirely with `search.minis: false`. `weather`, `speedtest`,
+and live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`
 fetch). Currency still works offline from an approximate table. There's no
 dedicated flag for those requests today, so disable `search.minis` if you
-need to suppress the weather mini.
+need to suppress the weather mini. `speedtest` downloads and uploads a few
+megabytes against Cloudflare to measure live throughput; type `speedtest again`
+to rerun.
 
 ## 6. Macros — query templates
 

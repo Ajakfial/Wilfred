@@ -4,6 +4,8 @@
 #include "wilfred/core/utf8.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <chrono>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && defined(WILFRED_HAS_X11)
 #include <X11/Xlib.h>
@@ -26,6 +28,27 @@ public:
   std::string text;
   std::vector<SearchResult> results;
   int sel{0};
+  std::chrono::steady_clock::time_point speed_poll{};
+
+  static bool speedtest_query(const std::string& q) {
+    std::string t = q;
+    for (char& c : t) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    while (!t.empty() && t.front() == ' ') t.erase(t.begin());
+    while (!t.empty() && t.back() == ' ') t.pop_back();
+    static const char* keys[] = {"speedtest", "speed-test", "speed_test", "netspeed",
+                                 "bandwidth", "internetspeed", nullptr};
+    for (auto** p = keys; *p; ++p) {
+      std::string k = *p;
+      if (t == k) return true;
+      if (t.size() > k.size() && t.compare(0, k.size(), k) == 0 && t[k.size()] == ' ') {
+        auto rest = t.substr(k.size() + 1);
+        while (!rest.empty() && rest.front() == ' ') rest.erase(rest.begin());
+        return rest.empty() || rest == "again" || rest == "retry" || rest == "new" ||
+               rest == "rerun";
+      }
+    }
+    return false;
+  }
 
   bool create() override {
     dpy = XOpenDisplay(nullptr);
@@ -44,6 +67,7 @@ public:
     if (!dpy) return;
     text.clear();
     results.clear();
+    speed_poll = {};
     XMapRaised(dpy, win);
     vis = true;
     draw();
@@ -126,6 +150,15 @@ public:
           sel = 0;
           draw();
         }
+      }
+    }
+    if (vis && query && speedtest_query(text)) {
+      auto now = std::chrono::steady_clock::now();
+      if (speed_poll.time_since_epoch().count() == 0 ||
+          now - speed_poll >= std::chrono::milliseconds(350)) {
+        speed_poll = now;
+        results = query(text);
+        draw();
       }
     }
   }

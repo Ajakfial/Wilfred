@@ -34,6 +34,15 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("process chrome").kind, MiniKind::Process);
   CHECK_EQ(parse_mini_intent("ps").kind, MiniKind::Process);
   CHECK_EQ(parse_mini_intent("help").kind, MiniKind::Help);
+  CHECK_EQ(parse_mini_intent("speedtest").kind, MiniKind::Speedtest);
+  CHECK(parse_mini_intent("speedtest").exact);
+  CHECK_EQ(parse_mini_intent("speed-test").kind, MiniKind::Speedtest);
+  CHECK_EQ(parse_mini_intent("speedtest again").remainder, "again");
+  CHECK(parse_mini_intent("speedtest again").exact);
+  CHECK_EQ(parse_mini_intent("speedtest foo").kind, MiniKind::None);
+  CHECK_EQ(parse_mini_intent("netspeed").kind, MiniKind::Speedtest);
+  CHECK_EQ(parse_mini_intent("bandwidth").kind, MiniKind::Speedtest);
+  CHECK_EQ(parse_mini_intent("internetspeed").kind, MiniKind::Speedtest);
   CHECK_EQ(parse_mini_intent("macros").kind, MiniKind::MacrosList);
   CHECK_EQ(parse_mini_intent("windows").kind, MiniKind::Windows);
   CHECK_EQ(parse_mini_intent("window chrome").kind, MiniKind::Windows);
@@ -200,6 +209,16 @@ void test_search_extras() {
   auto iq = interp.interpret("time", cfg, nullptr);
   CHECK_EQ(iq.classification.kind, QueryKind::Mini);
   CHECK(!iq.results.empty());
+
+  auto st = interp.interpret("speedtest", cfg, nullptr);
+  CHECK_EQ(st.classification.kind, QueryKind::Mini);
+  CHECK(!st.results.empty());
+  CHECK_EQ(st.results.front().kind_label, "speedtest");
+  auto st2 = interp.interpret("speedtest again", cfg, nullptr);
+  CHECK_EQ(st2.classification.kind, QueryKind::Mini);
+  CHECK(!st2.results.empty());
+  auto st3 = interp.interpret("speedtest again", cfg, nullptr);
+  CHECK_EQ(st3.results.front().kind_label, "speedtest");
 
   auto iq2 = interp.interpret("!yt cats", cfg, nullptr);
   CHECK(!iq2.results.empty());

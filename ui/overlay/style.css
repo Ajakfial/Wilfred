@@ -118,6 +118,7 @@ kbd {
 .row[data-g="code"] { --tint: #3fbf85; }
 .row[data-g="calc"] { --tint: #a882ff; }
 .row[data-g="web"] { --tint: #3fbccc; }
+.row[data-g="speed"] { --tint: #5cc8a8; }
 .row[data-g="sys"] { --tint: #f06e6e; }
 .row:hover { background: var(--hover); }
 .row.is-sel { background: var(--sel); }
@@ -153,6 +154,7 @@ kbd {
 .meter span { display: block; height: 100%; border-radius: 99px; background: #3fbf85; transition: width 240ms ease; }
 .row[data-level="mid"] .meter span { background: #eba63f; }
 .row[data-level="high"] .meter span { background: #f06e6e; }
+.row[data-g="speed"] .meter span { background: var(--accent); }
 
 .more { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
 .more:hover, .row.is-sel .more { background: var(--chip); color: var(--ink); }

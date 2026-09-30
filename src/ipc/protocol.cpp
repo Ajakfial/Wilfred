@@ -53,6 +53,7 @@ std::string encode_response(const IpcResponse& r) {
        << ipc_action_name(it.action) << "\",\"category\":\"" << json_escape(it.category)
        << "\",\"payload\":\"" << json_escape(it.payload) << "\",\"plugin\":\""
        << json_escape(it.plugin_id) << "\"";
+    if (it.meter >= 0) os << ",\"meter\":" << it.meter;
     if (!it.actions.empty()) {
       os << ",\"actions\":[";
       bool af = true;

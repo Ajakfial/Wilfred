@@ -99,6 +99,7 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `> notepad` | Command / launch style |
 | `scope:home notes` | Named directory group from config |
 | `weather` / `weather London` | Mini card: local or city forecast |
+| `speedtest` | Live ping, download, and upload (`speedtest again` reruns) |
 | `time` `disk` `disku` `ram` `cpu` | Clock, drives, memory, processor |
 | `process chrome` / `top` | Live process CPU, RAM, threads |
 | `emoji smile` / `symbol euro` | Emoji and symbol picker (enter copies) |

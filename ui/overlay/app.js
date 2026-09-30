@@ -16,6 +16,44 @@
   let hideTimer = 0;
   let menuOpen = false;
   let menuSel = 0;
+  let speedPoll = 0;
+  let demoSpeedAt = 0;
+  let demoSpeedKey = "";
+
+  function isSpeedtestQuery(q) {
+    const t = (q || "").trim().toLowerCase();
+    const keys = ["speedtest", "speed-test", "speed_test", "netspeed", "bandwidth", "internetspeed"];
+    for (const k of keys) {
+      if (t === k) return true;
+      if (t.startsWith(k + " ")) {
+        const rest = t.slice(k.length).trim();
+        return !rest || rest === "again" || rest === "retry" || rest === "new" || rest === "rerun";
+      }
+    }
+    return false;
+  }
+
+  function speedtestRerun(q) {
+    const t = (q || "").trim().toLowerCase();
+    return /\b(again|retry|new|rerun)$/.test(t);
+  }
+
+  function armSpeedPoll() {
+    clearInterval(speedPoll);
+    speedPoll = 0;
+    if (!visible || !isSpeedtestQuery(input.value)) return;
+    speedPoll = setInterval(() => {
+      if (!visible || !isSpeedtestQuery(input.value)) {
+        clearInterval(speedPoll);
+        speedPoll = 0;
+        return;
+      }
+      const q = input.value;
+      const id = ++seq;
+      nativeSend({ type: "query", q, id });
+      if (!window.chrome && !window.webkit) demoQuery(q, id);
+    }, 350);
+  }
 
   function actionsOf(item) {
     return item && Array.isArray(item.actions) ? item.actions : [];
@@ -62,6 +100,7 @@
     screen: "bi-display",
     swap: "bi-layers",
     help: "bi-question-circle",
+    speedtest: "bi-speedometer2",
     content: "bi-file-text",
     emoji: "bi-emoji-smile",
     symbol: "bi-asterisk",
@@ -89,9 +128,10 @@
     source: "code", config: "code",
     calc: "calc", convert: "calc", fx: "calc", tz: "calc", color: "calc",
     web: "web", browser: "web", macro: "web",
+    speedtest: "speed",
     system: "sys", lock: "sys", sleep: "sys", shutdown: "sys", restart: "sys", logout: "sys", empty_trash: "sys",
   };
-  const tips = ["25 * 42", "weather", "type:image", "content:todo", "!yt cats", "clip"];
+  const tips = ["25 * 42", "weather", "speedtest", "type:image", "!yt cats", "clip"];
 
   function nativeSend(msg) {
     const obj = typeof msg === "string" ? JSON.parse(msg) : msg;
@@ -288,6 +328,7 @@
       if (["disk", "disku", "ram", "cpu", "swap"].includes(k) && Number.isFinite(item.meter)) {
         row.dataset.level = item.meter >= 85 ? "high" : item.meter >= 65 ? "mid" : "low";
       }
+      if (k === "speedtest" && i === 0) row.classList.add("is-answer");
     });
     paintSelection();
     reportSize();
@@ -300,6 +341,7 @@
     const id = ++seq;
     nativeSend({ type: "query", q, id });
     if (!window.chrome && !window.webkit) demoQuery(q, id);
+    armSpeedPoll();
   }
 
   function submit(actionId) {
@@ -330,6 +372,8 @@
     launcher.classList.add("is-out");
     launcher.setAttribute("aria-hidden", "true");
     clearTimeout(hideTimer);
+    clearInterval(speedPoll);
+    speedPoll = 0;
     hideTimer = setTimeout(() => nativeSend({ type: "hidden" }), 200);
   }
 
@@ -358,7 +402,8 @@
     if (msg.type === "hide") dismiss();
     if (msg.type === "results") {
       items = Array.isArray(msg.items) ? msg.items : [];
-      sel = 0;
+      if (!isSpeedtestQuery(input.value)) sel = 0;
+      else sel = Math.max(0, Math.min(sel, Math.max(0, rowsOf().length - 1)));
       render();
     }
   }
@@ -377,6 +422,7 @@
     const id = ++seq;
     nativeSend({ type: "query", q, id });
     if (!window.chrome && !window.webkit) demoQuery(q, id);
+    armSpeedPoll();
   });
 
   input.addEventListener("keydown", (e) => {
@@ -567,6 +613,81 @@
       }, 40);
       return;
     }
+    const needle = (q || "").trim().toLowerCase();
+    if (isSpeedtestQuery(needle)) {
+      if (!demoSpeedAt || (speedtestRerun(needle) && demoSpeedKey !== needle)) {
+        demoSpeedAt = Date.now();
+      }
+      demoSpeedKey = needle;
+      const elapsed = (Date.now() - demoSpeedAt) / 1000;
+      let down = 0;
+      let up = 0;
+      let ping = 0;
+      let phase = "Measuring ping…";
+      let meter = 8;
+      if (elapsed < 0.8) {
+        ping = Math.max(1, elapsed * 18);
+        phase = "Measuring ping…";
+      } else if (elapsed < 6) {
+        ping = 14;
+        down = Math.min(240, 12 + (elapsed - 0.8) * 38);
+        phase = "Downloading… live";
+        meter = 12 + Math.min(48, ((elapsed - 0.8) / 5.2) * 48);
+      } else if (elapsed < 10) {
+        ping = 14;
+        down = 186;
+        up = Math.min(42, 4 + (elapsed - 6) * 9);
+        phase = "Uploading… live";
+        meter = 60 + Math.min(35, ((elapsed - 6) / 4) * 35);
+      } else {
+        ping = 14;
+        down = 186;
+        up = 38;
+        phase = "Done · enter copies";
+        meter = 100;
+      }
+      const fmt = (v) => (v <= 0 ? "—" : v < 10 ? v.toFixed(2) + " Mbps" : v.toFixed(1) + " Mbps");
+      const pingTxt = ping ? Math.round(ping) + " ms" : "—";
+      const copy = `Download ${fmt(down)} · Upload ${fmt(up)} · Ping ${pingTxt}`;
+      setTimeout(() => {
+        if (id !== seq) return;
+        onNative({
+          type: "results",
+          items: [
+            {
+              title: `↓ ${fmt(down)}   ↑ ${fmt(up)}`,
+              subtitle: `Ping ${pingTxt} · ${phase}`,
+              kind: "speedtest",
+              category: "mini",
+              meter,
+              action: "copy",
+              payload: copy,
+            },
+            {
+              title: `Download  ${fmt(down)}`,
+              subtitle: elapsed < 0.8 ? "Waiting…" : elapsed < 6 ? "Live receive" : "Peak throughput",
+              kind: "speedtest",
+              category: "mini",
+              meter: elapsed >= 0.8 && elapsed < 6 ? meter : down > 0 ? 100 : 0,
+              action: "copy",
+              payload: copy,
+            },
+            {
+              title: `Upload  ${fmt(up)}`,
+              subtitle: elapsed < 6 ? "Waiting…" : elapsed < 10 ? "Live send" : "Peak throughput",
+              kind: "speedtest",
+              category: "mini",
+              meter: elapsed >= 6 && elapsed < 10 ? meter : up > 0 ? 100 : 0,
+              action: "copy",
+              payload: copy,
+            },
+          ],
+        });
+      }, 40);
+      return;
+    }
+    demoSpeedAt = 0;
+    demoSpeedKey = "";
     const env = demoEnv();
     const H = env.home;
     const J = env.join;
@@ -600,7 +721,6 @@
       { title: "firefox", action: "habit", subtitle: "Typed often" },
       { title: "notes", action: "habit", subtitle: "Typed often" },
     ];
-    const needle = q.trim().toLowerCase();
     const minis = [
       { title: "72°F · Clear", subtitle: "Local weather · enter copies", kind: "weather", category: "mini", meter: 0, action: "copy" },
       { title: "10:42:00 AM", subtitle: "Friday, September 25, 2026", kind: "time", category: "mini", action: "copy" },

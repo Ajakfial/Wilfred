@@ -159,7 +159,8 @@ in short:
   the current hour/weekday.
 * `minis.hpp` — recognizes a fixed set of system "mini" queries (`weather`,
   `time`, `disk`, `ram`, `cpu`, `process <name>`, `clip[s]`, `battery`,
-  `uptime`, `emoji`, `symbol`, `fx`, `uuid`/`base64`/`sha256`/`lorem`/`json`,
+  `uptime`, `speedtest`, `emoji`, `symbol`, `fx`,
+  `uuid`/`base64`/`sha256`/`lorem`/`json`,
   `lock`/`sleep`/`shutdown`/`restart`/`logout`, …) and returns synthetic
   `SearchResult`s rather than index hits. Glyph catalogs live in
   `glyphs.hpp`; currency conversion is shared with the calculator

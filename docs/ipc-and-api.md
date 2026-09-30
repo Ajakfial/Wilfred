@@ -72,6 +72,7 @@ Always JSON:
       "category": "",
       "payload": "/usr/bin/firefox",
       "plugin": "",
+      "meter": 62,
       "actions": [
         {"id": "reveal", "label": "Show in file manager"}
       ]
@@ -82,7 +83,8 @@ Always JSON:
 
 `action` is one of: `open`, `reveal`, `copy`, `web`, `calc`, `convert`,
 `none`, `habit`, `mini`, `expand`, `plugin` (`ipc_action_name()` maps
-`ResultAction` to these strings). `ok: false` responses carry a
+`ResultAction` to these strings). Optional `meter` is an integer 0–100 for
+live cards (`speedtest`, RAM, disk). `ok: false` responses carry a
 human-readable `error` string and an empty `results` array.
 
 ## The local HTTP API

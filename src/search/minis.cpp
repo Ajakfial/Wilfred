@@ -13,6 +13,7 @@
 #include "wilfred/search/macros.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <cstdio>
@@ -159,6 +160,420 @@ static std::string http_get_https(const char* url) {
   return body;
 }
 #endif
+
+enum class SpeedPhase { Idle, Ping, Download, Upload, Done, Failed };
+
+struct SpeedState {
+  SpeedPhase phase{SpeedPhase::Idle};
+  bool running{false};
+  double ping_ms{0};
+  double down_mbps{0};
+  double up_mbps{0};
+  std::uint64_t down_bytes{0};
+  std::uint64_t up_bytes{0};
+  std::string error;
+  std::string session;
+  std::int64_t last_query_ms{0};
+  std::int64_t finished_ms{0};
+};
+
+std::mutex speed_mu;
+SpeedState g_speed;
+std::atomic<bool> speed_cancel{false};
+std::atomic<bool> speed_busy{false};
+
+static double mbps_of(std::uint64_t bytes, double sec) {
+  if (sec < 0.05) return 0;
+  return (static_cast<double>(bytes) * 8.0) / (sec * 1000000.0);
+}
+
+static std::string fmt_mbps(double v) {
+  char buf[48];
+  if (v <= 0.0) return "—";
+  if (v < 10.0)
+    std::snprintf(buf, sizeof(buf), "%.2f Mbps", v);
+  else if (v < 100.0)
+    std::snprintf(buf, sizeof(buf), "%.1f Mbps", v);
+  else
+    std::snprintf(buf, sizeof(buf), "%.0f Mbps", v);
+  return buf;
+}
+
+static std::string fmt_ping(double ms) {
+  char buf[48];
+  if (ms <= 0.0) return "—";
+  if (ms < 10.0)
+    std::snprintf(buf, sizeof(buf), "%.1f ms", ms);
+  else
+    std::snprintf(buf, sizeof(buf), "%.0f ms", ms);
+  return buf;
+}
+
+static void speed_set_down(std::uint64_t bytes, double mbps) {
+  std::lock_guard<std::mutex> lock(speed_mu);
+  g_speed.down_bytes = bytes;
+  if (mbps > 0) g_speed.down_mbps = mbps;
+}
+
+static void speed_set_up(std::uint64_t bytes, double mbps) {
+  std::lock_guard<std::mutex> lock(speed_mu);
+  g_speed.up_bytes = bytes;
+  if (mbps > 0) g_speed.up_mbps = mbps;
+}
+
+#ifdef _WIN32
+static void speed_winhttp_tune(HINTERNET ses, int timeout_ms) {
+  WinHttpSetTimeouts(ses, 4000, 4000, timeout_ms, timeout_ms);
+  DWORD proto = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
+#ifdef WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3
+  proto |= WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
+#endif
+  WinHttpSetOption(ses, WINHTTP_OPTION_SECURE_PROTOCOLS, &proto, sizeof(proto));
+}
+
+static bool speed_http_get_count(const wchar_t* host, const wchar_t* path, std::uint64_t max_bytes,
+                                 int timeout_ms, std::uint64_t* out_bytes, double* out_sec,
+                                 bool live_down) {
+  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  if (!ses) return false;
+  speed_winhttp_tune(ses, timeout_ms);
+  HINTERNET con = WinHttpConnect(ses, host, INTERNET_DEFAULT_HTTPS_PORT, 0);
+  if (!con) {
+    WinHttpCloseHandle(ses);
+    return false;
+  }
+  HINTERNET req = WinHttpOpenRequest(con, L"GET", path, nullptr, WINHTTP_NO_REFERER,
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+  if (!req) {
+    WinHttpCloseHandle(con);
+    WinHttpCloseHandle(ses);
+    return false;
+  }
+  auto t0 = std::chrono::steady_clock::now();
+  BOOL ok =
+      WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+  if (ok) ok = WinHttpReceiveResponse(req, nullptr);
+  std::uint64_t n = 0;
+  if (ok) {
+    DWORD avail = 0;
+    while (!speed_cancel.load() && WinHttpQueryDataAvailable(req, &avail)) {
+      if (!avail) break;
+      DWORD want = avail;
+      if (max_bytes && n + want > max_bytes) want = static_cast<DWORD>(max_bytes - n);
+      std::string chunk(want, '\0');
+      DWORD read = 0;
+      if (!WinHttpReadData(req, chunk.data(), want, &read) || !read) break;
+      n += read;
+      double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+      if (live_down) speed_set_down(n, mbps_of(n, sec));
+      if (max_bytes && n >= max_bytes) break;
+      auto elapsed_ms =
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+              .count();
+      if (elapsed_ms > timeout_ms) break;
+    }
+  }
+  double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  WinHttpCloseHandle(req);
+  WinHttpCloseHandle(con);
+  WinHttpCloseHandle(ses);
+  if (out_bytes) *out_bytes = n;
+  if (out_sec) *out_sec = sec;
+  return ok && n > 0;
+}
+
+static bool speed_http_post_count(const wchar_t* host, const wchar_t* path, std::uint64_t total,
+                                  int timeout_ms, std::uint64_t* out_bytes, double* out_sec) {
+  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+  if (!ses) return false;
+  speed_winhttp_tune(ses, timeout_ms);
+  HINTERNET con = WinHttpConnect(ses, host, INTERNET_DEFAULT_HTTPS_PORT, 0);
+  if (!con) {
+    WinHttpCloseHandle(ses);
+    return false;
+  }
+  HINTERNET req = WinHttpOpenRequest(con, L"POST", path, nullptr, WINHTTP_NO_REFERER,
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+  if (!req) {
+    WinHttpCloseHandle(con);
+    WinHttpCloseHandle(ses);
+    return false;
+  }
+  wchar_t hdr[] = L"Content-Type: application/octet-stream\r\n";
+  auto t0 = std::chrono::steady_clock::now();
+  BOOL ok = WinHttpSendRequest(req, hdr, static_cast<DWORD>(-1), WINHTTP_NO_REQUEST_DATA, 0,
+                               static_cast<DWORD>(total), 0);
+  std::uint64_t n = 0;
+  if (ok) {
+    std::string chunk(65536, '\0');
+    while (!speed_cancel.load() && n < total) {
+      DWORD want = static_cast<DWORD>(chunk.size());
+      if (n + want > total) want = static_cast<DWORD>(total - n);
+      DWORD wrote = 0;
+      if (!WinHttpWriteData(req, chunk.data(), want, &wrote) || !wrote) break;
+      n += wrote;
+      double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+      speed_set_up(n, mbps_of(n, sec));
+      auto elapsed_ms =
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+              .count();
+      if (elapsed_ms > timeout_ms) break;
+    }
+    WinHttpReceiveResponse(req, nullptr);
+  }
+  double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  WinHttpCloseHandle(req);
+  WinHttpCloseHandle(con);
+  WinHttpCloseHandle(ses);
+  if (out_bytes) *out_bytes = n;
+  if (out_sec) *out_sec = sec;
+  return ok && n > 0;
+}
+#else
+static bool speed_http_get_count(const char* url, std::uint64_t max_bytes, int timeout_ms,
+                                 std::uint64_t* out_bytes, double* out_sec, bool ping) {
+  char cmd[768];
+  int cap = timeout_ms / 1000;
+  if (cap < 2) cap = 2;
+  std::snprintf(cmd, sizeof(cmd),
+                "curl -fsSN --max-time %d -A Wilfred/1.0 \"%s\" 2>/dev/null", cap, url);
+  FILE* f = popen(cmd, "r");
+  if (!f) return false;
+  auto t0 = std::chrono::steady_clock::now();
+  std::uint64_t n = 0;
+  char buf[65536];
+  while (!speed_cancel.load()) {
+    size_t got = fread(buf, 1, sizeof(buf), f);
+    if (!got) break;
+    n += got;
+    double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    if (!ping) speed_set_down(n, mbps_of(n, sec));
+    if (max_bytes && n >= max_bytes) break;
+    auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+            .count();
+    if (elapsed_ms > timeout_ms) break;
+  }
+  double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  pclose(f);
+  if (out_bytes) *out_bytes = n;
+  if (out_sec) *out_sec = sec;
+  return n > 0;
+}
+
+static bool speed_http_post_count(const char* url, std::uint64_t total, int timeout_ms,
+                                  std::uint64_t* out_bytes, double* out_sec) {
+  char cmd[768];
+  int cap = timeout_ms / 1000;
+  if (cap < 2) cap = 2;
+  std::snprintf(cmd, sizeof(cmd),
+                "curl -fsS --max-time %d -A Wilfred/1.0 -X POST "
+                "-H \"Content-Type: application/octet-stream\" --data-binary @- -o /dev/null "
+                "\"%s\" 2>/dev/null",
+                cap, url);
+  FILE* f = popen(cmd, "w");
+  if (!f) return false;
+  auto t0 = std::chrono::steady_clock::now();
+  std::uint64_t n = 0;
+  std::string chunk(65536, '\0');
+  while (!speed_cancel.load() && n < total) {
+    size_t want = chunk.size();
+    if (n + want > total) want = static_cast<size_t>(total - n);
+    size_t w = fwrite(chunk.data(), 1, want, f);
+    if (!w) break;
+    n += w;
+    double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    speed_set_up(n, mbps_of(n, sec));
+    auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+            .count();
+    if (elapsed_ms > timeout_ms) break;
+  }
+  double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+  pclose(f);
+  if (out_bytes) *out_bytes = n;
+  if (out_sec) *out_sec = sec;
+  return n > 0;
+}
+#endif
+
+static void run_speed_test() {
+  speed_cancel = false;
+  {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.running = true;
+    g_speed.phase = SpeedPhase::Ping;
+    g_speed.ping_ms = 0;
+    g_speed.down_mbps = 0;
+    g_speed.up_mbps = 0;
+    g_speed.down_bytes = 0;
+    g_speed.up_bytes = 0;
+    g_speed.error.clear();
+    g_speed.finished_ms = 0;
+  }
+
+  const std::uint64_t down_target = 25ull * 1024ull * 1024ull;
+  const std::uint64_t up_target = 8ull * 1024ull * 1024ull;
+  const int phase_ms = 12000;
+
+  std::uint64_t bytes = 0;
+  double sec = 0;
+#ifdef _WIN32
+  if (!speed_http_get_count(L"speed.cloudflare.com", L"/__down?bytes=1000", 1000, 4000, &bytes, &sec,
+                            false)) {
+#else
+  if (!speed_http_get_count("https://speed.cloudflare.com/__down?bytes=1000", 1000, 4000, &bytes,
+                            &sec, true)) {
+#endif
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.running = false;
+    g_speed.phase = SpeedPhase::Failed;
+    g_speed.error = "Could not reach the speed test server";
+    g_speed.finished_ms = unix_millis();
+    speed_busy = false;
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.ping_ms = sec * 1000.0;
+    g_speed.phase = SpeedPhase::Download;
+  }
+
+  bytes = 0;
+  sec = 0;
+#ifdef _WIN32
+  speed_http_get_count(L"speed.cloudflare.com", L"/__down?bytes=25000000", down_target, phase_ms,
+                       &bytes, &sec, true);
+#else
+  speed_http_get_count("https://speed.cloudflare.com/__down?bytes=25000000", down_target, phase_ms,
+                       &bytes, &sec, false);
+#endif
+  if (!speed_cancel.load()) {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.down_bytes = bytes;
+    g_speed.down_mbps = mbps_of(bytes, sec);
+    g_speed.phase = SpeedPhase::Upload;
+  }
+
+  bytes = 0;
+  sec = 0;
+#ifdef _WIN32
+  bool up_ok = speed_http_post_count(L"speed.cloudflare.com", L"/__up", up_target, phase_ms, &bytes,
+                                    &sec);
+#else
+  bool up_ok =
+      speed_http_post_count("https://speed.cloudflare.com/__up", up_target, phase_ms, &bytes, &sec);
+#endif
+  {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.up_bytes = bytes;
+    if (up_ok) g_speed.up_mbps = mbps_of(bytes, sec);
+    g_speed.running = false;
+    g_speed.finished_ms = unix_millis();
+    if (speed_cancel.load()) {
+      g_speed.phase = SpeedPhase::Failed;
+      g_speed.error = "Cancelled";
+    } else if (g_speed.down_mbps <= 0) {
+      g_speed.phase = SpeedPhase::Failed;
+      g_speed.error = "Download failed";
+    } else {
+      g_speed.phase = SpeedPhase::Done;
+      if (!up_ok) g_speed.error = "Upload failed";
+    }
+  }
+  speed_busy = false;
+}
+
+static void kick_speed_test(bool force, const std::string& session) {
+  auto now = unix_millis();
+  bool start = false;
+  {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.last_query_ms = now;
+    if (g_speed.running || speed_busy.load()) return;
+    if (g_speed.finished_ms &&
+        (g_speed.phase == SpeedPhase::Done || g_speed.phase == SpeedPhase::Failed)) {
+      if (g_speed.session == session) return;
+      if (!force) return;
+    }
+    if (!g_net) return;
+    g_speed.session = session;
+    g_speed.running = true;
+    g_speed.phase = SpeedPhase::Ping;
+    speed_busy = true;
+    start = true;
+  }
+  if (!start) return;
+  try {
+    std::thread(run_speed_test).detach();
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    g_speed.phase = SpeedPhase::Failed;
+    g_speed.error = "Could not start speed test";
+    g_speed.running = false;
+    speed_busy = false;
+  }
+}
+
+static std::vector<SearchResult> speed_cards() {
+  SpeedState s;
+  {
+    std::lock_guard<std::mutex> lock(speed_mu);
+    s = g_speed;
+  }
+  std::vector<SearchResult> out;
+  if (!g_net) {
+    out.push_back(card("Speed test", "Network checks are disabled", "speedtest", "speedtest"));
+    return out;
+  }
+  if (s.phase == SpeedPhase::Failed && !s.error.empty() && s.down_mbps <= 0) {
+    out.push_back(card("Speed test failed", s.error, s.error, "speedtest"));
+    return out;
+  }
+
+  const char* phase = "Starting…";
+  int meter = 4;
+  if (s.phase == SpeedPhase::Ping) {
+    phase = "Measuring ping…";
+    meter = 8;
+  } else if (s.phase == SpeedPhase::Download) {
+    phase = "Downloading… live";
+    meter = 12 + static_cast<int>(std::min(48.0, s.down_bytes / (25000000.0 / 48.0)));
+  } else if (s.phase == SpeedPhase::Upload) {
+    phase = "Uploading… live";
+    meter = 60 + static_cast<int>(std::min(35.0, s.up_bytes / (8000000.0 / 35.0)));
+  } else if (s.phase == SpeedPhase::Done) {
+    phase = s.error.empty() ? "Done · enter copies" : "Done · upload skipped";
+    meter = 100;
+  } else if (s.phase == SpeedPhase::Idle) {
+    phase = "Starting speed test…";
+    meter = 2;
+  }
+
+  std::string summary = "↓ " + fmt_mbps(s.down_mbps) + "   ↑ " + fmt_mbps(s.up_mbps);
+  std::string copy = "Download " + fmt_mbps(s.down_mbps) + " · Upload " + fmt_mbps(s.up_mbps) +
+                     " · Ping " + fmt_ping(s.ping_ms);
+  out.push_back(card(summary, std::string("Ping ") + fmt_ping(s.ping_ms) + " · " + phase, copy,
+                     "speedtest", 10000, ResultAction::Copy, meter));
+  out.push_back(card("Download  " + fmt_mbps(s.down_mbps),
+                     s.phase == SpeedPhase::Download
+                         ? human_bytes(s.down_bytes) + " received"
+                         : (s.phase == SpeedPhase::Idle || s.phase == SpeedPhase::Ping
+                                ? "Waiting…"
+                                : "Peak throughput"),
+                     copy, "speedtest", 9990, ResultAction::Copy,
+                     s.phase == SpeedPhase::Download ? meter : (s.down_mbps > 0 ? 100 : 0)));
+  out.push_back(card("Upload  " + fmt_mbps(s.up_mbps),
+                     s.phase == SpeedPhase::Upload
+                         ? human_bytes(s.up_bytes) + " sent"
+                         : (s.phase == SpeedPhase::Done || s.up_mbps > 0 ? "Peak throughput"
+                                                                        : "Waiting…"),
+                     copy, "speedtest", 9980, ResultAction::Copy,
+                     s.phase == SpeedPhase::Upload ? meter : (s.up_mbps > 0 ? 100 : 0)));
+  return out;
+}
 
 static std::string fetch_weather(const std::string& where) {
   if (!g_net) return {};
@@ -563,6 +978,12 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Swap, true);
   else if (key == "help" || key == "minis" || key == "cmds" || key == "commands")
     set(MiniKind::Help, true);
+  else if (key == "speedtest" || key == "speed-test" || key == "speed_test" || key == "netspeed" ||
+           key == "bandwidth" || key == "internetspeed") {
+    auto r = to_lower_utf8(rest);
+    if (rest.empty() || r == "again" || r == "retry" || r == "new" || r == "rerun")
+      set(MiniKind::Speedtest, true);
+  }
   else if (key == "macros" || key == "bangs")
     set(MiniKind::MacrosList, true);
   else if (key == "windows" || key == "window" || key == "winswitch" || key == "wswitch" ||
@@ -666,6 +1087,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto payload = std::string(clock) + " · " + date;
     out.push_back(card(clock, date, payload, "time"));
     return out;
+  }
+
+  if (intent.kind == MiniKind::Speedtest) {
+    auto rest = to_lower_utf8(intent.remainder);
+    bool again = rest == "again" || rest == "retry" || rest == "new" || rest == "rerun";
+    kick_speed_test(again, again ? rest : std::string("run"));
+    return speed_cards();
   }
 
   if (intent.kind == MiniKind::Weather) {
@@ -1221,6 +1649,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "uuid / base64 / sha256 <text> / lorem / json",
                                   "lock / sleep / shutdown / restart / logout",
                                   "empty trash  ·  recycle bin",
+                                  "speedtest  ·  live download and upload",
                                   "battery / ip / hostname / uptime / user",
                                   "clip / clips  ·  clipboard",
                                   "snip / ;keyword  ·  text snippets",
