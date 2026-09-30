@@ -43,8 +43,8 @@ std::vector<NativeWindowInfo> native_list_windows() {
   return out;
 }
 
-bool native_focus_window(std::uint64_t id) {
-  if (!id) return false;
+bool native_focus_window(std::uint64_t window_id) {
+  if (!window_id) return false;
   @autoreleasepool {
     CFArrayRef list = CGWindowListCopyWindowInfo(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
@@ -55,7 +55,7 @@ bool native_focus_window(std::uint64_t id) {
     for (CFIndex i = 0; i < n; ++i) {
       NSDictionary* info = (__bridge NSDictionary*)CFArrayGetValueAtIndex(list, i);
       NSNumber* wid = info[(id)kCGWindowNumber];
-      if (!wid || wid.unsignedLongLongValue != id) continue;
+      if (!wid || wid.unsignedLongLongValue != window_id) continue;
       NSNumber* owner_pid = info[(id)kCGWindowOwnerPID];
       pid = owner_pid ? static_cast<pid_t>(owner_pid.intValue) : 0;
       want_title = info[(id)kCGWindowName];
@@ -66,7 +66,7 @@ bool native_focus_window(std::uint64_t id) {
 
     NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
     if (app) {
-      [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+      [app activateWithOptions:NSApplicationActivateAllWindows];
     }
 
     AXUIElementRef app_el = AXUIElementCreateApplication(pid);
@@ -82,14 +82,15 @@ bool native_focus_window(std::uint64_t id) {
         CFTypeRef title_ref = nullptr;
         if (AXUIElementCopyAttributeValue(win, kAXTitleAttribute, &title_ref) != kAXErrorSuccess)
           continue;
-        NSString* title = (__bridge_transfer NSString*)title_ref;
+        NSString* title = (__bridge NSString*)title_ref;
         if (want_title && title && [title isEqualToString:want_title]) {
           AXUIElementPerformAction(win, kAXRaiseAction);
           AXUIElementSetAttributeValue(win, kAXMainAttribute, kCFBooleanTrue);
           AXUIElementSetAttributeValue(win, kAXFocusedAttribute, kCFBooleanTrue);
           raised = true;
-          break;
         }
+        CFRelease(title_ref);
+        if (raised) break;
       }
     }
     if (wins_ref) CFRelease(wins_ref);
