@@ -487,6 +487,41 @@
     };
   }
 
+  // Demo-only sample data (shown when no native host is attached). Paths are built
+  // from the viewer's own platform and a generic home placeholder, never a real account.
+  function demoEnv() {
+    const plat = (navigator.userAgentData && navigator.userAgentData.platform) ||
+      navigator.platform || navigator.userAgent || "";
+    const isMac = /mac/i.test(plat);
+    const isWin = !isMac && /win/i.test(plat);
+    const sep = isWin ? "\\" : "/";
+    const home = isWin ? "%USERPROFILE%" : "~";
+    const join = (...parts) => parts.join(sep);
+    return {
+      isWin, isMac, sep, home, join,
+      osName: isWin ? "Windows" : isMac ? "macOS" : "Linux",
+      disk: isWin ? "C:\\" : "/",
+      procName: isWin ? "Code.exe" : "Code",
+      apps: isWin
+        ? [
+            { title: "Firefox", path: "C:\\Program Files\\Firefox\\firefox.exe", subtitle: "C:\\Program Files\\Firefox" },
+            { title: "File Explorer", path: "C:\\Windows\\explorer.exe", subtitle: "C:\\Windows" },
+            { title: "Visual Studio Code", path: "%LOCALAPPDATA%\\Programs\\Microsoft VS Code\\Code.exe", subtitle: "Microsoft VS Code" },
+          ]
+        : isMac
+        ? [
+            { title: "Firefox", path: "/Applications/Firefox.app", subtitle: "/Applications" },
+            { title: "Finder", path: "/System/Library/CoreServices/Finder.app", subtitle: "/System/Library/CoreServices" },
+            { title: "Visual Studio Code", path: "/Applications/Visual Studio Code.app", subtitle: "Visual Studio Code" },
+          ]
+        : [
+            { title: "Firefox", path: "/usr/bin/firefox", subtitle: "/usr/bin" },
+            { title: "Files", path: "/usr/bin/nautilus", subtitle: "/usr/bin" },
+            { title: "Visual Studio Code", path: "/usr/bin/code", subtitle: "Visual Studio Code" },
+          ],
+    };
+  }
+
   function demoQuery(q, id) {
     const conv = demoConvert(q);
     if (conv) {
@@ -496,19 +531,20 @@
       }, 40);
       return;
     }
+    const env = demoEnv();
+    const H = env.home;
+    const J = env.join;
     const sample = [
-      { title: "Firefox", path: "C:\\Program Files\\Firefox\\firefox.exe", kind: "application", subtitle: "C:\\Program Files\\Firefox" },
-      { title: "File Explorer", path: "C:\\Windows\\explorer.exe", kind: "application", subtitle: "C:\\Windows" },
-      { title: "Visual Studio Code", path: "C:\\Users\\jayla\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe", kind: "application", subtitle: "Microsoft VS Code" },
-      { title: "Projects", path: "C:\\Users\\jayla\\Projects", kind: "directory", subtitle: "C:\\Users\\jayla" },
-      { title: "Downloads", path: "C:\\Users\\jayla\\Downloads", kind: "directory", subtitle: "C:\\Users\\jayla" },
-      { title: "notes.md", path: "C:\\Users\\jayla\\Documents\\notes.md", kind: "document", subtitle: "Documents" },
-      { title: "readme.md", path: "C:\\Users\\jayla\\Downloads\\Wilfred\\README.md", kind: "document", subtitle: "Wilfred" },
-      { title: "engine.cpp", path: "C:\\Users\\jayla\\Downloads\\Wilfred\\src\\search\\engine.cpp", kind: "source", subtitle: "search" },
-      { title: "photo.png", path: "C:\\Users\\jayla\\Pictures\\photo.png", kind: "image", subtitle: "Pictures" },
-      { title: "clip.mp4", path: "C:\\Users\\jayla\\Videos\\clip.mp4", kind: "video", subtitle: "Videos" },
-      { title: "track.mp3", path: "C:\\Users\\jayla\\Music\\track.mp3", kind: "audio", subtitle: "Music" },
-      { title: "archive.zip", path: "C:\\Users\\jayla\\Downloads\\archive.zip", kind: "archive", subtitle: "Downloads" },
+      ...env.apps.map((a) => ({ ...a, kind: "application" })),
+      { title: "Projects", path: J(H, "Projects"), kind: "directory", subtitle: H },
+      { title: "Downloads", path: J(H, "Downloads"), kind: "directory", subtitle: H },
+      { title: "notes.md", path: J(H, "Documents", "notes.md"), kind: "document", subtitle: "Documents" },
+      { title: "readme.md", path: J(H, "Projects", "Wilfred", "README.md"), kind: "document", subtitle: "Wilfred" },
+      { title: "engine.cpp", path: J(H, "Projects", "Wilfred", "src", "search", "engine.cpp"), kind: "source", subtitle: "search" },
+      { title: "photo.png", path: J(H, "Pictures", "photo.png"), kind: "image", subtitle: "Pictures" },
+      { title: "clip.mp4", path: J(H, "Videos", "clip.mp4"), kind: "video", subtitle: "Videos" },
+      { title: "track.mp3", path: J(H, "Music", "track.mp3"), kind: "audio", subtitle: "Music" },
+      { title: "archive.zip", path: J(H, "Downloads", "archive.zip"), kind: "archive", subtitle: "Downloads" },
       { title: "25 × 42", subtitle: "1050", action: "calc", kind: "unknown" },
     ];
     const demoIcon =
@@ -532,10 +568,10 @@
     const minis = [
       { title: "72°F · Clear", subtitle: "Local weather · enter copies", kind: "weather", category: "mini", meter: 0, action: "copy" },
       { title: "10:42:00 AM", subtitle: "Friday, September 25, 2026", kind: "time", category: "mini", action: "copy" },
-      { title: "C:\\  41% used  ·  412 GB free of 931 GB", subtitle: "Windows", kind: "disk", category: "mini", meter: 41, action: "copy" },
+      { title: `${env.disk}  41% used  ·  412 GB free of 931 GB`, subtitle: env.osName, kind: "disk", category: "mini", meter: 41, action: "copy" },
       { title: "RAM  62%  ·  19.8 GB used of 32.0 GB", subtitle: "Physical memory", kind: "ram", category: "mini", meter: 62, action: "copy" },
       { title: "CPU  18%", subtitle: "Processor load", kind: "cpu", category: "mini", meter: 18, action: "copy" },
-      { title: "Code.exe  ·  CPU 4.2%  ·  RAM 612 MB", subtitle: "PID 4412  ·  42 threads", kind: "process", category: "mini", meter: 4, action: "copy" },
+      { title: `${env.procName}  ·  CPU 4.2%  ·  RAM 612 MB`, subtitle: "PID 4412  ·  42 threads", kind: "process", category: "mini", meter: 4, action: "copy" },
     ];
     const macros = [
       { title: "!yt cats", subtitle: "https://www.youtube.com/results?search_query=cats", kind: "macro", category: "macro", action: "web" },
@@ -554,7 +590,7 @@
         kind: "snippet",
         category: "snippet",
         action: "expand",
-        payload: "Best regards,\nJay",
+        payload: "Best regards,\nYour Name",
         actions: [
           { id: "paste", label: "Paste" },
           { id: "copy_text", label: "Copy text" },

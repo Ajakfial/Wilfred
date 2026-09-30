@@ -3,7 +3,7 @@
 
 void test_paths() {
   using namespace wilfred;
-  auto joined = path_join("C:/Users", "jayla");
+  auto joined = path_join("C:/Users", "example");
   CHECK(!joined.empty());
   CHECK_EQ(path_filename("/tmp/foo.cpp"), "foo.cpp");
   CHECK_EQ(path_filename("C:\\Windows\\System32"), "System32");

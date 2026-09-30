@@ -1,5 +1,6 @@
 #include "test.hpp"
 
+#include "wilfred/core/paths.hpp"
 #include "wilfred/history/history.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/index/store.hpp"
@@ -134,7 +135,7 @@ void test_search_extras() {
   CHECK(mini_results("time", cfg_off, "").empty());
 
   ClipboardSnapshot snap;
-  snap.text = "C:\\Users\\jayla\\Documents\\notes.md\nsecret token WidgetFactory";
+  snap.text = path_join(home_directory(), "Documents/notes.md") + "\nsecret token WidgetFactory";
   set_clipboard_override(snap);
   CHECK(clipboard_text_matches("widgetfactory", snap.text));
   CHECK(!clipboard_text_matches("zzzz", snap.text));
