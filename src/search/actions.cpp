@@ -4,9 +4,11 @@
 #include "wilfred/browser/browser.hpp"
 #include "wilfred/core/log.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/index/record.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/screenshot.hpp"
 
 #include <chrono>
@@ -26,7 +28,47 @@ static PluginHost* g_plugin_exec = nullptr;
 
 void set_plugin_host_for_actions(PluginHost* host) { g_plugin_exec = host; }
 
-void attach_result_actions(SearchResult& r) {
+namespace {
+
+constexpr std::size_t kMaxOpenWithApps = 4;
+constexpr std::size_t kMaxOpenWithResults = 8;
+
+void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
+  auto add = [&](const char* id, const std::string& label) {
+    ResultActionItem it;
+    it.id = id;
+    it.label = label;
+    r.actions.push_back(std::move(it));
+  };
+  auto p = r.path.empty() ? r.payload : r.path;
+  add("open", "Open");
+  add("reveal", "Show in folder");
+  add("copy_path", "Copy path");
+  add("copy_name", "Copy name");
+  if (path_to_posix(p) != p) add("copy_posix", "Copy POSIX path");
+  add("copy_file_uri", "Copy file URL");
+#ifdef _WIN32
+  if (!path_to_wsl(p).empty()) add("copy_wsl", "Copy WSL path");
+#endif
+  if (!is_dir) add("hash_file", "Copy SHA-256 hash");
+  add("compress_zip", "Compress to .zip");
+  add("open_terminal", "Open terminal here");
+  add("open_editor", "Open in editor");
+  if (is_dir) {
+    add("new_file", "New file here");
+    add("new_folder", "New folder here");
+  }
+  if (include_open_with && !is_dir) {
+    for (auto& app : native_apps_for_file(p, kMaxOpenWithApps)) {
+      ResultActionItem it;
+      it.id = "open_with:" + app.target;
+      it.label = "Open with " + app.name;
+      r.actions.push_back(std::move(it));
+    }
+  }
+}
+
+void attach_impl(SearchResult& r, bool include_open_with) {
   if (!r.actions.empty()) return;
   if (r.action == ResultAction::Habit) return;
   auto add = [&](const char* id, const char* label) {
@@ -79,20 +121,44 @@ void attach_result_actions(SearchResult& r) {
     add("copy_path", "Capture + copy path");
     return;
   }
-  add("open", "Open");
-  add("reveal", "Show in folder");
-  add("copy_path", "Copy path");
-  add("copy_name", "Copy name");
+  if (r.kind == FileKind::Application) {
+    add("open", "Open");
+    add("reveal", "Show in folder");
+    add("copy_path", "Copy path");
+    add("copy_name", "Copy name");
+    return;
+  }
+  add_file_actions(r, r.kind == FileKind::Directory, include_open_with);
 }
 
+}  // namespace
+
+void attach_result_actions(SearchResult& r) { attach_impl(r, true); }
+
 void attach_result_actions(std::vector<SearchResult>& results) {
-  for (auto& r : results) attach_result_actions(r);
+  // Open-with lookups touch the registry / LaunchServices / .desktop files,
+  // so only the first few file results per query get them.
+  std::size_t budget = kMaxOpenWithResults;
+  for (auto& r : results) {
+    if (!r.actions.empty() || r.action == ResultAction::Habit) continue;
+    bool include = true;
+    if (r.kind != FileKind::Application && r.kind != FileKind::Directory &&
+        r.action != ResultAction::Screenshot && r.category != "screenshot") {
+      if (budget == 0)
+        include = false;
+      else
+        --budget;
+    }
+    attach_impl(r, include);
+  }
 }
 
 bool action_hides_overlay(const std::string& action_id) {
   if (action_id.empty() || action_id == "open" || action_id == "reveal" || action_id == "paste" ||
-      action_id == "expand")
+      action_id == "expand" || action_id == "open_terminal" || action_id == "open_editor" ||
+      action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder")
     return true;
+  if (action_id.rfind("open_with:", 0) == 0) return true;
   return false;
 }
 
@@ -186,6 +252,62 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   }
   if (r.action == ResultAction::Habit || r.action == ResultAction::None) return false;
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return true;
+  {
+    auto p = r.path.empty() ? r.payload : r.path;
+    if (id == "copy_posix") return !p.empty() && write_clipboard(path_to_posix(p));
+    if (id == "copy_file_uri") return !p.empty() && write_clipboard(path_to_file_uri(p));
+    if (id == "copy_wsl") {
+      auto w = path_to_wsl(p);
+      if (w.empty()) return false;
+      return write_clipboard(w);
+    }
+    if (id == "hash_file") {
+      std::string hex, err;
+      if (!sha256_file(p, hex, err)) {
+        log_warn("fileops", err.empty() ? "hash failed" : err);
+        return false;
+      }
+      return write_clipboard(hex);
+    }
+    if (id == "open_terminal" || id == "open_editor") {
+      auto base = fs_is_directory(p) ? p : path_parent(p);
+      if (base.empty() || !fs_exists(base)) return false;
+      return id == "open_terminal" ? native_open_terminal(base) : native_open_editor(base);
+    }
+    if (id == "compress_zip") {
+      if (p.empty() || !fs_exists(p)) return false;
+      auto dir = path_parent(p);
+      if (dir.empty()) return false;
+      auto stem = path_stem(p);
+      if (stem.empty()) stem = path_filename(p);
+      if (stem.empty()) stem = "archive";
+      auto dest = unique_sibling_path(dir, stem, ".zip");
+      std::string err;
+      if (!zip_paths_to({p}, dest, err)) {
+        log_warn("fileops", err.empty() ? "compress failed" : err);
+        return false;
+      }
+      reveal_path(dest);
+      return true;
+    }
+    if (id == "new_file" || id == "new_folder") {
+      auto base = fs_is_directory(p) ? p : path_parent(p);
+      if (base.empty() || !fs_exists(base)) return false;
+      std::string created, err;
+      bool ok = id == "new_file" ? create_new_file_here(base, created, err)
+                                 : create_new_folder_here(base, created, err);
+      if (!ok) {
+        log_warn("fileops", err.empty() ? "create failed" : err);
+        return false;
+      }
+      reveal_path(created);
+      return true;
+    }
+    if (id.rfind("open_with:", 0) == 0) {
+      if (p.empty()) return false;
+      return native_open_with(id.substr(10), p);
+    }
+  }
   if (r.action == ResultAction::System || r.category == "system") {
     auto sys_id = r.payload.empty() ? r.path : r.payload;
     return native_system_action(sys_id);

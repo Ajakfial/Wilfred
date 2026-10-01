@@ -60,6 +60,7 @@ set(WILFRED_CORE_SOURCES
   src/search/snippets.cpp
   src/search/actions.cpp
   src/search/screenshot.cpp
+  src/search/file_ops.cpp
   src/plugin/host.cpp
   src/sync/backup.cpp
   src/query/classify.cpp
@@ -122,6 +123,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/snippets.hpp
   include/wilfred/search/actions.hpp
   include/wilfred/search/screenshot.hpp
+  include/wilfred/search/file_ops.hpp
   include/wilfred/plugin/abi.hpp
   include/wilfred/plugin/host.hpp
   include/wilfred/sync/backup.hpp
@@ -284,6 +286,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_apps.cpp
   tests/test_protocol.cpp
   tests/test_updater.cpp
+  tests/test_file_actions.cpp
   tests/test_search_extras.cpp
   tests/test_extensibility.cpp
 )

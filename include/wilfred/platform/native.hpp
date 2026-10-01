@@ -7,6 +7,7 @@
 #include "wilfred/fs/watcher.hpp"
 #include "wilfred/hotkey/hotkey.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -60,5 +61,17 @@ enum class NativeScreenshotMode { Fullscreen, Window, Region };
 bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path,
                             std::string& error);
 std::string native_screenshot_save_directory();
+
+struct OpenWithApp {
+  std::string name;    // display name, e.g. "Visual Studio Code"
+  std::string target;  // opaque id passed back to native_open_with
+};
+
+// Up to max_apps applications that can open path, best first.
+// Empty when none are known (callers fall back to the default handler).
+std::vector<OpenWithApp> native_apps_for_file(const std::string& path, std::size_t max_apps);
+bool native_open_with(const std::string& target, const std::string& file);
+bool native_open_terminal(const std::string& dir);
+bool native_open_editor(const std::string& dir);
 
 }  // namespace wilfred

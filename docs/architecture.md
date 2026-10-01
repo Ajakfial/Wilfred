@@ -177,7 +177,12 @@ in short:
 * `clipboard.hpp` — reads the OS clipboard and clipboard history, used both
   as a "mini" result source and as ranking context (`clipboard_overlap`).
 * `actions.hpp` — turns a `SearchResult` + chosen `ResultActionItem` into
-  an actual OS action, and lets plugins register their own actions.
+  an actual OS action, and lets plugins register their own actions. File
+  and folder results expose rich actions (`search/file_ops.hpp` for the
+  portable pieces: POSIX/`file://`/WSL path flavors, SHA-256 hashing,
+  stored-zip creation, new file/folder): open, reveal, copy flavors, hash,
+  compress, terminal/editor here, new file/folder, and per-file Open With
+  entries from `native_apps_for_file()` / `native_open_with()`.
 
 ## Extensibility: plugins and providers
 

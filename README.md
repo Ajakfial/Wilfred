@@ -21,6 +21,7 @@ single summonable search bar.
 * Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
+* Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
 * Default-browser detection, URL open, and web-search fallback
 * Safe expression parser (arithmetic, functions, unit/currency/color/date conversion, uuid/base64/sha256/lorem/json)
 * Native and stdio plugins, plus extra search backends via providers

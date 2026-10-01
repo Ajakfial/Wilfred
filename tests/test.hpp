@@ -43,5 +43,6 @@ void test_history();
 void test_apps();
 void test_protocol();
 void test_updater();
+void test_file_actions();
 void test_search_extras();
 void test_extensibility();

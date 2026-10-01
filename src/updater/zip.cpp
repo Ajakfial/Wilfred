@@ -20,40 +20,10 @@ namespace wilfred {
 
 namespace {
 
-struct ZipLocalHeader {
-  std::uint32_t signature;    // 0x04034b50
-  std::uint16_t version;
-  std::uint16_t flags;
-  std::uint16_t method;
-  std::uint16_t mod_time;
-  std::uint16_t mod_date;
-  std::uint32_t crc32;
-  std::uint32_t comp_size;
-  std::uint32_t uncomp_size;
-  std::uint16_t name_len;
-  std::uint16_t extra_len;
-};
-
-struct ZipCentralEntry {
-  std::uint32_t signature;    // 0x02014b50
-  std::uint16_t version_made;
-  std::uint16_t version_need;
-  std::uint16_t flags;
-  std::uint16_t method;
-  std::uint16_t mod_time;
-  std::uint16_t mod_date;
-  std::uint32_t crc32;
-  std::uint32_t comp_size;
-  std::uint32_t uncomp_size;
-  std::uint16_t name_len;
-  std::uint16_t extra_len;
-  std::uint16_t comment_len;
-  std::uint16_t disk_start;
-  std::uint16_t int_attr;
-  std::uint32_t ext_attr;
-  std::uint32_t local_offset;
-};
-
+// NOTE: ZIP on-disk headers are packed with no padding, which C structs
+// don't reproduce (e.g. a u32 at file offset 14 or 38 forces pad bytes, so
+// sizeof() != on-disk size). All header fields are read explicitly with
+// rd16/rd32 below; do not memcpy these structs from file bytes.
 struct ZipEndRecord {
   std::uint32_t signature;    // 0x06054b50
   std::uint16_t disk_num;
@@ -64,6 +34,15 @@ struct ZipEndRecord {
   std::uint32_t central_offset;
   std::uint16_t comment_len;
 };
+
+std::uint16_t rd16(const std::uint8_t* p) {
+  return static_cast<std::uint16_t>(p[0] | (static_cast<std::uint16_t>(p[1]) << 8));
+}
+
+std::uint32_t rd32(const std::uint8_t* p) {
+  return static_cast<std::uint32_t>(p[0]) | (static_cast<std::uint32_t>(p[1]) << 8) |
+         (static_cast<std::uint32_t>(p[2]) << 16) | (static_cast<std::uint32_t>(p[3]) << 24);
+}
 
 bool read_file(const std::string& path, std::vector<std::uint8_t>& data) {
   std::ifstream f(path, std::ios::binary);
@@ -141,7 +120,17 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
   }
 
   ZipEndRecord eocd;
-  std::memcpy(&eocd, data.data() + eocd_pos, sizeof(eocd));
+  {
+    const std::uint8_t* p = data.data() + eocd_pos;
+    eocd.signature = rd32(p);
+    eocd.disk_num = rd16(p + 4);
+    eocd.disk_start = rd16(p + 6);
+    eocd.entries_here = rd16(p + 8);
+    eocd.total_entries = rd16(p + 10);
+    eocd.central_size = rd32(p + 12);
+    eocd.central_offset = rd32(p + 16);
+    eocd.comment_len = rd16(p + 20);
+  }
   // Byte-swap if needed (ZIP is little-endian, we assume LE host)
   // On LE hosts this is a no-op
 
@@ -154,34 +143,40 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
       return false;
     }
 
-    ZipCentralEntry entry;
-    std::memcpy(&entry, data.data() + offset, sizeof(entry));
-
-    if (entry.signature != 0x02014b50) {
+    const std::uint8_t* c = data.data() + offset;
+    if (rd32(c) != 0x02014b50) {
       if (error) *error = "invalid ZIP: bad central directory signature";
       return false;
     }
+    std::uint16_t method = rd16(c + 10);
+    std::uint32_t comp_size = rd32(c + 20);
+    std::uint16_t name_len = rd16(c + 28);
+    std::uint16_t extra_len = rd16(c + 30);
+    std::uint16_t comment_len = rd16(c + 32);
+    std::uint32_t local_offset = rd32(c + 42);
 
-    std::string name(reinterpret_cast<const char*>(data.data() + offset + 46), entry.name_len);
+    std::string name(reinterpret_cast<const char*>(data.data() + offset + 46), name_len);
 
     // Skip directories
     if (!name.empty() && name.back() == '/') {
-      offset += 46 + entry.name_len + entry.extra_len + entry.comment_len;
+      offset += 46 + name_len + extra_len + comment_len;
       continue;
     }
 
-    // Read local header to find data offset
-    std::uint32_t local_off = entry.local_offset;
+    // Read local header to find data offset (local fixed part is 30 bytes).
+    std::uint32_t local_off = local_offset;
     if (local_off + 30 > data.size()) {
       if (error) *error = "invalid ZIP: local header out of bounds";
       return false;
     }
+    const std::uint8_t* lh = data.data() + local_off;
+    if (rd32(lh) != 0x04034b50) {
+      if (error) *error = "invalid ZIP: bad local header signature";
+      return false;
+    }
 
-    ZipLocalHeader lh;
-    std::memcpy(&lh, data.data() + local_off, sizeof(lh));
-
-    std::uint32_t data_off = local_off + 30 + lh.name_len + lh.extra_len;
-    std::uint32_t comp_size = entry.comp_size;
+    std::uint32_t data_off =
+        local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
 
     if (data_off + comp_size > data.size()) {
       if (error) *error = "invalid ZIP: compressed data out of bounds";
@@ -189,18 +184,18 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
     }
 
     std::vector<std::uint8_t> file_data;
-    if (entry.method == 0) {
+    if (method == 0) {
       // Stored
       file_data.assign(data.begin() + data_off, data.begin() + data_off + comp_size);
-    } else if (entry.method == 8) {
+    } else if (method == 8) {
       // Deflate
       if (!inflate_decompress(data.data() + data_off, comp_size, file_data)) {
         if (error) *error = "inflate failed for: " + name;
         return false;
       }
     } else {
-      log_warn("updater", "unsupported ZIP compression method " + std::to_string(entry.method) + " for " + name);
-      offset += 46 + entry.name_len + entry.extra_len + entry.comment_len;
+      log_warn("updater", "unsupported ZIP compression method " + std::to_string(method) + " for " + name);
+      offset += 46 + name_len + extra_len + comment_len;
       continue;
     }
 
@@ -214,7 +209,7 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
     // Security: prevent path traversal
     if (out_path.find("..") != std::string::npos) {
       log_warn("updater", "skipping suspicious path: " + name);
-      offset += 46 + entry.name_len + entry.extra_len + entry.comment_len;
+      offset += 46 + name_len + extra_len + comment_len;
       continue;
     }
 
@@ -223,7 +218,7 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
       return false;
     }
 
-    offset += 46 + entry.name_len + entry.extra_len + entry.comment_len;
+    offset += 46 + name_len + extra_len + comment_len;
   }
 
   return true;
