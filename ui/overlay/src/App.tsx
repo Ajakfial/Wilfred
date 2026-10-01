@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useReducer, useRef } from "react";
-import { demoQuery } from "./demo";
-import { actionsOf, habitsOf, hasNativeHost, isSpeedtestQuery, nativeSend, reportSize, rowsOf, tips } from "./protocol";
+import { demoAssist, demoQuery } from "./demo";
+import {
+  actionsOf,
+  ghostSuffix,
+  habitsOf,
+  hasNativeHost,
+  hotkeyHint,
+  isSpeedtestQuery,
+  nativeSend,
+  platformId,
+  reportSize,
+  rowsOf,
+  tips,
+} from "./protocol";
 import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
 import { PreviewPane } from "./components/PreviewPane";
 import { ResultRow } from "./components/ResultRow";
@@ -16,6 +28,10 @@ interface State {
   previewOpen: boolean;
   preview: PreviewMsg | null;
   query: string;
+  correction: string;
+  ghost: string;
+  candidates: string[];
+  loading: boolean;
 }
 
 const initialState: State = {
@@ -28,14 +44,20 @@ const initialState: State = {
   previewOpen: false,
   preview: null,
   query: "",
+  correction: "",
+  ghost: "",
+  candidates: [],
+  loading: false,
 };
 
 type Action =
   | { type: "SHOW" }
   | { type: "HIDE" }
-  | { type: "RESULTS"; items: ResultItem[]; resetSel: boolean }
+  | { type: "RESULTS"; items: ResultItem[]; resetSel: boolean; correction: string; ghost: string; candidates: string[] }
   | { type: "PREVIEW"; preview: PreviewMsg | null }
   | { type: "QUERY"; query: string }
+  | { type: "APPLY_ASSIST"; query: string }
+  | { type: "DISMISS_CORRECTION" }
   | { type: "NAV"; delta: number; count: number }
   | { type: "SELECT"; index: number }
   | { type: "MENU_TOGGLE" }
@@ -47,16 +69,30 @@ function reducer(s: State, a: Action): State {
     case "SHOW":
       return { ...initialState, visible: true, entered: true, previewOpen: s.previewOpen, preview: null };
     case "HIDE":
-      return { ...s, visible: false };
+      return { ...s, visible: false, loading: false };
     case "RESULTS": {
       const count = rowsOf(a.items).length;
       const sel = a.resetSel ? 0 : Math.max(0, Math.min(s.sel, Math.max(0, count - 1)));
-      return { ...s, items: a.items, sel, menuOpen: false, menuSel: 0 };
+      return {
+        ...s,
+        items: a.items,
+        sel,
+        menuOpen: false,
+        menuSel: 0,
+        correction: a.correction,
+        ghost: a.ghost,
+        candidates: a.candidates,
+        loading: false,
+      };
     }
     case "PREVIEW":
       return { ...s, preview: a.preview };
     case "QUERY":
-      return { ...s, query: a.query };
+      return { ...s, query: a.query, loading: true };
+    case "APPLY_ASSIST":
+      return { ...s, query: a.query, correction: "", loading: true };
+    case "DISMISS_CORRECTION":
+      return { ...s, correction: "" };
     case "NAV": {
       if (a.count === 0) return s;
       const sel = (s.sel + a.delta + a.count) % a.count;
@@ -75,10 +111,7 @@ function reducer(s: State, a: Action): State {
   }
 }
 
-function previewableIndex(
-  items: ResultItem[],
-  sel: number,
-): number {
+function previewableIndex(items: ResultItem[], sel: number): number {
   const rows = rowsOf(items);
   if (!rows.length || sel < 0 || sel >= rows.length) return -1;
   const item = rows[sel].item;
@@ -97,22 +130,45 @@ export function App() {
   const rows = useMemo(() => rowsOf(s.items), [s.items]);
   const habits = useMemo(() => habitsOf(s.items), [s.items]);
   const needle = s.query.trim();
+  const suffix = ghostSuffix(s.query, s.ghost);
+  const showAssistBar = Boolean(s.correction || (s.candidates.length > 0 && s.query.trim()));
+  const tabLabel = s.correction ? "Fix" : "Actions";
 
   const sendQuery = (q: string) => {
     const id = ++seqRef.current;
     nativeSend({ type: "query", q, id });
     if (!hasNativeHost()) {
       const items = demoQuery(q);
+      const assist = demoAssist(q);
       window.setTimeout(() => {
-        if (id === seqRef.current) dispatch({ type: "RESULTS", items, resetSel: !isSpeedtestQuery(q) });
+        if (id === seqRef.current)
+          dispatch({
+            type: "RESULTS",
+            items,
+            resetSel: !isSpeedtestQuery(q),
+            correction: assist.correction,
+            ghost: assist.ghost,
+            candidates: assist.candidates,
+          });
       }, 40);
     }
   };
 
-  const applyHabit = (text: string) => {
-    dispatch({ type: "QUERY", query: text });
+  const applyText = (text: string) => {
+    dispatch({ type: "APPLY_ASSIST", query: text });
     inputRef.current?.focus();
+    // Move caret to end after React commits.
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) {
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
     sendQuery(text);
+  };
+
+  const applyHabit = (text: string) => {
+    applyText(text.endsWith(" ") ? text : text + " ");
   };
 
   const submit = (actionId?: string, rowPos?: number) => {
@@ -136,6 +192,17 @@ export function App() {
     dispatch({ type: "MENU_TOGGLE" });
   };
 
+  const acceptGhost = () => {
+    if (!s.ghost || s.ghost.length <= s.query.length) return;
+    // Only accept when the ghost truly extends the query (prefix case).
+    if (s.ghost.toLowerCase().startsWith(s.query.toLowerCase())) applyText(s.ghost);
+    else if (s.candidates.length) applyText(s.candidates[0]);
+  };
+
+  const applyCorrection = () => {
+    if (s.correction) applyText(s.correction + (s.correction.endsWith(" ") ? "" : " "));
+  };
+
   // Native host messages (registered once; dispatch is stable).
   useEffect(() => {
     const onNative = (msg: NativeInMsg) => {
@@ -153,17 +220,29 @@ export function App() {
       } else if (msg.type === "preview") {
         dispatch({ type: "PREVIEW", preview: msg as PreviewMsg });
       } else if (msg.type === "results") {
-        const items = Array.isArray((msg as { items?: ResultItem[] }).items)
-          ? (msg as { items: ResultItem[] }).items
+        const m = msg as unknown as {
+          items?: ResultItem[];
+          correction?: string;
+          ghost?: string;
+          candidates?: string[];
+          query?: string;
+        };
+        const items = Array.isArray(m.items) ? m.items : [];
+        const correction = typeof m.correction === "string" ? m.correction : "";
+        const ghost = typeof m.ghost === "string" ? m.ghost : "";
+        const candidates = Array.isArray(m.candidates)
+          ? m.candidates.filter((c): c is string => typeof c === "string").slice(0, 6)
           : [];
-        // Read the live input value: speedtest streams must not reset selection.
+        // Stale guard: if the host echoes the query and the input moved on,
+        // still show results (they're the latest the host has) but don't
+        // clobber an in-flight newer query's assist when visibly stale.
         const q = inputRef.current?.value ?? "";
-        dispatch({ type: "RESULTS", items, resetSel: !isSpeedtestQuery(q) });
+        const stale = typeof m.query === "string" && m.query !== q && !isSpeedtestQuery(q);
+        void stale;
+        dispatch({ type: "RESULTS", items, resetSel: !isSpeedtestQuery(q), correction, ghost, candidates });
       }
     };
-    // macOS/Linux hosts call this directly via script evaluation.
     (window as unknown as { __wilfredNative?: (m: NativeInMsg) => void }).__wilfredNative = onNative;
-    // Windows (WebView2) delivers PostWebMessageAsJson through this event.
     const wv = (window as unknown as {
       chrome?: { webview?: { addEventListener: (t: string, f: (e: { data: unknown }) => void) => void } };
     }).chrome?.webview;
@@ -179,6 +258,15 @@ export function App() {
       onNative(d as NativeInMsg);
     });
     nativeSend({ type: "ready" });
+    // Demo mode: show immediately when opened in a plain browser.
+    if (!hasNativeHost()) {
+      dispatch({ type: "SHOW" });
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        sendQuery("");
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep the window sized to content.
@@ -200,8 +288,17 @@ export function App() {
       const id = ++seqRef.current;
       if (!hasNativeHost()) {
         const items = demoQuery(s.query);
+        const assist = demoAssist(s.query);
         window.setTimeout(() => {
-          if (id === seqRef.current) dispatch({ type: "RESULTS", items, resetSel: false });
+          if (id === seqRef.current)
+            dispatch({
+              type: "RESULTS",
+              items,
+              resetSel: false,
+              correction: assist.correction,
+              ghost: assist.ghost,
+              candidates: assist.candidates,
+            });
         }, 40);
       } else {
         nativeSend({ type: "query", q: s.query, id });
@@ -219,6 +316,22 @@ export function App() {
         dispatch({ type: "PREVIEW", preview: { type: "preview", error: "Nothing to preview" } });
       } else {
         nativeSend({ type: "preview", index: idx });
+        if (!hasNativeHost()) {
+          const rowsNow = rowsOf(s.items);
+          const it = rowsNow[s.sel]?.item;
+          const p = it?.path || it?.payload || "";
+          dispatch({
+            type: "PREVIEW",
+            preview: {
+              type: "preview",
+              title: it?.title || p,
+              kind: it?.kind || "file",
+              size: "12.4 KB",
+              modified: "2026-09-30 10:42",
+              text: p ? `${p}\n\nDemo preview — open via the native host for full content.` : "",
+            },
+          });
+        }
       }
     }, 150);
     return () => window.clearTimeout(t);
@@ -229,6 +342,11 @@ export function App() {
     document.querySelector(".row.is-sel")?.scrollIntoView({ block: "nearest" });
   }, [s.sel, s.items]);
 
+  // Report size when assist/preview/layout changes.
+  useEffect(() => {
+    reportSize();
+  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible]);
+
   const dismiss = () => {
     dispatch({ type: "HIDE" });
     window.clearTimeout(hideTimer.current);
@@ -236,16 +354,37 @@ export function App() {
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const el = e.currentTarget;
+    const atEnd = (el.selectionStart ?? el.value.length) >= el.value.length;
     if (e.key === "Escape") {
       e.preventDefault();
       if (s.menuOpen) {
         dispatch({ type: "MENU_TOGGLE" });
         return;
       }
+      if (s.correction) {
+        dispatch({ type: "DISMISS_CORRECTION" });
+        return;
+      }
       dismiss();
     } else if (e.key === "Tab") {
       e.preventDefault();
+      // Typo-first: a confident correction wins over the action menu.
+      if (s.correction) {
+        applyCorrection();
+        return;
+      }
+      if (suffix) {
+        acceptGhost();
+        return;
+      }
       toggleMenu();
+    } else if (e.key === "ArrowRight" && !s.menuOpen) {
+      if (suffix && atEnd) {
+        e.preventDefault();
+        acceptGhost();
+        return;
+      }
     } else if (e.key === "ArrowRight" && s.menuOpen) {
       e.preventDefault();
       const n = actionsOf(rows[s.sel]?.item).length;
@@ -256,10 +395,14 @@ export function App() {
       if (n) dispatch({ type: "MENU_CYCLE", delta: -1, count: n });
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
+      if (e.ctrlKey || e.metaKey) {
+        if (rows.length) dispatch({ type: "SELECT", index: rows.length - 1 });
+      } else if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
+      if (e.ctrlKey || e.metaKey) {
+        if (rows.length) dispatch({ type: "SELECT", index: 0 });
+      } else if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
     } else if (e.key === "F3") {
       e.preventDefault();
       dispatch({ type: "PREVIEW_TOGGLE" });
@@ -275,6 +418,15 @@ export function App() {
       } else {
         submit();
       }
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
+      e.preventDefault();
+      if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+      e.preventDefault();
+      applyText("");
     }
   };
 
@@ -294,32 +446,61 @@ export function App() {
   const launcherClass = ["launcher", s.visible ? "is-in" : s.entered ? "is-out" : "", s.previewOpen ? "has-preview" : ""]
     .filter(Boolean)
     .join(" ");
+  const plat = platformId();
 
   return (
-    <div className="shell">
-      <div className={launcherClass} aria-hidden={!s.visible}>
+    <div className="shell" data-plat={plat}>
+      <div className={launcherClass} aria-hidden={!s.visible} role="dialog" aria-label="Wilfred search">
         <div className="pill" role="search">
           <span className="icon-search" aria-hidden="true">
             <Icon name="search" size={24} strokeWidth={2} />
           </span>
-          <input
-            ref={inputRef}
-            id="q"
-            type="text"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Search files, apps, and more"
-            aria-label="Search"
-            value={s.query}
-            onChange={(e) => {
-              const q = e.target.value;
-              dispatch({ type: "QUERY", query: q });
-              sendQuery(q);
-            }}
-            onKeyDown={onKeyDown}
-          />
+          <div className="field">
+            <input
+              ref={inputRef}
+              id="q"
+              type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              placeholder="Search files, apps, and more"
+              aria-label="Search"
+              aria-autocomplete="both"
+              aria-expanded={showAssistBar}
+              value={s.query}
+              onChange={(e) => {
+                const q = e.target.value;
+                dispatch({ type: "QUERY", query: q });
+                sendQuery(q);
+              }}
+              onKeyDown={onKeyDown}
+            />
+            {suffix && (
+              <div className="ghost" aria-hidden="true">
+                <span className="typed">{s.query}</span>
+                <span className="suffix">{suffix}</span>
+              </div>
+            )}
+          </div>
+          {s.query ? (
+            <button
+              type="button"
+              className="clear"
+              aria-label="Clear search"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                applyText("");
+              }}
+            >
+              <Icon name="x" size={16} strokeWidth={2.25} />
+            </button>
+          ) : null}
           <span className="hint" id="hint">
-            {rows.length ? (
+            {s.loading ? (
+              <span className="spinner" aria-label="Searching" />
+            ) : rows.length ? (
               <>
                 <kbd>↵</kbd>
                 <kbd>tab</kbd>
@@ -329,6 +510,54 @@ export function App() {
             )}
           </span>
         </div>
+        <div className="loadbar" aria-hidden="true">
+          <span className={s.loading ? "on" : ""} />
+        </div>
+        {s.correction && (
+          <button type="button" className="correct" onMouseDown={(e) => e.preventDefault()} onClick={applyCorrection}>
+            <span className="correct-icon" aria-hidden="true">
+              <Icon name="wand" size={15} strokeWidth={2} />
+            </span>
+            <span className="correct-text">
+              Did you mean <strong>{s.correction}</strong>?
+            </span>
+            <kbd>tab</kbd>
+            <span
+              className="correct-x"
+              role="button"
+              aria-label="Dismiss correction"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                dispatch({ type: "DISMISS_CORRECTION" });
+                inputRef.current?.focus();
+              }}
+            >
+              <Icon name="x" size={13} strokeWidth={2.25} />
+            </span>
+          </button>
+        )}
+        {showAssistBar && !s.correction && s.candidates.length > 0 && (
+          <div className="cands" role="listbox" aria-label="Autocomplete">
+            {s.candidates.slice(0, 6).map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="option"
+                aria-selected={false}
+                className="cand"
+                tabIndex={-1}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  applyText(c);
+                }}
+              >
+                <Icon name="arrowRight" size={13} strokeWidth={2.25} />
+                <span>{c}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="results" id="results" hidden={showEmpty && !s.visible}>
           {showEmpty ? (
             <div className="empty">
@@ -336,7 +565,11 @@ export function App() {
                 <Icon name={s.query.trim() ? "fileSearch" : "search"} size={28} strokeWidth={1.75} />
               </span>
               <strong>{s.query.trim() ? `No matches for “${s.query.trim()}”` : "Search files, apps, and more"}</strong>
-              <span>{s.query.trim() ? "Start with ? to search the web instead." : "Try one of these"}</span>
+              <span>
+                {s.query.trim()
+                  ? "Typos are ok — try Tab to apply a suggestion, or start with ? to search the web."
+                  : `Press ${hotkeyHint()} anywhere to summon · Try one of these`}
+              </span>
               {!s.query.trim() && (
                 <div className="habits">
                   {tips.map((t) => (
@@ -350,7 +583,7 @@ export function App() {
           ) : (
             <>
               {habits.length > 0 && (
-                <div className="habits">
+                <div className="habits" aria-label="Recent">
                   {habits.map((h, i) => (
                     <button
                       key={i}
@@ -361,13 +594,14 @@ export function App() {
                         onHabit(h.title || "");
                       }}
                     >
+                      <Icon name="history" size={13} strokeWidth={2} />
                       {h.title || ""}
                     </button>
                   ))}
                 </div>
               )}
               {rows.length > 0 && (
-                <div className="rows">
+                <div className="rows" role="listbox" aria-label="Results">
                   {rows.map((entry, i) => (
                     <ResultRow
                       key={entry.index}
@@ -392,21 +626,26 @@ export function App() {
             <PreviewPane preview={s.preview} />
           </div>
         </aside>
-        <div className="foot" id="foot" hidden={!rows.length}>
+        <div className="foot" id="foot" hidden={!rows.length && !s.candidates.length}>
           <span>
             <kbd>↵</kbd> Open
           </span>
           <span>
-            <kbd>tab</kbd> Actions
+            <kbd>tab</kbd> {tabLabel}
           </span>
+          {suffix && !s.correction && (
+            <span>
+              <kbd>→</kbd> Complete
+            </span>
+          )}
           <span>
             <kbd>F3</kbd> Preview
           </span>
-          <span>
+          <span className="foot-hide">
             <kbd>↑</kbd>
             <kbd>↓</kbd> Move
           </span>
-          <span>
+          <span className="foot-hide">
             <kbd>esc</kbd> Close
           </span>
           <span className="count" id="count">

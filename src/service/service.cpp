@@ -18,6 +18,7 @@
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/semantic.hpp"
+#include "wilfred/search/suggest.hpp"
 #include "wilfred/sources/sources.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
@@ -306,7 +307,17 @@ int Service::run_daemon() {
       [this](const std::string& q) {
         last_overlay_query_ = q;
         auto iq = interpreter_.interpret(q, cfg_, &history_);
-        return iq.results;
+        OverlayResponse resp;
+        resp.results = std::move(iq.results);
+        resp.query = q;
+        try {
+          auto assist = build_assist(q, cfg_, &history_, &index_);
+          resp.correction = std::move(assist.correction);
+          resp.ghost = std::move(assist.ghost);
+          resp.candidates = std::move(assist.candidates);
+        } catch (...) {
+        }
+        return resp;
       },
       [this](const SearchResult& r, const std::string& action_id) {
         if (r.action == ResultAction::Habit) return;

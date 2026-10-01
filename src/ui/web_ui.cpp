@@ -86,6 +86,14 @@ const char* overlay_action_name(ResultAction a) {
 
 std::string overlay_results_json(const std::vector<SearchResult>& items,
                                  const std::vector<std::string>& habits) {
+  return overlay_results_json(items, habits, {}, {}, {}, {});
+}
+
+std::string overlay_results_json(const std::vector<SearchResult>& items,
+                                 const std::vector<std::string>& habits,
+                                 const std::string& correction, const std::string& ghost,
+                                 const std::vector<std::string>& candidates,
+                                 const std::string& query) {
   std::string o = "{\"type\":\"results\",\"items\":[";
   bool first = true;
   for (auto& it : items) {
@@ -156,7 +164,27 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     o += overlay_json_escape(h);
     o += "\"";
   }
-  o += "]}";
+  o += "]";
+  o += ",\"correction\":\"";
+  o += overlay_json_escape(correction);
+  o += "\",\"ghost\":\"";
+  o += overlay_json_escape(ghost);
+  o += "\",\"candidates\":[";
+  bool cf = true;
+  for (auto& c : candidates) {
+    if (!cf) o += ',';
+    cf = false;
+    o += "\"";
+    o += overlay_json_escape(c);
+    o += "\"";
+  }
+  o += "]";
+  if (!query.empty()) {
+    o += ",\"query\":\"";
+    o += overlay_json_escape(query);
+    o += "\"";
+  }
+  o += "}";
   return o;
 }
 

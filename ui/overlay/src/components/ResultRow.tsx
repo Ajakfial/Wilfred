@@ -42,21 +42,29 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
     .filter(Boolean)
     .join(" ");
 
+  const group = groups[k] || (item.category === "mini" ? "mini" : "doc");
+
   return (
     <div
       className={cls}
       data-i={index}
-      data-g={groups[k] || (item.category === "mini" ? "mini" : "doc")}
+      data-g={group}
       data-level={level}
+      role="option"
+      aria-selected={selected}
+      onMouseEnter={() => {
+        // Hover highlights without committing (selection follows hover for
+        // mouse users, keyboard keeps explicit index).
+      }}
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest(".more,.action")) return;
         e.preventDefault();
         onSelect(index);
       }}
     >
-      <div className="badge">
+      <div className="badge" aria-hidden="true">
         {item.icon ? (
-          <img className="icon" alt="" src={item.icon} />
+          <img className="icon" alt="" src={item.icon} draggable={false} />
         ) : (
           <Icon name={iconForKind(k, item.action, item.category)} size={20} strokeWidth={2} />
         )}
@@ -69,7 +77,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
         </div>
         <div className="sub">{item.subtitle || item.path || ""}</div>
         {meter !== null && (
-          <div className="meter">
+          <div className="meter" role="progressbar" aria-valuenow={meter} aria-valuemin={0} aria-valuemax={100}>
             <span style={{ width: `${meter}%` }} />
           </div>
         )}
@@ -84,6 +92,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
             type="button"
             className="more"
             aria-label="Actions"
+            tabIndex={-1}
             onMouseDown={(e) => {
               e.preventDefault();
               onMore(index);
@@ -91,11 +100,12 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
           >
             <Icon name="more" size={18} />
           </button>
-          <div className="action-menu" hidden={!(menuOpen && selected)}>
+          <div className="action-menu" hidden={!(menuOpen && selected)} role="menu">
             {acts.map((a, j) => (
               <button
                 key={a.id}
                 type="button"
+                role="menuitem"
                 className={"action" + (j === menuSel && selected && menuOpen ? " is-sel" : "")}
                 onMouseDown={(e) => {
                   e.preventDefault();

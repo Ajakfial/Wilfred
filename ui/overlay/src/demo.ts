@@ -3,7 +3,7 @@ import type { ResultItem } from "./types";
 
 // Offline demo data shown when the page runs without a native host
 // (plain browser preview). Mirrors the behavior of the native backend
-// closely enough to exercise the UI.
+// closely enough to exercise the UI, including typo correction + ghost.
 
 interface DemoEnv {
   isWin: boolean;
@@ -324,4 +324,87 @@ export function demoQuery(q: string): ResultItem[] {
     ? habits.filter((h) => (h.title || "").includes(needle) && h.title !== needle)
     : habits;
   return typed.concat(miniHit).concat(needle && miniHit.length ? [] : matched);
+}
+
+function damerauDemo(a: string, b: string, maxDist: number): number {
+  if (a === b) return 0;
+  const n = a.length;
+  const m = b.length;
+  if (Math.abs(n - m) > maxDist) return maxDist + 1;
+  const d: number[][] = Array.from({ length: n + 1 }, (_, i) => [i, ...Array(m).fill(0)]);
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, d[i - 2][j - 2] + 1);
+      d[i][j] = v;
+    }
+  }
+  return d[n][m] <= maxDist ? d[n][m] : maxDist + 1;
+}
+
+const demoVocab = [
+  "weather", "time", "disk", "ram", "cpu", "process", "battery", "clip", "clips",
+  "speedtest", "screenshot", "emoji", "symbol", "color", "uuid", "base64", "sha256",
+  "lorem", "json", "lock", "sleep", "shutdown", "restart", "logout", "empty trash",
+  "firefox", "notes", "finder", "files", "visual studio code",
+];
+
+export interface DemoAssist {
+  correction: string;
+  ghost: string;
+  candidates: string[];
+}
+
+/** Browser-only assist mirroring build_assist (vocab + typo-prefix). */
+export function demoAssist(q: string): DemoAssist {
+  const out: DemoAssist = { correction: "", ghost: "", candidates: [] };
+  const raw = (q || "").trim();
+  if (!raw || /\s$/.test(q)) return out;
+  const n = raw.toLowerCase();
+  // Candidates: prefix first, then typo-prefix.
+  for (const w of demoVocab) {
+    if (w.startsWith(n) && w !== n) {
+      if (!out.candidates.includes(w)) out.candidates.push(w);
+      if (out.candidates.length >= 6) break;
+    }
+  }
+  if (out.candidates.length < 6 && n.length >= 3) {
+    for (const w of demoVocab) {
+      if (out.candidates.length >= 6) break;
+      if (w.length < n.length || w.startsWith(n)) continue;
+      const head = w.slice(0, n.length);
+      if (head === n) continue;
+      const thr = n.length < 5 ? 1 : 2;
+      if (damerauDemo(n, head, thr) <= thr && (n[0] === head[0] || damerauDemo(n, head, thr) === 1)) {
+        if (!out.candidates.includes(w)) out.candidates.push(w);
+      }
+    }
+  }
+  // Correction: closest vocab within distance.
+  let best = "";
+  let bestD = 99;
+  const thrAll = n.length < 5 ? 1 : 2;
+  for (const w of demoVocab) {
+    if (w === n || w.includes(" ")) continue;
+    if (Math.abs(w.length - n.length) > thrAll) continue;
+    const d = damerauDemo(n, w, thrAll);
+    if (d <= thrAll && d < bestD) {
+      bestD = d;
+      best = w;
+    }
+  }
+  if (best && (bestD === 1 || (bestD === 2 && n.length >= 4 && n[0] === best[0]))) out.correction = best;
+  // Ghost: first extending candidate.
+  for (const c of out.candidates) {
+    if (c.length > raw.length && c.toLowerCase().startsWith(n)) {
+      // Preserve typed casing for the typed portion.
+      out.ghost = raw + c.slice(raw.length);
+      break;
+    }
+  }
+  if (!out.ghost && out.candidates.length) out.ghost = out.candidates[0];
+  if (out.correction && out.correction.toLowerCase() === n) out.correction = "";
+  return out;
 }

@@ -11,8 +11,18 @@ namespace wilfred {
 std::string overlay_ui_dir();
 std::string overlay_json_escape(const std::string& s);
 const char* overlay_action_name(ResultAction a);
+// Legacy shape (no assist). Kept for tests/back-compat; delegates to the
+// assist-aware overload with empty correction/ghost/candidates.
 std::string overlay_results_json(const std::vector<SearchResult>& items,
                                  const std::vector<std::string>& habits = {});
+// Assist-aware shape consumed by the modern overlay (all platforms):
+// {"type":"results","items":[...],"habits":[...],"correction":"...",
+//  "ghost":"...","candidates":[...],"query":"..."}
+std::string overlay_results_json(const std::vector<SearchResult>& items,
+                                 const std::vector<std::string>& habits,
+                                 const std::string& correction, const std::string& ghost,
+                                 const std::vector<std::string>& candidates,
+                                 const std::string& query = {});
 bool overlay_json_field(const std::string& json, const char* key, std::string& out);
 
 struct FilePreview {

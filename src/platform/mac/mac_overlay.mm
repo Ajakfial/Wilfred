@@ -34,7 +34,10 @@ static WilfredOverlayController* g_ctl = nil;
 
 @implementation WilfredOverlayController
 - (void)rebuild {
-  if (g_query) self.results = g_query(std::string([[self.field stringValue] UTF8String] ?: ""));
+  if (g_query) {
+    auto resp = g_query(std::string([[self.field stringValue] UTF8String] ?: ""));
+    self.results = resp.results;
+  }
   self.sel = 0;
   [self.table reloadData];
 }

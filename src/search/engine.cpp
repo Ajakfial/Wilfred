@@ -49,8 +49,32 @@ static bool tokens_in_text(const std::vector<std::string>& tokens, std::string_v
   for (auto& t : tokens) {
     if (t.size() < 2) continue;
     if (folded_name.find(t) == std::string_view::npos && folded_path.find(t) == std::string_view::npos &&
-        !is_subsequence(t, folded_name))
-      return false;
+        !is_subsequence(t, folded_name)) {
+      // Typo-tolerant token gate: "visaul" still passes for "visual".
+      // Keeps multi-token typo queries ("visaul docs") from being discarded
+      // before ranking can score the near-miss.
+      if (t.size() < 3) return false;
+      bool typo_ok = false;
+      for (auto tok : {folded_name, folded_path}) {
+        // Check each word piece of name/path for a close typo.
+        std::size_t start = 0;
+        for (std::size_t i = 0; i <= tok.size(); ++i) {
+          if (i == tok.size() || tok[i] == '/' || tok[i] == '\\' || tok[i] == ' ' ||
+              tok[i] == '_' || tok[i] == '-' || tok[i] == '.') {
+            if (i > start) {
+              auto piece = tok.substr(start, i - start);
+              if (piece.size() >= 3 && (is_typo_match(t, piece) || is_typo_prefix(t, piece))) {
+                typo_ok = true;
+                break;
+              }
+            }
+            start = i + 1;
+          }
+        }
+        if (typo_ok) break;
+      }
+      if (!typo_ok) return false;
+    }
   }
   return true;
 }
@@ -161,8 +185,22 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
       }
       auto name = store.pool().get(r->name_id);
       auto folded = fold_search(name);
+      bool typo_head = false;
+      if (!ctx.folded.empty() && ctx.folded.size() >= 3 && folded.size() >= ctx.folded.size()) {
+        typo_head = is_typo_prefix(ctx.folded, folded);
+        if (!typo_head) {
+          // Stem typo ("firefoz" vs "firefox.exe").
+          std::string stem{folded};
+          auto dot = stem.rfind('.');
+          if (dot != std::string::npos && dot > 1) stem = stem.substr(0, dot);
+          if (stem.size() >= ctx.folded.size())
+            typo_head = is_typo_match(ctx.folded, stem.substr(0, ctx.folded.size()));
+          if (!typo_head && stem.size() >= 3 && ctx.folded.size() >= 3)
+            typo_head = is_typo_match(ctx.folded, stem);
+        }
+      }
       if (folded.find(ctx.folded) != std::string_view::npos ||
-          is_subsequence(ctx.folded, folded) || acronym_match(ctx.folded, name) ||
+          is_subsequence(ctx.folded, folded) || acronym_match(ctx.folded, name) || typo_head ||
           store.content_token_hits(i, ctx.tokens) > 0) {
         cand.insert(i);
         if (cand.size() >= cap) break;
@@ -204,6 +242,9 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
   if (best > 0 && ctx.folded.size() >= 2 && !hits.empty()) {
     int pct = ctx.folded.size() >= 4 ? 52 : 42;
     if (best >= cfg.ranking.exact_name) pct = std::max(pct, 58);
+    // Typo queries produce lower absolute best scores (near-miss matches);
+    // keep the floor lenient so the top typo cluster isn't pruned away.
+    if (best < 500) pct = std::min(pct, 35);
     int floor = std::max(1, (best * pct) / 100);
     hits.erase(std::remove_if(hits.begin(), hits.end(),
                               [floor](const ScoredHit& h) { return h.score < floor; }),

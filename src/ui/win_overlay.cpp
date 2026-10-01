@@ -41,6 +41,7 @@ static NOTIFYICONDATAW g_nid{};
 static std::atomic<std::uint64_t> g_qid{0};
 static std::mutex g_res_mu;
 static std::vector<SearchResult> g_results;
+static OverlayResponse g_resp;
 static constexpr UINT WM_WILFRED_RESULTS = WM_APP + 7;
 static constexpr UINT WM_WILFRED_READY = WM_APP + 8;
 static constexpr UINT WM_WILFRED_TRAY = WM_APP + 9;
@@ -78,16 +79,18 @@ static void place_window(int w, int h) {
 static void do_query(const std::string& q) {
   auto id = ++g_qid;
   std::thread([id, q] {
-    std::vector<SearchResult> r;
+    OverlayResponse r;
+    r.query = q;
     try {
       if (g_query) r = g_query(q);
     } catch (...) {
-      r.clear();
+      r.results.clear();
     }
     if (id != g_qid.load()) return;
     {
       std::lock_guard<std::mutex> lock(g_res_mu);
-      g_results = std::move(r);
+      g_results = r.results;
+      g_resp = std::move(r);
     }
     if (g_hwnd) PostMessageW(g_hwnd, WM_WILFRED_RESULTS, 0, 0);
   }).detach();
@@ -295,12 +298,13 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
       if (LOWORD(w) == WA_INACTIVE && g_visible) hide_now();
       return 0;
     case WM_WILFRED_RESULTS: {
-      std::vector<SearchResult> snap;
+      OverlayResponse snap;
       {
         std::lock_guard<std::mutex> lock(g_res_mu);
-        snap = g_results;
+        snap = g_resp;
       }
-      post_json(overlay_results_json(snap));
+      post_json(overlay_results_json(snap.results, {}, snap.correction, snap.ghost,
+                                     snap.candidates, snap.query));
       return 0;
     }
     case WM_WILFRED_READY:

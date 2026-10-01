@@ -26,11 +26,25 @@ export function nativeSend(msg: object): void {
 export function reportSize(): void {
   const shell = document.querySelector(".shell");
   if (!shell) return;
+  const r = shell.getBoundingClientRect();
   nativeSend({
     type: "resize",
-    width: Math.ceil(shell.getBoundingClientRect().width),
-    height: Math.ceil(shell.getBoundingClientRect().height),
+    width: Math.ceil(r.width),
+    height: Math.ceil(r.height),
   });
+}
+
+/** Current platform for placeholder/hints. Same bundle on Win/Mac/Linux. */
+export function platformId(): "win" | "mac" | "linux" {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const p = (nav.userAgentData?.platform || navigator.platform || navigator.userAgent || "").toLowerCase();
+  if (p.includes("mac")) return "mac";
+  if (p.includes("win")) return "win";
+  return "linux";
+}
+
+export function hotkeyHint(): string {
+  return platformId() === "mac" ? "⌘⌥W" : "Ctrl Alt W";
 }
 
 /** Maps backend kinds to icon names in src/components/icons.tsx (Lucide-style inline SVGs). */
@@ -147,6 +161,19 @@ export const groups: Record<string, string> = {
   empty_trash: "sys",
 };
 
+export const groupLabels: Record<string, string> = {
+  app: "Apps",
+  folder: "Folders",
+  doc: "Files",
+  media: "Media",
+  code: "Code",
+  calc: "Answers",
+  web: "Web",
+  speed: "Network",
+  sys: "System",
+  mini: "Insights",
+};
+
 export const tips = ["25 * 42", "weather", "speedtest", "type:image", "!yt cats", "clip"];
 
 export function kindOf(item: ResultItem): string {
@@ -185,26 +212,63 @@ export function habitsOf(items: ResultItem[]): ResultItem[] {
   return items.filter((item) => item.action === "habit" && item.category !== "mini");
 }
 
-/** Split text into plain/highlighted runs for <mark> rendering. */
+/** Split text into plain/highlighted runs for <mark> rendering.
+ *  Substring-first, then subsequence fallback so typo hits ("firefoz" vs
+ *  "firefox") still highlight the aligned characters instead of nothing. */
 export function highlightRuns(
   text: string,
   needle: string,
 ): Array<{ text: string; mark: boolean }> {
   if (!text || !needle) return text ? [{ text, mark: false }] : [];
   const lower = text.toLowerCase();
-  const n = needle.toLowerCase();
+  const n = needle.trim().toLowerCase();
+  if (!n) return [{ text, mark: false }];
   let pos = lower.indexOf(n);
-  if (pos < 0) return [{ text, mark: false }];
-  const runs: Array<{ text: string; mark: boolean }> = [];
-  let i = 0;
-  while (pos >= 0) {
-    if (pos > i) runs.push({ text: text.slice(i, pos), mark: false });
-    runs.push({ text: text.slice(pos, pos + n.length), mark: true });
-    i = pos + n.length;
-    pos = lower.indexOf(n, i);
+  if (pos >= 0) {
+    const runs: Array<{ text: string; mark: boolean }> = [];
+    let i = 0;
+    while (pos >= 0) {
+      if (pos > i) runs.push({ text: text.slice(i, pos), mark: false });
+      runs.push({ text: text.slice(pos, pos + n.length), mark: true });
+      i = pos + n.length;
+      pos = lower.indexOf(n, i);
+    }
+    if (i < text.length) runs.push({ text: text.slice(i), mark: false });
+    return runs;
   }
-  if (i < text.length) runs.push({ text: text.slice(i), mark: false });
+  // Subsequence fallback: highlight matched characters in order.
+  let qi = 0;
+  const runs: Array<{ text: string; mark: boolean }> = [];
+  let buf = "";
+  let lastMark = false;
+  for (let i = 0; i < text.length && qi < n.length; i++) {
+    const isMark = lower[i] === n[qi];
+    if (isMark !== lastMark && buf) {
+      runs.push({ text: buf, mark: lastMark });
+      buf = "";
+    }
+    lastMark = isMark;
+    buf += text[i];
+    if (isMark) qi++;
+  }
+  if (qi < n.length) return [{ text, mark: false }];
+  if (buf) runs.push({ text: buf, mark: lastMark });
+  // Append remainder unmarked.
+  const consumed = runs.reduce((a, r) => a + r.text.length, 0);
+  if (consumed < text.length) {
+    // runs already covers prefix; append tail.
+    return [...runs, { text: text.slice(consumed), mark: false }];
+  }
   return runs;
+}
+
+/** Ghost suffix after the typed query ("wea" + "ther"). Empty = none. */
+export function ghostSuffix(query: string, ghost: string | undefined): string {
+  if (!ghost || !query) return "";
+  if (ghost.length <= query.length) return "";
+  if (ghost.toLowerCase().startsWith(query.toLowerCase())) return ghost.slice(query.length);
+  // Typo ghost: show full suggestion as suffix hint (dimmed).
+  return "";
 }
 
 const speedtestKeys = [

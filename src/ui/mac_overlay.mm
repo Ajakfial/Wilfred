@@ -19,6 +19,7 @@
 static wilfred::OverlayQuery g_query;
 static wilfred::OverlaySubmit g_submit;
 static std::vector<wilfred::SearchResult> g_results;
+static wilfred::OverlayResponse g_resp;
 static bool g_visible = false;
 
 @interface WilfredPanel : NSWindow
@@ -87,8 +88,13 @@ static WilfredCtl* g_ctl = nil;
   if (type == "query") {
     std::string q;
     wilfred::overlay_json_field(json, "q", q);
-    if (g_query) g_results = g_query(q);
-    [self sendJson:wilfred::overlay_results_json(g_results)];
+    if (g_query) {
+      auto resp = g_query(q);
+      g_results = resp.results;
+      g_resp = std::move(resp);
+    }
+    [self sendJson:wilfred::overlay_results_json(g_resp.results, {}, g_resp.correction,
+                                                 g_resp.ghost, g_resp.candidates, g_resp.query)];
     return;
   }
   if (type == "submit") {

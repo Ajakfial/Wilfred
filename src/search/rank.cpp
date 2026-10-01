@@ -28,7 +28,9 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
 
   if (folded == ctx.folded) score += w.exact_name;
   auto fuzzy = score_fuzzy(ctx.folded, folded, name);
-  const bool name_hit = fuzzy.matched;
+  bool name_hit = fuzzy.matched;
+  int typo_bonus = 0;
+  bool typo_hit = false;
   if (name_hit) {
     if (folded.compare(0, ctx.folded.size(), ctx.folded) == 0)
       score += w.prefix_name;
@@ -37,6 +39,67 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
     else
       score += (w.fuzzy_name * std::max(0, fuzzy.score)) / 1000;
     if (fuzzy.score >= 600) score += w.word_boundary;
+  } else if (!ctx.folded.empty() && ctx.folded.size() >= 3) {
+    // Typo safety net: single typo ("firefoz" -> "firefox", "visaul" ->
+    // "visual", transposition "fireofx") still matches, with a score below
+    // exact/substring but high enough to survive pruning and rank above
+    // unrelated fuzzy noise. Checked against the stem + each token so
+    // "my-projec" matches "my-project" without requiring full-string edit
+    // distance over long paths.
+    int thr = typo_threshold(ctx.folded.size());
+    std::string stem = folded;
+    auto dot = stem.rfind('.');
+    if (dot != std::string::npos && dot > 1 && stem.size() - dot <= 6) stem = stem.substr(0, dot);
+    int best_d = thr + 1;
+    int best_ts = 0;
+    auto consider = [&](std::string_view cand) {
+      if (cand.empty()) return;
+      if (cand == ctx.folded) {
+        best_d = 0;
+        best_ts = 1000;
+        return;
+      }
+      int diff = static_cast<int>(cand.size() > ctx.folded.size() ? cand.size() - ctx.folded.size()
+                                                                  : ctx.folded.size() - cand.size());
+      if (diff > thr) {
+        // Still try head-window for prefix typos ("firefozXXX" case).
+        if (cand.size() >= ctx.folded.size()) {
+          auto head = cand.substr(0, ctx.folded.size());
+          int hd = damerau_bounded(ctx.folded, head, thr);
+          if (hd <= thr && hd < best_d) {
+            best_d = hd;
+            best_ts = typo_score(ctx.folded, head);
+          }
+        }
+        return;
+      }
+      if (!ctx.folded.empty() && !cand.empty() && ctx.folded[0] != cand[0] && thr < 2) return;
+      int d = damerau_bounded(ctx.folded, cand, thr);
+      if (d <= thr && d < best_d) {
+        best_d = d;
+        best_ts = typo_score(ctx.folded, cand);
+      }
+    };
+    consider(stem);
+    consider(folded);
+    for (auto& tok : tokenize_name(name)) {
+      if (tok.size() < 3) continue;
+      consider(std::string_view(tok));
+      if (best_d == 0) break;
+    }
+    if (best_d <= thr) {
+      typo_hit = true;
+      name_hit = true;
+      // Map typo quality to roughly 300..140 (d=1 best, d=3 worst) scaled by
+      // fuzzy_name so typo hits sit below substring but above noise.
+      int mapped = 0;
+      if (best_ts > 0)
+        mapped = (w.fuzzy_name * best_ts) / 1000;
+      else
+        mapped = std::max(60, 320 - best_d * 90);
+      typo_bonus = std::max(80, mapped);
+      score += typo_bonus;
+    }
   }
 
   const bool acro = acronym_match(ctx.folded, name);
@@ -44,26 +107,61 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
 
   auto toks = tokenize_name(name);
   int tok_hits = 0;
+  int typo_tok_hits = 0;
   for (auto& t : ctx.tokens) {
+    bool hit = false;
     for (auto& n : toks)
       if (n == t || n.find(t) == 0) {
         ++tok_hits;
+        hit = true;
         break;
       }
+    if (!hit && t.size() >= 3) {
+      // Typo-tolerant token match ("visaul docs" still hits "visual").
+      for (auto& n : toks) {
+        if (n.size() < 3) continue;
+        if (is_typo_match(t, n)) {
+          ++typo_tok_hits;
+          break;
+        }
+        if (n.size() >= t.size() && is_typo_prefix(t, n)) {
+          ++typo_tok_hits;
+          break;
+        }
+      }
+    }
   }
   if (!ctx.tokens.empty()) {
     score += (w.token_proximity * tok_hits) / static_cast<int>(ctx.tokens.size());
-    int miss = static_cast<int>(ctx.tokens.size()) - tok_hits;
+    // Typo token hits count at half weight (still a signal, not as strong).
+    score += (w.token_proximity * typo_tok_hits) / (static_cast<int>(ctx.tokens.size()) * 2);
+    int miss = static_cast<int>(ctx.tokens.size()) - tok_hits - typo_tok_hits;
     if (miss > 0) score -= (w.token_proximity * miss) / 2;
   }
 
   auto pl = fold_search(path);
   const bool path_hit = pl.find(ctx.folded) != std::string::npos;
+  bool path_typo_hit = false;
   if (path_hit) {
     int path_score = w.path_component;
     if (ctx.folded.size() <= 2) path_score /= 3;
     if (!name_hit && !acro) path_score /= 2;
     score += path_score;
+  } else if (!ctx.folded.empty() && ctx.folded.size() >= 3 && !name_hit && !acro) {
+    // Last-segment path typo ("Documnets" -> "Documents").
+    auto seg = ctx.folded;
+    auto sl = seg.find_last_of("/\\");
+    if (sl != std::string::npos) seg = seg.substr(sl + 1);
+    if (!seg.empty() && seg.size() >= 3) {
+      auto last = pl;
+      auto psl = last.find_last_of("/\\");
+      if (psl != std::string::npos) last = last.substr(psl + 1);
+      // Compare against last two segments to catch "proj/my-fil" typos.
+      if (!last.empty() && (is_typo_match(seg, last) || is_typo_prefix(seg, last))) {
+        path_typo_hit = true;
+        score += w.path_component / 2;
+      }
+    }
   }
 
   int content_hits = 0;
@@ -74,7 +172,7 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
     if (!name_hit && !acro) score += w.content_hit / 3;
   }
 
-  if (!name_hit && !acro && !path_hit && content_hits <= 0) return 0;
+  if (!name_hit && !acro && !path_hit && !path_typo_hit && content_hits <= 0) return 0;
 
   auto ext = std::string(store.pool().get(rec.ext_id));
   if (!ext.empty() && fold_search(ext).find(ctx.folded) != std::string::npos) score += w.extension;

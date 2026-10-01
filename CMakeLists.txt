@@ -51,6 +51,7 @@ set(WILFRED_CORE_SOURCES
   src/search/rank.cpp
   src/search/filter.cpp
   src/search/engine.cpp
+  src/search/suggest.cpp
   src/search/clipboard.cpp
   src/search/clip_history.cpp
   src/search/doctext.cpp
@@ -125,6 +126,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/rank.hpp
   include/wilfred/search/filter.hpp
   include/wilfred/search/engine.hpp
+  include/wilfred/search/suggest.hpp
   include/wilfred/search/clipboard.hpp
   include/wilfred/search/clip_history.hpp
   include/wilfred/search/doctext.hpp
@@ -270,6 +272,26 @@ else()
     target_link_libraries(wilfred_core PUBLIC ${X11_LIBRARIES})
     target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_X11=1)
   endif()
+  # Modern Linux overlay prefers WebKitGTK (same HTML UI as Win/Mac).
+  # Falls back to the X11 canvas overlay when WebKit is unavailable, so the
+  # daemon still builds on minimal containers. No hard dependency.
+  find_package(PkgConfig QUIET)
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(WEBKIT QUIET webkit2gtk-4.1)
+    if(NOT WEBKIT_FOUND)
+      pkg_check_modules(WEBKIT QUIET webkit2gtk-4.0)
+    endif()
+    pkg_check_modules(GTK3 QUIET gtk+-3.0)
+    if(WEBKIT_FOUND AND GTK3_FOUND)
+      target_include_directories(wilfred_core PUBLIC ${WEBKIT_INCLUDE_DIRS} ${GTK3_INCLUDE_DIRS})
+      target_link_libraries(wilfred_core PUBLIC ${WEBKIT_LIBRARIES} ${GTK3_LIBRARIES})
+      target_compile_options(wilfred_core PUBLIC ${WEBKIT_CFLAGS_OTHER} ${GTK3_CFLAGS_OTHER})
+      target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_WEBKIT=1)
+      message(STATUS "Wilfred: WebKitGTK overlay enabled (${WEBKIT_VERSION})")
+    else()
+      message(STATUS "Wilfred: WebKitGTK not found — using X11 fallback overlay")
+    endif()
+  endif()
   target_link_libraries(wilfred_core PUBLIC dl)
 endif()
 
@@ -330,6 +352,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_search_extras.cpp
   tests/test_extensibility.cpp
   tests/test_new_features.cpp
+  tests/test_assist.cpp
 )
 
 if(WILFRED_BUILD_TESTS)

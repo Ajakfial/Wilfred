@@ -14,6 +14,8 @@ single summonable search bar.
 * Incremental, persistent filename/path/metadata index with a write-ahead log
 * Filesystem watchers (ReadDirectoryChangesW, FSEvents, inotify) plus rescan fallback
 * Fuzzy matching, acronyms, token/path ranking, recency and frequency signals
+* Typo safety: Damerau (transposition-aware) near-miss matching on names, tokens and paths, plus `Did you mean` correction (commands, history, filenames)
+* Inline autocomplete: ghost completion (`→` to accept) + top-N candidates from history, commands and the index
 * Context-aware ranking (recent folders, file types, time-of-day, session queries)
 * Clipboard as a secondary source (text match, copied paths, clip history)
 * Persistent clipboard manager (`clips [query]`, pin, `clips clear`)
@@ -24,7 +26,7 @@ single summonable search bar.
 * Snippets with folders, `{date}`/`{clipboard}`/`{query}` placeholders, and optional global abbreviations in any app
 * Rich file previews (documents, CSV, images, folders) in the overlay (`F3`) plus `wilfred preview`
 * Calendar (`.ics`), contacts (`.vcf`), and notes (Markdown) sources + optional OCR indexing via `tesseract` (`sources.*`)
-* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux X11 above/skip-taskbar) with Tab action menu kept above results
+* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with X11 fallback, all above/skip-taskbar) with Tab action menu kept above results
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`)
