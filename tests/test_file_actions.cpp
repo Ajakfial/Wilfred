@@ -20,12 +20,6 @@ bool has_action(const wilfred::SearchResult& r, const std::string& id) {
   return false;
 }
 
-bool has_open_with(const wilfred::SearchResult& r) {
-  for (auto& a : r.actions)
-    if (a.id.rfind("open_with:", 0) == 0) return true;
-  return false;
-}
-
 std::string unique_tmp_root() {
   static int n = 0;
   auto root = (fs::temp_directory_path() / ("wilfred_fileact_" + std::to_string(++n))).string();

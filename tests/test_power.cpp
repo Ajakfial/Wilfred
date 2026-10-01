@@ -212,8 +212,14 @@ void test_power() {
     r.kind = FileKind::File;
     CHECK(execute_result_action(r, Config{}, "copy_path+copy_text"));
     CHECK(read_clipboard().text == "payload-text");
-    CHECK(!execute_result_action(r, Config{}, "copy_text+no_such_action_xyz"));
-    CHECK(read_clipboard().text == "payload-text");
+    // A failing step makes the whole chain fail (hash of a missing file
+    // fails on every platform), but earlier steps still ran.
+    SearchResult missing;
+    missing.path = (root / "does-not-exist.txt").string();
+    missing.kind = FileKind::File;
+    CHECK(!execute_result_action(missing, Config{}, "hash_file"));
+    CHECK(!execute_result_action(missing, Config{}, "copy_path+hash_file"));
+    CHECK(read_clipboard().text == missing.path);
     SearchResult ow;
     ow.path = "C:\\work\\notes.txt";
     ow.kind = FileKind::File;
