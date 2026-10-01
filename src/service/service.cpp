@@ -262,6 +262,14 @@ int Service::run_daemon() {
       [this](const SearchResult& r, const std::string& action_id) {
         if (r.action == ResultAction::Habit) return;
         auto hide = action_hides_overlay(action_id);
+        if (r.action == ResultAction::Screenshot || r.category == "screenshot") {
+          if (hide && ui_) ui_->hide();
+          // Let the overlay hide (plus the settle delay in execute_result_action)
+          // so the overlay itself is not in the capture.
+          std::this_thread::sleep_for(std::chrono::milliseconds(350));
+          execute_result(r, cfg_, action_id);
+          return;
+        }
         if (r.action == ResultAction::SwitchWindow || r.category == "window") {
           if (hide && ui_) ui_->hide();
           execute_result(r, cfg_, action_id);

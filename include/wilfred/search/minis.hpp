@@ -44,6 +44,7 @@ enum class MiniKind {
   Lorem,
   Json,
   System,
+  Screenshot,
 };
 
 struct MiniIntent {

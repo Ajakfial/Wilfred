@@ -59,6 +59,7 @@ set(WILFRED_CORE_SOURCES
   src/search/glyphs.cpp
   src/search/snippets.cpp
   src/search/actions.cpp
+  src/search/screenshot.cpp
   src/plugin/host.cpp
   src/sync/backup.cpp
   src/query/classify.cpp
@@ -120,6 +121,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
   include/wilfred/search/actions.hpp
+  include/wilfred/search/screenshot.hpp
   include/wilfred/plugin/abi.hpp
   include/wilfred/plugin/host.hpp
   include/wilfred/sync/backup.hpp
@@ -153,6 +155,7 @@ if(WIN32)
     src/platform/win/launch.cpp
     src/platform/win/windows.cpp
     src/platform/win/volumes.cpp
+    src/platform/win/screenshot.cpp
     src/ui/win_overlay.cpp
   )
 elseif(APPLE)
@@ -164,6 +167,7 @@ elseif(APPLE)
     src/platform/mac/launch.mm
     src/platform/mac/windows.mm
     src/platform/mac/volumes.mm
+    src/platform/mac/screenshot.mm
     src/ui/mac_overlay.mm
   )
 else()
@@ -175,6 +179,7 @@ else()
     src/platform/linux/launch.cpp
     src/platform/linux/windows.cpp
     src/platform/linux/volumes.cpp
+    src/platform/linux/screenshot.cpp
     src/ui/x11_overlay.cpp
   )
 endif()

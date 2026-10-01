@@ -52,4 +52,13 @@ bool native_focus_window(std::uint64_t id);
 // lock | sleep | shutdown | restart | logout | empty_trash
 bool native_system_action(const std::string& id);
 
+enum class NativeScreenshotMode { Fullscreen, Window, Region };
+
+// Captures a screenshot. On success returns true; out_path is the saved
+// image file, or empty when the platform handed off to an interactive OS
+// picker that manages its own output. On failure returns false with error set.
+bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path,
+                            std::string& error);
+std::string native_screenshot_save_directory();
+
 }  // namespace wilfred

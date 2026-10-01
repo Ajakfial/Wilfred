@@ -282,7 +282,8 @@ bool result_is_launchable(const SearchResult& r) {
   return r.action != ResultAction::Habit && r.action != ResultAction::Calculate &&
          r.action != ResultAction::Convert && r.action != ResultAction::None &&
          r.action != ResultAction::SwitchWindow && r.action != ResultAction::System &&
-         r.category != "window";
+         r.action != ResultAction::Screenshot && r.category != "window" &&
+         r.category != "screenshot";
 }
 
 bool execute_result(const SearchResult& r, const Config& cfg, const std::string& action_id) {

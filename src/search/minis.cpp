@@ -11,6 +11,7 @@
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/search/screenshot.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -972,7 +973,53 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Os, true);
   else if (key == "cores" || key == "nproc" || key == "threads")
     set(MiniKind::Cores, true);
-  else if (key == "screen" || key == "resolution" || key == "display")
+  else if (key == "screenshot" || key == "screenshots" || key == "screencap" ||
+           key == "screencapture" || key == "printscreen") {
+    if (rest.empty()) {
+      set(MiniKind::Screenshot, true);
+    } else {
+      ScreenshotMode m;
+      if (parse_screenshot_mode(rest, m))
+        set(MiniKind::Screenshot, true);
+      else
+        return it;
+    }
+  } else if (l == "print screen" || l.rfind("print screen ", 0) == 0 ||
+             l.rfind("print screen:", 0) == 0 || l == "screen capture" ||
+             l.rfind("screen capture ", 0) == 0 || l.rfind("screen capture:", 0) == 0 ||
+             l == "screen shot" || l.rfind("screen shot ", 0) == 0 ||
+             l.rfind("screen shot:", 0) == 0 || l == "capture screen" ||
+             l.rfind("capture screen ", 0) == 0 || l.rfind("capture screen:", 0) == 0) {
+    const char* prefixes[] = {"print screen", "screen capture", "screen shot", "capture screen",
+                              nullptr};
+    std::string mode_rest;
+    for (auto** p = prefixes; *p; ++p) {
+      std::string pl(*p);
+      if (l == pl) {
+        mode_rest.clear();
+        break;
+      }
+      if (l.rfind(pl + " ", 0) == 0) {
+        mode_rest = trim_sv(s.substr(pl.size()));
+        break;
+      }
+      if (l.rfind(pl + ":", 0) == 0) {
+        mode_rest = trim_sv(s.substr(pl.size() + 1));
+        break;
+      }
+    }
+    if (mode_rest.empty()) {
+      it.kind = MiniKind::Screenshot;
+      it.remainder.clear();
+      it.exact = true;
+    } else {
+      ScreenshotMode m;
+      if (!parse_screenshot_mode(mode_rest, m)) return it;
+      it.kind = MiniKind::Screenshot;
+      it.remainder = mode_rest;
+      it.exact = true;
+    }
+  } else if (key == "screen" || key == "resolution" || key == "display")
     set(MiniKind::Screen, true);
   else if (key == "swap" || key == "pagefile" || key == "vmem")
     set(MiniKind::Swap, true);
@@ -1382,6 +1429,45 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Screenshot) {
+    auto dir = native_screenshot_save_directory();
+    auto shot_card = [&](ScreenshotMode m, const char* title, const char* hint, int score) {
+      SearchResult r;
+      r.title = title;
+      std::string sub = hint + std::string(" · saves to ") + dir + " · Enter captures";
+      r.subtitle = sub;
+      r.payload = screenshot_payload(m);
+      r.path = r.payload;
+      r.action = ResultAction::Screenshot;
+      r.score = score;
+      r.kind_label = "screenshot";
+      r.category = "screenshot";
+      return r;
+    };
+    ScreenshotMode single = ScreenshotMode::Fullscreen;
+    bool filtered = !intent.remainder.empty() && parse_screenshot_mode(intent.remainder, single);
+    if (!filtered) {
+      out.push_back(shot_card(ScreenshotMode::Fullscreen, "Capture fullscreen",
+                             "Full screen", 10000));
+      out.push_back(
+          shot_card(ScreenshotMode::Window, "Capture window", "Active window", 9990));
+      out.push_back(shot_card(ScreenshotMode::Region, "Capture region",
+                              "Drag to select a region", 9980));
+      return out;
+    }
+    const char* title = "Capture fullscreen";
+    const char* hint = "Full screen";
+    if (single == ScreenshotMode::Window) {
+      title = "Capture window";
+      hint = "Active window";
+    } else if (single == ScreenshotMode::Region) {
+      title = "Capture region";
+      hint = "Drag to select a region";
+    }
+    out.push_back(shot_card(single, title, hint, 10000));
+    return out;
+  }
+
   if (intent.kind == MiniKind::Screen) {
 #ifdef _WIN32
     int w = GetSystemMetrics(SM_CXSCREEN);
@@ -1643,6 +1729,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "ram / cpu / swap  ·  memory and load",
                                   "process <name>  ·  app CPU and RAM",
                                   "windows [name]  ·  switch to an open window",
+                                  "screenshot [fullscreen|window|region]",
                                   "emoji [name]  ·  emoji picker",
                                   "symbol [name]  ·  punctuation and signs",
                                   "fx 100 usd to eur  ·  currency conversion",

@@ -24,7 +24,8 @@ enum class ResultAction {
   Expand,
   Plugin,
   SwitchWindow,
-  System
+  System,
+  Screenshot
 };
 
 struct ResultActionItem {

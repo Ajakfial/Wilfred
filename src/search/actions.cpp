@@ -2,10 +2,12 @@
 
 #include "wilfred/apps/discovery.hpp"
 #include "wilfred/browser/browser.hpp"
+#include "wilfred/core/log.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/screenshot.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -71,6 +73,12 @@ void attach_result_actions(SearchResult& r) {
     add("copy_name", "Copy title");
     return;
   }
+  if (r.action == ResultAction::Screenshot || r.category == "screenshot") {
+    add("open", "Capture");
+    add("reveal", "Capture + show in folder");
+    add("copy_path", "Capture + copy path");
+    return;
+  }
   add("open", "Open");
   add("reveal", "Show in folder");
   add("copy_path", "Copy path");
@@ -134,6 +142,24 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     else
       id = "open";
   }
+  if (r.action == ResultAction::Screenshot || r.category == "screenshot") {
+    ScreenshotMode mode = ScreenshotMode::Fullscreen;
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    if (!parse_screenshot_mode(raw, mode)) parse_screenshot_payload(raw, mode);
+    // Give the overlay a beat to hide so it is not in the capture.
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    std::string out_path;
+    std::string err;
+    if (!take_screenshot(mode, out_path, err)) {
+      log_warn("screenshot", err.empty() ? "capture failed" : err);
+      return false;
+    }
+    if (out_path.empty()) return true;  // delegated to an OS picker UI.
+    if (id == "reveal") return reveal_path(out_path);
+    if (id == "copy_path" || id == "copy_text" || id == "copy") return write_clipboard(out_path);
+    if (id == "copy_name") return write_clipboard(out_path);
+    return launch_path(out_path);
+  }
   if (id == "reveal") {
     auto p = r.path.empty() ? r.payload : r.path;
     return reveal_path(p);
@@ -161,8 +187,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   if (r.action == ResultAction::Habit || r.action == ResultAction::None) return false;
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return true;
   if (r.action == ResultAction::System || r.category == "system") {
-    auto id = r.payload.empty() ? r.path : r.payload;
-    return native_system_action(id);
+    auto sys_id = r.payload.empty() ? r.path : r.payload;
+    return native_system_action(sys_id);
   }
   if (r.action == ResultAction::Plugin || r.category == "plugin") {
     if (g_plugin_exec && g_plugin_exec->execute(r, id)) return true;

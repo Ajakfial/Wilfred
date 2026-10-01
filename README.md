@@ -102,6 +102,7 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `speedtest` | Live ping, download, and upload (`speedtest again` reruns) |
 | `time` `disk` `disku` `ram` `cpu` | Clock, drives, memory, processor |
 | `process chrome` / `top` | Live process CPU, RAM, threads |
+| `screenshot` / `screenshot window` / `screenshot region` | Capture fullscreen, window, or region to `Pictures/Wilfred` |
 | `emoji smile` / `symbol euro` | Emoji and symbol picker (enter copies) |
 | `100 usd to eur` / `fx 25 gbp jpy` | Currency conversion |
 | `#ff5500` / `rgb(255, 85, 0)` / `color coral` | Color conversion (hex / rgb / hsl) |

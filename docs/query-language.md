@@ -127,6 +127,7 @@ synthetic result card instead of searching the index
 | `ram` | `memory`, `mem` | Physical memory used/free |
 | `cpu` | `processor` | Current CPU load |
 | `process <name>` | `proc`, `ps`, `top`, `processes` | Matching live processes with CPU/RAM |
+| `screenshot [mode]` | `screenshots`, `screencap`, `screencapture`, `printscreen`, `print screen`, `screen capture`, `screen shot`, `capture screen` | Capture the screen (`fullscreen`, `window`, or `region`); bare `screenshot` lists all three. Saves to `Pictures/Wilfred` — fullscreen is silent, window captures the active window (Windows) or picks one, region drag-selects (Windows opens the Snipping Tool). Enter captures + opens, `Tab` offers capture + reveal / copy path |
 | `battery` | `power` | Battery percentage and charge state |
 | `hostname` | `host` | Machine hostname |
 | `ip` | `ipaddress` | Local IP address |

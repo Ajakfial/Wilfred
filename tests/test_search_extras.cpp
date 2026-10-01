@@ -8,12 +8,15 @@
 #include "wilfred/math/expr.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/query/interpreter.hpp"
+#include "wilfred/search/actions.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/content.hpp"
 #include "wilfred/search/context.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/minis.hpp"
 #include "wilfred/search/rank.hpp"
+#include "wilfred/search/screenshot.hpp"
+#include "wilfred/ui/web_ui.hpp"
 
 void test_search_extras() {
   using namespace wilfred;
@@ -77,6 +80,43 @@ void test_search_extras() {
   CHECK_EQ(parse_mini_intent("lock firefox").kind, MiniKind::None);
   CHECK_EQ(parse_mini_intent("hash").kind, MiniKind::None);
   CHECK_EQ(parse_mini_intent("hash abc").kind, MiniKind::Sha256);
+  CHECK_EQ(parse_mini_intent("screenshot").kind, MiniKind::Screenshot);
+  CHECK(parse_mini_intent("screenshot").exact);
+  CHECK(parse_mini_intent("screenshot").remainder.empty());
+  CHECK_EQ(parse_mini_intent("screenshot fullscreen").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot window").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot region").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot full").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot selection").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshots").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screencap").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screencapture window").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("printscreen").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("print screen").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screen capture").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screen capture region").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screen shot").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("capture screen").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot:window").kind, MiniKind::Screenshot);
+  CHECK_EQ(parse_mini_intent("screenshot foo").kind, MiniKind::None);
+  CHECK_EQ(parse_mini_intent("screen").kind, MiniKind::Screen);
+  CHECK_EQ(parse_mini_intent("shot").kind, MiniKind::None);
+
+  ScreenshotMode sm = ScreenshotMode::Fullscreen;
+  CHECK(parse_screenshot_mode("fullscreen", sm));
+  CHECK_EQ(screenshot_mode_name(sm), "fullscreen");
+  CHECK(parse_screenshot_mode("window", sm));
+  CHECK_EQ(screenshot_mode_name(sm), "window");
+  CHECK(parse_screenshot_mode("region", sm));
+  CHECK_EQ(screenshot_mode_name(sm), "region");
+  CHECK(parse_screenshot_mode("full", sm));
+  CHECK(parse_screenshot_mode("selection", sm));
+  CHECK(!parse_screenshot_mode("", sm));
+  CHECK(!parse_screenshot_mode("foo", sm));
+  CHECK_EQ(screenshot_payload(ScreenshotMode::Window), "screenshot:window");
+  CHECK(parse_screenshot_payload("screenshot:region", sm));
+  CHECK_EQ(screenshot_mode_name(sm), "region");
+  CHECK(!native_screenshot_save_directory().empty());
 
   Config cfg;
   auto time_cards = mini_results("time", cfg, "");
@@ -131,6 +171,27 @@ void test_search_extras() {
   CHECK_EQ(lock_cards.front().action, ResultAction::System);
   CHECK_EQ(lock_cards.front().payload, "lock");
   CHECK_EQ(lock_cards.front().kind_label, "lock");
+  auto shot_cards = mini_results("screenshot", cfg, "");
+  CHECK(shot_cards.size() == 3);
+  CHECK_EQ(shot_cards.front().action, ResultAction::Screenshot);
+  CHECK_EQ(shot_cards.front().category, "screenshot");
+  CHECK_EQ(shot_cards.front().kind_label, "screenshot");
+  CHECK(shot_cards.front().payload == "screenshot:fullscreen");
+  auto shot_win = mini_results("screenshot window", cfg, "");
+  CHECK(shot_win.size() == 1);
+  CHECK(shot_win.front().payload == "screenshot:window");
+  CHECK_EQ(shot_win.front().action, ResultAction::Screenshot);
+  auto shot_region = mini_results("screen capture region", cfg, "");
+  CHECK(shot_region.size() == 1);
+  CHECK(shot_region.front().payload == "screenshot:region");
+  SearchResult shot_probe;
+  shot_probe.action = ResultAction::Screenshot;
+  shot_probe.category = "screenshot";
+  shot_probe.payload = "screenshot:fullscreen";
+  CHECK(!result_is_launchable(shot_probe));
+  attach_result_actions(shot_probe);
+  CHECK(!shot_probe.actions.empty());
+  CHECK(std::string(overlay_action_name(ResultAction::Screenshot)) == "open");
   auto json_cards = mini_results("json {\"a\":1}", cfg, "");
   CHECK(!json_cards.empty());
   CHECK(json_cards.front().payload.find("\"a\"") != std::string::npos);
@@ -229,6 +290,12 @@ void test_search_extras() {
 
   auto iq3 = interp.interpret("clip", cfg, nullptr);
   CHECK(!iq3.results.empty());
+
+  auto shot_iq = interp.interpret("screenshot", cfg, nullptr);
+  CHECK_EQ(shot_iq.classification.kind, QueryKind::Mini);
+  CHECK(!shot_iq.results.empty());
+  CHECK_EQ(shot_iq.results.front().kind_label, "screenshot");
+  CHECK_EQ(shot_iq.results.front().action, ResultAction::Screenshot);
 
   set_clipboard_override(std::nullopt);
   set_mini_network_enabled(true);

@@ -101,6 +101,7 @@
     swap: "bi-layers",
     help: "bi-question-circle",
     speedtest: "bi-speedometer2",
+    screenshot: "bi-camera",
     content: "bi-file-text",
     emoji: "bi-emoji-smile",
     symbol: "bi-asterisk",
@@ -129,6 +130,7 @@
     calc: "calc", convert: "calc", fx: "calc", tz: "calc", color: "calc",
     web: "web", browser: "web", macro: "web",
     speedtest: "speed",
+    screenshot: "media",
     system: "sys", lock: "sys", sleep: "sys", shutdown: "sys", restart: "sys", logout: "sys", empty_trash: "sys",
   };
   const tips = ["25 * 42", "weather", "speedtest", "type:image", "!yt cats", "clip"];

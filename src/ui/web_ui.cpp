@@ -69,6 +69,8 @@ const char* overlay_action_name(ResultAction a) {
       return "open";
     case ResultAction::System:
       return "open";
+    case ResultAction::Screenshot:
+      return "open";
     default:
       return "open";
   }
@@ -120,10 +122,11 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
       o += std::to_string(it.meter);
     }
     if (it.category != "mini" && it.category != "macro" && it.category != "clipboard" &&
-        it.category != "window" && it.category != "system" && it.action != ResultAction::Copy &&
-        it.action != ResultAction::Calculate && it.action != ResultAction::Convert &&
-        it.action != ResultAction::WebSearch && it.action != ResultAction::Habit &&
-        it.action != ResultAction::SwitchWindow && it.action != ResultAction::System) {
+        it.category != "window" && it.category != "system" && it.category != "screenshot" &&
+        it.action != ResultAction::Copy && it.action != ResultAction::Calculate &&
+        it.action != ResultAction::Convert && it.action != ResultAction::WebSearch &&
+        it.action != ResultAction::Habit && it.action != ResultAction::SwitchWindow &&
+        it.action != ResultAction::System && it.action != ResultAction::Screenshot) {
       auto icon = file_icon_data_url(it.path, it.kind);
       if (!icon.empty()) {
         o += ",\"icon\":\"";

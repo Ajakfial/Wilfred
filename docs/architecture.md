@@ -159,12 +159,13 @@ in short:
   the current hour/weekday.
 * `minis.hpp` — recognizes a fixed set of system "mini" queries (`weather`,
   `time`, `disk`, `ram`, `cpu`, `process <name>`, `clip[s]`, `battery`,
-  `uptime`, `speedtest`, `emoji`, `symbol`, `fx`,
+  `uptime`, `speedtest`, `screenshot [fullscreen|window|region]`, `emoji`, `symbol`, `fx`,
   `uuid`/`base64`/`sha256`/`lorem`/`json`,
   `lock`/`sleep`/`shutdown`/`restart`/`logout`, …) and returns synthetic
   `SearchResult`s rather than index hits. Glyph catalogs live in
   `glyphs.hpp`; currency conversion is shared with the calculator
-  (`math/expr.hpp`); system actions call `native_system_action()`.
+  (`math/expr.hpp`); system actions call `native_system_action()` and
+  screenshots call `native_take_screenshot()` (`search/screenshot.hpp`).
 * `macros.hpp` — user- and built-in-defined query templates (`!yt`, `gh`)
   that expand `{query}` / `{clipboard}` placeholders into a URL.
 * `content.hpp` — decides which files are eligible for content indexing and
