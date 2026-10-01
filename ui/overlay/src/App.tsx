@@ -11,6 +11,7 @@ import {
   platformId,
   primaryLabel,
   reportSize,
+  watchUserResize,
   rowsOf,
   sectionsOf,
   tips,
@@ -367,16 +368,21 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the window sized to content.
+  // Keep the window sized to content until the user drags an edge; after that
+  // the panel fills whatever size they chose (see protocol.ts / html.fit).
   useEffect(() => {
+    const stopWatch = watchUserResize();
     const shell = document.querySelector(".shell");
     if (!shell || typeof ResizeObserver === "undefined") {
       reportSize();
-      return;
+      return stopWatch;
     }
     const ro = new ResizeObserver(() => reportSize());
     ro.observe(shell);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      stopWatch();
+    };
   }, []);
 
   // Live speedtest refresh.

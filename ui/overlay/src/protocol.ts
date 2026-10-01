@@ -23,15 +23,58 @@ export function nativeSend(msg: object): void {
   }
 }
 
+/**
+ * Auto-size vs. user-size.
+ *
+ * By default the window hugs the content: the UI measures `.shell` and tells
+ * the native host (`resize`) how big to be. As soon as the user drags a window
+ * edge, the viewport stops matching the size we last asked for. We detect that
+ * (see `watchUserResize`), switch to `html.fit` (the panel fills the viewport
+ * and the lists flex/scroll inside it) and stop sending `resize` so the host
+ * never fights the user's chosen size.
+ */
+let fitMode = false;
+let askedW = 0;
+let askedH = 0;
+
+export function isFitMode(): boolean {
+  return fitMode;
+}
+
 export function reportSize(): void {
+  if (fitMode) return;
   const shell = document.querySelector(".shell");
   if (!shell) return;
   const r = shell.getBoundingClientRect();
-  nativeSend({
-    type: "resize",
-    width: Math.ceil(r.width),
-    height: Math.ceil(r.height),
-  });
+  askedW = Math.ceil(r.width);
+  askedH = Math.ceil(r.height);
+  nativeSend({ type: "resize", width: askedW, height: askedH });
+}
+
+/** Call once. Flips into fit mode when the viewport changes without us asking. */
+export function watchUserResize(): () => void {
+  if (!hasNativeHost()) return () => {}; // browser preview already resizes freely
+  const onResize = () => {
+    if (fitMode) return;
+    const dw = Math.abs(window.innerWidth - askedW);
+    const dh = Math.abs(window.innerHeight - askedH);
+    // Tolerate rounding / host clamping; a real drag is much larger.
+    if (askedW > 0 && (dw > 3 || dh > 3)) {
+      // Ignore the echo of our own request while the host is still applying it.
+      window.setTimeout(() => {
+        if (fitMode) return;
+        if (
+          Math.abs(window.innerWidth - askedW) > 3 ||
+          Math.abs(window.innerHeight - askedH) > 3
+        ) {
+          fitMode = true;
+          document.documentElement.classList.add("fit");
+        }
+      }, 120);
+    }
+  };
+  window.addEventListener("resize", onResize);
+  return () => window.removeEventListener("resize", onResize);
 }
 
 /** Current platform for placeholder/hints. Same bundle on Win/Mac/Linux. */

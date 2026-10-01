@@ -911,6 +911,46 @@ kbd {
 
 @media (max-height: 640px) { :root { --list-h: 300px; } }
 
+/* ===================== User-resized window (html.fit) =====================
+   Added by protocol.ts once the user drags a window edge. The panel stops
+   hugging its content and instead fills the viewport; the result list and
+   detail pane flex to the remaining height and scroll inside it. */
+
+html.fit, html.fit body, html.fit #root { width: 100%; height: 100%; }
+html.fit .shell {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+html.fit .launcher {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+html.fit .search, html.fit .bar, html.fit .loadbar { flex: 0 0 auto; }
+html.fit .body { flex: 1 1 auto; min-height: 0; height: auto; }
+html.fit .results { max-height: none; min-height: 0; }
+html.fit .launcher.has-preview .body { height: auto; }
+/* Split view: list takes ~40% of the width, bounded so neither side collapses. */
+html.fit .launcher.has-preview .results { flex: 0 0 clamp(220px, 40%, 460px); }
+html.fit .launcher.has-menu .body { min-height: calc(var(--menu-n, 3) * 34px + 58px); }
+
+/* Very narrow: the split view cannot fit, so the list gets the whole width. */
+@media (max-width: 560px) {
+  html.fit .launcher.has-preview .detail { display: none; }
+  html.fit .launcher.has-preview .results { flex: 1 1 auto; border-right: 0; }
+}
+/* Very short: tighten the chrome so the list keeps usable room. */
+@media (max-height: 300px) {
+  html.fit .shell { padding-top: 8px; padding-bottom: 12px; }
+}
+
+
 @media (prefers-contrast: more) {
   :root { --faint: var(--muted); --line: var(--line-strong); }
   @supports ((backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px))) {

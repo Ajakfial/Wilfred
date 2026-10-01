@@ -33,6 +33,17 @@ outbound, `show` / `hide` / `results` / `preview` inbound. Keyboard map:
 secondary action), `F3` split detail pane. Hover
 selects (mouse-first, keyboard keeps explicit index).
 
+## Resizing
+
+By default the window hugs its content (the UI reports `.shell` size via
+`resize`). The native windows are also drag-resizable from any edge/corner
+(Windows: `WS_THICKFRAME` + `WM_NCHITTEST`; macOS: `NSWindowStyleMaskResizable`;
+Linux: `gtk_window_begin_resize_drag` on an 8px edge band). When the viewport
+changes without the UI having asked for it, `protocol.ts` flips on `html.fit`:
+the panel fills the viewport, the list/detail flex and scroll inside it, the
+split view collapses below 560px wide, and `resize` reporting stops so the host
+never fights the user's size. Min size is 420x100 on every platform.
+
 ## Building
 
 Requires Node 18+ (only for UI work — C++ builds use the committed bundle):
