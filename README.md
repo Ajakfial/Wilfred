@@ -26,7 +26,7 @@ single summonable search bar.
 * Snippets with folders, `{date}`/`{clipboard}`/`{query}` placeholders, and optional global abbreviations in any app
 * Rich file previews (documents, CSV, images, folders) in the overlay (`F3`) plus `wilfred preview`
 * Calendar (`.ics`), contacts (`.vcf`), and notes (Markdown) sources + optional OCR indexing via `tesseract` (`sources.*`)
-* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with X11 fallback, all above/skip-taskbar) with Tab action menu kept above results
+* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with automatic X11 canvas fallback, all above/skip-taskbar) with `Ctrl`/`⌘`+`K` actions popover and matching shortcuts in both Linux backends
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`)

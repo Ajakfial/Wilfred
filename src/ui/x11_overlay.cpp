@@ -14,9 +14,12 @@
 #if !defined(_WIN32) && !defined(__APPLE__)
 
 // Modern Linux overlay: WebKitGTK (same HTML/JS as Windows/macOS) when
-// available, otherwise an improved X11 canvas fallback. Both speak the
-// identical overlay protocol (results + correction + ghost + candidates)
-// so typo safety and autocomplete behave the same on every platform.
+// available, with an X11 canvas fallback for minimal containers and
+// X11-only WMs. Both speak the identical overlay protocol (results +
+// correction + ghost + candidates) so typo safety and autocomplete behave
+// the same on every platform. When both backends are compiled in, WebKit is
+// tried first and the X11 canvas is used automatically if WebKit cannot
+// start (missing runtime, no display, gtk_init failure).
 
 #ifdef WILFRED_HAS_WEBKIT
 // WebKitGTK headers are pulled via pkg-config cflags (see CMakeLists).
@@ -25,7 +28,7 @@
 #include <jsc/jsc.h>
 #endif
 
-#if defined(WILFRED_HAS_X11) && !defined(WILFRED_HAS_WEBKIT)
+#if defined(WILFRED_HAS_X11)
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -161,7 +164,7 @@ static void wk_on_script_message(WebKitUserContentManager*, JSCValue* value, gpo
 
 }  // namespace
 
-class LinuxOverlay final : public OverlayUi {
+class LinuxWebkitOverlay final : public OverlayUi {
  public:
   OverlayQuery query;
   OverlaySubmit submit;
@@ -183,6 +186,13 @@ class LinuxOverlay final : public OverlayUi {
     gtk_widget_override_background_color(g_wk.window, GTK_STATE_FLAG_NORMAL, &bg);
 
     WebKitWebView* web = WEBKIT_WEB_VIEW(webkit_web_view_new());
+    if (!web) {
+      if (g_wk.window) {
+        gtk_widget_destroy(g_wk.window);
+        g_wk.window = nullptr;
+      }
+      return false;
+    }
     g_wk.web = web;
     WebKitSettings* settings = webkit_web_view_get_settings(web);
     if (settings) {
@@ -227,50 +237,37 @@ class LinuxOverlay final : public OverlayUi {
     }
   }
   bool visible() const override { return g_wk.visible; }
+  void pump() {
+    while (gtk_events_pending()) gtk_main_iteration_do(FALSE);
+  }
 };
 
-static LinuxOverlay* g_ov = nullptr;
+#endif  // WILFRED_HAS_WEBKIT
 
-std::unique_ptr<OverlayUi> create_overlay() {
-  auto p = std::make_unique<LinuxOverlay>();
-  g_ov = p.get();
-  return p;
-}
-
-void overlay_bind(OverlayQuery q, OverlaySubmit s) {
-  g_wk.query = q;
-  g_wk.submit = s;
-  if (g_ov) {
-    g_ov->query = std::move(q);
-    g_ov->submit = std::move(s);
-    g_wk.query = g_ov->query;
-    g_wk.submit = g_ov->submit;
-  }
-}
-
-void overlay_set_quit(std::function<void()> fn) { (void)fn; }
-
-void overlay_pump() {
-  while (gtk_events_pending()) gtk_main_iteration_do(FALSE);
-}
-
-#else
+#if defined(WILFRED_HAS_X11)
 // ---------------------------------------------------------------- X11 fallback
-// Improved canvas fallback used when WebKitGTK is unavailable (minimal
-// containers, X11-only WMs). Still fully typo-safe: shows correction,
-// ghost and candidates inline.
+// Canvas fallback used when WebKitGTK is unavailable or fails to start
+// (minimal containers, X11-only WMs). Still fully typo-safe: shows
+// correction, ghost and candidates inline. Keyboard map mirrors the web UI:
+// Esc back/dismiss, Tab fix/complete, Ctrl+K actions, Ctrl+U clear,
+// arrows/Home/End/PgUp/PgDn move, Ctrl+N/P move, Ctrl+1-9 quick open,
+// Enter submit (Shift/Alt secondary), F3 details.
 
 class X11Overlay final : public OverlayUi {
  public:
   OverlayQuery query;
   OverlaySubmit submit;
-#ifdef WILFRED_HAS_X11
   Display* dpy{nullptr};
   Window win{0};
   bool vis{false};
   std::string text;
   OverlayResponse last;
   int sel{0};
+  bool preview_open{false};
+  FilePreview preview;
+  bool correction_dismissed{false};
+  bool menu_open{false};
+  int menu_sel{0};
   std::chrono::steady_clock::time_point speed_poll{};
 
   static bool speedtest_query(const std::string& q) {
@@ -324,6 +321,11 @@ class X11Overlay final : public OverlayUi {
     text.clear();
     last = OverlayResponse{};
     sel = 0;
+    preview_open = false;
+    preview = FilePreview{};
+    correction_dismissed = false;
+    menu_open = false;
+    menu_sel = 0;
     speed_poll = {};
     refresh();
     XMapRaised(dpy, win);
@@ -352,6 +354,28 @@ class X11Overlay final : public OverlayUi {
       }
     }
     sel = 0;
+    menu_open = false;
+    menu_sel = 0;
+    correction_dismissed = false;
+    if (preview_open) rebuild_preview();
+  }
+
+  void rebuild_preview() {
+    preview = FilePreview{};
+    if (!preview_open) return;
+    if (sel < 0 || sel >= static_cast<int>(last.results.size())) return;
+    const auto& r = last.results[static_cast<std::size_t>(sel)];
+    std::string path = r.path.empty() ? r.payload : r.path;
+    if (path.empty() || path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) {
+      preview.title = r.title;
+      preview.text = r.subtitle;
+      return;
+    }
+    try {
+      preview = build_file_preview(path);
+    } catch (...) {
+      preview = FilePreview{};
+    }
   }
 
   void draw() {
@@ -372,9 +396,9 @@ class X11Overlay final : public OverlayUi {
       draw_str(xoff, 28, suffix, 0x6C7490);
     }
     int y = 52;
-    // Did-you-mean bar.
-    if (!last.correction.empty()) {
-      std::string c = "Did you mean " + last.correction + "?  (Tab to apply)";
+    // Did-you-mean bar (Esc dismisses, Tab applies).
+    if (!correction_dismissed && !last.correction.empty()) {
+      std::string c = "Did you mean " + last.correction + "?  (Tab to apply, Esc to dismiss)";
       if (c.size() > 88) c.resize(88);
       draw_str(16, y, c, 0x8B97FF);
       y += 22;
@@ -391,8 +415,24 @@ class X11Overlay final : public OverlayUi {
       y += 22;
     }
     y += 6;
+    // Actions popover (Ctrl+K / Tab when no assist).
     const auto& results = last.results;
-    for (int i = 0; i < static_cast<int>(results.size()) && i < 9; ++i) {
+    if (menu_open && sel >= 0 && sel < static_cast<int>(results.size())) {
+      const auto& acts = results[static_cast<std::size_t>(sel)].actions;
+      std::string head = "Actions (Esc to close):";
+      draw_str(16, y, head, 0x8B97FF);
+      y += 20;
+      for (int j = 0; j < static_cast<int>(acts.size()) && j < 6; ++j) {
+        std::string label = (j == menu_sel ? "> " : "  ") + acts[static_cast<std::size_t>(j)].label;
+        if (label.size() > 80) label.resize(80);
+        draw_str(24, y, label, j == menu_sel ? 0xFFFFFF : 0x9AA2B8);
+        y += 18;
+        if (y > 500) break;
+      }
+      y += 6;
+    }
+    int limit = preview_open ? 4 : 9;
+    for (int i = 0; i < static_cast<int>(results.size()) && i < limit; ++i) {
       if (i == sel) {
         XSetForeground(dpy, gc, 0x2A3050);
         XFillRectangle(dpy, win, gc, 8, y - 16, 744, 40);
@@ -401,24 +441,131 @@ class X11Overlay final : public OverlayUi {
       if (t.size() > 80) t.resize(80);
       draw_str(16, y, t, i == sel ? 0xFFFFFF : 0xF0F0F5);
       y += 40;
-      if (y > 540) break;
+      if (y > 470) break;
     }
     if (results.empty()) draw_str(16, y, "(no matches — typo-tolerant search active)", 0x6C7490);
+    // Details pane (F3).
+    if (preview_open) {
+      y += 4;
+      std::string head = preview.title.empty() ? "Details" : preview.title;
+      if (head.size() > 80) head.resize(80);
+      draw_str(16, y, head, 0xFFFFFF);
+      y += 18;
+      std::string meta;
+      if (!preview.kind.empty()) meta += preview.kind;
+      if (!preview.size_label.empty()) {
+        if (!meta.empty()) meta += "  ";
+        meta += preview.size_label;
+      }
+      if (!preview.modified_label.empty()) {
+        if (!meta.empty()) meta += "  ";
+        meta += preview.modified_label;
+      }
+      if (!meta.empty()) {
+        if (meta.size() > 88) meta.resize(88);
+        draw_str(16, y, meta, 0x9AA2B8);
+        y += 18;
+      }
+      if (!preview.error.empty()) {
+        std::string e = preview.error;
+        if (e.size() > 88) e.resize(88);
+        draw_str(16, y, e, 0x6C7490);
+      } else if (!preview.text.empty()) {
+        std::size_t pos = 0;
+        for (int line = 0; line < 5 && pos < preview.text.size(); ++line) {
+          auto nl = preview.text.find('\n', pos);
+          std::string row = preview.text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+          if (row.size() > 88) row.resize(88);
+          // XDrawString needs non-empty printable content; skip empty rows.
+          if (!row.empty()) draw_str(16, y, row, 0xF0F0F5);
+          y += 16;
+          if (nl == std::string::npos) break;
+          pos = nl + 1;
+        }
+      }
+    }
+    // Shortcut footer (mirrors the web ActionBar).
+    draw_str(16, 545, "Tab fix  Ctrl+K actions  Ctrl+U clear  F3 details  Esc back", 0x6C7490);
     XFreeGC(dpy, gc);
     XFlush(dpy);
   }
 
+  bool has_assist() const {
+    if (!correction_dismissed && !last.correction.empty()) return true;
+    return !last.ghost.empty() && last.ghost.size() > text.size();
+  }
+
   void accept_ghost_or_correction() {
     if (!last.ghost.empty() && last.ghost.size() > text.size()) {
-      // Ghost extends the query: accept it.
       text = last.ghost;
       refresh();
       draw();
-    } else if (!last.correction.empty()) {
+    } else if (!correction_dismissed && !last.correction.empty()) {
       text = last.correction;
       refresh();
       draw();
     }
+  }
+
+  void toggle_menu() {
+    if (menu_open) {
+      menu_open = false;
+      return;
+    }
+    if (sel >= 0 && sel < static_cast<int>(last.results.size())) {
+      const auto& acts = last.results[static_cast<std::size_t>(sel)].actions;
+      if (!acts.empty()) {
+        menu_open = true;
+        menu_sel = 0;
+      }
+    }
+  }
+
+  void toggle_preview() {
+    preview_open = !preview_open;
+    if (preview_open)
+      rebuild_preview();
+    else
+      preview = FilePreview{};
+    draw();
+  }
+
+  void move_sel(int delta) {
+    const auto& results = last.results;
+    if (results.empty()) return;
+    menu_open = false;
+    menu_sel = 0;
+    sel = (sel + delta + static_cast<int>(results.size())) % static_cast<int>(results.size());
+    if (preview_open) rebuild_preview();
+    draw();
+  }
+
+  void jump_sel(int idx) {
+    const auto& results = last.results;
+    if (results.empty()) return;
+    menu_open = false;
+    menu_sel = 0;
+    sel = std::clamp(idx, 0, static_cast<int>(results.size()) - 1);
+    if (preview_open) rebuild_preview();
+    draw();
+  }
+
+  void submit_at(int idx, const std::string& act) {
+    const auto& results = last.results;
+    if (idx < 0 || idx >= static_cast<int>(results.size()) || !submit) return;
+    submit(results[static_cast<std::size_t>(idx)], act);
+  }
+
+  void submit_secondary_at(int idx) {
+    const auto& results = last.results;
+    if (idx < 0 || idx >= static_cast<int>(results.size())) return;
+    const auto& r = results[static_cast<std::size_t>(idx)];
+    std::string act;
+    if (r.actions.size() >= 2)
+      act = r.actions[1].id;
+    else if (!r.actions.empty())
+      act = r.actions[0].id;
+    submit_at(idx, act);
   }
 
   void pump() {
@@ -432,43 +579,121 @@ class X11Overlay final : public OverlayUi {
         char buf[32]{};
         XLookupString(&e.xkey, buf, sizeof(buf), &ks, nullptr);
         const auto& results = last.results;
+        bool ctrl = (e.xkey.state & ControlMask) != 0;
+        bool mod = (e.xkey.state & (ControlMask | Mod4Mask)) != 0;
+        bool shift = (e.xkey.state & ShiftMask) != 0;
+        bool alt = (e.xkey.state & Mod1Mask) != 0;
         if (ks == XK_Escape) {
-          hide();
-        } else if (ks == XK_Return && sel < static_cast<int>(results.size()) && submit) {
-          auto& r = results[static_cast<std::size_t>(sel)];
-          std::string act;
-          if ((e.xkey.state & ShiftMask) || (e.xkey.state & Mod1Mask)) {
-            if (r.actions.size() >= 2)
-              act = r.actions[1].id;
-            else if (!r.actions.empty())
-              act = r.actions[0].id;
+          if (menu_open) {
+            menu_open = false;
+            draw();
+          } else if (!correction_dismissed && !last.correction.empty()) {
+            correction_dismissed = true;
+            draw();
+          } else if (preview_open) {
+            preview_open = false;
+            preview = FilePreview{};
+            draw();
+          } else {
+            hide();
           }
-          submit(r, act);
-        } else if (ks == XK_Tab) {
+        } else if (mod && (ks == XK_k || ks == XK_K)) {
+          // Raycast convention: Ctrl+K opens the actions popover.
+          toggle_menu();
+          draw();
+        } else if (ctrl && (ks == XK_u || ks == XK_U)) {
+          // Clear the query (Ctrl+K now opens actions).
+          if (!text.empty()) {
+            text.clear();
+            refresh();
+            draw();
+          } else if (menu_open || preview_open) {
+            menu_open = false;
+            preview_open = false;
+            preview = FilePreview{};
+            draw();
+          }
+        } else if (ks == XK_Tab || ks == XK_ISO_Left_Tab) {
           // Typo-first: Tab applies correction/ghost when present (parity
-          // with the web UI's Tab-to-apply), otherwise secondary action.
-          if (!last.correction.empty() || (!last.ghost.empty() && last.ghost.size() > text.size())) {
+          // with the web UI), otherwise toggles the actions popover.
+          if (has_assist()) {
             accept_ghost_or_correction();
-          } else if (sel < static_cast<int>(results.size()) && submit) {
-            auto& r = results[static_cast<std::size_t>(sel)];
-            std::string act =
-                r.actions.size() >= 2 ? r.actions[1].id : (r.actions.empty() ? "" : r.actions[0].id);
-            submit(r, act);
+          } else if (menu_open) {
+            menu_open = false;
+            draw();
+          } else if (sel < static_cast<int>(results.size())) {
+            toggle_menu();
+            draw();
           }
-        } else if (ks == XK_Right && !last.ghost.empty() && last.ghost.size() > text.size()) {
+        } else if (ks == XK_F3) {
+          toggle_preview();
+        } else if ((ks == XK_Return || ks == XK_KP_Enter) && sel < static_cast<int>(results.size()) &&
+                   submit) {
+          if (menu_open) {
+            const auto& acts = results[static_cast<std::size_t>(sel)].actions;
+            std::string act;
+            if (menu_sel >= 0 && menu_sel < static_cast<int>(acts.size()))
+              act = acts[static_cast<std::size_t>(menu_sel)].id;
+            submit_at(sel, act);
+          } else {
+            if (shift || alt)
+              submit_secondary_at(sel);
+            else
+              submit_at(sel, "");
+          }
+        } else if (mod && ks >= XK_1 && ks <= XK_9) {
+          // Quick open: Ctrl/Cmd+1..9 opens that row.
+          int pos = static_cast<int>(ks - XK_1);
+          if (pos < static_cast<int>(results.size()) && submit) submit_at(pos, "");
+        } else if (mod && (ks == XK_n || ks == XK_N)) {
+          move_sel(1);
+        } else if (mod && (ks == XK_p || ks == XK_P)) {
+          move_sel(-1);
+        } else if (ks == XK_Home || (mod && ks == XK_Up)) {
+          jump_sel(0);
+        } else if (ks == XK_End || (mod && ks == XK_Down)) {
+          jump_sel(static_cast<int>(results.size()) - 1);
+        } else if (ks == XK_Page_Down) {
+          if (!results.empty()) jump_sel(sel + 8);
+        } else if (ks == XK_Page_Up) {
+          if (!results.empty()) jump_sel(sel - 8);
+        } else if (menu_open && (ks == XK_Down || ks == XK_Up) && !mod) {
+          // The actions popover is a vertical list: arrows move inside it.
+          const auto& acts = results[static_cast<std::size_t>(sel)].actions;
+          if (!acts.empty()) {
+            int n = static_cast<int>(acts.size());
+            menu_sel = (menu_sel + (ks == XK_Down ? 1 : -1) + n) % n;
+            draw();
+          }
+        } else if (menu_open && (ks == XK_Right || ks == XK_Left)) {
+          const auto& acts = results[static_cast<std::size_t>(sel)].actions;
+          if (!acts.empty()) {
+            int n = static_cast<int>(acts.size());
+            menu_sel = (menu_sel + (ks == XK_Right ? 1 : -1) + n) % n;
+            draw();
+          }
+        } else if (ks == XK_Right && !menu_open && !last.ghost.empty() &&
+                   last.ghost.size() > text.size()) {
           text = last.ghost;
           refresh();
           draw();
         } else if (ks == XK_Down && !results.empty()) {
-          sel = (sel + 1) % static_cast<int>(results.size());
-          draw();
+          move_sel(1);
         } else if (ks == XK_Up && !results.empty()) {
-          sel = (sel - 1 + static_cast<int>(results.size())) % static_cast<int>(results.size());
-          draw();
-        } else if (ks == XK_BackSpace) {
-          if (!text.empty()) text.pop_back();
-          refresh();
-          draw();
+          move_sel(-1);
+        } else if (ks == XK_BackSpace || ks == XK_Delete) {
+          if (!text.empty()) {
+            text.pop_back();
+            refresh();
+            draw();
+          } else if (menu_open || preview_open) {
+            menu_open = false;
+            if (preview_open) {
+              preview_open = false;
+              preview = FilePreview{};
+            }
+            draw();
+          }
         } else if (buf[0] >= 32) {
           text += buf[0];
           refresh();
@@ -486,14 +711,132 @@ class X11Overlay final : public OverlayUi {
       }
     }
   }
-#else
-  bool create() override { return false; }
-  void show() override {}
-  void hide() override {}
-  void destroy() override {}
-  bool visible() const override { return false; }
-#endif
 };
+
+#endif  // WILFRED_HAS_X11
+
+#if defined(WILFRED_HAS_WEBKIT) && defined(WILFRED_HAS_X11)
+// ------------------------------------------------------- Runtime fallback
+// Both backends compiled: try WebKitGTK first (full HTML UI), fall back to
+// the X11 canvas when WebKit cannot start. Shortcuts match in both paths.
+
+class LinuxOverlay final : public OverlayUi {
+ public:
+  OverlayQuery query;
+  OverlaySubmit submit;
+  std::unique_ptr<OverlayUi> inner;
+
+  bool create() override {
+    {
+      auto wk = std::make_unique<LinuxWebkitOverlay>();
+      wk->query = query;
+      wk->submit = submit;
+      if (wk->create()) {
+        inner = std::move(wk);
+        return true;
+      }
+    }
+    {
+      auto x = std::make_unique<X11Overlay>();
+      x->query = query;
+      x->submit = submit;
+      if (x->create()) {
+        inner = std::move(x);
+        return true;
+      }
+    }
+    return false;
+  }
+  void show() override {
+    if (!inner && !create()) return;
+    sync_inner();
+    inner->show();
+  }
+  void hide() override {
+    if (inner) inner->hide();
+  }
+  void destroy() override {
+    if (inner) inner->destroy();
+  }
+  bool visible() const override { return inner ? inner->visible() : false; }
+
+  void sync_inner() {
+    if (!inner) return;
+    if (auto* wk = dynamic_cast<LinuxWebkitOverlay*>(inner.get())) {
+      wk->query = query;
+      wk->submit = submit;
+    } else if (auto* x = dynamic_cast<X11Overlay*>(inner.get())) {
+      x->query = query;
+      x->submit = submit;
+    }
+  }
+  void pump_inner() {
+    if (!inner) return;
+    if (auto* wk = dynamic_cast<LinuxWebkitOverlay*>(inner.get())) {
+      wk->pump();
+    } else if (auto* x = dynamic_cast<X11Overlay*>(inner.get())) {
+      x->pump();
+    }
+  }
+};
+
+static LinuxOverlay* g_ov = nullptr;
+
+std::unique_ptr<OverlayUi> create_overlay() {
+  auto p = std::make_unique<LinuxOverlay>();
+  g_ov = p.get();
+  return p;
+}
+
+void overlay_bind(OverlayQuery q, OverlaySubmit s) {
+  if (g_ov) {
+    g_ov->query = q;
+    g_ov->submit = s;
+    g_ov->sync_inner();
+    g_wk.query = g_ov->query;
+    g_wk.submit = g_ov->submit;
+  } else {
+    g_wk.query = std::move(q);
+    g_wk.submit = std::move(s);
+  }
+}
+
+void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+
+void overlay_pump() {
+  if (g_ov) g_ov->pump_inner();
+}
+
+#elif defined(WILFRED_HAS_WEBKIT)
+// ------------------------------------------------------- WebKitGTK only
+
+static LinuxWebkitOverlay* g_ov = nullptr;
+
+std::unique_ptr<OverlayUi> create_overlay() {
+  auto p = std::make_unique<LinuxWebkitOverlay>();
+  g_ov = p.get();
+  return p;
+}
+
+void overlay_bind(OverlayQuery q, OverlaySubmit s) {
+  g_wk.query = q;
+  g_wk.submit = s;
+  if (g_ov) {
+    g_ov->query = std::move(q);
+    g_ov->submit = std::move(s);
+    g_wk.query = g_ov->query;
+    g_wk.submit = g_ov->submit;
+  }
+}
+
+void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+
+void overlay_pump() {
+  while (gtk_events_pending()) gtk_main_iteration_do(FALSE);
+}
+
+#elif defined(WILFRED_HAS_X11)
+// ------------------------------------------------------- X11 fallback only
 
 static X11Overlay* g_ov = nullptr;
 
@@ -512,12 +855,22 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 
 void overlay_pump() {
-#ifdef WILFRED_HAS_X11
   if (g_ov) g_ov->pump();
-#endif
 }
 
-#endif
+#else
+// ------------------------------------------------------- No Linux UI backend
+
+std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
+
+void overlay_bind(OverlayQuery, OverlaySubmit) {}
+
+void overlay_set_quit(std::function<void()>) {}
+
+void overlay_pump() {}
 
 #endif
+
 }  // namespace wilfred
+
+#endif

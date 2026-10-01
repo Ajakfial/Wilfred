@@ -4,14 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#14161d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#16171d" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="description" content="Wilfred — fast cross-platform launcher (Windows, macOS, Linux)" />
     <title>Wilfred</title>
     <style>
       /* Inline critical paint: never flash white while style.css loads.
-         All hosts (WebView2 / WKWebView / WebKitGTK) start transparent. */
-      html, body { background: transparent !important; }
+         All hosts (WebView2 / WKWebView / WebKitGTK) start transparent.
+         The browser-only preview opts out via html.preview (see main.tsx). */
+      html:not(.preview), html:not(.preview) body { background: transparent !important; }
     </style>
     <link rel="stylesheet" href="style.css" />
   </head>

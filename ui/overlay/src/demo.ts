@@ -104,6 +104,29 @@ function demoConvert(q: string): ResultItem | null {
   };
 }
 
+/** Browser-only calculator. The input is whitelisted to digits and operators
+ *  before evaluation, so nothing but arithmetic can run. */
+function demoCalc(q: string): ResultItem | null {
+  const raw = q.trim();
+  if (!/^[\d\s.,+\-*/×÷x()%^]+$/.test(raw)) return null;
+  if (!/[+\-*/×÷x^%]/.test(raw.replace(/^\s*-/, ""))) return null;
+  const expr = raw.replace(/[×x]/g, "*").replace(/÷/g, "/").replace(/\^/g, "**").replace(/,/g, "");
+  try {
+    const v = Function(`"use strict";return (${expr})`)() as unknown;
+    if (typeof v !== "number" || !Number.isFinite(v)) return null;
+    const out = Number(v.toPrecision(12)).toLocaleString("en-US", { maximumFractionDigits: 10 });
+    return {
+      title: out,
+      subtitle: `Calculator · ${raw}`,
+      action: "calc",
+      kind: "unknown",
+      actions: [{ id: "copy_text", label: "Copy" }],
+    };
+  } catch {
+    return null;
+  }
+}
+
 function demoEnv(): DemoEnv {
   const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
   const plat = nav.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
@@ -151,6 +174,8 @@ let demoSpeedKey = "";
 export function demoQuery(q: string): ResultItem[] {
   const conv = demoConvert(q);
   if (conv) return [conv];
+  const calc = demoCalc(q);
+  if (calc) return [calc];
   const needle = (q || "").trim().toLowerCase();
   if (isSpeedtestQuery(needle)) {
     if (!demoSpeedAt || (speedtestRerun(needle) && demoSpeedKey !== needle)) {
@@ -239,10 +264,14 @@ export function demoQuery(q: string): ResultItem[] {
     { title: "clip.mp4", path: J(H, "Videos", "clip.mp4"), kind: "video", subtitle: "Videos" },
     { title: "track.mp3", path: J(H, "Music", "track.mp3"), kind: "audio", subtitle: "Music" },
     { title: "archive.zip", path: J(H, "Downloads", "archive.zip"), kind: "archive", subtitle: "Downloads" },
-    { title: "25 × 42", subtitle: "1050", action: "calc", kind: "unknown" },
+    { title: "1,050", subtitle: "Calculator · 25 × 42", action: "calc", kind: "unknown" },
   ];
   sample.forEach((x) => {
     if (x.kind === "application") x.icon = demoIcon;
+    if (x.action === "calc") {
+      x.actions = [{ id: "copy_text", label: "Copy" }];
+      return;
+    }
     x.actions = [
       { id: "open", label: "Open" },
       { id: "reveal", label: "Show in folder" },

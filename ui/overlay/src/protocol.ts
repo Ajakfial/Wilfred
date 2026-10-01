@@ -152,6 +152,11 @@ export const groups: Record<string, string> = {
   calendar: "mini",
   contact: "mini",
   note: "mini",
+  clipboard: "clip",
+  clips: "clip",
+  clip: "clip",
+  snippet: "snippet",
+  plugin: "plugin",
   system: "sys",
   lock: "sys",
   sleep: "sys",
@@ -172,7 +177,41 @@ export const groupLabels: Record<string, string> = {
   speed: "Network",
   sys: "System",
   mini: "Insights",
+  clip: "Clipboard",
+  snippet: "Snippets",
+  plugin: "Plugins",
 };
+
+/** Human labels for the right-hand accessory on a row. */
+const kindLabels: Record<string, string> = {
+  application: "Application",
+  executable: "Executable",
+  directory: "Folder",
+  document: "Document",
+  source: "Source",
+  config: "Config",
+  shortcut: "Shortcut",
+  clipboard: "Clipboard",
+  clips: "Clipboard",
+  clip: "Clipboard",
+  content: "Text match",
+  semantic: "Smart match",
+  ai: "Smart match",
+  web: "Web",
+  macro: "Web shortcut",
+  disku: "Disk usage",
+  ram: "Memory",
+  cpu: "Processor",
+  tz: "Time zone",
+  fx: "Currency",
+};
+
+export function kindLabel(k: string): string {
+  if (!k || k === "habit") return "";
+  if (kindLabels[k]) return kindLabels[k];
+  const t = k.replace(/_/g, " ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 
 export const tips = ["25 * 42", "weather", "speedtest", "type:image", "!yt cats", "clip"];
 
@@ -199,13 +238,48 @@ export function actionsOf(item: ResultItem | undefined): ActionItem[] {
   return item && Array.isArray(item.actions) ? item.actions : [];
 }
 
-/** Selectable rows (habit rows act as input shortcuts, except mini ones). */
+export function groupOf(item: ResultItem): string {
+  const k = kindOf(item);
+  return groups[k] || (item.category === "mini" ? "mini" : "doc");
+}
+
+/** Selectable rows in *display order*: the backend rank is preserved inside a
+ *  section, and sections appear in order of their best-ranked member, so the
+ *  top hit is always row 0. Keyboard position == visual position. Habit rows
+ *  act as input shortcuts (except mini ones). When the speed-test summary can
+ *  be drawn as a card, the redundant per-direction rows are folded into it. */
 export function rowsOf(items: ResultItem[]): RowEntry[] {
-  const rows: RowEntry[] = [];
+  const speedCard = items.findIndex((it) => kindOf(it) === "speedtest" && parseSpeed(it) !== null);
+  const buckets = new Map<string, RowEntry[]>();
   items.forEach((item, index) => {
-    if (item.action !== "habit" || item.category === "mini") rows.push({ item, index });
+    if (item.action === "habit" && item.category !== "mini") return;
+    if (speedCard >= 0 && index !== speedCard && kindOf(item) === "speedtest") return;
+    const g = groupOf(item);
+    const list = buckets.get(g);
+    if (list) list.push({ item, index });
+    else buckets.set(g, [{ item, index }]);
   });
+  const rows: RowEntry[] = [];
+  buckets.forEach((list) => rows.push(...list));
   return rows;
+}
+
+export interface Section {
+  key: string;
+  label: string;
+  rows: Array<{ entry: RowEntry; pos: number }>;
+}
+
+/** Split display-ordered rows into labelled sections. */
+export function sectionsOf(rows: RowEntry[]): Section[] {
+  const out: Section[] = [];
+  rows.forEach((entry, pos) => {
+    const key = groupOf(entry.item);
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.rows.push({ entry, pos });
+    else out.push({ key, label: groupLabels[key] || "Results", rows: [{ entry, pos }] });
+  });
+  return out;
 }
 
 export function habitsOf(items: ResultItem[]): ResultItem[] {
@@ -290,4 +364,78 @@ export function isSpeedtestQuery(q: string): boolean {
     }
   }
   return false;
+}
+
+/** Calculator / conversion result: the engine sends the *answer* as title and
+ *  "<Label> · <expression>" as subtitle. */
+export interface Answer {
+  label: string;
+  expression: string;
+  result: string;
+}
+
+export function parseAnswer(item: ResultItem): Answer | null {
+  if (item.action !== "calc" && item.action !== "convert") return null;
+  const result = (item.title || "").trim();
+  if (!result) return null;
+  const sub = (item.subtitle || "").trim();
+  const cut = sub.indexOf(" · ");
+  if (cut > 0) return { label: sub.slice(0, cut), expression: sub.slice(cut + 3), result };
+  return { label: item.action === "convert" ? "Conversion" : "Calculator", expression: sub, result };
+}
+
+export interface SpeedStat {
+  value: string;
+  unit: string;
+}
+
+export interface Speed {
+  down: SpeedStat;
+  up: SpeedStat;
+  ping: SpeedStat;
+  phase: string;
+  progress: number;
+  done: boolean;
+}
+
+function speedStat(raw: string): SpeedStat {
+  const t = raw.trim();
+  const m = t.match(/^([\d.,]+|—|-)\s*(.*)$/);
+  return m ? { value: m[1] === "-" ? "—" : m[1], unit: m[2] } : { value: t || "—", unit: "" };
+}
+
+/** Parses the speed-test summary row ("↓ 186 Mbps   ↑ 38 Mbps" +
+ *  "Ping 14 ms · phase"). Returns null when the shape is unfamiliar so the
+ *  row falls back to a plain list row. */
+export function parseSpeed(item: ResultItem): Speed | null {
+  if (item.kind !== "speedtest") return null;
+  const t = item.title || "";
+  const a = t.indexOf("↓");
+  const b = t.indexOf("↑");
+  if (a < 0 || b < 0 || b < a) return null;
+  const down = speedStat(t.slice(a + 1, b));
+  const up = speedStat(t.slice(b + 1));
+  const sub = item.subtitle || "";
+  const pm = sub.match(/Ping\s+([^·]+?)\s*(?:·|$)/i);
+  const ping = speedStat(pm ? pm[1] : "—");
+  const cut = sub.indexOf(" · ");
+  const phase = cut >= 0 ? sub.slice(cut + 3) : "";
+  const progress = typeof item.meter === "number" ? Math.max(0, Math.min(100, item.meter)) : 0;
+  return { down, up, ping, phase, progress, done: progress >= 100 };
+}
+
+/** Footer label for the Enter action on the selected row (sentence case). */
+export function primaryLabel(item: ResultItem | undefined): string {
+  if (!item) return "Open";
+  const k = kindOf(item);
+  const first = actionsOf(item)[0]?.label;
+  if (item.action === "calc" || item.action === "convert" || k === "speedtest") return "Copy result";
+  if (item.action === "expand") return first || "Paste";
+  if (item.action === "web") return "Open in browser";
+  if (item.action === "copy") return first || "Copy";
+  if (item.category === "system") return first || "Run";
+  if (k === "application") return "Open application";
+  if (k === "directory") return "Open folder";
+  if (first && first !== "Open") return first;
+  return "Open";
 }

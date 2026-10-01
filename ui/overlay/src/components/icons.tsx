@@ -72,13 +72,19 @@ export type IconName =
   | "arrowRight"
   | "check"
   | "x"
-  | "command";
+  | "command"
+  | "eye"
+  | "copy"
+  | "arrowDown"
+  | "arrowUp"
+  | "folderOpen"
+  | "panelRight";
 
 function P(children: JSX.Element | JSX.Element[]): JSX.Element {
   return <>{children}</>;
 }
 
-const PATHS: Record<IconName, JSX.Element> = {
+const PATHS: Record<string, JSX.Element> = {
   search: P(
     <>
       <circle cx="11" cy="11" r="7" />
@@ -543,6 +549,65 @@ const PATHS: Record<IconName, JSX.Element> = {
     </>,
   ),
 };
+
+PATHS.eye = P(
+  <>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </>,
+);
+PATHS.copy = P(
+  <>
+    <rect x="9" y="9" width="12" height="12" rx="2.5" />
+    <path d="M5 15H4.5A2.5 2.5 0 0 1 2 12.5v-8A2.5 2.5 0 0 1 4.5 2h8A2.5 2.5 0 0 1 15 4.5V5" />
+  </>,
+);
+PATHS.arrowDown = P(
+  <>
+    <path d="M12 5v14" />
+    <path d="m19 12-7 7-7-7" />
+  </>,
+);
+PATHS.arrowUp = P(
+  <>
+    <path d="M12 19V5" />
+    <path d="m5 12 7-7 7 7" />
+  </>,
+);
+PATHS.folderOpen = P(
+  <>
+    <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
+  </>,
+);
+PATHS.panelRight = P(
+  <>
+    <rect x="3" y="3" width="18" height="18" rx="3" />
+    <path d="M15 3v18" />
+  </>,
+);
+
+/** Wilfred monogram for the action bar. */
+export function Mark({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="wf-mark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8f9bff" />
+          <stop offset="1" stopColor="#6a5cf0" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="22" height="22" rx="7" fill="url(#wf-mark)" />
+      <path
+        d="M6.2 8.2 8.6 15.6 12 9.4l3.4 6.2 2.4-7.4"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function Icon({
   name,

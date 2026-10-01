@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { demoAssist, demoQuery } from "./demo";
 import {
   actionsOf,
@@ -9,11 +9,15 @@ import {
   isSpeedtestQuery,
   nativeSend,
   platformId,
+  primaryLabel,
   reportSize,
   rowsOf,
+  sectionsOf,
   tips,
 } from "./protocol";
 import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
+import { ActionBar } from "./components/ActionBar";
+import { ActionMenu } from "./components/ActionMenu";
 import { PreviewPane } from "./components/PreviewPane";
 import { ResultRow } from "./components/ResultRow";
 import { Icon } from "./components/icons";
@@ -62,6 +66,7 @@ type Action =
   | { type: "SELECT"; index: number }
   | { type: "MENU_TOGGLE" }
   | { type: "MENU_CYCLE"; delta: number; count: number }
+  | { type: "MENU_SET"; index: number }
   | { type: "PREVIEW_TOGGLE" };
 
 function reducer(s: State, a: Action): State {
@@ -107,6 +112,8 @@ function reducer(s: State, a: Action): State {
       if (a.count === 0) return s;
       return { ...s, menuSel: (s.menuSel + a.delta + a.count) % a.count };
     }
+    case "MENU_SET":
+      return a.index === s.menuSel ? s : { ...s, menuSel: a.index };
     case "PREVIEW_TOGGLE":
       return { ...s, previewOpen: !s.previewOpen, preview: null, menuOpen: false, menuSel: 0 };
   }
@@ -127,13 +134,19 @@ export function App() {
   const seqRef = useRef(0);
   const hideTimer = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const prevRowsRef = useRef<unknown>(null);
+  const mouseRef = useRef({ x: -1, y: -1 });
+  const [modHeld, setModHeld] = useState(false);
 
   const rows = useMemo(() => rowsOf(s.items), [s.items]);
+  const sections = useMemo(() => sectionsOf(rows), [rows]);
+  const showHeads = sections.length > 1;
   const habits = useMemo(() => habitsOf(s.items), [s.items]);
   const needle = s.query.trim();
   const suffix = ghostSuffix(s.query, s.ghost);
   const showAssistBar = Boolean(s.correction || (s.candidates.length > 0 && s.query.trim()));
-  const tabLabel = s.correction ? "Fix" : "Actions";
   const showSkeleton = s.loading && rows.length === 0 && Boolean(s.query.trim());
 
   const sendQuery = (q: string) => {
@@ -218,6 +231,7 @@ export function App() {
           sendQuery("");
         });
       } else if (msg.type === "hide") {
+        setModHeld(false);
         dispatch({ type: "HIDE" });
       } else if (msg.type === "preview") {
         dispatch({ type: "PREVIEW", preview: msg as PreviewMsg });
@@ -339,19 +353,49 @@ export function App() {
     return () => window.clearTimeout(t);
   }, [s.sel, s.previewOpen, s.items, s.visible]);
 
+  // Sliding selection pill: one element glides to the selected row instead of
+  // each row repainting its own background. Snaps (no glide) when the list
+  // itself changed so typing never makes the highlight swim across new rows.
+  useLayoutEffect(() => {
+    const host = rowsRef.current;
+    const pill = pillRef.current;
+    if (!host || !pill) return;
+    const el = host.querySelector<HTMLElement>(".row.is-sel");
+    if (!el) {
+      pill.style.opacity = "0";
+      pill.dataset.on = "0";
+      return;
+    }
+    const changed = prevRowsRef.current !== rows;
+    prevRowsRef.current = rows;
+    const snap = changed || pill.dataset.on !== "1";
+    if (snap) pill.classList.add("snap");
+    const h = host.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    pill.dataset.card = el.classList.contains("row--item") ? "0" : "1";
+    pill.style.height = `${r.height}px`;
+    pill.style.transform = `translateY(${r.top - h.top + host.scrollTop}px)`;
+    pill.style.opacity = "1";
+    pill.dataset.on = "1";
+    if (snap) {
+      requestAnimationFrame(() => requestAnimationFrame(() => pill.classList.remove("snap")));
+    }
+  }, [s.sel, rows, s.previewOpen, s.visible, showHeads, s.query]);
+
   // Keep the selected row in view.
   useEffect(() => {
     if (s.previewOpen) {
-      // Full-takeover preview: reset scroll so new content starts at top.
-      document.querySelector(".preview")?.scrollTo({ top: 0 });
-      return;
+      document.querySelector(".detail")?.scrollTo({ top: 0 });
     }
-    if (s.menuOpen) {
-      document.querySelector(".action-menu")?.scrollIntoView({ block: "nearest" });
-    } else {
-      document.querySelector(".row.is-sel")?.scrollIntoView({ block: "nearest" });
-    }
-  }, [s.sel, s.items, s.menuOpen, s.previewOpen]);
+    document.querySelector(".row.is-sel")?.scrollIntoView({ block: "nearest" });
+  }, [s.sel, s.items, s.previewOpen]);
+
+  // Releasing focus (alt-tab, click-away) must not leave the ⌘/Ctrl hints stuck on.
+  useEffect(() => {
+    const off = () => setModHeld(false);
+    window.addEventListener("blur", off);
+    return () => window.removeEventListener("blur", off);
+  }, []);
 
   // Report size when assist/preview/layout changes. menuOpen/menuSel/sel are
   // included so the native window expands to fit the docked action bar.
@@ -360,6 +404,7 @@ export function App() {
   }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel, s.loading]);
 
   const dismiss = () => {
+    setModHeld(false);
     dispatch({ type: "HIDE" });
     window.clearTimeout(hideTimer.current);
     hideTimer.current = window.setTimeout(() => nativeSend({ type: "hidden" }), 200);
@@ -369,6 +414,7 @@ export function App() {
     const el = e.currentTarget;
     const atEnd = (el.selectionStart ?? el.value.length) >= el.value.length;
     const mod = e.ctrlKey || e.metaKey;
+    if (e.key === "Control" || e.key === "Meta") setModHeld(true);
     if (e.key === "Escape") {
       e.preventDefault();
       if (s.menuOpen) {
@@ -377,6 +423,10 @@ export function App() {
       }
       if (s.correction) {
         dispatch({ type: "DISMISS_CORRECTION" });
+        return;
+      }
+      if (s.previewOpen) {
+        dispatch({ type: "PREVIEW_TOGGLE" });
         return;
       }
       dismiss();
@@ -406,6 +456,11 @@ export function App() {
       e.preventDefault();
       const n = actionsOf(rows[s.sel]?.item).length;
       if (n) dispatch({ type: "MENU_CYCLE", delta: -1, count: n });
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && s.menuOpen && !mod) {
+      // The actions popover is a vertical list: arrows move inside it.
+      e.preventDefault();
+      const n = actionsOf(rows[s.sel]?.item).length;
+      if (n) dispatch({ type: "MENU_CYCLE", delta: e.key === "ArrowDown" ? 1 : -1, count: n });
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
@@ -458,6 +513,11 @@ export function App() {
       e.preventDefault();
       if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
     } else if (mod && (e.key === "k" || e.key === "K")) {
+      // Raycast convention: ⌘K / Ctrl+K opens the actions popover.
+      e.preventDefault();
+      toggleMenu();
+    } else if (e.ctrlKey && (e.key === "u" || e.key === "U")) {
+      // Clear the query (was ⌘/Ctrl+K before the actions popover took it).
       e.preventDefault();
       applyText("");
     } else if (mod && e.key >= "1" && e.key <= "9") {
@@ -468,6 +528,10 @@ export function App() {
         submit(undefined, pos);
       }
     }
+  };
+
+  const onKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Control" || e.key === "Meta") setModHeld(false);
   };
 
   const onTip = (t: string) => applyHabit(t);
@@ -481,14 +545,19 @@ export function App() {
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) submit(undefined, pos);
   };
-  const onRowHover = (index: number) => {
-    const pos = rows.findIndex((x) => x.index === index);
+  // Hover selects, but only on genuine pointer movement: a list that scrolls
+  // under a resting cursor must not steal the keyboard selection.
+  const onRowHover = (index: number, x: number, y: number) => {
+    if (mouseRef.current.x === x && mouseRef.current.y === y) return;
+    mouseRef.current = { x, y };
+    const pos = rows.findIndex((x2) => x2.index === index);
     if (pos >= 0 && pos !== s.sel) dispatch({ type: "SELECT", index: pos });
   };
 
   const showEmpty = !habits.length && !rows.length && !showSkeleton;
-  const selActions = actionsOf(rows[s.sel]?.item);
-  const menuVisible = s.menuOpen && !s.previewOpen && selActions.length > 0;
+  const selItem = rows[s.sel]?.item;
+  const selActions = actionsOf(selItem);
+  const menuVisible = s.menuOpen && selActions.length > 0;
   const launcherClass = [
     "launcher",
     s.visible ? "is-in" : s.entered ? "is-out" : "",
@@ -500,13 +569,21 @@ export function App() {
   const plat = platformId();
   const modLabel = plat === "mac" ? "⌘" : "Ctrl";
   const activeId = rows[s.sel] ? `row-${rows[s.sel].index}` : undefined;
+  const status = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
+  const selPath = selItem && selItem.action !== "habit" ? selItem.path || "" : "";
 
   return (
     <div className="shell" data-plat={plat}>
-      <div className={launcherClass} aria-hidden={!s.visible} role="dialog" aria-label="Wilfred search">
-        <div className="pill" role="search">
-          <span className="icon-search" aria-hidden="true">
-            <Icon name="search" size={20} strokeWidth={2} />
+      <div
+        className={launcherClass}
+        style={{ ["--menu-n" as string]: selActions.length }}
+        aria-hidden={!s.visible}
+        role="dialog"
+        aria-label="Wilfred search"
+      >
+        <div className="search" role="search">
+          <span className="search-ico" aria-hidden="true">
+            <Icon name="search" size={19} strokeWidth={2.1} />
           </span>
           <div className="field">
             <input
@@ -530,6 +607,7 @@ export function App() {
                 sendQuery(q);
               }}
               onKeyDown={onKeyDown}
+              onKeyUp={onKeyUp}
             />
             {suffix && (
               <div className="ghost" aria-hidden="true">
@@ -538,6 +616,7 @@ export function App() {
               </div>
             )}
           </div>
+          {s.loading ? <span className="spinner" role="status" aria-label="Searching" /> : null}
           {s.query ? (
             <button
               type="button"
@@ -549,21 +628,11 @@ export function App() {
                 applyText("");
               }}
             >
-              <Icon name="x" size={16} strokeWidth={2.25} />
+              <Icon name="x" size={14} strokeWidth={2.4} />
             </button>
-          ) : null}
-          <span className="hint" id="hint">
-            {s.loading ? (
-              <span className="spinner" aria-label="Searching" />
-            ) : rows.length ? (
-              <>
-                <kbd>↵</kbd>
-                <kbd>tab</kbd>
-              </>
-            ) : (
-              <kbd>esc</kbd>
-            )}
-          </span>
+          ) : (
+            <kbd className="esc-hint">esc</kbd>
+          )}
         </div>
         <div className="loadbar" aria-hidden="true">
           <span className={s.loading ? "on" : ""} />
@@ -571,7 +640,7 @@ export function App() {
         {s.correction && (
           <button type="button" className="correct" onMouseDown={(e) => e.preventDefault()} onClick={applyCorrection}>
             <span className="correct-icon" aria-hidden="true">
-              <Icon name="wand" size={15} strokeWidth={2} />
+              <Icon name="wand" size={13} strokeWidth={2.2} />
             </span>
             <span className="correct-text">
               Did you mean <strong>{s.correction}</strong>?
@@ -588,7 +657,7 @@ export function App() {
                 inputRef.current?.focus();
               }}
             >
-              <Icon name="x" size={13} strokeWidth={2.25} />
+              <Icon name="x" size={12} strokeWidth={2.4} />
             </span>
           </button>
         )}
@@ -607,139 +676,123 @@ export function App() {
                   applyText(c);
                 }}
               >
-                <Icon name="arrowRight" size={13} strokeWidth={2.25} />
+                <Icon name="arrowRight" size={12} strokeWidth={2.4} />
                 <span>{c}</span>
               </button>
             ))}
           </div>
         )}
-        <div className="results" id="results" hidden={showEmpty && !s.visible}>
-          {showSkeleton ? (
-            <div className="rows" aria-hidden="true">
-              {[0, 1, 2].map((i) => (
-                <div className="skel" key={i}>
-                  <i className="sk-b" />
-                  <div>
-                    <i className="sk-t" style={{ width: `${72 - i * 9}%` }} />
-                    <i className="sk-s" />
+        <div className="body">
+          <div className="results" id="results" hidden={showEmpty && !s.visible}>
+            {showSkeleton ? (
+              <div className="rows" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <div className="skel" key={i}>
+                    <i className="sk-b" />
+                    <i className="sk-t" style={{ width: `${64 - i * 9}%` }} />
+                    <i className="sk-k" />
                   </div>
-                  <i className="sk-k" />
-                </div>
-              ))}
-            </div>
-          ) : showEmpty ? (
-            <div className="empty">
-              <span className="empty-icon" aria-hidden="true">
-                <Icon name={s.query.trim() ? "fileSearch" : "search"} size={26} strokeWidth={1.75} />
-              </span>
-              <strong>{s.query.trim() ? `No matches for “${s.query.trim()}”` : "Search files, apps, and more"}</strong>
-              <span>
-                {s.query.trim()
-                  ? "Typos are ok — try Tab to apply a suggestion, or start with ? to search the web."
-                  : `Press ${hotkeyHint()} anywhere to summon · Try one of these`}
-              </span>
-              {!s.query.trim() && (
-                <div className="habits">
-                  {tips.map((t) => (
-                    <button key={t} type="button" className="tip" onMouseDown={(e) => { e.preventDefault(); onTip(t); }}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {habits.length > 0 && (
-                <div className="habits" aria-label="Recent">
-                  {habits.map((h, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="habit"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onHabit(h.title || "");
-                      }}
-                    >
-                      <Icon name="history" size={13} strokeWidth={2} />
-                      {h.title || ""}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {rows.length > 0 && (
-                <div className="rows" role="listbox" aria-label="Results">
-                  {rows.map((entry, i) => (
-                    <ResultRow
-                      key={entry.index}
-                      entry={entry}
-                      pos={i}
-                      selected={i === s.sel}
-                      isFirst={i === 0}
-                      needle={needle}
-                      expanded={s.menuOpen}
-                      stagger={Math.min(i, 7) * 16}
-                      onHover={onRowHover}
-                      onMore={onMore}
-                      onSelect={onRowSelect}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        {menuVisible && (
-          <div className="action-menu" role="menu" aria-label="Actions">
-            {selActions.map((a, j) => (
-              <button
-                key={a.id}
-                type="button"
-                role="menuitem"
-                className={"action" + (j === s.menuSel ? " is-sel" : "")}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onRowAction(a.id);
-                }}
-              >
-                {a.label || a.id}
-              </button>
-            ))}
+                ))}
+              </div>
+            ) : showEmpty ? (
+              <div className="empty">
+                <span className="empty-icon" aria-hidden="true">
+                  <Icon name={s.query.trim() ? "fileSearch" : "search"} size={22} strokeWidth={1.8} />
+                </span>
+                <strong>{s.query.trim() ? `No results for “${s.query.trim()}”` : "Search, calculate, or run a command"}</strong>
+                <span>
+                  {s.query.trim()
+                    ? s.correction
+                      ? "Press Tab to use the suggestion above, or start with ? to search the web."
+                      : "Check the spelling, or start with ? to search the web."
+                    : `Press ${hotkeyHint()} anywhere to open Wilfred. Try one of these:`}
+                </span>
+                {!s.query.trim() && (
+                  <div className="chips chips--center">
+                    {tips.map((t) => (
+                      <button key={t} type="button" className="chip" onMouseDown={(e) => { e.preventDefault(); onTip(t); }}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {habits.length > 0 && (
+                  <div className="chips" aria-label="Recent searches">
+                    {habits.map((h, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className="chip"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onHabit(h.title || "");
+                        }}
+                      >
+                        <Icon name="history" size={12} strokeWidth={2.2} />
+                        {h.title || ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {rows.length > 0 && (
+                  <div className="rows" role="listbox" aria-label="Results" ref={rowsRef}>
+                    <div className="pill" ref={pillRef} aria-hidden="true" />
+                    {sections.map((sec) => (
+                      <div className="sec" role="group" aria-label={sec.label} key={sec.key}>
+                        {showHeads && <div className="sec-h">{sec.label}</div>}
+                        {sec.rows.map(({ entry, pos }) => (
+                          <ResultRow
+                            key={entry.index}
+                            entry={entry}
+                            pos={pos}
+                            selected={pos === s.sel}
+                            needle={needle}
+                            expanded={s.menuOpen}
+                            quickMod={modHeld ? modLabel : null}
+                            onHover={onRowHover}
+                            onMore={onMore}
+                            onSelect={onRowSelect}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
+          <aside className="detail" id="preview" hidden={!s.previewOpen} aria-label="Details">
+            <PreviewPane preview={s.preview} path={selPath} />
+          </aside>
+        </div>
+        {rows.length > 0 && (
+          <ActionBar
+            status={status}
+            primary={primaryLabel(selItem)}
+            hasActions={selActions.length > 0}
+            menuOpen={menuVisible}
+            previewOpen={s.previewOpen}
+            canComplete={Boolean(suffix)}
+            hasCorrection={Boolean(s.correction)}
+            modLabel={modLabel}
+            onPrimary={() => submit()}
+            onActions={() => toggleMenu()}
+            onPreview={() => dispatch({ type: "PREVIEW_TOGGLE" })}
+          />
         )}
-        <aside className="preview" id="preview" hidden={!s.previewOpen}>
-          <div className="preview-body" id="preview-body">
-            <PreviewPane preview={s.preview} />
-          </div>
-        </aside>
-        <div className="foot" id="foot" hidden={!rows.length && !s.candidates.length}>
-          <span>
-            <kbd>↵</kbd> Open
-          </span>
-          <span>
-            <kbd>tab</kbd> {tabLabel}
-          </span>
-          {suffix && !s.correction && (
-            <span>
-              <kbd>→</kbd> Complete
-            </span>
-          )}
-          <span>
-            <kbd>F3</kbd> Preview
-          </span>
-          <span className="foot-hide">
-            <kbd>↑</kbd>
-            <kbd>↓</kbd> Move
-          </span>
-          <span className="foot-hide">
-            <kbd>{modLabel}</kbd>
-            <kbd>1–9</kbd> Quick open
-          </span>
-          <span className="count" id="count">
-            {rows.length} result{rows.length === 1 ? "" : "s"}
-          </span>
-        </div>
+        {menuVisible && (
+          <ActionMenu
+            title={selItem?.title || "Actions"}
+            actions={selActions}
+            sel={s.menuSel}
+            onHover={(j) => dispatch({ type: "MENU_SET", index: j })}
+            onPick={onRowAction}
+            onClose={() => dispatch({ type: "MENU_TOGGLE" })}
+          />
+        )}
       </div>
     </div>
   );

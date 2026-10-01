@@ -26,9 +26,11 @@ dist/               committed esbuild bundle (see below)
 The message protocol is unchanged from the vanilla-JS version, so no C++
 changes are needed: `ready` / `query` / `submit` / `hidden` / `resize`
 outbound, `show` / `hide` / `results` / `preview` inbound. Keyboard map:
-`Esc` dismiss, `Tab` fix-or-actions, `←/→` menu, `↑/↓` move (`Home`/`End`
-jump, `PgUp`/`PgDn` page), `Ctrl`/`⌘`+`1–9` quick-open, `Enter` submit
-(`Shift`/`Alt` picks the secondary action), `F3` preview pane. Hover
+`Esc` back/dismiss (menu, correction, details, then the panel), `Tab` fix/complete,
+`Ctrl`/`⌘`+`K` actions popover (`↑/↓` move inside it), `Ctrl`+`U` clear query,
+`↑/↓` move (`Home`/`End` jump, `PgUp`/`PgDn` page), `Ctrl`/`⌘`+`1–9` quick-open
+(hold the modifier to see the numbers), `Enter` submit (`Shift`/`Alt` picks the
+secondary action), `F3` split detail pane. Hover
 selects (mouse-first, keyboard keeps explicit index).
 
 ## Building
