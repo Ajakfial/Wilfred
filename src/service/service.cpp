@@ -16,7 +16,9 @@
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/expander.hpp"
 #include "wilfred/search/semantic.hpp"
+#include "wilfred/sources/sources.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
 #include "wilfred/ui/web_ui.hpp"
@@ -123,8 +125,14 @@ bool Service::boot() {
   for (auto& d : default_plugin_directories()) create_directories(d);
   plugins_.load(cfg_);
   set_plugin_host_for_actions(&plugins_);
-  if (cfg_.providers.semantic)
+  if (cfg_.providers.semantic || cfg_.embedding.enabled)
     interpreter_.providers().add(std::make_unique<SemanticProvider>(index_));
+  if (cfg_.sources.calendar)
+    interpreter_.providers().add(std::make_unique<CalendarProvider>());
+  if (cfg_.sources.contacts)
+    interpreter_.providers().add(std::make_unique<ContactsProvider>());
+  if (cfg_.sources.notes)
+    interpreter_.providers().add(std::make_unique<NotesProvider>());
   if (cfg_.browser.library)
     interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
   return true;
@@ -220,6 +228,16 @@ int Service::run_status() {  if (!boot()) return 1;
             << "last scan (s): " << st.last_scan_seconds << "\n";
   std::cout << "plugins: " << plugins_.manifests().size() << "\n"
             << "snippets: " << snippets_.all().size() << "\n"
+            << "vectors: " << (index_.vectors().enabled() ? "on" : "off") << " ("
+            << index_.vectors().size() << " backend=" << index_.vectors().backend() << ")\n"
+            << "semantic: " << (cfg_.providers.semantic ? "on" : "off") << " ("
+            << cfg_.providers.semantic_backend << ")\n"
+            << "embedding: " << (cfg_.embedding.enabled ? "on" : "off") << "\n"
+            << "ai: " << (cfg_.ai.enabled ? "on" : "off") << "\n"
+            << "sources: calendar=" << (cfg_.sources.calendar ? "on" : "off")
+            << " contacts=" << (cfg_.sources.contacts ? "on" : "off")
+            << " notes=" << (cfg_.sources.notes ? "on" : "off")
+            << " ocr=" << (cfg_.sources.ocr ? "on" : "off") << "\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
   return 0;
 }
@@ -280,6 +298,9 @@ int Service::run_daemon() {
   hotkey_ = std::make_unique<GlobalHotkey>();
   ipc_ = std::make_unique<IpcServer>();
   ui_ = create_overlay();
+
+  // Global snippet expansion in any app (opt-in via snippets.global_expansion).
+  if (cfg_.snippets.global_expansion) expander_.start(cfg_, &snippets_);
 
   overlay_bind(
       [this](const std::string& q) {

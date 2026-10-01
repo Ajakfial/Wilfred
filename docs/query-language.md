@@ -318,7 +318,23 @@ If `snippets.expansion` is enabled, typing the configured `snippets.prefix`
 (default `;`) followed by a trigger matches a saved text snippet
 (`include/wilfred/search/snippets.hpp`) for insertion/paste, independent of
 the classification pipeline above — snippet matching runs alongside the main
-search rather than being one of the `QueryKind` branches.
+search rather than being one of the `QueryKind` branches. Bodies support
+`{date} {time} {datetime} {year} {month} {day} {clipboard} {query}`, snippets
+carry an optional `folder:` (filter with `;folder/name`), and
+`snippets.global_expansion` expands abbreviations typed in any app.
+
+## AI assistant
+
+`ai <question>` / `ask <question>` (also `gpt ...`) queries the optional
+local assistant (`ai.enabled` + `ai.api_key`). Supports OpenAI, Anthropic,
+Gemini, and Groq over HTTPS (WinHTTP on Windows, `curl` elsewhere). Answers
+return as a single copyable card; failures are non-blocking hints.
+
+## Calendar / contacts / notes
+
+When `sources.calendar/contacts/notes` are on, `.ics` events, `.vcf`
+contacts, and Markdown notes under the configured + platform-default roots
+are searched as `calendar` / `contact` / `note` results alongside files.
 
 ## Plugin queries
 

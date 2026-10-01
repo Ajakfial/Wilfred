@@ -1,5 +1,6 @@
 #include "wilfred/query/interpreter.hpp"
 
+#include "wilfred/ai/assistant.hpp"
 #include "wilfred/apps/discovery.hpp"
 #include "wilfred/browser/browser.hpp"
 #include "wilfred/core/paths.hpp"
@@ -57,6 +58,18 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
 
   ClipboardSnapshot clip;
   if (cfg.search.clipboard) clip = read_clipboard();
+
+  // Local AI assistant (`ai ...` / `ask ...`). Optional; needs ai.api_key.
+  {
+    std::string prompt;
+    if (ai_query_is_request(effective, prompt)) {
+      AiAssistant ai;
+      auto cards = ai.results_for(prompt, cfg);
+      iq.results.insert(iq.results.end(), cards.begin(), cards.end());
+      if (!prompt.empty() && ai.configured(cfg)) return finish();
+      // Unconfigured or bare prefix: fall through to normal search as well.
+    }
+  }
 
   std::string snip_name;
   if (snippets_ && cfg.search.snippets && query_is_snippet_save(effective, snip_name)) {

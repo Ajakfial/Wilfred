@@ -8,6 +8,7 @@
 #include <chrono>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && defined(WILFRED_HAS_X11)
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
@@ -61,6 +62,22 @@ public:
                               0x16161A);
     XSelectInput(dpy, win, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
     XStoreName(dpy, win, "Wilfred");
+    // Cross-platform parity: keep the overlay above normal windows, out of
+    // the taskbar/pager, and focused when shown (mirrors TOPMOST on Windows
+    // and NSFloatingWindowLevel on macOS).
+    Atom net_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom above = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+    Atom skip_task = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom skip_pager = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    Atom sticky = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+    Atom states[] = {above, skip_task, skip_pager, sticky};
+    XChangeProperty(dpy, win, net_state, XA_ATOM, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char*>(states), 4);
+    Atom win_type = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    Atom dialog = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    XChangeProperty(dpy, win, win_type, XA_ATOM, 32, PropModeReplace,
+                    reinterpret_cast<unsigned char*>(&dialog), 1);
+    XFlush(dpy);
     return true;
   }
   void show() override {
@@ -69,6 +86,9 @@ public:
     results.clear();
     speed_poll = {};
     XMapRaised(dpy, win);
+    // Raise + focus so WMs that ignore _NET_WM_STATE_ABOVE still surface us.
+    XRaiseWindow(dpy, win);
+    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
     vis = true;
     draw();
   }

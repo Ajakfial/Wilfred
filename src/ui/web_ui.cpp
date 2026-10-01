@@ -6,6 +6,8 @@
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/index/record.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/doctext.hpp"
+#include "wilfred/search/ocr.hpp"
 #include "wilfred/ui/icon.hpp"
 
 #include <algorithm>
@@ -129,6 +131,8 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     }
     if (it.category != "mini" && it.category != "macro" && it.category != "clipboard" &&
         it.category != "window" && it.category != "system" && it.category != "screenshot" &&
+        it.category != "ai" && it.category != "calendar" && it.category != "contact" &&
+        it.category != "note" &&
         it.action != ResultAction::Copy && it.action != ResultAction::Calculate &&
         it.action != ResultAction::Convert && it.action != ResultAction::WebSearch &&
         it.action != ResultAction::Habit && it.action != ResultAction::SwitchWindow &&
@@ -311,6 +315,27 @@ const char* sniff_image_mime(const std::string& head) {
   return nullptr;
 }
 
+// Render a small CSV head as aligned columns for the preview pane.
+std::string preview_csv_head(const std::string& text, std::size_t max_rows) {
+  std::string o;
+  std::size_t pos = 0, rows = 0;
+  while (pos < text.size() && rows < max_rows) {
+    auto nl = text.find('\n', pos);
+    std::string line = text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    if (!line.empty()) {
+      // Replace commas/semicolons/tabs with a column separator.
+      for (char& c : line)
+        if (c == ';' || c == '\t') c = ',';
+      o += line + "\n";
+      ++rows;
+    }
+    if (nl == std::string::npos) break;
+    pos = nl + 1;
+  }
+  return o;
+}
+
 }  // namespace
 
 FilePreview build_file_preview(const std::string& path, std::size_t max_text,
@@ -330,37 +355,53 @@ FilePreview build_file_preview(const std::string& path, std::size_t max_text,
     std::error_code ec;
     std::size_t shown = 0, total = 0;
     std::string list;
+    std::vector<std::pair<std::string, bool>> entries;
     for (auto it = fs::directory_iterator(fs::u8path(path), ec);
-         it != fs::directory_iterator() && shown < 20; it.increment(ec)) {
+         it != fs::directory_iterator(); it.increment(ec)) {
       if (ec) break;
       ++total;
-      auto fn_u8 = it->path().filename().u8string();
-      std::string fn(fn_u8.begin(), fn_u8.end());
-      std::error_code ec2;
-      bool dir = it->is_directory(ec2);
+      if (entries.size() < 24) {
+        auto fn_u8 = it->path().filename().u8string();
+        std::string fn(fn_u8.begin(), fn_u8.end());
+        std::error_code ec2;
+        bool dir = it->is_directory(ec2);
+        entries.emplace_back(fn, dir);
+      }
+      if (total > 100000) break;
+    }
+    std::sort(entries.begin(), entries.end(), [](auto& a, auto& b) {
+      if (a.second != b.second) return a.second > b.second;
+      return a.first < b.first;
+    });
+    for (auto& [fn, dir] : entries) {
       if (!list.empty()) list.push_back('\n');
       list += dir ? fn + "/" : fn;
       ++shown;
+      (void)shown;
     }
-    // Count the rest cheaply for the header line.
-    if (shown == 20) {
-      for (auto it = fs::directory_iterator(fs::u8path(path), ec);
-           it != fs::directory_iterator(); it.increment(ec)) {
-        if (ec) break;
-        ++total;
-        if (total > 100000) break;
-      }
-    }
-    pv.text = std::to_string(total) + (total == 1 ? " item\n" : " items\n") + list;
+    // Include file count + size so folders read as rich cards.
+    std::string head = std::to_string(total) + (total == 1 ? " item" : " items");
+    if (!st.is_dir) head += " · " + preview_human_bytes(st.size);
+    pv.text = head + "\n" + list;
     return pv;
   }
+  // Images: inline small files as data URLs (overlay shows <img>).
   if (st.size > 0 && st.size <= static_cast<std::uint64_t>(max_image)) {
     std::string bytes;
     if (read_file_all(path, bytes) && bytes.size() == st.size) {
       if (auto mime = sniff_image_mime(bytes)) {
         pv.image_data_url = std::string("data:") + mime + ";base64," + preview_b64(bytes);
+        pv.text = pv.title + "\n" + preview_human_bytes(st.size) + " · " + pv.kind;
         return pv;
       }
+    }
+  }
+  // Documents: extract real text (PDF/Office/RTF/HTML) for rich previews.
+  if (is_document_extension(path)) {
+    std::string doc;
+    if (extract_document_text(path, doc, max_text * 2)) {
+      pv.text = preview_scrub(doc, max_text);
+      return pv;
     }
   }
   // Text head: read a bounded window, bail on binary.
@@ -370,13 +411,25 @@ FilePreview build_file_preview(const std::string& path, std::size_t max_text,
       pv.error = "Unreadable file";
       return pv;
     }
+    // CSV gets a tabular head.
+    auto ext = to_lower_utf8(path_extension(path));
     std::size_t window = std::min(bytes.size(), max_text * 4 + 512);
     std::string_view head(bytes.data(), window);
     if (looks_binary(head)) {
+      // Last resort for images too large to inline: report dimensions via
+      // size only instead of an empty pane.
+      if (is_image_extension(path)) {
+        pv.text = pv.title + "\n" + preview_human_bytes(st.size) + " · image too large to inline";
+        return pv;
+      }
       pv.text = "";
       return pv;
     }
-    pv.text = preview_scrub(std::string(head), max_text);
+    std::string scrubbed = preview_scrub(std::string(head), max_text);
+    if (ext == ".csv" || ext == ".tsv")
+      pv.text = preview_csv_head(scrubbed, 24);
+    else
+      pv.text = scrubbed;
   }
   return pv;
 }

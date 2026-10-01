@@ -223,8 +223,55 @@ by.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `semantic` | `false` | Whether the trigram soft-match provider runs on every query (typo-tolerant name/path matches beyond the main engine) |
-| `semantic_min_score` | `0.3` | Minimum trigram-cosine similarity (0–1) for a semantic hit |
+| `semantic` | `false` | Whether the soft-match provider runs on every query (vector HNSW + trigram fallback, see below) |
+| `semantic_min_score` | `0.3` | Minimum similarity (0–1) for a semantic hit (applies to both backends) |
+| `semantic_backend` | `hybrid` | `vector` (HNSW only), `trigram` (legacy soft-match only), or `hybrid` (both, merged) |
+| `semantic_max_results` | `10` | Cap on semantic hits per query |
+
+## `embedding:` — local vector model for semantic search
+
+Works offline via the built-in hash embedder; point at llama.cpp for higher
+quality. Vectors are stored as `vectors.bin` (HNSW) next to
+`snapshot.wilf`/`journal.wal` and rebuilt automatically.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Enable the vector sidecar (also enabled implicitly when `providers.semantic` is on) |
+| `backend` | `auto` | `auto` (server → model → hash), `hash`, `server`, or `llamacpp` |
+| `model` | `""` | Path to a local `.gguf` model for llama.cpp |
+| `endpoint` | `""` | llama.cpp server endpoint, e.g. `http://127.0.0.1:8080/embedding` (run `llama-server -m model.gguf --embedding`) |
+| `dim` | `384` | Embedding dimension (32–4096) |
+| `min_score` | `0.45` | Minimum cosine for a vector hit |
+| `max_results` | `10` | Cap on vector hits per query |
+
+## `ai:` — optional assistant (OpenAI / Anthropic / Gemini / Groq)
+
+Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Whether `ai ...` queries hit the network at all |
+| `provider` | `auto` | `auto`, `openai`, `anthropic`, `gemini`, or `groq` |
+| `model` | `""` | Model name (defaults per provider: `gpt-4o-mini`, `claude-3-5-sonnet-latest`, `gemini-1.5-flash`, `llama-3.1-8b-instant`) |
+| `api_key` | `""` | Your API key (never logged) |
+| `endpoint` | `""` | Override URL (for proxies / self-hosted OpenAI-compatible servers) |
+| `max_tokens` | `1024` | Max response tokens |
+| `temperature` | `0.7` | Sampling temperature 0–2 |
+| `timeout_ms` | `30000` | Request timeout |
+
+## `sources:` — calendar / contacts / notes + OCR
+
+| Key | Default | Meaning |
+|---|---|---|
+| `calendar` | `true` | Search `.ics` events (VEVENT summary/date) |
+| `contacts` | `true` | Search `.vcf` contacts (name/email/phone) |
+| `notes` | `true` | Search Markdown/text notes (`.md`/`.txt`/`.org`) |
+| `calendar_paths` | `[]` | Extra roots to scan for `.ics` (defaults cover Thunderbird/Evolution/Apple/Outlook exports) |
+| `contacts_paths` | `[]` | Extra roots to scan for `.vcf` |
+| `notes_paths` | `[]` | Extra roots to scan for notes (defaults cover `~/Notes`, `~/Documents/Notes`) |
+| `ocr` | `false` | OCR images during indexing via the `tesseract` CLI (`--psm 6`, `ocr_languages`) |
+| `ocr_languages` | `eng` | Tesseract `-l` value |
+| `max_results` | `8` | Cap per source per query |
 
 ## `api:` — optional local HTTP API
 
@@ -256,7 +303,12 @@ See [sync-and-backup.md](sync-and-backup.md).
 | `expansion` | `true` | Enable text-expansion snippet matching in search |
 | `prefix` | `;` | Trigger prefix recognized in queries |
 | `auto_paste` | `false` | Automatically simulate a paste of the expanded text on selection, instead of just copying it to the clipboard |
+| `global_expansion` | `false` | Expand abbreviations typed in any app (Windows hook; overlay paste everywhere) |
 | `items` | `{}` | Inline snippet definitions (trigger → body); snippets can also be added/edited at runtime and are persisted to their own store — see `SnippetStore` in `include/wilfred/search/snippets.hpp` |
+
+Snippet bodies support `{date} {time} {datetime} {year} {month} {day}
+{clipboard} {query}` placeholders. Snippets can carry a `folder:` in
+`snippets.yml` and are filtered with `;folder/name` or `snip folder/name`.
 
 ## Validation and errors
 

@@ -137,6 +137,8 @@ html.preview .shell { margin: 14vh auto 48px; }
 
 /* ——— Search field ——— */
 .pill {
+  position: relative;
+  z-index: 1;
   min-height: 72px;
   display: flex;
   align-items: center;
@@ -188,6 +190,8 @@ kbd {
 
 /* ——— Results ——— */
 .results {
+  position: relative;
+  z-index: 20;
   background: var(--panel);
   border-top: 1px solid var(--line-soft);
   display: flex;
@@ -197,6 +201,8 @@ kbd {
 .results[hidden], .foot[hidden] { display: none; }
 
 .rows {
+  position: relative;
+  z-index: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -252,7 +258,9 @@ kbd {
 }
 
 .row:hover { background: var(--hover); }
+.row { z-index: 0; isolation: isolate; }
 .row.is-sel {
+  z-index: 50;
   background: var(--sel);
   box-shadow: inset 0 0 0 1px var(--sel-ring);
 }
@@ -365,7 +373,7 @@ kbd {
   position: absolute;
   right: 8px;
   top: calc(100% - 6px);
-  z-index: 3;
+  z-index: 100;
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
@@ -373,9 +381,13 @@ kbd {
   border-radius: 14px;
   background: var(--menu);
   border: 1px solid var(--line);
-  box-shadow: var(--menu-shadow);
+  box-shadow: var(--menu-shadow), 0 0 0 1px rgb(var(--accent-rgb) / 0.12);
+  max-width: calc(100% - 16px);
+  isolation: isolate;
   animation: pop-in 110ms ease-out;
 }
+/* Keep the open menu above the search field hairline and following rows. */
+.row.is-sel .action-menu { box-shadow: var(--menu-shadow), 0 0 0 1px rgb(var(--accent-rgb) / 0.18); }
 .action-menu[hidden] { display: none; }
 .action {
   border: 0;

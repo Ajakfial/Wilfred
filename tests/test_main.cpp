@@ -24,6 +24,7 @@ int main() {
   test_power();
   test_search_extras();
   test_extensibility();
+  test_new_features();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

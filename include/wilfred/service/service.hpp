@@ -6,6 +6,7 @@
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/query/interpreter.hpp"
 #include "wilfred/search/engine.hpp"
+#include "wilfred/search/expander.hpp"
 #include "wilfred/search/snippets.hpp"
 
 #include <atomic>
@@ -58,6 +59,7 @@ private:
   IndexEngine index_;
   SearchEngine search_;
   SnippetStore snippets_;
+  GlobalExpander expander_;
   PluginHost plugins_;
   QueryInterpreter interpreter_;
   HistoryStore history_;

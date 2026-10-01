@@ -4,6 +4,7 @@
 #include "wilfred/index/record.hpp"
 #include "wilfred/index/store.hpp"
 #include "wilfred/index/wal.hpp"
+#include "wilfred/search/vector_index.hpp"
 
 #include <atomic>
 #include <cstdint>
@@ -41,9 +42,14 @@ public:
 
   IndexStore& store() { return store_; }
   const IndexStore& store() const { return store_; }
+  VectorIndex& vectors() { return vectors_; }
+  const VectorIndex& vectors() const { return vectors_; }
   IndexStats stats() const;
   const Config& config() const { return cfg_; }
-  void set_config(const Config& cfg) { cfg_ = cfg; }
+  void set_config(const Config& cfg) {
+    cfg_ = cfg;
+    vectors_.set_config(cfg);
+  }
   std::uint64_t generation() const { return generation_.load(); }
   void bump_generation() { generation_.fetch_add(1); }
 
@@ -62,6 +68,7 @@ private:
   std::string wal_path_;
   IndexStore store_;
   WriteAheadLog wal_;
+  VectorIndex vectors_;
   mutable std::mutex stats_mu_;
   IndexStats stats_{};
   ProgressFn progress_;

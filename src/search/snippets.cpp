@@ -8,7 +8,9 @@
 #include "wilfred/search/fuzzy.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
+#include <ctime>
 #include <sstream>
 
 namespace wilfred {
@@ -56,6 +58,7 @@ static Snippet snippet_from_yaml(const std::string& key, const YamlValue& v) {
   s.body = v.str("body", v.str("text", ""));
   s.kind = v.str("kind", "text");
   s.id = v.str("id", key);
+  s.folder = v.str("folder", v.str("group", ""));
   return s;
 }
 
@@ -103,6 +106,7 @@ bool SnippetStore::save() const {
     os << "  trigger: " << s.trigger << "\n";
     os << "  title: " << s.title << "\n";
     os << "  kind: " << (s.kind.empty() ? "text" : s.kind) << "\n";
+    if (!s.folder.empty()) os << "  folder: " << s.folder << "\n";
     os << "  body: |\n";
     std::istringstream body(s.body);
     std::string line;
@@ -140,6 +144,72 @@ bool SnippetStore::remove(const std::string& id) {
   return items_.size() != n;
 }
 
+const Snippet* SnippetStore::find_trigger(const std::string& trigger) const {
+  auto want = to_lower_utf8(trigger);
+  for (auto& s : items_)
+    if (to_lower_utf8(s.trigger) == want) return &s;
+  return nullptr;
+}
+
+std::string expand_snippet_placeholders(const std::string& body, const std::string& query_text,
+                                        const std::string& clipboard_text) {
+  std::time_t now = std::time(nullptr);
+  std::tm tmv{};
+#ifdef _WIN32
+  localtime_s(&tmv, &now);
+#else
+  localtime_r(&now, &tmv);
+#endif
+  char date[16]{}, time_s[16]{}, datetime[32]{};
+  std::strftime(date, sizeof(date), "%Y-%m-%d", &tmv);
+  std::strftime(time_s, sizeof(time_s), "%H:%M", &tmv);
+  std::strftime(datetime, sizeof(datetime), "%Y-%m-%d %H:%M", &tmv);
+  char year[8]{}, month[8]{}, day[8]{};
+  std::strftime(year, sizeof(year), "%Y", &tmv);
+  std::strftime(month, sizeof(month), "%m", &tmv);
+  std::strftime(day, sizeof(day), "%d", &tmv);
+  auto rep = [&](std::string s, const char* from, const std::string& to) {
+    std::string f(from);
+    std::size_t p = 0;
+    while ((p = s.find(f, p)) != std::string::npos) {
+      s.replace(p, f.size(), to);
+      p += to.size();
+    }
+    return s;
+  };
+  std::string o = body;
+  o = rep(o, "{date}", date);
+  o = rep(o, "{time}", time_s);
+  o = rep(o, "{datetime}", datetime);
+  o = rep(o, "{year}", year);
+  o = rep(o, "{month}", month);
+  o = rep(o, "{day}", day);
+  o = rep(o, "{clipboard}", clipboard_text);
+  o = rep(o, "{query}", query_text);
+  return o;
+}
+
+const Snippet* snippet_global_match(const SnippetStore& store, const std::string& typed,
+                                    std::size_t& trigger_len_out) {
+  trigger_len_out = 0;
+  if (typed.empty()) return nullptr;
+  // Strip one trailing delimiter; the char before it must end a trigger.
+  char last = typed.back();
+  bool delimited = last == ' ' || last == '\t' || last == '\n' || last == '.' || last == ',' ||
+                   last == ';' || last == ':' || last == '!' || last == '?';
+  std::string core = delimited ? typed.substr(0, typed.size() - 1) : typed;
+  // Take the last whitespace-delimited token as the abbreviation candidate.
+  auto sp = core.find_last_of(" \t\n\r");
+  std::string tok = sp == std::string::npos ? core : core.substr(sp + 1);
+  if (tok.empty() || tok.size() > 64) return nullptr;
+  const Snippet* s = store.find_trigger(tok);
+  if (!s) return nullptr;
+  // Triggers shorter than 2 chars would misfire constantly.
+  if (tok.size() < 2) return nullptr;
+  trigger_len_out = tok.size();
+  return s;
+}
+
 std::vector<SearchResult> SnippetStore::match(const std::string& query, const Config& cfg) const {
   std::vector<SearchResult> out;
   if (!cfg.snippets.expansion) return out;
@@ -165,16 +235,30 @@ std::vector<SearchResult> SnippetStore::match(const std::string& query, const Co
     forced = true;
     lq.clear();
   }
+  // Folder filter: "folder/name" narrows to one folder.
+  std::string folder_filter;
+  auto slash = lq.find('/');
+  if (forced && slash != std::string::npos && slash > 0 && slash + 1 < lq.size()) {
+    folder_filter = lq.substr(0, slash);
+    lq = lq.substr(slash + 1);
+  }
+  ClipboardSnapshot clip;
+  bool clip_loaded = false;
   for (auto& s : items_) {
+    if (!folder_filter.empty() && to_lower_utf8(s.folder) != folder_filter) continue;
     auto trig = to_lower_utf8(s.trigger);
+    // Also match "folder/trigger" text.
+    std::string trig_full = trig;
+    std::string folder_l = to_lower_utf8(s.folder);
+    if (!folder_l.empty()) trig_full = folder_l + "/" + trig;
     int score = 0;
     if (lq.empty() && forced)
       score = 8200;
-    else if (trig == lq)
+    else if (trig == lq || trig_full == lq)
       score = 9800;
-    else if (!lq.empty() && trig.rfind(lq, 0) == 0)
+    else if (!lq.empty() && (trig.rfind(lq, 0) == 0 || trig_full.rfind(lq, 0) == 0))
       score = 9000;
-    else if (!lq.empty() && trig.find(lq) != std::string::npos)
+    else if (!lq.empty() && (trig.find(lq) != std::string::npos || trig_full.find(lq) != std::string::npos))
       score = 7600;
     else if (!lq.empty() && score_fuzzy(lq, trig, s.trigger).matched)
       score = 6200 + score_fuzzy(lq, trig, s.trigger).score;
@@ -182,10 +266,16 @@ std::vector<SearchResult> SnippetStore::match(const std::string& query, const Co
       continue;
     else
       continue;
+    if (!clip_loaded && cfg.search.clipboard) {
+      clip = read_clipboard();
+      clip_loaded = true;
+    }
     SearchResult r;
     r.title = s.title.empty() ? s.trigger : s.title;
-    r.subtitle = (s.kind == "clip" ? "Saved clip · " : "Snippet · ") + s.trigger + " · enter pastes";
-    r.payload = s.body;
+    std::string where = s.folder.empty() ? s.trigger : s.folder + " / " + s.trigger;
+    r.subtitle = (s.kind == "clip" ? "Saved clip · " : "Snippet · ") + where + " · enter pastes";
+    // Expand placeholders eagerly so pasting is WYSIWYG.
+    r.payload = expand_snippet_placeholders(s.body, query, clip.text);
     r.path = s.trigger;
     r.action = ResultAction::Expand;
     r.score = score;

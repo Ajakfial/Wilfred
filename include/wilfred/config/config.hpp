@@ -129,7 +129,49 @@ struct Config {
   struct Providers {
     bool semantic{false};
     double semantic_min_score{0.3};
+    // vector | trigram | hybrid — which semantic backend to use when enabled.
+    std::string semantic_backend{"hybrid"};
+    int semantic_max_results{10};
   } providers;
+
+  struct Embedding {
+    bool enabled{false};
+    // auto | hash | llamacpp | server. `auto` uses llama.cpp when a model or
+    // endpoint is configured, otherwise the built-in hash embedder.
+    std::string backend{"auto"};
+    // Path to a local .gguf model used with llama.cpp (optional).
+    std::string model;
+    // Optional llama.cpp server endpoint, e.g. http://127.0.0.1:8080/embedding
+    // (started via `llama-server -m model.gguf --embedding`).
+    std::string endpoint;
+    int dim{384};
+    double min_score{0.45};
+    int max_results{10};
+  } embedding;
+
+  struct Ai {
+    bool enabled{false};
+    // auto | openai | anthropic | gemini | groq
+    std::string provider{"auto"};
+    std::string model;
+    std::string api_key;
+    std::string endpoint;
+    int max_tokens{1024};
+    double temperature{0.7};
+    int timeout_ms{30000};
+  } ai;
+
+  struct Sources {
+    bool calendar{true};
+    bool contacts{true};
+    bool notes{true};
+    std::vector<std::string> calendar_paths;
+    std::vector<std::string> contacts_paths;
+    std::vector<std::string> notes_paths;
+    bool ocr{false};
+    std::string ocr_languages{"eng"};
+    int max_results{8};
+  } sources;
 
   struct Api {
     bool enabled{false};
@@ -150,6 +192,7 @@ struct Config {
     bool expansion{true};
     std::string prefix{";"};
     bool auto_paste{false};
+    bool global_expansion{false};
     std::unordered_map<std::string, std::string> items;
   } snippets;
 

@@ -12,9 +12,11 @@ namespace wilfred {
 // Dependency-free soft-match signal behind the optional semantic provider.
 double trigram_cosine(const std::string& a, const std::string& b);
 
-// Optional name/path soft-match backend. Scores every live index record by
-// trigram similarity to the query and returns those above
-// cfg.providers.semantic_min_score. Off unless enabled in config.
+// Optional soft-match backend. In `hybrid`/`vector` mode it queries the
+// persistent HNSW vector index (local embedding: llama.cpp server/model when
+// configured, otherwise the built-in hash embedder) stored as vectors.bin
+// next to the WAL/snapshot. In `trigram`/`hybrid` mode it also scores live
+// records by trigram cosine. Off unless enabled in config.
 class SemanticProvider : public SearchProvider {
  public:
   explicit SemanticProvider(IndexEngine& index) : index_(index) {}

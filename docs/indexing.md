@@ -8,12 +8,13 @@ works after an unclean shutdown.
 ## On-disk layout
 
 The index lives in the platform data directory (see
-[configuration.md](configuration.md#file-location)) as two files:
+[configuration.md](configuration.md#file-location)) as three files:
 
 | File | Purpose |
 |---|---|
 | `snapshot.wilf` | A full, compact serialization of the current index (`IndexStore::save`/`load`) |
 | `journal.wal` | A write-ahead log of changes made since the last snapshot |
+| `vectors.bin` | HNSW vector index for semantic search (local embedding: llama.cpp when configured, else hash embedder) |
 
 This is a classic snapshot + WAL design: mutations are cheap (append one
 small record to the WAL) and durable immediately, while the expensive full
@@ -112,6 +113,22 @@ This is what powers the `content:`/`intext:` filter clause and the
 `content_hit` ranking signal (see [query-language.md](query-language.md) and
 [ranking.md](ranking.md)) — binary files are detected and skipped
 (`looks_binary()`).
+
+Real documents (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.rtf`,
+`.html`) are text-extracted first (`extract_document_text`), so previews and
+content search see readable text, not zip/binary noise. When `sources.ocr`
+is on and the `tesseract` CLI is available, images (`.png`/`.jpg`/`.tiff`/
+`.bmp`/`.webp`) are additionally OCRed into content tokens.
+
+### Vector indexing (semantic search)
+
+When `embedding.enabled` or `providers.semantic` is on, every record also
+gets a dense vector (`LocalEmbedder::embed` over `name + path [+ content]`):
+llama.cpp server/model embeddings when `embedding.endpoint`/`model` is
+configured, otherwise the dependency-free hash embedder. Vectors live in
+`vectors.bin` (HNSW, `HnswIndex`) next to the snapshot/WAL, are updated on
+`upsert/remove/rename`, garbage-collected on checkpoint, and included in
+backups via the `index/` tree.
 
 ### Writes always go through the WAL
 

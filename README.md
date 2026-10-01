@@ -19,7 +19,12 @@ single summonable search bar.
 * Persistent clipboard manager (`clips [query]`, pin, `clips clear`)
 * Content indexing for source, config, and text documents
 * Real document text extraction (PDF, Office, RTF, HTML) into the content index
-* Optional trigram soft-match search provider (`providers.semantic`)
+* Optional semantic search: local embeddings (llama.cpp server/model or built-in hash) + HNSW vector index (`vectors.bin` next to WAL/snapshot) merged with trigram soft-match (`providers.semantic`, `embedding.*`)
+* Optional AI assistant (`ai ...`/`ask ...`) with your own keys: OpenAI, Anthropic, Gemini, Groq
+* Snippets with folders, `{date}`/`{clipboard}`/`{query}` placeholders, and optional global abbreviations in any app
+* Rich file previews (documents, CSV, images, folders) in the overlay (`F3`) plus `wilfred preview`
+* Calendar (`.ics`), contacts (`.vcf`), and notes (Markdown) sources + optional OCR indexing via `tesseract` (`sources.*`)
+* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux X11 above/skip-taskbar) with Tab action menu kept above results
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`)

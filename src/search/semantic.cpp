@@ -90,47 +90,99 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
     if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) ++content;
   }
   if (content < 3) return out;
-  auto qtri = trigrams_of(folded);
-  if (qtri.empty()) return out;
-  const double min_sim = cfg.providers.semantic_min_score;
+  auto backend = to_lower_utf8(cfg.providers.semantic_backend);
+  if (backend.empty()) backend = "hybrid";
+  bool use_vector = backend == "vector" || backend == "hybrid";
+  bool use_trigram = backend == "trigram" || backend == "hybrid";
+  std::size_t budget = limit;
+  if (limit > (std::size_t)cfg.providers.semantic_max_results && cfg.providers.semantic_max_results > 0)
+    budget = (std::size_t)cfg.providers.semantic_max_results;
+  if (budget == 0) budget = limit;
 
   const auto& store = index_.store();
-  struct Hit {
-    std::uint32_t id;
-    double sim;
-  };
-  std::vector<Hit> hits;
-  for (std::uint32_t i = 1; i < store.records().size(); ++i) {
-    const IndexRecord* r = store.get(i);
-    if (!r) continue;
+  auto pass_filter = [&](const IndexRecord* r) {
+    if (!r) return false;
     if (has_flag(r->flags, RecordFlags::System) && !cfg.search.include_system_files &&
         !cfg.search.show_system_in_results)
-      continue;
-    if (has_flag(r->flags, RecordFlags::Hidden) && !cfg.search.include_hidden_files) continue;
-    std::string name(store.pool().get(r->name_id));
-    std::string path(store.pool().get(r->path_id));
-    double sim = cosine_sorted(qtri, trigrams_of(fold_search(name + " " + path)));
-    if (sim >= min_sim) hits.push_back({i, sim});
-  }
-  std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) { return a.sim > b.sim; });
-  for (auto& h : hits) {
-    if (out.size() >= limit) break;
-    const IndexRecord* r = store.get(h.id);
-    if (!r) continue;
+      return false;
+    if (has_flag(r->flags, RecordFlags::Hidden) && !cfg.search.include_hidden_files) return false;
+    return true;
+  };
+  auto push_hit = [&](std::uint32_t id, double sim, const char* tag) {
+    const IndexRecord* r = store.get(id);
+    if (!r || !pass_filter(r)) return;
+    for (auto& e : out)
+      if (e.id == id) {
+        // Merge: keep the best score, annotate hybrid source.
+        if (sim * 1000 > e.score - 500) e.score = 500 + static_cast<int>(sim * 1000.0);
+        return;
+      }
     SearchResult sr;
-    sr.id = h.id;
-    sr.score = 500 + static_cast<int>(h.sim * 1000.0);
+    sr.id = id;
+    sr.score = 500 + static_cast<int>(sim * 1000.0);
     sr.kind = r->kind;
     sr.title = std::string(store.pool().get(r->name_id));
     sr.path = std::string(store.pool().get(r->path_id));
     auto parent = path_parent(sr.path);
-    sr.subtitle = parent.empty() ? "soft match" : parent + " · soft match";
+    std::string label = tag;
+    sr.subtitle = parent.empty() ? label : parent + " · " + label;
     sr.action = ResultAction::Open;
     sr.payload = sr.path;
     sr.kind_label = std::string(kind_name(sr.kind));
     sr.category = "semantic";
     out.push_back(std::move(sr));
+  };
+
+  // 1) Vector path: HNSW over local embeddings (llama.cpp when configured).
+  if (use_vector && index_.vectors().enabled()) {
+    float min_score = cfg.embedding.enabled
+                          ? (float)cfg.embedding.min_score
+                          : (float)cfg.providers.semantic_min_score;
+    int k = (int)budget * 2;
+    if (k < (int)budget) k = (int)budget;
+    if (k > 50) k = 50;
+    auto hits = index_.vectors().query(text, k, min_score);
+    for (auto& h : hits) {
+      if (out.size() >= budget) break;
+      push_hit(h.id, h.score, "semantic match");
+    }
+    if (!out.empty() && backend == "vector") {
+      std::sort(out.begin(), out.end(),
+                [](const SearchResult& a, const SearchResult& b) { return a.score > b.score; });
+      if (out.size() > limit) out.resize(limit);
+      return out;
+    }
   }
+
+  // 2) Trigram path: dependency-free soft match (also the fallback when the
+  // vector sidecar is disabled or has no hits).
+  if (use_trigram) {
+    auto qtri = trigrams_of(folded);
+    if (!qtri.empty()) {
+      const double min_sim = cfg.providers.semantic_min_score;
+      struct Hit {
+        std::uint32_t id;
+        double sim;
+      };
+      std::vector<Hit> hits;
+      for (std::uint32_t i = 1; i < store.records().size(); ++i) {
+        const IndexRecord* r = store.get(i);
+        if (!pass_filter(r)) continue;
+        std::string name(store.pool().get(r->name_id));
+        std::string path(store.pool().get(r->path_id));
+        double sim = cosine_sorted(qtri, trigrams_of(fold_search(name + " " + path)));
+        if (sim >= min_sim) hits.push_back({i, sim});
+      }
+      std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) { return a.sim > b.sim; });
+      for (auto& h : hits) {
+        if (out.size() >= budget) break;
+        push_hit(h.id, h.sim, backend == "hybrid" ? "soft match" : "soft match");
+      }
+    }
+  }
+  std::sort(out.begin(), out.end(),
+            [](const SearchResult& a, const SearchResult& b) { return a.score > b.score; });
+  if (out.size() > limit) out.resize(limit);
   return out;
 }
 

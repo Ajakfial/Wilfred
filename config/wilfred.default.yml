@@ -153,6 +153,50 @@ plugins:
 providers:
   semantic: false
   semantic_min_score: 0.3
+  # trigram | vector | hybrid. `hybrid` merges HNSW vectors + trigram fallback.
+  semantic_backend: hybrid
+  semantic_max_results: 10
+
+# Local embedding for semantic search. Works offline via the built-in hash
+# embedder; point at llama.cpp for higher quality:
+#   1) Run: llama-server -m <model.gguf> --embedding --port 8080
+#   2) Set embedding.endpoint: "http://127.0.0.1:8080/embedding"
+# Or set embedding.model to a local .gguf path (used when a libllama build
+# is present at runtime, otherwise hash fallback keeps search working).
+embedding:
+  enabled: false
+  backend: auto
+  model: ""
+  endpoint: ""
+  dim: 384
+  min_score: 0.45
+  max_results: 10
+
+# Optional AI assistant. Disabled until you add a key. Supports OpenAI,
+# Anthropic, Gemini, and Groq (all OpenAI-compatible except endpoint shapes).
+# Query from the overlay with `ai <question>` or `ask <question>`.
+ai:
+  enabled: false
+  provider: auto
+  model: ""
+  api_key: ""
+  endpoint: ""
+  max_tokens: 1024
+  temperature: 0.7
+  timeout_ms: 30000
+
+# Calendar / contacts / notes sources + OCR indexing.
+sources:
+  calendar: true
+  contacts: true
+  notes: true
+  calendar_paths: []
+  contacts_paths: []
+  notes_paths: []
+  # OCR needs the `tesseract` CLI on PATH; images are OCRed during indexing.
+  ocr: false
+  ocr_languages: "eng"
+  max_results: 8
 
 api:
   enabled: false
@@ -171,4 +215,10 @@ snippets:
   expansion: true
   prefix: ";"
   auto_paste: false
+  # Global abbreviations in any app (Windows hook today; overlay paste
+  # everywhere). Triggers expand on trailing delimiter.
+  global_expansion: false
   items: {}
+  # Snippet placeholders: {date} {time} {datetime} {year} {month} {day}
+  #   {clipboard} {query}. Folders: set `folder:` per snippet in snippets.yml
+  #   and filter with `;folder/name` or `snip folder/name`.

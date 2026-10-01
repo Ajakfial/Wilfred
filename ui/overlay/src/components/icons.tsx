@@ -596,7 +596,11 @@ export function iconForKind(kind: string, action?: string, category?: string): I
       return "zap";
     case "mini":
     case "semantic":
+    case "ai":
       return "sparkles";
+    case "event":
+    case "calendar":
+      return "clock";
     case "weather":
       return "cloudSun";
     case "time":
@@ -624,6 +628,10 @@ export function iconForKind(kind: string, action?: string, category?: string): I
       return "timer";
     case "user":
       return "user";
+    case "contact":
+      return "user";
+    case "note":
+      return "note";
     case "snippet":
       return "note";
     case "plugin":

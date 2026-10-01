@@ -11,6 +11,7 @@
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/content.hpp"
 #include "wilfred/search/doctext.hpp"
+#include "wilfred/search/ocr.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -42,6 +43,23 @@ bool IndexEngine::open(const std::string& dir, const Config& cfg) {
     return false;
   }
   recover(snapshot_ok);
+  // Vector sidecar lives next to snapshot.wilf / journal.wal.
+  vectors_.open(dir_, cfg_);
+  if (vectors_.enabled()) {
+    // Backfill vectors for records that lack them (fresh enable, or WAL
+    // entries replayed before the sidecar existed). Hash embedding is cheap;
+    // llama.cpp server embeddings reuse the same path on upsert.
+    for (std::uint32_t i = 1; i < store_.records().size(); ++i) {
+      const IndexRecord* r = store_.get(i);
+      if (!r) continue;
+      if (vectors_.has(r->id)) continue;
+      std::string name(store_.pool().get(r->name_id));
+      std::string path(store_.pool().get(r->path_id));
+      vectors_.upsert(r->id, name + " " + path);
+    }
+    vectors_.gc(store_);
+    vectors_.save();
+  }
   {
     std::lock_guard<std::mutex> lock(stats_mu_);
     stats_.files = 0;
@@ -63,6 +81,7 @@ bool IndexEngine::open(const std::string& dir, const Config& cfg) {
 
 void IndexEngine::close() {
   checkpoint();
+  vectors_.close();
   wal_.close();
 }
 
@@ -101,6 +120,8 @@ bool IndexEngine::persist_snapshot() {
     log_error("index", "failed to write snapshot");
     return false;
   }
+  vectors_.gc(store_);
+  vectors_.save();
   wal_.append_checkpoint();
   wal_.truncate();
   dirty_ = 0;
@@ -108,12 +129,17 @@ bool IndexEngine::persist_snapshot() {
 }
 
 void IndexEngine::checkpoint() {
-  if (dirty_ == 0 && wal_.size_bytes() == 0) return;
+  vectors_.gc(store_);
+  if (dirty_ == 0 && wal_.size_bytes() == 0) {
+    vectors_.save();
+    return;
+  }
   persist_snapshot();
 }
 
 void IndexEngine::compact() {
   store_.rebuild_secondary();
+  vectors_.gc(store_);
   persist_snapshot();
 }
 
@@ -163,6 +189,7 @@ bool IndexEngine::upsert_file(const std::string& path) {
     }
     bool existed = store_.by_path(path) != nullptr;
     auto id = store_.upsert(rec, path);
+    std::string index_text_for_vector = name + " " + path;
     if (want_content) {
       std::string text;
       bool got = false;
@@ -175,7 +202,23 @@ bool IndexEngine::upsert_file(const std::string& path) {
       }
       if (got) {
         store_.add_content_tokens(id, extract_content_tokens(text, cfg_.index.content_max_tokens));
+        if (text.size() > 512) text.resize(512);
+        index_text_for_vector += " " + text;
       }
+    }
+    // OCR side-channel for images when enabled (tesseract CLI, optional).
+    if (!st.is_dir && cfg_.sources.ocr && is_ocr_candidate(path)) {
+      std::string ocr;
+      auto cap = static_cast<std::size_t>(cfg_.index.content_max_bytes);
+      if (extract_ocr_text(path, ocr, cap, cfg_.sources.ocr_languages)) {
+        store_.add_content_tokens(id, extract_content_tokens(ocr, cfg_.index.content_max_tokens));
+        if (ocr.size() > 512) ocr.resize(512);
+        index_text_for_vector += " " + ocr;
+      }
+    }
+    // Vector sidecar (HNSW + local embedding, llama.cpp when configured).
+    if (vectors_.enabled()) {
+      vectors_.upsert(id, index_text_for_vector);
     }
     wal_.append_upsert(rec, path);
     ++dirty_;
@@ -205,6 +248,17 @@ bool IndexEngine::upsert_file(const std::string& path) {
 }
 
 bool IndexEngine::remove_path(const std::string& path) {
+  if (const IndexRecord* r = store_.by_path(path)) {
+    std::uint32_t id = r->id;
+    bool ok = store_.remove_path(path);
+    if (ok) {
+      vectors_.remove(id);
+      wal_.append_delete(path);
+      ++dirty_;
+      generation_.fetch_add(1);
+    }
+    return ok;
+  }
   bool ok = store_.remove_path(path);
   if (ok) {
     wal_.append_delete(path);
@@ -215,11 +269,22 @@ bool IndexEngine::remove_path(const std::string& path) {
 }
 
 bool IndexEngine::rename_path(const std::string& from, const std::string& to) {
+  if (const IndexRecord* r = store_.by_path(from)) {
+    std::uint32_t id = r->id;
+    vectors_.remove(id);
+  }
   bool ok = store_.rename_path(from, to);
   if (ok) {
     wal_.append_rename(from, to);
     ++dirty_;
     generation_.fetch_add(1);
+    // Re-embed under the new path on next access; do it eagerly when enabled.
+    if (vectors_.enabled()) {
+      if (const IndexRecord* nr = store_.by_path(to)) {
+        std::string name = path_filename(to);
+        vectors_.upsert(nr->id, name + " " + to);
+      }
+    }
   } else {
     remove_path(from);
     upsert_file(to);

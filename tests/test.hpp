@@ -47,3 +47,4 @@ void test_file_actions();
 void test_power();
 void test_search_extras();
 void test_extensibility();
+void test_new_features();

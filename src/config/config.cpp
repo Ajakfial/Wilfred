@@ -342,6 +342,86 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "providers.semantic_min_score must be between 0 and 1";
       return false;
     }
+    c.providers.semantic_backend = pr->str("semantic_backend", "hybrid");
+    c.providers.semantic_max_results =
+        static_cast<int>(pr->integer("semantic_max_results", 10));
+    if (c.providers.semantic_max_results < 1 || c.providers.semantic_max_results > 100) {
+      err.message = "providers.semantic_max_results must be between 1 and 100";
+      return false;
+    }
+  }
+
+  if (auto* em = root.get("embedding")) {
+    if (!em->is_map()) {
+      err.message = "embedding: must be a mapping";
+      return false;
+    }
+    c.embedding.enabled = em->boolean("enabled", false);
+    c.embedding.backend = em->str("backend", "auto");
+    c.embedding.model = em->str("model", "");
+    c.embedding.endpoint = em->str("endpoint", "");
+    c.embedding.dim = static_cast<int>(em->integer("dim", 384));
+    if (c.embedding.dim < 32 || c.embedding.dim > 4096) {
+      err.message = "embedding.dim must be between 32 and 4096";
+      return false;
+    }
+    c.embedding.min_score = em->number("min_score", 0.45);
+    if (c.embedding.min_score < 0 || c.embedding.min_score > 1) {
+      err.message = "embedding.min_score must be between 0 and 1";
+      return false;
+    }
+    c.embedding.max_results = static_cast<int>(em->integer("max_results", 10));
+    if (c.embedding.max_results < 1 || c.embedding.max_results > 100) {
+      err.message = "embedding.max_results must be between 1 and 100";
+      return false;
+    }
+  }
+
+  if (auto* ai = root.get("ai")) {
+    if (!ai->is_map()) {
+      err.message = "ai: must be a mapping";
+      return false;
+    }
+    c.ai.enabled = ai->boolean("enabled", false);
+    c.ai.provider = ai->str("provider", "auto");
+    c.ai.model = ai->str("model", "");
+    c.ai.api_key = ai->str("api_key", ai->str("apiKey", ""));
+    c.ai.endpoint = ai->str("endpoint", "");
+    c.ai.max_tokens = static_cast<int>(ai->integer("max_tokens", 1024));
+    if (c.ai.max_tokens < 1 || c.ai.max_tokens > 128000) {
+      err.message = "ai.max_tokens must be between 1 and 128000";
+      return false;
+    }
+    c.ai.temperature = ai->number("temperature", 0.7);
+    if (c.ai.temperature < 0 || c.ai.temperature > 2) {
+      err.message = "ai.temperature must be between 0 and 2";
+      return false;
+    }
+    c.ai.timeout_ms = static_cast<int>(ai->integer("timeout_ms", 30000));
+    if (c.ai.timeout_ms < 1000 || c.ai.timeout_ms > 300000) {
+      err.message = "ai.timeout_ms must be between 1000 and 300000";
+      return false;
+    }
+  }
+
+  if (auto* so = root.get("sources")) {
+    if (!so->is_map()) {
+      err.message = "sources: must be a mapping";
+      return false;
+    }
+    c.sources.calendar = so->boolean("calendar", true);
+    c.sources.contacts = so->boolean("contacts", true);
+    c.sources.notes = so->boolean("notes", true);
+    c.sources.calendar_paths = so->string_list("calendar_paths");
+    c.sources.contacts_paths = so->string_list("contacts_paths");
+    c.sources.notes_paths = so->string_list("notes_paths");
+    c.sources.ocr = so->boolean("ocr", false);
+    c.sources.ocr_languages = so->str("ocr_languages", "eng");
+    c.sources.max_results = static_cast<int>(so->integer("max_results", 8));
+    if (c.sources.max_results < 1 || c.sources.max_results > 50) {
+      err.message = "sources.max_results must be between 1 and 50";
+      return false;
+    }
   }
 
   if (auto* api = root.get("api")) {
@@ -383,6 +463,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.snippets.expansion = sn->boolean("expansion", true);
     c.snippets.prefix = sn->str("prefix", ";");
     c.snippets.auto_paste = sn->boolean("auto_paste", false);
+    c.snippets.global_expansion = sn->boolean("global_expansion", false);
     if (auto* items = sn->get("items")) {
       if (!items->is_map()) {
         err.message = "snippets.items must be a mapping of trigger -> text";

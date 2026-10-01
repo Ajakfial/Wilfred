@@ -55,15 +55,22 @@ set(WILFRED_CORE_SOURCES
   src/search/clip_history.cpp
   src/search/doctext.cpp
   src/search/semantic.cpp
+  src/search/embedding.cpp
+  src/search/hnsw.cpp
+  src/search/vector_index.cpp
+  src/search/ocr.cpp
   src/search/context.cpp
   src/search/content.cpp
   src/search/macros.cpp
   src/search/minis.cpp
   src/search/glyphs.cpp
   src/search/snippets.cpp
+  src/search/expander.cpp
   src/search/actions.cpp
   src/search/screenshot.cpp
   src/search/file_ops.cpp
+  src/sources/sources.cpp
+  src/ai/assistant.cpp
   src/plugin/host.cpp
   src/sync/backup.cpp
   src/query/classify.cpp
@@ -122,12 +129,19 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/clip_history.hpp
   include/wilfred/search/doctext.hpp
   include/wilfred/search/semantic.hpp
+  include/wilfred/search/embedding.hpp
+  include/wilfred/search/hnsw.hpp
+  include/wilfred/search/vector_index.hpp
+  include/wilfred/search/ocr.hpp
   include/wilfred/search/context.hpp
   include/wilfred/search/content.hpp
   include/wilfred/search/macros.hpp
   include/wilfred/search/minis.hpp
   include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
+  include/wilfred/search/expander.hpp
+  include/wilfred/sources/sources.hpp
+  include/wilfred/ai/assistant.hpp
   include/wilfred/search/actions.hpp
   include/wilfred/search/screenshot.hpp
   include/wilfred/search/file_ops.hpp
@@ -315,6 +329,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_power.cpp
   tests/test_search_extras.cpp
   tests/test_extensibility.cpp
+  tests/test_new_features.cpp
 )
 
 if(WILFRED_BUILD_TESTS)
