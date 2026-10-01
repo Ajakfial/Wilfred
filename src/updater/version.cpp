@@ -1,4 +1,5 @@
 #include "wilfred/updater/updater.hpp"
+#include "wilfred/updater/version.hpp"
 
 #include "wilfred/platform/platform.hpp"
 

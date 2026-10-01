@@ -1,5 +1,34 @@
 cmake_minimum_required(VERSION 3.16)
-project(Wilfred VERSION 1.0.0 LANGUAGES C CXX)
+
+# Version comes from the latest git tag (v12.0.0 -> 12.0.0) so release
+# builds report their real version to the updater. Falls back to 1.0.0 for
+# checkouts without git or without tags.
+find_package(Git QUIET)
+set(WILFRED_VERSION "1.0.0")
+if(GIT_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE WILFRED_GIT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(WILFRED_GIT_TAG MATCHES "^v?[0-9]+(\\.[0-9]+)*$")
+    string(REGEX REPLACE "^v" "" _wilfred_ver "${WILFRED_GIT_TAG}")
+    string(REPLACE "." ";" _wilfred_parts "${_wilfred_ver}")
+    list(LENGTH _wilfred_parts _wilfred_n)
+    while(_wilfred_n LESS 3)
+      list(APPEND _wilfred_parts 0)
+      list(LENGTH _wilfred_parts _wilfred_n)
+    endwhile()
+    while(_wilfred_n GREATER 4)
+      list(POP_BACK _wilfred_parts _wilfred_dropped)
+      list(LENGTH _wilfred_parts _wilfred_n)
+    endwhile()
+    list(JOIN _wilfred_parts "." WILFRED_VERSION)
+  endif()
+endif()
+project(Wilfred VERSION ${WILFRED_VERSION} LANGUAGES C CXX)
+message(STATUS "Wilfred version: ${PROJECT_VERSION} (git tag: ${WILFRED_GIT_TAG})")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

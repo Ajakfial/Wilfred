@@ -78,4 +78,15 @@ void test_updater() {
   CHECK(trailing_dash.valid());
   CHECK_EQ(trailing_dash.compare(v), 0);
   CHECK(!Version().valid());
+
+  // The baked-in binary version must be real: "0.0.0" means the generated
+  // version header wasn't picked up, and the updater then offers an update
+  // on every launch even when already on the latest release.
+  auto baked = wilfred_version();
+  CHECK(!baked.empty());
+  CHECK(baked != "0.0.0");
+  CHECK(parse_version(baked).valid());
+
+  // Equal versions mean no update (check_for_update only fires on >).
+  CHECK_EQ(parse_version("v12.0.0").compare(parse_version("12.0.0")), 0);
 }
