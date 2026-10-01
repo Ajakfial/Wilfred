@@ -88,6 +88,57 @@ void test_math() {
 
   CHECK(!evaluate_math("10 km to kg").ok);
 
+  auto tbsp_g = evaluate_math("1 tbsp to g");
+  CHECK(tbsp_g.ok);
+  CHECK(tbsp_g.conversion);
+  CHECK_NEAR(tbsp_g.value, 14.78676478125, 1e-6);
+
+  auto tbsp_long = evaluate_math("1 tablespoon to gram");
+  CHECK(tbsp_long.ok);
+  CHECK_NEAR(tbsp_long.value, 14.78676478125, 1e-6);
+
+  auto tsp_ml = evaluate_math("1 tsp to ml");
+  CHECK(tsp_ml.ok);
+  CHECK_NEAR(tsp_ml.value, 4.92892159375, 1e-6);
+
+  auto cup_g = evaluate_math("1 cup to g");
+  CHECK(cup_g.ok);
+  CHECK_NEAR(cup_g.value, 236.5882365, 1e-4);
+
+  auto g_mg = evaluate_math("1 g to mg");
+  CHECK(g_mg.ok);
+  CHECK_NEAR(g_mg.value, 1000.0, 1e-9);
+
+  auto mg_g = evaluate_math("1000 mg to g");
+  CHECK(mg_g.ok);
+  CHECK_NEAR(mg_g.value, 1.0, 1e-9);
+
+  auto tbs_abbr = evaluate_math("2 tbs to ml");
+  CHECK(tbs_abbr.ok);
+  CHECK_NEAR(tbs_abbr.value, 29.5735295625, 1e-6);
+
+  auto dl_ml = evaluate_math("1 dl to ml");
+  CHECK(dl_ml.ok);
+  CHECK_NEAR(dl_ml.value, 100.0, 1e-9);
+
+  auto sugar = evaluate_math("1 tbsp sugar to g");
+  CHECK(sugar.ok);
+  CHECK(sugar.value > 12.0 && sugar.value < 13.2);
+
+  auto flour = evaluate_math("1 cup flour to g");
+  CHECK(flour.ok);
+  CHECK(flour.value > 120.0 && flour.value < 130.0);
+
+  auto g_sugar_tbsp = evaluate_math("100 g sugar to tbsp");
+  CHECK(g_sugar_tbsp.ok);
+  CHECK(g_sugar_tbsp.value > 7.5 && g_sugar_tbsp.value < 8.5);
+
+  auto cup_sugar_ml = evaluate_math("1 cup sugar to ml");
+  CHECK(cup_sugar_ml.ok);
+  CHECK_NEAR(cup_sugar_ml.value, 236.5882365, 1e-4);
+
+  CHECK(!evaluate_math("1 tbsp unobtainium to g").ok);
+
   auto usd = evaluate_math("100 usd to eur");
   CHECK(usd.ok);
   CHECK(usd.conversion);

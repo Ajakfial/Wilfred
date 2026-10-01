@@ -115,21 +115,28 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Length, 1852, 0, {"nmi", "nauticalmile", "nauticalmiles"});
 
     // Mass — SI kilogram
-    add_unit(u, Qty::Mass, 1e-9, 0, {"ug", "µg", "microgram", "micrograms"});
-    add_unit(u, Qty::Mass, 1e-6, 0, {"mg", "milligram", "milligrams"});
-    add_unit(u, Qty::Mass, 0.001, 0, {"g", "gram", "grams", "gramme", "grammes"});
-    add_unit(u, Qty::Mass, 1, 0, {"kg", "kilogram", "kilograms", "kilo", "kilos"});
+    add_unit(u, Qty::Mass, 1e-9, 0, {"ug", "µg", "mcg", "microgram", "micrograms"});
+    add_unit(u, Qty::Mass, 1e-6, 0, {"mg", "mgs", "milligram", "milligrams"});
+    add_unit(u, Qty::Mass, 0.001, 0, {"g", "gm", "gms", "gram", "grams", "gramme", "grammes"});
+    add_unit(u, Qty::Mass, 1, 0, {"kg", "kgs", "kilogram", "kilograms", "kilo", "kilos"});
     add_unit(u, Qty::Mass, 1000, 0, {"t", "tonne", "tonnes", "metricton", "metrictons"});
     add_unit(u, Qty::Mass, 0.45359237, 0, {"lb", "lbs", "pound", "pounds"});
-    add_unit(u, Qty::Mass, 0.028349523125, 0, {"oz", "ounce", "ounces"});
+    add_unit(u, Qty::Mass, 0.028349523125, 0, {"oz", "ozs", "ounce", "ounces"});
     add_unit(u, Qty::Mass, 6.35029318, 0, {"st", "stone", "stones"});
+    add_unit(u, Qty::Mass, 6.479891e-5, 0, {"gr", "grain", "grains"});
+    add_unit(u, Qty::Mass, 0.0017718451953125, 0, {"dr", "dram", "drams"});
 
     // Volume — SI cubic metre
     add_unit(u, Qty::Volume, 1e-9, 0, {"mm3", "cubicmillimeter", "cubicmillimeters"});
     add_unit(u, Qty::Volume, 1e-6, 0,
              {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "cc", "cm3",
               "cubiccentimeter", "cubiccentimeters"});
-    add_unit(u, Qty::Volume, 0.001, 0, {"l", "liter", "liters", "litre", "litres"});
+    add_unit(u, Qty::Volume, 1e-5, 0,
+             {"cl", "centiliter", "centiliters", "centilitre", "centilitres"});
+    add_unit(u, Qty::Volume, 1e-4, 0,
+             {"dl", "deciliter", "deciliters", "decilitre", "decilitres"});
+    add_unit(u, Qty::Volume, 0.001, 0,
+             {"l", "lt", "ltr", "liter", "liters", "litre", "litres"});
     add_unit(u, Qty::Volume, 1, 0,
              {"m3", "cubicmeter", "cubicmeters", "cubicmetre", "cubicmetres"});
     add_unit(u, Qty::Volume, 1e-3, 0, {"dm3", "cubicdecimeter"});
@@ -139,9 +146,18 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Volume, 0.000946352946, 0, {"qt", "quart", "quarts"});
     add_unit(u, Qty::Volume, 0.000473176473, 0, {"pt", "pint", "pints"});
     add_unit(u, Qty::Volume, 0.0002365882365, 0, {"cup", "cups"});
-    add_unit(u, Qty::Volume, 2.95735295625e-5, 0, {"floz", "fluidounce", "fluidounces"});
-    add_unit(u, Qty::Volume, 1.478676478125e-5, 0, {"tbsp", "tablespoon", "tablespoons"});
-    add_unit(u, Qty::Volume, 4.92892159375e-6, 0, {"tsp", "teaspoon", "teaspoons"});
+    add_unit(u, Qty::Volume, 0.00025, 0, {"metriccup", "metriccups"});
+    add_unit(u, Qty::Volume, 2.95735295625e-5, 0,
+             {"floz", "flozs", "fluidounce", "fluidounces"});
+    add_unit(u, Qty::Volume, 1.478676478125e-5, 0,
+             {"tbsp", "tbs", "tbl", "tbls", "tblsp", "tbspn", "tablespoon", "tablespoons",
+              "tablespoonful", "tablespoonfuls"});
+    add_unit(u, Qty::Volume, 4.92892159375e-6, 0,
+             {"tsp", "tspn", "teaspoon", "teaspoons", "teaspoonful", "teaspoonfuls"});
+    add_unit(u, Qty::Volume, 9.8578431875e-6, 0,
+             {"dsp", "dessertspoon", "dessertspoons"});
+    add_unit(u, Qty::Volume, 6.1611519921875e-7, 0, {"dash", "dashes"});
+    add_unit(u, Qty::Volume, 3.08057599609375e-7, 0, {"pinch", "pinches"});
 
     // Area — SI square metre
     add_unit(u, Qty::Area, 1e-6, 0, {"mm2", "sqmm", "squaremillimeter", "squaremillimeters"});
@@ -575,6 +591,91 @@ std::string format_ccy(double v, const std::string& iso, const std::string& raw)
   return std::string(buf) + " " + label;
 }
 
+// Cooking volume<->mass bridge. Densities in g/ml; bare conversions assume
+// water (1 g/ml). Ingredient may trail the unit: "1 tbsp sugar to g".
+double cooking_density_g_per_ml(const std::string& ingredient) {
+  if (ingredient.empty()) return 1.0;
+  static const auto m = [] {
+    std::unordered_map<std::string, double> d;
+    auto add = [&](double rho, std::initializer_list<const char*> names) {
+      for (auto n : names)
+        d.emplace(n, rho);
+    };
+    add(1.0, {"water"});
+    add(1.03, {"milk", "whole milk"});
+    add(0.53, {"flour", "all purpose flour", "plain flour", "ap flour"});
+    add(0.55, {"bread flour"});
+    add(0.85, {"sugar", "white sugar", "granulated sugar"});
+    add(0.9, {"brown sugar", "packed brown sugar"});
+    add(0.51, {"powdered sugar", "icing sugar", "confectioners sugar"});
+    add(0.96, {"butter"});
+    add(0.92, {"oil", "vegetable oil", "canola oil", "cooking oil"});
+    add(0.91, {"olive oil"});
+    add(1.42, {"honey"});
+    add(1.22, {"salt", "table salt"});
+    add(1.0, {"sea salt", "kosher salt"});
+    add(0.8, {"rice", "white rice"});
+    add(0.38, {"oats", "rolled oats", "oatmeal"});
+    add(0.51, {"cocoa", "cocoa powder"});
+    add(0.51, {"cornstarch", "corn starch", "cornflour"});
+    return d;
+  }();
+  auto it = m.find(ingredient);
+  return it == m.end() ? 0.0 : it->second;
+}
+
+struct SplitUnit {
+  bool found{false};
+  UnitDef def{Qty::Length, 0, 0};
+  std::string unit_text;
+  std::string ingredient;
+};
+
+// Split "tbsp sugar" / "fluid ounce of flour" into unit + ingredient by
+// matching the longest leading token run against the unit table.
+SplitUnit split_unit_ingredient(const std::string& raw,
+                               const std::unordered_map<std::string, UnitDef>& tab) {
+  SplitUnit out;
+  std::vector<std::string> toks;
+  std::string cur;
+  for (char c : raw) {
+    if (c == ' ' || c == '\t') {
+      if (!cur.empty()) {
+        toks.push_back(cur);
+        cur.clear();
+      }
+    } else {
+      cur.push_back(c);
+    }
+  }
+  if (!cur.empty()) toks.push_back(cur);
+  if (toks.empty()) return out;
+  for (std::size_t k = toks.size(); k >= 1; --k) {
+    std::string joined;
+    for (std::size_t i = 0; i < k; ++i) {
+      if (i) joined.push_back(' ');
+      joined += toks[i];
+    }
+    auto n = norm_unit(joined);
+    auto it = tab.find(n);
+    if (it != tab.end()) {
+      out.found = true;
+      out.def = it->second;
+      out.unit_text = joined;
+      std::string ing;
+      for (std::size_t i = k; i < toks.size(); ++i) {
+        if (!ing.empty()) ing.push_back(' ');
+        ing += toks[i];
+      }
+      if (ing.rfind("of ", 0) == 0) ing = ing.substr(3);
+      out.ingredient = ing;
+      return out;
+    }
+    if (k == 1) break;
+  }
+  return out;
+}
+
 bool apply_currency(double amount, std::string_view from_raw, std::string_view to_raw,
                     MathResult& out) {
   auto from = iso_ccy(from_raw);
@@ -617,17 +718,75 @@ bool convert_metric(std::string_view expr, MathResult& out) {
   auto fa = tab.find(from_n);
   auto ta = tab.find(to_n);
   if (fa != tab.end() && ta != tab.end()) {
-    if (fa->second.qty != ta->second.qty) return false;
-    double si = v * fa->second.mul + fa->second.add;
-    double dest = (si - ta->second.add) / ta->second.mul;
-    if (!std::isfinite(dest)) return false;
-    out.ok = true;
-    out.conversion = true;
-    out.currency = false;
-    out.value = dest;
-    out.display = format_value(dest) + " " + to_raw;
-    out.error.clear();
-    return true;
+    if (fa->second.qty == ta->second.qty) {
+      double si = v * fa->second.mul + fa->second.add;
+      double dest = (si - ta->second.add) / ta->second.mul;
+      if (!std::isfinite(dest)) return false;
+      out.ok = true;
+      out.conversion = true;
+      out.currency = false;
+      out.value = dest;
+      out.display = format_value(dest) + " " + to_raw;
+      out.error.clear();
+      return true;
+    }
+    // Volume<->mass falls through to the cooking bridge below; other
+    // mismatched quantities (e.g. length to mass) are invalid.
+    bool vol_mass = (fa->second.qty == Qty::Volume && ta->second.qty == Qty::Mass) ||
+                    (fa->second.qty == Qty::Mass && ta->second.qty == Qty::Volume);
+    if (!vol_mass) return false;
+  }
+  // Cooking bridge: allow volume<->mass via density (water by default) and
+  // tolerate a trailing ingredient ("1 tbsp sugar to g"). Same-quantity
+  // pairs with an ingredient ("1 cup sugar to ml") convert directly.
+  {
+    auto fs = split_unit_ingredient(from_raw, tab);
+    auto ts = split_unit_ingredient(to_raw, tab);
+    if (fs.found && ts.found) {
+      bool fvol = fs.def.qty == Qty::Volume;
+      bool fmass = fs.def.qty == Qty::Mass;
+      bool tvol = ts.def.qty == Qty::Volume;
+      bool tmass = ts.def.qty == Qty::Mass;
+      if (fs.def.qty == ts.def.qty && (fvol || fmass)) {
+        double si = v * fs.def.mul + fs.def.add;
+        double dest = (si - ts.def.add) / ts.def.mul;
+        if (!std::isfinite(dest)) return false;
+        out.ok = true;
+        out.conversion = true;
+        out.currency = false;
+        out.value = dest;
+        out.display = format_value(dest) + " " + ts.unit_text;
+        out.error.clear();
+        return true;
+      }
+      if ((fvol && tmass) || (fmass && tvol)) {
+        std::string ing = !fs.ingredient.empty() ? fs.ingredient : ts.ingredient;
+        double rho = cooking_density_g_per_ml(ing);
+        if (rho > 0) {
+          double dest = 0;
+          if (fvol && tmass) {
+            double ml = v * fs.def.mul * 1e6;
+            double grams = ml * rho;
+            double kg = grams / 1000.0;
+            dest = (kg - ts.def.add) / ts.def.mul;
+          } else {
+            double kg = v * fs.def.mul + fs.def.add;
+            double grams = kg * 1000.0;
+            double ml = grams / rho;
+            double m3 = ml / 1e6;
+            dest = (m3 - ts.def.add) / ts.def.mul;
+          }
+          if (!std::isfinite(dest)) return false;
+          out.ok = true;
+          out.conversion = true;
+          out.currency = false;
+          out.value = dest;
+          out.display = format_value(dest) + " " + ts.unit_text;
+          out.error.clear();
+          return true;
+        }
+      }
+    }
   }
   return apply_currency(v, from_raw, to_raw, out);
 }

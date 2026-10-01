@@ -75,7 +75,12 @@ json minify {"a": 1}
 
 Unit conversion covers SI and common US customary units (length, mass,
 volume, area, temperature, speed, energy, pressure, time, data, force,
-power, angle). Currency pairs use ISO codes or names (`usd`/`dollar`,
+power, angle), including cooking abbreviations (`tbsp`/`tbs`/`tbl`,
+`tsp`, `cup`, `floz`, `dl`, `cl`, `dash`, `pinch`, `g`/`gm`, `mg`,
+`mcg`, `kg`, `oz`, `gr`/`grain`, `dr`/`dram`). Volume↔mass converts via
+density, assuming water by default (`1 tbsp to g`, `1 cup to oz`), with an
+optional trailing ingredient for common foods (`1 tbsp sugar to g`,
+`1 cup flour to g`, `100 g honey to tbsp`). Currency pairs use ISO codes or names (`usd`/`dollar`,
 `eur`/`euro`, `gbp`/`pound`, …) and optional leading symbols (`$`, `€`,
 `£`, `¥`, `₹`). Rates are fetched from Frankfurter when the network is
 reachable, with a built-in approximate USD table used offline. Enter copies
