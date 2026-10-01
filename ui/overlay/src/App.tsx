@@ -107,7 +107,7 @@ function reducer(s: State, a: Action): State {
       return { ...s, menuSel: (s.menuSel + a.delta + a.count) % a.count };
     }
     case "PREVIEW_TOGGLE":
-      return { ...s, previewOpen: !s.previewOpen, preview: null };
+      return { ...s, previewOpen: !s.previewOpen, preview: null, menuOpen: false, menuSel: 0 };
   }
 }
 
@@ -339,13 +339,23 @@ export function App() {
 
   // Keep the selected row in view.
   useEffect(() => {
-    document.querySelector(".row.is-sel")?.scrollIntoView({ block: "nearest" });
-  }, [s.sel, s.items]);
+    if (s.previewOpen) {
+      // Full-takeover preview: reset scroll so new content starts at top.
+      document.querySelector(".preview")?.scrollTo({ top: 0 });
+      return;
+    }
+    if (s.menuOpen) {
+      document.querySelector(".action-menu")?.scrollIntoView({ block: "nearest" });
+    } else {
+      document.querySelector(".row.is-sel")?.scrollIntoView({ block: "nearest" });
+    }
+  }, [s.sel, s.items, s.menuOpen, s.previewOpen]);
 
-  // Report size when assist/preview/layout changes.
+  // Report size when assist/preview/layout changes. menuOpen/menuSel/sel are
+  // included so the native window expands to fit the docked action bar.
   useEffect(() => {
     reportSize();
-  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible]);
+  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel]);
 
   const dismiss = () => {
     dispatch({ type: "HIDE" });
@@ -443,7 +453,14 @@ export function App() {
   };
 
   const showEmpty = !habits.length && !rows.length;
-  const launcherClass = ["launcher", s.visible ? "is-in" : s.entered ? "is-out" : "", s.previewOpen ? "has-preview" : ""]
+  const selActions = actionsOf(rows[s.sel]?.item);
+  const menuVisible = s.menuOpen && !s.previewOpen && selActions.length > 0;
+  const launcherClass = [
+    "launcher",
+    s.visible ? "is-in" : s.entered ? "is-out" : "",
+    s.previewOpen ? "has-preview" : "",
+    menuVisible ? "has-menu" : "",
+  ]
     .filter(Boolean)
     .join(" ");
   const plat = platformId();
@@ -609,10 +626,8 @@ export function App() {
                       selected={i === s.sel}
                       isFirst={i === 0}
                       needle={needle}
-                      menuOpen={s.menuOpen}
-                      menuSel={s.menuSel}
+                      expanded={s.menuOpen}
                       onMore={onMore}
-                      onAction={onRowAction}
                       onSelect={onRowSelect}
                     />
                   ))}
@@ -621,6 +636,24 @@ export function App() {
             </>
           )}
         </div>
+        {menuVisible && (
+          <div className="action-menu" role="menu" aria-label="Actions">
+            {selActions.map((a, j) => (
+              <button
+                key={a.id}
+                type="button"
+                role="menuitem"
+                className={"action" + (j === s.menuSel ? " is-sel" : "")}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onRowAction(a.id);
+                }}
+              >
+                {a.label || a.id}
+              </button>
+            ))}
+          </div>
+        )}
         <aside className="preview" id="preview" hidden={!s.previewOpen}>
           <div className="preview-body" id="preview-body">
             <PreviewPane preview={s.preview} />

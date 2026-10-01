@@ -7,14 +7,12 @@ interface Props {
   selected: boolean;
   isFirst: boolean;
   needle: string;
-  menuOpen: boolean;
-  menuSel: number;
+  expanded: boolean;
   onMore: (index: number) => void;
-  onAction: (actionId: string) => void;
   onSelect: (index: number) => void;
 }
 
-export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel, onMore, onAction, onSelect }: Props) {
+export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, onSelect }: Props) {
   const { item, index } = entry;
   const k = kindOf(item);
   const acts = actionsOf(item);
@@ -87,36 +85,19 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
         <Icon name="enter" size={15} strokeWidth={2.25} />
       </span>
       {acts.length > 0 && (
-        <>
-          <button
-            type="button"
-            className="more"
-            aria-label="Actions"
-            tabIndex={-1}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onMore(index);
-            }}
-          >
-            <Icon name="more" size={18} />
-          </button>
-          <div className="action-menu" hidden={!(menuOpen && selected)} role="menu">
-            {acts.map((a, j) => (
-              <button
-                key={a.id}
-                type="button"
-                role="menuitem"
-                className={"action" + (j === menuSel && selected && menuOpen ? " is-sel" : "")}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onAction(a.id);
-                }}
-              >
-                {a.label || a.id}
-              </button>
-            ))}
-          </div>
-        </>
+        <button
+          type="button"
+          className="more"
+          aria-label="Actions"
+          aria-expanded={expanded && selected}
+          tabIndex={-1}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onMore(index);
+          }}
+        >
+          <Icon name="more" size={18} />
+        </button>
       )}
     </div>
   );
