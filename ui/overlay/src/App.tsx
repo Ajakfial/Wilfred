@@ -300,7 +300,7 @@ export function App() {
       <div className={launcherClass} aria-hidden={!s.visible}>
         <div className="pill" role="search">
           <span className="icon-search" aria-hidden="true">
-            <Icon name="search" size={22} strokeWidth={2.25} />
+            <Icon name="search" size={24} strokeWidth={2} />
           </span>
           <input
             ref={inputRef}
@@ -318,9 +318,16 @@ export function App() {
             }}
             onKeyDown={onKeyDown}
           />
-          <kbd className="hint" id="hint">
-            {rows.length ? "↵  tab" : "esc"}
-          </kbd>
+          <span className="hint" id="hint">
+            {rows.length ? (
+              <>
+                <kbd>↵</kbd>
+                <kbd>tab</kbd>
+              </>
+            ) : (
+              <kbd>esc</kbd>
+            )}
+          </span>
         </div>
         <div className="results" id="results" hidden={showEmpty && !s.visible}>
           {showEmpty ? (

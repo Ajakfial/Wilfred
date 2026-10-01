@@ -58,7 +58,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
         {item.icon ? (
           <img className="icon" alt="" src={item.icon} />
         ) : (
-          <Icon name={iconForKind(k, item.action, item.category)} size={21} strokeWidth={2} />
+          <Icon name={iconForKind(k, item.action, item.category)} size={20} strokeWidth={2} />
         )}
       </div>
       <div className="meta">
@@ -76,7 +76,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
       </div>
       <div className="kind">{k === "habit" ? "" : k}</div>
       <span className="go" aria-hidden="true">
-        <Icon name="enter" size={16} strokeWidth={2} />
+        <Icon name="enter" size={15} strokeWidth={2.25} />
       </span>
       {acts.length > 0 && (
         <>
