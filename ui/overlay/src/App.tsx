@@ -11,7 +11,7 @@ import {
   platformId,
   primaryLabel,
   reportSize,
-  watchUserResize,
+  enterFitMode,
   rowsOf,
   sectionsOf,
   tips,
@@ -292,6 +292,8 @@ export function App() {
         });
       } else if (msg.type === "config") {
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
+      } else if (msg.type === "fit") {
+        enterFitMode();
       } else if (msg.type === "hide") {
         setModHeld(false);
         dispatch({ type: "HIDE" });
@@ -371,18 +373,14 @@ export function App() {
   // Keep the window sized to content until the user drags an edge; after that
   // the panel fills whatever size they chose (see protocol.ts / html.fit).
   useEffect(() => {
-    const stopWatch = watchUserResize();
     const shell = document.querySelector(".shell");
     if (!shell || typeof ResizeObserver === "undefined") {
       reportSize();
-      return stopWatch;
+      return;
     }
     const ro = new ResizeObserver(() => reportSize());
     ro.observe(shell);
-    return () => {
-      ro.disconnect();
-      stopWatch();
-    };
+    return () => ro.disconnect();
   }, []);
 
   // Live speedtest refresh.
