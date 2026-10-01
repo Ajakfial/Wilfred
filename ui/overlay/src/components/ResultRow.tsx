@@ -1,4 +1,5 @@
-import { actionsOf, badges, groups, highlightRuns, kindOf } from "../protocol";
+import { actionsOf, groups, highlightRuns, kindOf } from "../protocol";
+import { Icon, iconForKind } from "./icons";
 import type { RowEntry } from "../types";
 
 interface Props {
@@ -57,7 +58,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
         {item.icon ? (
           <img className="icon" alt="" src={item.icon} />
         ) : (
-          <i className={"bi " + (badges[k] || badges.file)} aria-hidden="true" />
+          <Icon name={iconForKind(k, item.action, item.category)} size={21} strokeWidth={2} />
         )}
       </div>
       <div className="meta">
@@ -74,6 +75,9 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
         )}
       </div>
       <div className="kind">{k === "habit" ? "" : k}</div>
+      <span className="go" aria-hidden="true">
+        <Icon name="enter" size={16} strokeWidth={2} />
+      </span>
       {acts.length > 0 && (
         <>
           <button
@@ -85,7 +89,7 @@ export function ResultRow({ entry, selected, isFirst, needle, menuOpen, menuSel,
               onMore(index);
             }}
           >
-            <i className="bi bi-three-dots" />
+            <Icon name="more" size={18} />
           </button>
           <div className="action-menu" hidden={!(menuOpen && selected)}>
             {acts.map((a, j) => (

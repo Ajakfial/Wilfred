@@ -8,14 +8,13 @@ and macOS WKWebView; the Linux/X11 overlay is a separate native window in
 
 ```
 index.html          shell page, loads dist/app.bundle.js
-style.css           hand-maintained theme (dark/light, reduced-motion)
-vendor/             bootstrap-icons CSS (shipped as-is)
+style.css           hand-maintained solid theme (dark/light, reduced-motion)
 src/                TypeScript + React sources
   main.tsx          createRoot entry
   App.tsx           state reducer, keyboard/mouse, native bridge, effects
-  protocol.ts       message transport, badges/groups, kindOf, highlighting
+  protocol.ts       message transport, kind/group maps, highlighting
   demo.ts           offline demo backend for browser-only `?preview` mode
-  components/       ResultRow, PreviewPane
+  components/       ResultRow, PreviewPane, icons (Lucide-style inline SVGs)
 dist/               committed esbuild bundle (see below)
 ```
 

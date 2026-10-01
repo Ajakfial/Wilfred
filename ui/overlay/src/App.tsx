@@ -4,6 +4,7 @@ import { actionsOf, habitsOf, hasNativeHost, isSpeedtestQuery, nativeSend, repor
 import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
 import { PreviewPane } from "./components/PreviewPane";
 import { ResultRow } from "./components/ResultRow";
+import { Icon } from "./components/icons";
 
 interface State {
   items: ResultItem[];
@@ -299,7 +300,7 @@ export function App() {
       <div className={launcherClass} aria-hidden={!s.visible}>
         <div className="pill" role="search">
           <span className="icon-search" aria-hidden="true">
-            <i className="bi bi-search" />
+            <Icon name="search" size={22} strokeWidth={2.25} />
           </span>
           <input
             ref={inputRef}
@@ -324,6 +325,9 @@ export function App() {
         <div className="results" id="results" hidden={showEmpty && !s.visible}>
           {showEmpty ? (
             <div className="empty">
+              <span className="empty-icon" aria-hidden="true">
+                <Icon name={s.query.trim() ? "fileSearch" : "search"} size={28} strokeWidth={1.75} />
+              </span>
               <strong>{s.query.trim() ? `No matches for “${s.query.trim()}”` : "Search files, apps, and more"}</strong>
               <span>{s.query.trim() ? "Start with ? to search the web instead." : "Try one of these"}</span>
               {!s.query.trim() && (
