@@ -283,6 +283,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_history.cpp
   tests/test_apps.cpp
   tests/test_protocol.cpp
+  tests/test_updater.cpp
   tests/test_search_extras.cpp
   tests/test_extensibility.cpp
 )

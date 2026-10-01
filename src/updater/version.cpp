@@ -20,30 +20,52 @@ namespace wilfred {
 std::string Version::to_string() const {
   std::ostringstream oss;
   oss << major << '.' << minor << '.' << patch;
+  if (tweak != 0) oss << '.' << tweak;
   return oss.str();
 }
 
 Version parse_version(const std::string& tag) {
   std::string s = tag;
-  // Strip leading 'v' or 'V'
-  if (!s.empty() && (s[0] == 'v' || s[0] == 'V')) s.erase(0, 1);
+  // Trim surrounding whitespace.
+  auto is_space = [](unsigned char c) { return std::isspace(c) != 0; };
+  while (!s.empty() && is_space(static_cast<unsigned char>(s.front())))
+    s.erase(s.begin());
+  while (!s.empty() && is_space(static_cast<unsigned char>(s.back())))
+    s.pop_back();
+  if (s.empty()) return Version();
 
-  // Strip any pre-release suffix (e.g. "-beta")
+  // Strip a single leading 'v' or 'V' (optionally followed by whitespace).
+  if (s[0] == 'v' || s[0] == 'V') {
+    s.erase(0, 1);
+    while (!s.empty() && is_space(static_cast<unsigned char>(s.front())))
+      s.erase(s.begin());
+  }
+  if (s.empty()) return Version();
+
+  // Strip pre-release ("-beta") and build metadata ("+build") suffixes.
   auto dash = s.find('-');
   if (dash != std::string::npos) s = s.substr(0, dash);
+  auto plus = s.find('+');
+  if (plus != std::string::npos) s = s.substr(0, plus);
+  while (!s.empty() && is_space(static_cast<unsigned char>(s.back())))
+    s.pop_back();
+  if (s.empty()) return Version();
 
   Version v;
   std::istringstream iss(s);
   std::string part;
-  int* fields[3] = {&v.major, &v.minor, &v.patch};
+  int* fields[4] = {&v.major, &v.minor, &v.patch, &v.tweak};
   int idx = 0;
 
-  while (std::getline(iss, part, '.') && idx < 3) {
-    // Trim whitespace
-    while (!part.empty() && std::isspace(static_cast<unsigned char>(part.back())))
+  while (std::getline(iss, part, '.')) {
+    if (idx >= 4) return Version();  // more than 4 components
+    // Trim whitespace around the component.
+    while (!part.empty() && is_space(static_cast<unsigned char>(part.front())))
+      part.erase(part.begin());
+    while (!part.empty() && is_space(static_cast<unsigned char>(part.back())))
       part.pop_back();
     if (part.empty()) return Version();
-    // Must be all digits
+    // Must be all digits (any width: 1, 10, 123, ...).
     for (char c : part) {
       if (!std::isdigit(static_cast<unsigned char>(c))) return Version();
     }
