@@ -120,7 +120,7 @@ const std::vector<DesktopEntry>& desktop_db() {
            it != fs::directory_iterator(); it.increment(ec)) {
         if (ec) break;
         auto p = it->path();
-        if (p.extension() != ".desktop") continue;
+        if (p.extension() != fs::path(".desktop")) continue;
         std::error_code ec2;
         if (!it->is_regular_file(ec2)) continue;
         FILE* f = std::fopen(p.c_str(), "r");

@@ -84,7 +84,7 @@ std::vector<OpenWithApp> native_apps_for_file(const std::string& path, std::size
     if (!s) return out;
     NSURL* url = [NSURL fileURLWithPath:s];
     if (!url) return out;
-    CFArrayRef apps = LSCopyApplicationURLsForURL((__bridge CFURLRef)url, kLSRolesAll, NULL);
+    CFArrayRef apps = LSCopyApplicationURLsForURL((__bridge CFURLRef)url, kLSRolesAll);
     if (!apps) return out;
     NSFileManager* fm = [NSFileManager defaultManager];
     CFIndex n = CFArrayGetCount(apps);
