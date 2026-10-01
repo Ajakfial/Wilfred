@@ -129,6 +129,64 @@ function previewableIndex(items: ResultItem[], sel: number): number {
   return rows[sel].index;
 }
 
+// Background appearance driven by `ui:` config in wilfred.yml, delivered
+// via native `show` / `config` messages (see overlay_show_json). Defaults
+// preserve the glass look; transparent:false adds html.opaque for a solid
+// panel, blur:false adds html.no-blur, opacity scales the glass alpha.
+let gAppearanceOpacity = 1;
+let gAppearanceTransparent = true;
+
+function clampAppearanceOpacity(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return Math.min(1, Math.max(0, v));
+  if (typeof v === "string") {
+    const n = parseFloat(v);
+    if (Number.isFinite(n)) return Math.min(1, Math.max(0, n));
+  }
+  return null;
+}
+
+function applyGlassOpacity(opacity: number, transparent: boolean): void {
+  const root = document.documentElement;
+  if (!transparent || opacity >= 1) {
+    root.style.removeProperty("--glass");
+    root.style.removeProperty("--pop-glass");
+    return;
+  }
+  const light =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: light)").matches;
+  // Base alphas mirror style.css defaults.
+  const glassA = (light ? 0.8 : 0.74) * opacity;
+  const popA = (light ? 0.96 : 0.95) * opacity;
+  const glassRgb = light ? "252, 252, 254" : "21, 22, 28";
+  const popRgb = light ? "255, 255, 255" : "34, 35, 44";
+  root.style.setProperty("--glass", `rgba(${glassRgb}, ${glassA.toFixed(3)})`);
+  root.style.setProperty("--pop-glass", `rgba(${popRgb}, ${popA.toFixed(3)})`);
+}
+
+function applyAppearance(m: { transparent?: unknown; opacity?: unknown; blur?: unknown }): void {
+  const root = document.documentElement;
+  if (typeof m.transparent === "boolean") {
+    gAppearanceTransparent = m.transparent;
+    root.classList.toggle("opaque", !m.transparent);
+  }
+  const transparent = !root.classList.contains("opaque");
+  const op = clampAppearanceOpacity(m.opacity);
+  if (op !== null) gAppearanceOpacity = op;
+  if (typeof m.blur === "boolean") {
+    // blur:false (or opaque panel) disables backdrop blur.
+    root.classList.toggle("no-blur", !m.blur || !transparent);
+  } else if (typeof m.transparent === "boolean") {
+    // Transparent toggled without an explicit blur flag: opaque implies no-blur.
+    if (!transparent) root.classList.add("no-blur");
+  }
+  applyGlassOpacity(gAppearanceOpacity, transparent);
+  if (!transparent) {
+    root.style.removeProperty("--glass");
+    root.style.removeProperty("--pop-glass");
+  }
+}
+
 export function App() {
   const [s, dispatch] = useReducer(reducer, initialState);
   const seqRef = useRef(0);
@@ -223,6 +281,7 @@ export function App() {
     const onNative = (msg: NativeInMsg) => {
       if (!msg || typeof msg !== "object") return;
       if (msg.type === "show") {
+        applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
         window.clearTimeout(hideTimer.current);
         dispatch({ type: "SHOW" });
         requestAnimationFrame(() => {
@@ -230,6 +289,8 @@ export function App() {
           reportSize();
           sendQuery("");
         });
+      } else if (msg.type === "config") {
+        applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
       } else if (msg.type === "hide") {
         setModHeld(false);
         dispatch({ type: "HIDE" });
@@ -274,6 +335,16 @@ export function App() {
       onNative(d as NativeInMsg);
     });
     nativeSend({ type: "ready" });
+    // Re-derive glass colors if the OS color scheme changes after a custom
+    // opacity was applied (applyGlassOpacity picks dark/light base colors).
+    let schemeMq: MediaQueryList | null = null;
+    const onScheme = () => applyGlassOpacity(gAppearanceOpacity, gAppearanceTransparent);
+    if (typeof window.matchMedia === "function") {
+      schemeMq = window.matchMedia("(prefers-color-scheme: light)");
+      if (typeof schemeMq.addEventListener === "function") schemeMq.addEventListener("change", onScheme);
+      else if (typeof (schemeMq as unknown as { addListener: (f: () => void) => void }).addListener === "function")
+        (schemeMq as unknown as { addListener: (f: () => void) => void }).addListener(onScheme);
+    }
     // Demo mode: show immediately when opened in a plain browser.
     if (!hasNativeHost()) {
       dispatch({ type: "SHOW" });
@@ -282,6 +353,17 @@ export function App() {
         sendQuery("");
       });
     }
+    return () => {
+      if (schemeMq) {
+        if (typeof schemeMq.removeEventListener === "function")
+          schemeMq.removeEventListener("change", onScheme);
+        else if (
+          typeof (schemeMq as unknown as { removeListener: (f: () => void) => void }).removeListener ===
+          "function"
+        )
+          (schemeMq as unknown as { removeListener: (f: () => void) => void }).removeListener(onScheme);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

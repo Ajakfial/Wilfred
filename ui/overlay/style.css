@@ -920,6 +920,26 @@ kbd {
   .pill { box-shadow: inset 0 0 0 1px var(--accent); }
 }
 
+/* Config-driven appearance (ui.transparent / ui.blur in wilfred.yml).
+   The native host sends `show`/`config` messages; App.tsx toggles
+   html.opaque / html.no-blur. The host window stays transparent so rounded
+   corners still composite; only the panel itself becomes solid. */
+html.opaque .launcher {
+  background: var(--panel-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.opaque .action-menu {
+  background: var(--pop-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.no-blur .launcher,
+html.no-blur .action-menu {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 @media (forced-colors: active) {
   .launcher, .action-menu, .pill, .correct, .cand, .chip {
     forced-color-adjust: auto;

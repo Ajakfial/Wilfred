@@ -56,11 +56,26 @@ export interface ResultsMsg {
 }
 
 export type NativeInMsg =
-  | { type: "show" }
+  | ShowMsg
+  | ConfigMsg
   | { type: "hide" }
   | ResultsMsg
   | PreviewMsg
   | { type: string; [k: string]: unknown };
+
+export interface ShowMsg {
+  type: "show";
+  transparent?: boolean;
+  opacity?: number;
+  blur?: boolean;
+}
+
+export interface ConfigMsg {
+  type: "config";
+  transparent?: boolean;
+  opacity?: number;
+  blur?: boolean;
+}
 
 export interface NativeOutMsg {
   type: "ready" | "query" | "submit" | "preview" | "resize" | "hidden";
