@@ -301,7 +301,7 @@ class X11Overlay final : public OverlayUi {
     int x = (DisplayWidth(dpy, s) - w) / 2;
     int y = DisplayHeight(dpy, s) / 6;
     win = XCreateSimpleWindow(dpy, RootWindow(dpy, s), x, y, static_cast<unsigned>(w),
-                              static_cast<unsigned>(h), 1, BlackPixel(dpy, s), 0x14161D);
+                              static_cast<unsigned>(h), 1, BlackPixel(dpy, s), 0x171922);
     XSelectInput(dpy, win, ExposureMask | KeyPressMask | ButtonPressMask | StructureNotifyMask);
     XStoreName(dpy, win, "Wilfred");
     Atom net_state = XInternAtom(dpy, "_NET_WM_STATE", False);

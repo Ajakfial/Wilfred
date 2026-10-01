@@ -1,18 +1,23 @@
+import type { CSSProperties } from "react";
 import { actionsOf, groups, highlightRuns, kindOf } from "../protocol";
 import { Icon, iconForKind } from "./icons";
 import type { RowEntry } from "../types";
 
 interface Props {
   entry: RowEntry;
+  /** Position in the visible list (for stagger + a11y). */
+  pos: number;
   selected: boolean;
   isFirst: boolean;
   needle: string;
   expanded: boolean;
+  stagger: number;
+  onHover: (index: number) => void;
   onMore: (index: number) => void;
   onSelect: (index: number) => void;
 }
 
-export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, onSelect }: Props) {
+export function ResultRow({ entry, pos, selected, isFirst, needle, expanded, stagger, onHover, onMore, onSelect }: Props) {
   const { item, index } = entry;
   const k = kindOf(item);
   const acts = actionsOf(item);
@@ -41,19 +46,22 @@ export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, 
     .join(" ");
 
   const group = groups[k] || (item.category === "mini" ? "mini" : "doc");
+  const sub = item.subtitle || item.path || "";
+  const style: CSSProperties | undefined = stagger > 0 ? { animationDelay: `${stagger}ms` } : undefined;
 
   return (
     <div
+      id={`row-${index}`}
       className={cls}
+      style={style}
       data-i={index}
+      data-pos={pos}
       data-g={group}
       data-level={level}
       role="option"
       aria-selected={selected}
-      onMouseEnter={() => {
-        // Hover highlights without committing (selection follows hover for
-        // mouse users, keyboard keeps explicit index).
-      }}
+      onMouseEnter={() => onHover(index)}
+      onMouseMove={() => onHover(index)}
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest(".more,.action")) return;
         e.preventDefault();
@@ -64,7 +72,7 @@ export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, 
         {item.icon ? (
           <img className="icon" alt="" src={item.icon} draggable={false} />
         ) : (
-          <Icon name={iconForKind(k, item.action, item.category)} size={20} strokeWidth={2} />
+          <Icon name={iconForKind(k, item.action, item.category)} size={19} strokeWidth={2} />
         )}
       </div>
       <div className="meta">
@@ -73,7 +81,7 @@ export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, 
             run.mark ? <mark key={i}>{run.text}</mark> : <span key={i}>{run.text}</span>,
           )}
         </div>
-        <div className="sub">{item.subtitle || item.path || ""}</div>
+        {sub ? <div className="sub" title={sub}>{sub}</div> : null}
         {meter !== null && (
           <div className="meter" role="progressbar" aria-valuenow={meter} aria-valuemin={0} aria-valuemax={100}>
             <span style={{ width: `${meter}%` }} />
@@ -82,7 +90,7 @@ export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, 
       </div>
       <div className="kind">{k === "habit" ? "" : k}</div>
       <span className="go" aria-hidden="true">
-        <Icon name="enter" size={15} strokeWidth={2.25} />
+        <Icon name="enter" size={14} strokeWidth={2.25} />
       </span>
       {acts.length > 0 && (
         <button
@@ -96,7 +104,7 @@ export function ResultRow({ entry, selected, isFirst, needle, expanded, onMore, 
             onMore(index);
           }}
         >
-          <Icon name="more" size={18} />
+          <Icon name="more" size={17} />
         </button>
       )}
     </div>

@@ -99,6 +99,7 @@ function reducer(s: State, a: Action): State {
       return { ...s, sel, menuOpen: false, menuSel: 0 };
     }
     case "SELECT":
+      if (a.index === s.sel) return s;
       return { ...s, sel: a.index, menuOpen: false, menuSel: 0 };
     case "MENU_TOGGLE":
       return { ...s, menuOpen: !s.menuOpen, menuSel: 0 };
@@ -133,6 +134,7 @@ export function App() {
   const suffix = ghostSuffix(s.query, s.ghost);
   const showAssistBar = Boolean(s.correction || (s.candidates.length > 0 && s.query.trim()));
   const tabLabel = s.correction ? "Fix" : "Actions";
+  const showSkeleton = s.loading && rows.length === 0 && Boolean(s.query.trim());
 
   const sendQuery = (q: string) => {
     const id = ++seqRef.current;
@@ -355,7 +357,7 @@ export function App() {
   // included so the native window expands to fit the docked action bar.
   useEffect(() => {
     reportSize();
-  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel]);
+  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel, s.loading]);
 
   const dismiss = () => {
     dispatch({ type: "HIDE" });
@@ -366,6 +368,7 @@ export function App() {
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const el = e.currentTarget;
     const atEnd = (el.selectionStart ?? el.value.length) >= el.value.length;
+    const mod = e.ctrlKey || e.metaKey;
     if (e.key === "Escape") {
       e.preventDefault();
       if (s.menuOpen) {
@@ -413,6 +416,26 @@ export function App() {
       if (e.ctrlKey || e.metaKey) {
         if (rows.length) dispatch({ type: "SELECT", index: 0 });
       } else if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
+    } else if (e.key === "Home") {
+      if (rows.length) {
+        e.preventDefault();
+        dispatch({ type: "SELECT", index: 0 });
+      }
+    } else if (e.key === "End") {
+      if (rows.length) {
+        e.preventDefault();
+        dispatch({ type: "SELECT", index: rows.length - 1 });
+      }
+    } else if (e.key === "PageDown") {
+      if (rows.length) {
+        e.preventDefault();
+        dispatch({ type: "NAV", delta: Math.min(8, rows.length - 1), count: rows.length });
+      }
+    } else if (e.key === "PageUp") {
+      if (rows.length) {
+        e.preventDefault();
+        dispatch({ type: "NAV", delta: -Math.min(8, rows.length - 1), count: rows.length });
+      }
     } else if (e.key === "F3") {
       e.preventDefault();
       dispatch({ type: "PREVIEW_TOGGLE" });
@@ -428,15 +451,22 @@ export function App() {
       } else {
         submit();
       }
-    } else if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+    } else if (mod && (e.key === "n" || e.key === "N")) {
       e.preventDefault();
       if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
-    } else if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "P")) {
+    } else if (mod && (e.key === "p" || e.key === "P")) {
       e.preventDefault();
       if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
-    } else if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+    } else if (mod && (e.key === "k" || e.key === "K")) {
       e.preventDefault();
       applyText("");
+    } else if (mod && e.key >= "1" && e.key <= "9") {
+      // Raycast-style quick open: Ctrl/Cmd+1..9 opens that row.
+      const pos = Number(e.key) - 1;
+      if (pos < rows.length) {
+        e.preventDefault();
+        submit(undefined, pos);
+      }
     }
   };
 
@@ -451,8 +481,12 @@ export function App() {
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) submit(undefined, pos);
   };
+  const onRowHover = (index: number) => {
+    const pos = rows.findIndex((x) => x.index === index);
+    if (pos >= 0 && pos !== s.sel) dispatch({ type: "SELECT", index: pos });
+  };
 
-  const showEmpty = !habits.length && !rows.length;
+  const showEmpty = !habits.length && !rows.length && !showSkeleton;
   const selActions = actionsOf(rows[s.sel]?.item);
   const menuVisible = s.menuOpen && !s.previewOpen && selActions.length > 0;
   const launcherClass = [
@@ -464,13 +498,15 @@ export function App() {
     .filter(Boolean)
     .join(" ");
   const plat = platformId();
+  const modLabel = plat === "mac" ? "⌘" : "Ctrl";
+  const activeId = rows[s.sel] ? `row-${rows[s.sel].index}` : undefined;
 
   return (
     <div className="shell" data-plat={plat}>
       <div className={launcherClass} aria-hidden={!s.visible} role="dialog" aria-label="Wilfred search">
         <div className="pill" role="search">
           <span className="icon-search" aria-hidden="true">
-            <Icon name="search" size={24} strokeWidth={2} />
+            <Icon name="search" size={20} strokeWidth={2} />
           </span>
           <div className="field">
             <input
@@ -485,6 +521,8 @@ export function App() {
               aria-label="Search"
               aria-autocomplete="both"
               aria-expanded={showAssistBar}
+              aria-controls="results"
+              aria-activedescendant={activeId}
               value={s.query}
               onChange={(e) => {
                 const q = e.target.value;
@@ -576,10 +614,23 @@ export function App() {
           </div>
         )}
         <div className="results" id="results" hidden={showEmpty && !s.visible}>
-          {showEmpty ? (
+          {showSkeleton ? (
+            <div className="rows" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <div className="skel" key={i}>
+                  <i className="sk-b" />
+                  <div>
+                    <i className="sk-t" style={{ width: `${72 - i * 9}%` }} />
+                    <i className="sk-s" />
+                  </div>
+                  <i className="sk-k" />
+                </div>
+              ))}
+            </div>
+          ) : showEmpty ? (
             <div className="empty">
               <span className="empty-icon" aria-hidden="true">
-                <Icon name={s.query.trim() ? "fileSearch" : "search"} size={28} strokeWidth={1.75} />
+                <Icon name={s.query.trim() ? "fileSearch" : "search"} size={26} strokeWidth={1.75} />
               </span>
               <strong>{s.query.trim() ? `No matches for “${s.query.trim()}”` : "Search files, apps, and more"}</strong>
               <span>
@@ -623,10 +674,13 @@ export function App() {
                     <ResultRow
                       key={entry.index}
                       entry={entry}
+                      pos={i}
                       selected={i === s.sel}
                       isFirst={i === 0}
                       needle={needle}
                       expanded={s.menuOpen}
+                      stagger={Math.min(i, 7) * 16}
+                      onHover={onRowHover}
                       onMore={onMore}
                       onSelect={onRowSelect}
                     />
@@ -679,7 +733,8 @@ export function App() {
             <kbd>↓</kbd> Move
           </span>
           <span className="foot-hide">
-            <kbd>esc</kbd> Close
+            <kbd>{modLabel}</kbd>
+            <kbd>1–9</kbd> Quick open
           </span>
           <span className="count" id="count">
             {rows.length} result{rows.length === 1 ? "" : "s"}

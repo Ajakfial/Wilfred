@@ -1,8 +1,13 @@
 # Overlay UI
 
-React + TypeScript rewrite of the Wilfred search overlay (Windows WebView2
-and macOS WKWebView; the Linux/X11 overlay is a separate native window in
-`src/ui/x11_overlay.cpp` and is unaffected).
+React + TypeScript glass command palette (Raycast-grade) shared by Windows
+(WebView2), macOS (WKWebView) and Linux (WebKitGTK). The X11 canvas overlay
+is a separate native fallback in `src/ui/x11_overlay.cpp` with a matching
+palette — no HTML needed there.
+
+Glass is progressive enhancement: `style.css` paints solid opaque fallbacks
+first, then an `@supports (backdrop-filter)` block upgrades to
+`blur(32px) saturate(1.5)` glass. Unsupported engines stay fully readable.
 
 ## Layout
 
@@ -21,8 +26,10 @@ dist/               committed esbuild bundle (see below)
 The message protocol is unchanged from the vanilla-JS version, so no C++
 changes are needed: `ready` / `query` / `submit` / `hidden` / `resize`
 outbound, `show` / `hide` / `results` / `preview` inbound. Keyboard map:
-`Esc` dismiss, `Tab` actions, `←/→` menu, `↑/↓` move, `Enter` submit
-(`Shift`/`Alt` picks the secondary action), `F3` preview pane.
+`Esc` dismiss, `Tab` fix-or-actions, `←/→` menu, `↑/↓` move (`Home`/`End`
+jump, `PgUp`/`PgDn` page), `Ctrl`/`⌘`+`1–9` quick-open, `Enter` submit
+(`Shift`/`Alt` picks the secondary action), `F3` preview pane. Hover
+selects (mouse-first, keyboard keeps explicit index).
 
 ## Building
 
