@@ -137,9 +137,7 @@ export function App() {
 
   // Native host messages (registered once; dispatch is stable).
   useEffect(() => {
-    (window as unknown as { __wilfredNative?: (m: NativeInMsg) => void }).__wilfredNative = (
-      msg: NativeInMsg,
-    ) => {
+    const onNative = (msg: NativeInMsg) => {
       if (!msg || typeof msg !== "object") return;
       if (msg.type === "show") {
         window.clearTimeout(hideTimer.current);
@@ -162,6 +160,23 @@ export function App() {
         dispatch({ type: "RESULTS", items, resetSel: !isSpeedtestQuery(q) });
       }
     };
+    // macOS/Linux hosts call this directly via script evaluation.
+    (window as unknown as { __wilfredNative?: (m: NativeInMsg) => void }).__wilfredNative = onNative;
+    // Windows (WebView2) delivers PostWebMessageAsJson through this event.
+    const wv = (window as unknown as {
+      chrome?: { webview?: { addEventListener: (t: string, f: (e: { data: unknown }) => void) => void } };
+    }).chrome?.webview;
+    wv?.addEventListener("message", (e) => {
+      let d = e.data;
+      if (typeof d === "string") {
+        try {
+          d = JSON.parse(d);
+        } catch {
+          return;
+        }
+      }
+      onNative(d as NativeInMsg);
+    });
     nativeSend({ type: "ready" });
   }, []);
 
