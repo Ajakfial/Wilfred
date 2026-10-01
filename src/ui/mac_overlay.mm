@@ -38,6 +38,7 @@ static bool g_visible = false;
 @property(nonatomic, strong) WKWebView* web;
 @property(nonatomic, assign) BOOL ready;
 @property(nonatomic, assign) BOOL wantShow;
+@property(nonatomic, assign) BOOL fit;  // user has taken over sizing by dragging an edge
 - (void)sendJson:(const std::string&)json;
 - (void)handleJson:(const std::string&)json;
 - (void)placeWidth:(int)w height:(int)h;
@@ -53,6 +54,7 @@ static WilfredCtl* g_ctl = nil;
   [self.web evaluateJavaScript:js completionHandler:nil];
 }
 - (void)placeWidth:(int)w height:(int)h {
+  if (self.fit) return;  // user dragged an edge: never fight their size
   NSRect screen = [[NSScreen mainScreen] visibleFrame];
   if (w < 420) w = 420;
   if (h < 100) h = 100;
@@ -166,9 +168,11 @@ public:
       NSRect frame = NSMakeRect(0, 0, 704, 140);
       WilfredPanel* w =
           [[WilfredPanel alloc] initWithContentRect:frame
-                                          styleMask:NSWindowStyleMaskBorderless
+                                          styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskResizable
                                             backing:NSBackingStoreBuffered
                                               defer:NO];
+      // Borderless + Resizable: no chrome, but the edges can still be dragged.
+      // The web UI notices the size change and switches to its fill layout.
       [w setOpaque:NO];
       [w setHasShadow:NO];
       [w setBackgroundColor:[NSColor clearColor]];
@@ -195,6 +199,19 @@ public:
       [web loadFileURL:url allowingReadAccessToURL:root];
       g_ctl.window = w;
       g_ctl.web = web;
+      // Tell the UI explicitly when the user starts dragging an edge, so it can
+      // switch from "hug the content" to "fill the window". Only then do we
+      // enforce a sane minimum height (it would clamp content-hugging otherwise).
+      [[NSNotificationCenter defaultCenter]
+          addObserverForName:NSWindowWillStartLiveResizeNotification
+                      object:w
+                       queue:[NSOperationQueue mainQueue]
+                  usingBlock:^(NSNotification*) {
+                    if (!g_ctl || g_ctl.fit) return;
+                    g_ctl.fit = YES;
+                    [g_ctl.window setMinSize:NSMakeSize(420, 220)];
+                    [g_ctl sendJson:"{\"type\":\"fit\"}"];
+                  }];
       g_query = query;
       g_submit = submit;
       return true;

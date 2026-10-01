@@ -52,6 +52,7 @@ struct WebkitState {
   bool ready{false};
   bool want_show{false};
   bool visible{false};
+  bool fit{false};  // user dragged an edge: stop content-hugging, fill the window
 };
 
 static WebkitState g_wk;
@@ -62,13 +63,86 @@ static void wk_send_json(const std::string& json) {
   webkit_web_view_run_javascript(g_wk.web, js.c_str(), nullptr, nullptr, nullptr);
 }
 
+// Undecorated GTK windows have no resize handles, so we provide an invisible
+// grip band at the window edge (the web UI keeps a transparent shadow margin
+// there, so it never overlaps the panel). Pressing in the band starts a
+// WM-driven resize; hovering it shows the matching resize cursor.
+static constexpr int kGrip = 8;
+static constexpr int kMinW = 420;
+static constexpr int kMinH = 100;      // auto-size (content-hugging) minimum
+static constexpr int kMinDragH = 220;  // minimum once the user resizes
+
+static bool wk_edge_at(double x, double y, GdkWindowEdge* edge) {
+  if (!g_wk.window) return false;
+  int w = gtk_widget_get_allocated_width(g_wk.window);
+  int h = gtk_widget_get_allocated_height(g_wk.window);
+  const bool left = x < kGrip, right = x >= w - kGrip;
+  const bool top = y < kGrip, bottom = y >= h - kGrip;
+  if (top && left) *edge = GDK_WINDOW_EDGE_NORTH_WEST;
+  else if (top && right) *edge = GDK_WINDOW_EDGE_NORTH_EAST;
+  else if (bottom && left) *edge = GDK_WINDOW_EDGE_SOUTH_WEST;
+  else if (bottom && right) *edge = GDK_WINDOW_EDGE_SOUTH_EAST;
+  else if (left) *edge = GDK_WINDOW_EDGE_WEST;
+  else if (right) *edge = GDK_WINDOW_EDGE_EAST;
+  else if (top) *edge = GDK_WINDOW_EDGE_NORTH;
+  else if (bottom) *edge = GDK_WINDOW_EDGE_SOUTH;
+  else return false;
+  return true;
+}
+
+static const char* wk_edge_cursor(GdkWindowEdge e) {
+  switch (e) {
+    case GDK_WINDOW_EDGE_NORTH_WEST: return "nw-resize";
+    case GDK_WINDOW_EDGE_NORTH_EAST: return "ne-resize";
+    case GDK_WINDOW_EDGE_SOUTH_WEST: return "sw-resize";
+    case GDK_WINDOW_EDGE_SOUTH_EAST: return "se-resize";
+    case GDK_WINDOW_EDGE_WEST: return "w-resize";
+    case GDK_WINDOW_EDGE_EAST: return "e-resize";
+    case GDK_WINDOW_EDGE_NORTH: return "n-resize";
+    default: return "s-resize";
+  }
+}
+
+// Event coordinates are relative to the web view, which fills the window.
+static gboolean wk_on_button_press(GtkWidget*, GdkEventButton* ev, gpointer) {
+  GdkWindowEdge edge;
+  if (ev->button != 1 || !wk_edge_at(ev->x, ev->y, &edge)) return FALSE;
+  if (!g_wk.fit) {
+    g_wk.fit = true;
+    GdkGeometry geo{};
+    geo.min_width = kMinW;
+    geo.min_height = kMinDragH;
+    gtk_window_set_geometry_hints(GTK_WINDOW(g_wk.window), nullptr, &geo, GDK_HINT_MIN_SIZE);
+    wk_send_json("{\"type\":\"fit\"}");
+  }
+  gtk_window_begin_resize_drag(GTK_WINDOW(g_wk.window), edge, static_cast<gint>(ev->button),
+                               static_cast<gint>(ev->x_root), static_cast<gint>(ev->y_root),
+                               ev->time);
+  return TRUE;  // swallow: the page must not also see this click
+}
+
+static gboolean wk_on_motion(GtkWidget* widget, GdkEventMotion* ev, gpointer) {
+  GdkWindow* gw = gtk_widget_get_window(widget);
+  if (!gw) return FALSE;
+  GdkWindowEdge edge;
+  if (wk_edge_at(ev->x, ev->y, &edge)) {
+    GdkCursor* c = gdk_cursor_new_from_name(gdk_window_get_display(gw), wk_edge_cursor(edge));
+    gdk_window_set_cursor(gw, c);
+    if (c) g_object_unref(c);
+    return TRUE;
+  }
+  gdk_window_set_cursor(gw, nullptr);
+  return FALSE;
+}
+
+
 static void wk_place(int w, int h) {
-  if (!g_wk.window) return;
+  if (!g_wk.window || g_wk.fit) return;  // never fight the user's size
   GdkScreen* screen = gdk_screen_get_default();
   int sx = screen ? gdk_screen_get_width(screen) : 1280;
   int sy = screen ? gdk_screen_get_height(screen) : 800;
-  w = std::clamp(w, 420, sx);
-  h = std::clamp(h, 100, sy - 40);
+  w = std::clamp(w, kMinW, sx);
+  h = std::clamp(h, kMinH, sy - 40);
   int x = (sx - w) / 2;
   int y = sy / 6;
   gtk_window_move(GTK_WINDOW(g_wk.window), x, y);
@@ -181,6 +255,7 @@ class LinuxWebkitOverlay final : public OverlayUi {
     gtk_window_set_keep_above(GTK_WINDOW(g_wk.window), TRUE);
     gtk_window_set_type_hint(GTK_WINDOW(g_wk.window), GDK_WINDOW_TYPE_HINT_DIALOG);
     gtk_window_set_position(GTK_WINDOW(g_wk.window), GTK_WIN_POS_CENTER);
+    gtk_window_set_resizable(GTK_WINDOW(g_wk.window), TRUE);
     // Transparent-friendly dark frame; the web UI paints its own panel.
     GdkRGBA bg{0, 0, 0, 0};
     gtk_widget_override_background_color(g_wk.window, GTK_STATE_FLAG_NORMAL, &bg);
@@ -205,6 +280,9 @@ class LinuxWebkitOverlay final : public OverlayUi {
     g_signal_connect(ucc, "script-message-received::wilfred",
                      G_CALLBACK(wk_on_script_message), nullptr);
     gtk_container_add(GTK_CONTAINER(g_wk.window), GTK_WIDGET(web));
+    gtk_widget_add_events(GTK_WIDGET(web), GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK);
+    g_signal_connect(web, "button-press-event", G_CALLBACK(wk_on_button_press), nullptr);
+    g_signal_connect(web, "motion-notify-event", G_CALLBACK(wk_on_motion), nullptr);
     auto dir = overlay_ui_dir();
     std::string html = path_join(dir, "index.html");
     std::string uri = "file://" + html;

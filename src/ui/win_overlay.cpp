@@ -58,18 +58,58 @@ static void post_json(const std::string& json) {
   g_web->PostWebMessageAsJson(w.c_str());
 }
 
+// Grip band geometry (declared early: layout_webview needs it).
+// The WebView2 child window swallows all mouse input over its bounds, and
+// WM_NCHITTEST is never sent to the parent there. So the web view is inset by
+// kGrip on every side; the strip left uncovered belongs to the parent window,
+// which can then report resize hit-tests. The strip is transparent.
+static constexpr int kGrip = 8;
+static constexpr int kMinW = 420;
+static constexpr int kMinH = 100;     // auto-size (content-hugging) minimum
+static constexpr int kMinDragH = 220; // minimum when the user drags the window
+static bool g_fit = false;            // user has taken over sizing
+
 static void layout_webview() {
   if (!g_ctrl || !g_hwnd) return;
   RECT rc{};
   GetClientRect(g_hwnd, &rc);
+  InflateRect(&rc, -kGrip, -kGrip);
+  if (rc.right < rc.left) rc.right = rc.left;
+  if (rc.bottom < rc.top) rc.bottom = rc.top;
   g_ctrl->put_Bounds(rc);
 }
 
+// The window is borderless, but the user can drag its edges to resize it.
+// WS_THICKFRAME gives us the system sizing behaviour; WM_NCCALCSIZE removes the
+// visible frame again and WM_NCHITTEST exposes the invisible grip band.
+static LRESULT hit_test_edges(HWND h, LPARAM l) {
+  RECT rc{};
+  GetWindowRect(h, &rc);
+  const int x = static_cast<short>(LOWORD(l));
+  const int y = static_cast<short>(HIWORD(l));
+  const bool left = x >= rc.left && x < rc.left + kGrip;
+  const bool right = x < rc.right && x >= rc.right - kGrip;
+  const bool top = y >= rc.top && y < rc.top + kGrip;
+  const bool bottom = y < rc.bottom && y >= rc.bottom - kGrip;
+  if (top && left) return HTTOPLEFT;
+  if (top && right) return HTTOPRIGHT;
+  if (bottom && left) return HTBOTTOMLEFT;
+  if (bottom && right) return HTBOTTOMRIGHT;
+  if (left) return HTLEFT;
+  if (right) return HTRIGHT;
+  if (top) return HTTOP;
+  if (bottom) return HTBOTTOM;
+  return HTCLIENT;
+}
+
 static void place_window(int w, int h) {
+  if (g_fit) return;  // user dragged an edge: never fight their size
+  w += 2 * kGrip;     // web view is inset by the grip band
+  h += 2 * kGrip;
   int sx = GetSystemMetrics(SM_CXSCREEN);
   int sy = GetSystemMetrics(SM_CYSCREEN);
-  w = std::clamp(w, 420, sx);
-  h = std::clamp(h, 100, sy - 40);
+  w = std::clamp(w, kMinW, sx);
+  h = std::clamp(h, kMinH, sy - 40);
   int x = (sx - w) / 2;
   int y = sy / 6;
   SetWindowPos(g_hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE);
@@ -287,8 +327,25 @@ static void init_webview(ICoreWebView2Controller* ctrl) {
 
 static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
   switch (m) {
+    case WM_NCCALCSIZE:
+      // Client area == whole window: keep WS_THICKFRAME's sizing, drop its frame.
+      if (w) return 0;
+      break;
     case WM_NCHITTEST:
-      return HTCLIENT;
+      return hit_test_edges(h, l);
+    case WM_GETMINMAXINFO: {
+      auto* mmi = reinterpret_cast<MINMAXINFO*>(l);
+      mmi->ptMinTrackSize.x = kMinW;
+      mmi->ptMinTrackSize.y = g_fit ? kMinDragH : kMinH;
+      return 0;
+    }
+    case WM_ENTERSIZEMOVE:
+      // Only edge-dragging can get here (the window has no caption to move it).
+      if (!g_fit) {
+        g_fit = true;
+        post_json("{\"type\":\"fit\"}");
+      }
+      break;
     case WM_ERASEBKGND:
       return 1;
     case WM_SIZE:
@@ -348,8 +405,8 @@ public:
     int sy = GetSystemMetrics(SM_CYSCREEN);
     g_hwnd = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOREDIRECTIONBITMAP, wc.lpszClassName, L"",
-        WS_POPUP, (sx - width) / 2, sy / 6, width, height, nullptr, nullptr, wc.hInstance,
-        nullptr);
+        WS_POPUP | WS_THICKFRAME, (sx - width) / 2, sy / 6, width, height, nullptr, nullptr,
+        wc.hInstance, nullptr);
     if (!g_hwnd) return false;
     SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     MARGINS margins{-1, -1, -1, -1};
