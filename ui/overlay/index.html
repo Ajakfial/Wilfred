@@ -8,36 +8,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="shell">
-      <div class="launcher" id="launcher" aria-hidden="true">
-        <div class="pill" role="search">
-          <span class="icon-search" aria-hidden="true">
-            <i class="bi bi-search"></i>
-          </span>
-          <input
-            id="q"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Search files, apps, and more"
-            aria-label="Search"
-          />
-          <kbd class="hint" id="hint">esc</kbd>
-        </div>
-        <div class="results" id="results" hidden></div>
-        <aside class="preview" id="preview" hidden>
-          <div class="preview-body" id="preview-body"></div>
-        </aside>
-        <div class="foot" id="foot" hidden>
-          <span><kbd>↵</kbd> Open</span>
-          <span><kbd>tab</kbd> Actions</span>
-          <span><kbd>F3</kbd> Preview</span>
-          <span><kbd>↑</kbd><kbd>↓</kbd> Move</span>
-          <span><kbd>esc</kbd> Close</span>
-          <span class="count" id="count"></span>
-        </div>
-      </div>
-    </div>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script src="dist/app.bundle.js"></script>
   </body>
 </html>

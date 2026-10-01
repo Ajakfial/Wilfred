@@ -229,14 +229,17 @@ Full request/response shapes are in [ipc-and-api.md](ipc-and-api.md).
 
 The overlay is a native, borderless, always-on-top window per platform
 (created by `create_overlay()`, `service/service.hpp`) hosting an embedded
-web view that loads `ui/overlay/index.html` / `app.js` / `style.css`. C++
+web view that loads `ui/overlay/index.html` / `dist/app.bundle.js` /
+`style.css`. The bundle is built from the React + TypeScript sources in
+`ui/overlay/src/` (`npm run build` there; the bundle is committed so C++
+builds don't need Node — see `ui/overlay/README.md`). C++
 and the web UI talk to each other through:
 
 * `overlay_bind(OverlayQuery, OverlaySubmit)` — registers the C++ callbacks
   the web UI invokes for "user typed a query" and "user selected a result
   with this action".
 * `overlay_results_json()` — serializes a `vector<SearchResult>` to the JSON
-  shape `app.js` expects. A `preview` message (`{type:"preview",index}`)
+  shape the React `App` expects. A `preview` message (`{type:"preview",index}`)
   returns `overlay_preview_json()` (`ui/web_ui.hpp`) for the `F3` side
   pane; result actions can also be chained (`open+copy_path`) in
   `execute_result_action()`, and the same preview is available as

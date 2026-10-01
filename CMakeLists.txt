@@ -266,12 +266,28 @@ else()
 endif()
 target_link_libraries(wilfred PRIVATE wilfred_core)
 
+# Ship only the runtime overlay files (index.html, style.css, vendor assets,
+# and the committed dist/ bundle) — never node_modules or TS sources.
 add_custom_command(TARGET wilfred POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:wilfred>/ui/overlay
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/ui/overlay/index.html
+    ${CMAKE_SOURCE_DIR}/ui/overlay/style.css
+    $<TARGET_FILE_DIR:wilfred>/ui/overlay
   COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/ui/overlay
-    $<TARGET_FILE_DIR:wilfred>/ui/overlay)
+    ${CMAKE_SOURCE_DIR}/ui/overlay/vendor
+    $<TARGET_FILE_DIR:wilfred>/ui/overlay/vendor
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/ui/overlay/dist
+    $<TARGET_FILE_DIR:wilfred>/ui/overlay/dist)
 
-install(DIRECTORY ui/overlay DESTINATION share/wilfred/ui)
+install(DIRECTORY ui/overlay DESTINATION share/wilfred/ui
+  PATTERN "node_modules" EXCLUDE
+  PATTERN "src" EXCLUDE
+  PATTERN "package.json" EXCLUDE
+  PATTERN "package-lock.json" EXCLUDE
+  PATTERN "tsconfig.json" EXCLUDE
+  PATTERN "build.mjs" EXCLUDE)
 
 if(APPLE)
   set_target_properties(wilfred PROPERTIES

@@ -18,3 +18,4 @@ compile_commands.json
 bench_*.snapshot
 .wilfred/
 .DS_Store
+ui/overlay/node_modules/
