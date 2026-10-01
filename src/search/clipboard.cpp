@@ -5,6 +5,7 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/clip_history.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -27,13 +28,10 @@ namespace {
 
 std::mutex mu;
 std::optional<ClipboardSnapshot> override_snap;
-std::vector<std::string> history_ring;
 
 void remember_text(const std::string& text) {
   if (text.empty()) return;
-  history_ring.erase(std::remove(history_ring.begin(), history_ring.end(), text), history_ring.end());
-  history_ring.insert(history_ring.begin(), text);
-  if (history_ring.size() > 12) history_ring.resize(12);
+  ClipStore::instance().record(text);
 }
 
 #ifdef _WIN32
@@ -149,7 +147,7 @@ ClipboardSnapshot read_clipboard() {
 
 std::vector<std::string> clipboard_history_texts() {
   std::lock_guard<std::mutex> lock(mu);
-  return history_ring;
+  return ClipStore::instance().texts();
 }
 
 static bool looks_like_fs_path(const std::string& s) {

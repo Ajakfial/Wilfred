@@ -139,7 +139,8 @@ synthetic result card instead of searching the index
 | `uptime` | | System uptime |
 | `user` | `whoami` | Current OS user |
 | `clip` | `clipboard` | Current clipboard contents |
-| `clips` | `cliphist`, `pasteboard` | Clipboard history |
+| `clips [query]` | `cliphist`, `pasteboard` | Searchable clipboard history (Tab offers Pin/Unpin; `clips clear` empties it) |
+| `bm [query]` | `bookmarks`, `tabs`, `hist`, `history` | Browser bookmarks, recent history, and open tabs (`bm tabs` lists tabs only) |
 | `os` | `systeminfo`, `sysinfo` | OS name/version |
 | `cores` | `nproc`, `threads` | CPU core/thread count |
 | `screen` | `resolution`, `display` | Display resolution |

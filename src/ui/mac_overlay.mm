@@ -106,6 +106,22 @@ static WilfredCtl* g_ctl = nil;
       g_submit(g_results[static_cast<std::size_t>(idx)], action);
     return;
   }
+  if (type == "preview") {
+    std::string idxs;
+    wilfred::overlay_json_field(json, "index", idxs);
+    int idx = -1;
+    try {
+      idx = std::stoi(idxs);
+    } catch (...) {
+      idx = -1;
+    }
+    if (idx >= 0 && idx < static_cast<int>(g_results.size())) {
+      const auto& r = g_results[static_cast<std::size_t>(idx)];
+      std::string path = r.path.empty() ? r.payload : r.path;
+      if (!path.empty()) [self sendJson:wilfred::overlay_preview_json(path)];
+    }
+    return;
+  }
   if (type == "hidden") {
     [self.window orderOut:nil];
     g_visible = false;

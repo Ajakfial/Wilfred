@@ -8,6 +8,7 @@
 #include "wilfred/platform/native.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/screenshot.hpp"
 
@@ -207,6 +208,37 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       id = "paste";
     else
       id = "open";
+  }
+  // Workflow chaining: "copy_path+reveal" runs each step in order and
+  // reports success only if every step succeeds. open_with targets may
+  // contain '+' themselves, so they are never split.
+  if (id.rfind("open_with:", 0) != 0 && id.find('+') != std::string::npos) {
+    bool ok = true;
+    std::size_t pos = 0;
+    while (pos <= id.size()) {
+      auto plus = id.find('+', pos);
+      std::string seg =
+          plus == std::string::npos ? id.substr(pos) : id.substr(pos, plus - pos);
+      if (seg.empty() || !execute_result_action(r, cfg, seg)) ok = false;
+      if (plus == std::string::npos) break;
+      pos = plus + 1;
+    }
+    return ok;
+  }
+  if (id == "clip_pin" || id == "clip_unpin" || id == "clip_clear" ||
+      (r.category == "clips" &&
+       (r.payload == "clip:clear" || r.path == "clip:clear"))) {
+    auto& store = ClipStore::instance();
+    if (id == "clip_pin") {
+      auto t = r.payload.empty() ? r.title : r.payload;
+      return store.pin_text(t);
+    }
+    if (id == "clip_unpin") {
+      auto t = r.payload.empty() ? r.title : r.payload;
+      return store.unpin_text(t);
+    }
+    store.clear_unpinned();
+    return true;
   }
   if (r.action == ResultAction::Screenshot || r.category == "screenshot") {
     ScreenshotMode mode = ScreenshotMode::Fullscreen;

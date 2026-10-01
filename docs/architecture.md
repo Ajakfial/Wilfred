@@ -136,7 +136,10 @@ in short:
 * `FsWatcher` (`fs/watcher.hpp`) uses `ReadDirectoryChangesW` on Windows,
   `FSEvents` on macOS, and `inotify` on Linux to push live change events
   back into `IndexEngine::upsert_file` / `remove_path` / `rename_path`,
-  with a debounce and a periodic full rescan as a fallback.
+  with a debounce and a periodic full rescan as a fallback. Full scans go
+  through `fast_enumerate_tree()` (`fs/walker.hpp`), which on Windows tries
+  an MFT/USN-journal enumeration first (`platform/win/usn.cpp`,
+  `index.usn_scan`, needs elevation) and falls back to directory walking.
 
 ## Search layer
 
@@ -158,7 +161,7 @@ in short:
   parent folders/extensions/names, session tokens, clipboard tokens, and
   the current hour/weekday.
 * `minis.hpp` — recognizes a fixed set of system "mini" queries (`weather`,
-  `time`, `disk`, `ram`, `cpu`, `process <name>`, `clip[s]`, `battery`,
+  `time`, `disk`, `ram`, `cpu`, `process <name>`, `clip[s]`, `bm`, `battery`,
   `uptime`, `speedtest`, `screenshot [fullscreen|window|region]`, `emoji`, `symbol`, `fx`,
   `uuid`/`base64`/`sha256`/`lorem`/`json`,
   `lock`/`sleep`/`shutdown`/`restart`/`logout`, …) and returns synthetic
@@ -166,6 +169,9 @@ in short:
   `glyphs.hpp`; currency conversion is shared with the calculator
   (`math/expr.hpp`); system actions call `native_system_action()` and
   screenshots call `native_take_screenshot()` (`search/screenshot.hpp`).
+  `search/doctext.hpp` extracts readable text from real documents (PDF,
+  Office, RTF, HTML) for the content index; `search/clip_history.hpp`
+  persists clipboard history behind `clip`/`clips`.
 * `macros.hpp` — user- and built-in-defined query templates (`!yt`, `gh`)
   that expand `{query}` / `{clipboard}` placeholders into a URL.
 * `content.hpp` — decides which files are eligible for content indexing and
@@ -191,7 +197,10 @@ Two different extension points exist:
 * **`providers::SearchProvider`** — an in-process C++ interface
   (`providers/provider.hpp`) for embedding another search backend directly
   into the binary. `ProviderRegistry::query_all()` fans a query out to every
-  registered provider and merges the results. This is a compile-time
+  registered provider and merges the results. Two ship built-in:
+  `search/semantic.hpp` (opt-in trigram soft-match over the index,
+  `providers.semantic`) and `browser/library.hpp` (bookmarks, history,
+  open tabs, `browser.library`). This is a compile-time
   extension point (you add a provider by writing C++ and registering it),
   not something end users configure.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
@@ -227,7 +236,11 @@ and the web UI talk to each other through:
   the web UI invokes for "user typed a query" and "user selected a result
   with this action".
 * `overlay_results_json()` — serializes a `vector<SearchResult>` to the JSON
-  shape `app.js` expects.
+  shape `app.js` expects. A `preview` message (`{type:"preview",index}`)
+  returns `overlay_preview_json()` (`ui/web_ui.hpp`) for the `F3` side
+  pane; result actions can also be chained (`open+copy_path`) in
+  `execute_result_action()`, and the same preview is available as
+  `wilfred preview <path>` and the IPC `preview` command.
 * `overlay_pump()` — pumps the native event loop; called from the daemon's
   main loop.
 

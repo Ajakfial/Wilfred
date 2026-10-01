@@ -11,10 +11,15 @@
 #include "wilfred/hotkey/hotkey.hpp"
 #include "wilfred/ipc/http.hpp"
 #include "wilfred/ipc/server.hpp"
+#include "wilfred/browser/library.hpp"
 #include "wilfred/platform/platform.hpp"
+#include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
+#include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/semantic.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
+#include "wilfred/ui/web_ui.hpp"
 #include "wilfred/updater/updater.hpp"
 
 #include <chrono>
@@ -87,6 +92,7 @@ Service::~Service() {
   if (ipc_) ipc_->stop();
   if (ui_) ui_->destroy();
   set_plugin_host_for_actions(nullptr);
+  ClipStore::instance().save_now();
   history_.save(default_history_path());
   index_.close();
 }
@@ -110,10 +116,17 @@ bool Service::boot() {
   history_.set_enabled(cfg_.history.enabled);
   history_.set_max(cfg_.history.max_entries);
   if (cfg_.history.persist) history_.load(default_history_path());
+  ClipStore::instance().configure(cfg_.clipboard.manager ? cfg_.clipboard.max_entries : 0,
+                                  cfg_.clipboard.persist, default_clips_path());
+  if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
   snippets_.load(default_snippets_path(), cfg_);
   for (auto& d : default_plugin_directories()) create_directories(d);
   plugins_.load(cfg_);
   set_plugin_host_for_actions(&plugins_);
+  if (cfg_.providers.semantic)
+    interpreter_.providers().add(std::make_unique<SemanticProvider>(index_));
+  if (cfg_.browser.library)
+    interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
   return true;
 }
 
@@ -178,8 +191,23 @@ int Service::run_index_now() {
   return 0;
 }
 
-int Service::run_status() {
-  if (!boot()) return 1;
+int Service::run_preview(const std::string& path) {
+  auto pv = build_file_preview(path);
+  if (!pv.error.empty()) {
+    std::cerr << pv.error << ": " << path << "\n";
+    return 1;
+  }
+  std::cout << pv.title << "\n" << pv.kind;
+  if (!pv.size_label.empty()) std::cout << " · " << pv.size_label;
+  if (!pv.modified_label.empty()) std::cout << " · " << pv.modified_label;
+  std::cout << "\n";
+  if (!pv.image_data_url.empty())
+    std::cout << "[image " << pv.image_data_url.size() << " bytes]\n";
+  if (!pv.text.empty()) std::cout << pv.text << "\n";
+  return 0;
+}
+
+int Service::run_status() {  if (!boot()) return 1;
   auto st = index_.stats();
   std::cout << "platform: " << platform_name() << "\n"
             << "config: " << cfg_.source_path << "\n"
@@ -358,6 +386,9 @@ int Service::run_daemon() {
         r.payload = req.path;
         r.title = req.query;
         resp.ok = execute_result(r, cfg_, req.action);
+      } else if (req.cmd == "preview") {
+        resp.text = overlay_preview_json(req.path.empty() ? req.query : req.path);
+        resp.ok = true;
       } else if (req.cmd == "status") {
         auto st = index_.stats();
         resp.text = std::to_string(st.files);

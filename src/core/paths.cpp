@@ -182,6 +182,7 @@ std::string data_directory() {
 std::string default_config_path() { return path_join(config_directory(), "wilfred.yml"); }
 std::string default_index_path() { return path_join(data_directory(), "index"); }
 std::string default_history_path() { return path_join(data_directory(), "history.bin"); }
+std::string default_clips_path() { return path_join(data_directory(), "clips.bin"); }
 std::string default_log_path() { return path_join(data_directory(), "wilfred.log"); }
 
 std::string ipc_endpoint() {

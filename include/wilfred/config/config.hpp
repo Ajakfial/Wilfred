@@ -60,6 +60,7 @@ struct Config {
     bool follow_symlinks{false};
     bool index_hidden{true};
     bool index_system{false};
+    bool usn_scan{true};
     std::uint64_t max_file_size_bytes{0};
     bool content_indexing{true};
     std::uint64_t content_max_bytes{131072};
@@ -88,6 +89,12 @@ struct Config {
     bool persist{true};
   } history;
 
+  struct Clipboard {
+    bool manager{true};
+    int max_entries{200};
+    bool persist{true};
+  } clipboard;
+
   struct Hotkey {
     bool enabled{true};
     std::vector<std::string> modifiers{"ctrl", "alt"};
@@ -98,6 +105,7 @@ struct Config {
   struct Browser {
     std::string provider{"auto"};
     std::string search_template{"https://www.google.com/search?q={query}"};
+    bool library{true};
   } browser;
 
   struct Logging {
@@ -117,6 +125,11 @@ struct Config {
     std::vector<std::string> directories;
     int timeout_ms{400};
   } plugins;
+
+  struct Providers {
+    bool semantic{false};
+    double semantic_min_score{0.3};
+  } providers;
 
   struct Api {
     bool enabled{false};

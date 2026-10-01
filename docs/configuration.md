@@ -51,8 +51,9 @@ editing.
 | `follow_symlinks` | `false` | Whether the walker follows symlinks (off by default to avoid cycles/duplication) |
 | `index_hidden` | `true` | Whether the walker descends into hidden directories at all |
 | `index_system` | `false` | Whether the walker descends into system directories at all |
+| `usn_scan` | `true` | Windows only: enumerate NTFS volumes via the MFT/USN journal for fast full-disk scans (needs elevation; falls back to directory walk otherwise) |
 | `max_file_size_bytes` | `0` | Skip files larger than this for indexing (`0` = no limit) |
-| `content_indexing` | `true` | Enable indexing file *contents* (not just names) for eligible text/source/config files |
+| `content_indexing` | `true` | Enable indexing file *contents* (not just names) for eligible text/source/config files and real documents (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.rtf`, `.html`) |
 | `content_max_bytes` | `131072` | Max bytes read per file for content indexing |
 | `content_max_tokens` | `480` | Max tokens extracted per file for content indexing |
 | `workers` | `0` | Indexer thread count (`0` = auto-detect from CPU count) |
@@ -166,6 +167,14 @@ without Wilfred needing to know about them.
 | `max_entries` | `8000` | Cap on stored history entries (oldest pruned first) |
 | `persist` | `true` | Whether history is saved to disk between runs (vs. in-memory only for the current session) |
 
+## `clipboard:`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `manager` | `true` | Whether clipboard texts are kept in a persistent, searchable history (`clips`) |
+| `max_entries` | `200` | Cap on unpinned clips (pinned clips always survive; oldest unpinned pruned first) |
+| `persist` | `true` | Whether clips are saved to disk between runs |
+
 ## `hotkey:`
 
 | Key | Default | Meaning |
@@ -181,6 +190,7 @@ without Wilfred needing to know about them.
 |---|---|---|
 | `provider` | `auto` | Which browser to use for opening URLs/web searches (`auto` detects the OS default; see `browser::list_browsers()` for named alternatives) |
 | `search_template` | `https://www.google.com/search?q={query}` | URL template for the web-search fallback and `?`/`g` query prefix |
+| `library` | `true` | Whether bookmarks, recent history, and open tabs are searchable (as a provider plus the `bm` mini) |
 
 ## `logging:`
 
@@ -208,6 +218,13 @@ without Wilfred needing to know about them.
 
 See [plugins.md](plugins.md) for the manifest format plugins are discovered
 by.
+
+## `providers:`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `semantic` | `false` | Whether the trigram soft-match provider runs on every query (typo-tolerant name/path matches beyond the main engine) |
+| `semantic_min_score` | `0.3` | Minimum trigram-cosine similarity (0–1) for a semantic hit |
 
 ## `api:` — optional local HTTP API
 

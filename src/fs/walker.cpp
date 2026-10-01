@@ -11,8 +11,7 @@ namespace wilfred {
 namespace fs = std::filesystem;
 
 void walk_tree(const std::string& root, const Config& cfg, WalkFn on_entry,
-               std::atomic<bool>* cancel, WalkStats* stats) {
-  std::error_code ec;
+               std::atomic<bool>* cancel, WalkStats* stats) {  std::error_code ec;
   auto start = fs::u8path(root);
   if (!fs::exists(start, ec)) {
     if (stats) ++stats->errors;
@@ -101,6 +100,14 @@ void walk_tree(const std::string& root, const Config& cfg, WalkFn on_entry,
       if (is_dir) dirs.push(entry.path());
     }
   }
+}
+
+void fast_enumerate_tree(const std::string& root, const Config& cfg, WalkFn on_entry,
+                         std::atomic<bool>* cancel, WalkStats* stats) {
+#ifdef _WIN32
+  if (cfg.index.usn_scan && win_usn_enumerate_tree(root, cfg, on_entry, cancel, stats)) return;
+#endif
+  walk_tree(root, cfg, on_entry, cancel, stats);
 }
 
 }  // namespace wilfred

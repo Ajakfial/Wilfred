@@ -22,6 +22,7 @@ std::string data_directory();
 std::string default_config_path();
 std::string default_index_path();
 std::string default_history_path();
+std::string default_clips_path();
 std::string default_log_path();
 std::string ipc_endpoint();
 

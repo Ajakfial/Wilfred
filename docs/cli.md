@@ -12,6 +12,7 @@ wilfred search <query>   Search the local index and print results
 wilfred launch <query>   Search and open the top result
 wilfred index            Scan configured roots and persist the index
 wilfred status           Print index statistics
+wilfred preview <path>   Print a file preview (text head, directory listing, or image info)
 wilfred backup [path]    Write config/snippets/index archive
 wilfred restore [path]   Restore from a backup archive
 wilfred sync-push        Upload backup to sync.url
@@ -71,6 +72,13 @@ wasn't running.
 Prints `IndexStats` — file/directory/application counts, error count, total
 indexed bytes, whether a scan is currently in progress, and the duration of
 the last scan.
+
+## `wilfred preview <path>`
+
+Prints a bounded preview of a file or directory without opening it: kind,
+size, and modification time, plus a text head for text files, a child
+listing for directories, or image metadata for images. Same backend as the
+overlay's `F3` preview pane, useful for scripts.
 
 ## `wilfred backup [path] [--no-index]`
 

@@ -187,6 +187,26 @@ static void handle_web_message(const std::string& json) {
     accept_index(idx, action);
     return;
   }
+  if (type == "preview") {
+    std::string idxs;
+    overlay_json_field(json, "index", idxs);
+    int idx = -1;
+    try {
+      idx = std::stoi(idxs);
+    } catch (...) {
+      idx = -1;
+    }
+    std::string path;
+    {
+      std::lock_guard<std::mutex> lock(g_res_mu);
+      if (idx >= 0 && idx < static_cast<int>(g_results.size())) {
+        const auto& r = g_results[static_cast<std::size_t>(idx)];
+        path = r.path.empty() ? r.payload : r.path;
+      }
+    }
+    if (!path.empty()) post_json(overlay_preview_json(path));
+    return;
+  }
   if (type == "hidden") {
     hide_now();
     return;

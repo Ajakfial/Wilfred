@@ -10,6 +10,7 @@
 #include "wilfred/fs/walker.hpp"
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/content.hpp"
+#include "wilfred/search/doctext.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -164,9 +165,15 @@ bool IndexEngine::upsert_file(const std::string& path) {
     auto id = store_.upsert(rec, path);
     if (want_content) {
       std::string text;
-      if (read_file_all(path, text) && !looks_binary(text)) {
-        if (text.size() > cfg_.index.content_max_bytes)
-          text.resize(static_cast<std::size_t>(cfg_.index.content_max_bytes));
+      bool got = false;
+      auto cap = static_cast<std::size_t>(cfg_.index.content_max_bytes);
+      if (is_document_extension(path) && extract_document_text(path, text, cap)) {
+        got = true;
+      } else if (read_file_all(path, text) && !looks_binary(text)) {
+        if (text.size() > cap) text.resize(cap);
+        got = true;
+      }
+      if (got) {
         store_.add_content_tokens(id, extract_content_tokens(text, cfg_.index.content_max_tokens));
       }
     }
@@ -247,7 +254,7 @@ void IndexEngine::scan_roots(const std::vector<std::string>& extra) {
       continue;
     }
     WalkStats ws;
-    walk_tree(
+    fast_enumerate_tree(
         root, cfg_,
         [&](const WalkEntry& e) {
           if (cancel_) return;

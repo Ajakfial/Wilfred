@@ -16,7 +16,13 @@ single summonable search bar.
 * Fuzzy matching, acronyms, token/path ranking, recency and frequency signals
 * Context-aware ranking (recent folders, file types, time-of-day, session queries)
 * Clipboard as a secondary source (text match, copied paths, clip history)
+* Persistent clipboard manager (`clips [query]`, pin, `clips clear`)
 * Content indexing for source, config, and text documents
+* Real document text extraction (PDF, Office, RTF, HTML) into the content index
+* Optional trigram soft-match search provider (`providers.semantic`)
+* Browser bookmarks, history, and open tabs (`bm`, provider-backed)
+* Instant NTFS full-disk enumeration via the USN journal on Windows
+* Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`)
 * Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, and more
 * Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)

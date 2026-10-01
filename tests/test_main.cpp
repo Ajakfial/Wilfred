@@ -21,6 +21,7 @@ int main() {
   test_protocol();
   test_updater();
   test_file_actions();
+  test_power();
   test_search_extras();
   test_extensibility();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails

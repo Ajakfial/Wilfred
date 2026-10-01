@@ -83,6 +83,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.index.follow_symlinks = index->boolean("follow_symlinks", false);
     c.index.index_hidden = index->boolean("index_hidden", true);
     c.index.index_system = index->boolean("index_system", false);
+    c.index.usn_scan = index->boolean("usn_scan", true);
     c.index.max_file_size_bytes =
         static_cast<std::uint64_t>(std::max<std::int64_t>(0, index->integer("max_file_size_bytes", 0)));
     c.index.content_indexing = index->boolean("content_indexing", true);
@@ -245,6 +246,20 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     }
   }
 
+  if (auto* cb = root.get("clipboard")) {
+    if (!cb->is_map()) {
+      err.message = "clipboard: must be a mapping";
+      return false;
+    }
+    c.clipboard.manager = cb->boolean("manager", true);
+    c.clipboard.max_entries = static_cast<int>(cb->integer("max_entries", 200));
+    c.clipboard.persist = cb->boolean("persist", true);
+    if (c.clipboard.max_entries < 0) {
+      err.message = "clipboard.max_entries must be >= 0";
+      return false;
+    }
+  }
+
   if (auto* hk = root.get("hotkey")) {
     if (!hk->is_map()) {
       err.message = "hotkey: must be a mapping";
@@ -270,6 +285,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.browser.provider = b->str("provider", "auto");
     c.browser.search_template =
         b->str("search_template", "https://www.google.com/search?q={query}");
+    c.browser.library = b->boolean("library", true);
     if (c.browser.search_template.find("{query}") == std::string::npos) {
       err.message = "browser.search_template must contain {query}";
       return false;
@@ -311,6 +327,19 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.plugins.timeout_ms = static_cast<int>(pl->integer("timeout_ms", 400));
     if (c.plugins.timeout_ms < 50 || c.plugins.timeout_ms > 30000) {
       err.message = "plugins.timeout_ms must be between 50 and 30000";
+      return false;
+    }
+  }
+
+  if (auto* pr = root.get("providers")) {
+    if (!pr->is_map()) {
+      err.message = "providers: must be a mapping";
+      return false;
+    }
+    c.providers.semantic = pr->boolean("semantic", false);
+    c.providers.semantic_min_score = pr->number("semantic_min_score", 0.3);
+    if (c.providers.semantic_min_score < 0 || c.providers.semantic_min_score > 1) {
+      err.message = "providers.semantic_min_score must be between 0 and 1";
       return false;
     }
   }

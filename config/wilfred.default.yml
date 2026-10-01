@@ -44,6 +44,7 @@ index:
   follow_symlinks: false
   index_hidden: true
   index_system: false
+  usn_scan: true
   max_file_size_bytes: 0
   content_indexing: true
   content_max_bytes: 131072
@@ -115,6 +116,11 @@ history:
   max_entries: 8000
   persist: true
 
+clipboard:
+  manager: true
+  max_entries: 200
+  persist: true
+
 hotkey:
   enabled: true
   modifiers:
@@ -127,6 +133,7 @@ hotkey:
 browser:
   provider: auto
   search_template: "https://www.google.com/search?q={query}"
+  library: true
 
 logging:
   level: info
@@ -142,6 +149,10 @@ plugins:
   enabled: true
   directories: []
   timeout_ms: 400
+
+providers:
+  semantic: false
+  semantic_min_score: 0.3
 
 api:
   enabled: false

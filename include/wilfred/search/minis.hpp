@@ -45,6 +45,7 @@ enum class MiniKind {
   Json,
   System,
   Screenshot,
+  Browser,
 };
 
 struct MiniIntent {

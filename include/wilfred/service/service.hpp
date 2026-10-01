@@ -38,6 +38,7 @@ public:
 
   int run_daemon();
   int run_search(const std::string& query, int limit);
+  int run_preview(const std::string& path);
   int run_index_now();
   int run_status();
   int launch_by_query(const std::string& query);

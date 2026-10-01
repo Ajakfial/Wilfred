@@ -1,5 +1,6 @@
 #include "wilfred/search/minis.hpp"
 
+#include "wilfred/browser/library.hpp"
 #include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
@@ -8,6 +9,7 @@
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/macros.hpp"
@@ -969,6 +971,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Clipboard, true);
   else if (key == "clips" || key == "cliphist" || key == "pasteboard")
     set(MiniKind::Clips, true);
+  else if (key == "bm" || key == "bookmarks" || key == "bookmark" || key == "tabs" ||
+           key == "hist" || key == "history")
+    set(MiniKind::Browser, true);
   else if (key == "os" || key == "systeminfo" || key == "sysinfo")
     set(MiniKind::Os, true);
   else if (key == "cores" || key == "nproc" || key == "threads")
@@ -1385,16 +1390,73 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   }
 
   if (intent.kind == MiniKind::Clips) {
-    auto hist = clipboard_history_texts();
-    if (hist.empty()) {
-      out.push_back(card("No clipboard history yet", "Copy text, then type clips", "", "clips",
-                         9000, ResultAction::None));
+    auto filter = trim_sv(intent.remainder);
+    if (to_lower_utf8(filter) == "clear") {
+      SearchResult r =
+          card("Clear clipboard history", "Remove all unpinned clips", "clip:clear", "clips",
+               10000, ResultAction::None);
+      r.category = "clips";
+      r.actions.push_back({"open", "Clear"});
+      out.push_back(std::move(r));
+      return out;
+    }
+    auto& store = ClipStore::instance();
+    auto hits = filter.empty() ? store.texts() : store.search(filter, 8);
+    if (!filter.empty() && hits.size() > 8) hits.resize(8);
+    if (hits.empty()) {
+      out.push_back(card(filter.empty() ? "No clipboard history yet" : "No clips matching",
+                          filter.empty() ? "Copy text, then type clips" : "Try clips to list all",
+                          "", "clips", 9000, ResultAction::None));
     } else {
       int n = 0;
-      for (auto& t : hist) {
-        out.push_back(card(clipboard_preview(t), "Clipboard history", t, "clips", 10000 - n));
+      for (auto& t : hits) {
+        bool pin = store.pinned(t);
+        SearchResult r =
+            card(clipboard_preview(t), pin ? "Pinned clip · enter copies" : "Clipboard history",
+                 t, "clips", 10000 - n);
+        r.category = "clips";
+        r.actions.push_back({"copy_text", "Copy"});
+        r.actions.push_back({pin ? "clip_unpin" : "clip_pin", pin ? "Unpin" : "Pin"});
+        out.push_back(std::move(r));
         if (++n >= 8) break;
       }
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Browser) {
+    if (!cfg.browser.library) return out;
+    auto filter = trim_sv(intent.remainder);
+    auto fl = to_lower_utf8(filter);
+    std::string want_source;
+    if (fl == "tabs" || fl == "tab")
+      want_source = "tab";
+    else if (fl == "bookmarks" || fl == "bookmark")
+      want_source = "bookmark";
+    else if (fl == "history" || fl == "hist")
+      want_source = "history";
+    auto items = browser_library(true, true);
+    int n = 0;
+    for (auto& it : items) {
+      if (n >= 12) break;
+      if (!want_source.empty()) {
+        if (it.source != want_source) continue;
+      } else if (!filter.empty()) {
+        auto t = fold_search(it.title);
+        auto u = to_lower_utf8(it.url);
+        if (t.find(to_lower_utf8(filter)) == std::string::npos &&
+            u.find(to_lower_utf8(filter)) == std::string::npos)
+          continue;
+      }
+      SearchResult r = card(it.title.empty() ? it.url : it.title, it.url, it.url, it.source,
+                            10000 - n * 10, ResultAction::WebSearch);
+      r.category = "browser";
+      out.push_back(std::move(r));
+      ++n;
+    }
+    if (out.empty()) {
+      out.push_back(card("No browser items", "No bookmarks, history, or tabs match", "", "browser",
+                         9000, ResultAction::None));
     }
     return out;
   }
@@ -1738,7 +1800,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "empty trash  ·  recycle bin",
                                   "speedtest  ·  live download and upload",
                                   "battery / ip / hostname / uptime / user",
-                                  "clip / clips  ·  clipboard",
+                                  "clip / clips [query]  ·  clipboard history, pin, clips clear",
+                                  "bm [query]  ·  bookmarks, history, open tabs",
                                   "snip / ;keyword  ·  text snippets",
                                   "snip save <name>  ·  save clipboard as snippet",
                                   "os / cores / screen",

@@ -52,6 +52,9 @@ set(WILFRED_CORE_SOURCES
   src/search/filter.cpp
   src/search/engine.cpp
   src/search/clipboard.cpp
+  src/search/clip_history.cpp
+  src/search/doctext.cpp
+  src/search/semantic.cpp
   src/search/context.cpp
   src/search/content.cpp
   src/search/macros.cpp
@@ -72,6 +75,7 @@ set(WILFRED_CORE_SOURCES
   src/math/dev.cpp
   src/apps/discovery.cpp
   src/browser/browser.cpp
+  src/browser/library.cpp
   src/history/history.cpp
   src/ipc/protocol.cpp
   src/ipc/server.cpp
@@ -115,6 +119,9 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/filter.hpp
   include/wilfred/search/engine.hpp
   include/wilfred/search/clipboard.hpp
+  include/wilfred/search/clip_history.hpp
+  include/wilfred/search/doctext.hpp
+  include/wilfred/search/semantic.hpp
   include/wilfred/search/context.hpp
   include/wilfred/search/content.hpp
   include/wilfred/search/macros.hpp
@@ -132,6 +139,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/math/expr.hpp
   include/wilfred/apps/discovery.hpp
   include/wilfred/browser/browser.hpp
+  include/wilfred/browser/library.hpp
   include/wilfred/history/history.hpp
   include/wilfred/ipc/protocol.hpp
   include/wilfred/ipc/server.hpp
@@ -158,6 +166,7 @@ if(WIN32)
     src/platform/win/windows.cpp
     src/platform/win/volumes.cpp
     src/platform/win/screenshot.cpp
+    src/platform/win/usn.cpp
     src/ui/win_overlay.cpp
   )
 elseif(APPLE)
@@ -287,6 +296,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_protocol.cpp
   tests/test_updater.cpp
   tests/test_file_actions.cpp
+  tests/test_power.cpp
   tests/test_search_extras.cpp
   tests/test_extensibility.cpp
 )

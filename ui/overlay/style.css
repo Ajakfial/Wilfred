@@ -95,6 +95,20 @@ kbd {
 .results { border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: min(54vh, 500px); }
 .results[hidden], .foot[hidden] { display: none; }
 
+/* Preview pane: side-by-side with results when toggled (F3) */
+.launcher.has-preview { width: calc(var(--panel-w) + 320px); display: flex; flex-wrap: wrap; }
+.launcher.has-preview .pill { flex: 1 1 100%; }
+.launcher.has-preview .results { flex: 1 1 0; min-width: 0; border-top: 1px solid var(--line); }
+.launcher.has-preview .preview { flex: 0 0 300px; }
+.launcher.has-preview .foot { flex: 1 1 100%; }
+.preview { border-top: 1px solid var(--line); border-left: 1px solid var(--line); max-height: min(54vh, 500px); overflow-y: auto; padding: 12px 14px; }
+.preview[hidden] { display: none; }
+.pv-title { font-size: 14px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-meta { margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.pv-text { margin: 10px 0 0; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; user-select: text; }
+.pv-img { display: block; margin-top: 10px; max-width: 100%; max-height: 320px; border-radius: 10px; object-fit: contain; }
+.pv-empty { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+
 .rows { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 6px; min-height: 0; }
 .rows::-webkit-scrollbar { width: 6px; }
 .rows::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; }

@@ -2,6 +2,7 @@
 
 #include "wilfred/search/engine.hpp"
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -13,5 +14,20 @@ const char* overlay_action_name(ResultAction a);
 std::string overlay_results_json(const std::vector<SearchResult>& items,
                                  const std::vector<std::string>& habits = {});
 bool overlay_json_field(const std::string& json, const char* key, std::string& out);
+
+struct FilePreview {
+  std::string title;
+  std::string kind;
+  std::string size_label;
+  std::string modified_label;
+  std::string text;            // head of text files / directory listing
+  std::string image_data_url;  // data: URL for small images, else empty
+  std::string error;
+};
+
+// Bounded, side-effect-free file preview for the overlay pane and CLI.
+FilePreview build_file_preview(const std::string& path, std::size_t max_text = 2048,
+                               std::size_t max_image = 102400);
+std::string overlay_preview_json(const std::string& path);
 
 }  // namespace wilfred

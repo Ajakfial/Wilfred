@@ -2,6 +2,8 @@
   const launcher = document.getElementById("launcher");
   const input = document.getElementById("q");
   const resultsEl = document.getElementById("results");
+  const previewEl = document.getElementById("preview");
+  const previewBody = document.getElementById("preview-body");
   const hint = document.getElementById("hint");
   const foot = document.getElementById("foot");
   const countEl = document.getElementById("count");
@@ -16,6 +18,8 @@
   let hideTimer = 0;
   let menuOpen = false;
   let menuSel = 0;
+  let previewOpen = false;
+  let previewTimer = 0;
   let speedPoll = 0;
   let demoSpeedAt = 0;
   let demoSpeedKey = "";
@@ -57,6 +61,65 @@
 
   function actionsOf(item) {
     return item && Array.isArray(item.actions) ? item.actions : [];
+  }
+
+  function previewableIndex() {
+    const rows = rowsOf();
+    if (!rows.length || sel < 0 || sel >= rows.length) return -1;
+    const item = rows[sel].item;
+    if (!item || item.action === "habit") return -1;
+    const p = item.path || item.payload || "";
+    if (!p || p.startsWith("http://") || p.startsWith("https://")) return -1;
+    return rows[sel].index;
+  }
+
+  function requestPreview() {
+    if (!previewOpen || !visible) return;
+    const idx = previewableIndex();
+    if (idx < 0) {
+      previewBody.textContent = "Nothing to preview";
+      return;
+    }
+    nativeSend({ type: "preview", index: idx });
+  }
+
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = 0;
+    if (!previewOpen || !visible) return;
+    previewTimer = setTimeout(requestPreview, 150);
+  }
+
+  function togglePreview() {
+    previewOpen = !previewOpen;
+    launcher.classList.toggle("has-preview", previewOpen);
+    if (previewEl) previewEl.hidden = !previewOpen;
+    if (previewOpen) requestPreview();
+    else clearTimeout(previewTimer);
+    reportSize();
+  }
+
+  function renderPreview(msg) {
+    if (!previewOpen || !msg) return;
+    const title = msg.title || "";
+    const kind = msg.kind || "";
+    const meta = [msg.size, msg.modified].filter(Boolean).join("  ·  ");
+    let html = "";
+    html += `<div class="pv-title"></div>`;
+    html += `<div class="pv-meta"></div>`;
+    if (msg.image) html += `<img class="pv-img" alt="" />`;
+    else if (msg.text) html += `<pre class="pv-text"></pre>`;
+    else html += `<div class="pv-empty"></div>`;
+    previewBody.innerHTML = html;
+    previewBody.querySelector(".pv-title").textContent = title;
+    previewBody.querySelector(".pv-meta").textContent = kind + (meta ? "  ·  " + meta : "");
+    const img = previewBody.querySelector(".pv-img");
+    if (img) img.src = msg.image;
+    const pre = previewBody.querySelector(".pv-text");
+    if (pre) pre.textContent = msg.text;
+    const empty = previewBody.querySelector(".pv-empty");
+    if (empty) empty.textContent = msg.error || "No preview available";
+    reportSize();
   }
 
   const badges = {
@@ -370,6 +433,8 @@
   function dismiss() {
     if (!visible) return;
     visible = false;
+    clearTimeout(previewTimer);
+    previewTimer = 0;
     launcher.classList.remove("is-in");
     launcher.classList.add("is-out");
     launcher.setAttribute("aria-hidden", "true");
@@ -402,11 +467,16 @@
     if (!msg || typeof msg !== "object") return;
     if (msg.type === "show") show();
     if (msg.type === "hide") dismiss();
+    if (msg.type === "preview") {
+      renderPreview(msg);
+      return;
+    }
     if (msg.type === "results") {
       items = Array.isArray(msg.items) ? msg.items : [];
       if (!isSpeedtestQuery(input.value)) sel = 0;
       else sel = Math.max(0, Math.min(sel, Math.max(0, rowsOf().length - 1)));
       render();
+      schedulePreview();
     }
   }
 
@@ -463,6 +533,7 @@
         menuOpen = false;
         menuSel = 0;
         paintSelection();
+        schedulePreview();
       }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -472,7 +543,11 @@
         menuOpen = false;
         menuSel = 0;
         paintSelection();
+        schedulePreview();
       }
+    } else if (e.key === "F3") {
+      e.preventDefault();
+      togglePreview();
     } else if (e.key === "Enter") {
       e.preventDefault();
       const rows = rowsOf();

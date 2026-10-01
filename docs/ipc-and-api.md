@@ -49,7 +49,8 @@ Recognized fields: `cmd`/`command`, `q`/`query`, `path`, `action`, `token`,
 `n`/`limit` (defaults to 40 if omitted or unparsable). `cmd` is required;
 everything else is optional and command-specific (e.g. `search` uses `q`
 and `limit`; `launch` uses `q` and, optionally, `action` to pick a
-non-default `ResultActionItem`).
+non-default `ResultActionItem`; `preview` uses `path` and returns the
+`overlay_preview_json()` blob in `text`).
 
 ### Response
 
@@ -177,8 +178,10 @@ Two modes:
   ```
 
 `action` (optional) selects a non-default `ResultActionItem` id (e.g. a
-plugin result's secondary action). Response: `{"ok": true}` or, on failure,
-HTTP 400/404 with `{"ok": false, "error": "..."}`.
+plugin result's secondary action). Multiple steps can be chained with `+`
+(`"action": "copy_path+reveal"` runs each in order and succeeds only if all
+do; `open_with:` targets are never split). Response: `{"ok": true}` or, on
+failure, HTTP 400/404 with `{"ok": false, "error": "..."}`.
 
 #### `GET /backup`
 
