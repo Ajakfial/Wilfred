@@ -628,32 +628,32 @@ kbd {
 
 .row--speed {
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 10px;
   min-height: 0;
   margin: 2px 0 4px;
-  padding: 16px 18px 14px;
+  padding: 12px 14px 10px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgb(var(--t) / 0.1), rgb(var(--t) / 0.025) 70%);
   box-shadow: inset 0 0 0 1px rgb(var(--t) / 0.18);
   transition: box-shadow 140ms ease;
 }
 .row--speed.is-sel { box-shadow: inset 0 0 0 1px rgb(var(--t) / 0.45); }
-.sp-stats { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr; gap: 16px; }
-.sp-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.sp-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--faint); }
-.sp-label svg { display: block; color: rgb(var(--t)); }
-.sp-value { display: flex; align-items: baseline; gap: 5px; min-width: 0; white-space: nowrap; }
+.sp-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.sp-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sp-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--faint); white-space: nowrap; }
+.sp-label svg { display: block; color: rgb(var(--t)); flex-shrink: 0; }
+.sp-value { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }
 .sp-value b {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 .sp-value b.is-idle { color: var(--faint); font-weight: 500; }
-.sp-value i { font-style: normal; font-size: 12px; font-weight: 500; color: var(--faint); }
-.sp-foot { display: flex; align-items: center; gap: 12px; }
-.sp-track { flex: 1; height: 4px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.sp-value i { font-style: normal; font-size: 11px; font-weight: 500; color: var(--faint); }
+.sp-foot { display: flex; align-items: center; gap: 10px; }
+.sp-track { flex: 1; height: 4px; border-radius: 99px; background: var(--track); overflow: hidden; min-width: 0; }
 .sp-track span {
   display: block;
   height: 100%;
@@ -662,8 +662,16 @@ kbd {
   transition: width 300ms linear;
 }
 .sp-track.is-done span { background: #2fcf9f; }
-.sp-phase { flex: 0 0 auto; font-size: 12px; color: var(--muted); }
-.quick--card { position: absolute; top: 10px; right: 12px; }
+.sp-phase {
+  flex: 0 1 auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.quick--card { position: absolute; top: 8px; right: 10px; }
 
 /* ===================== Loading skeleton ===================== */
 
