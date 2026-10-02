@@ -190,7 +190,7 @@ bool expect_int(const YamlValue* section, const char* key, const std::string& se
   return true;
 }
 
-bool expect_number(const YamlValue* section, const char* key, const std::string& sect,
+[[maybe_unused]] bool expect_number(const YamlValue* section, const char* key, const std::string& sect,
                    ConfigError& err) {
   if (!section) return true;
   auto* v = section->get(key);
