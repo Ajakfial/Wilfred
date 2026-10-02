@@ -33,11 +33,46 @@ static void print_help() {
       << "  wilfred restore [path]  Restore from a backup archive\n"
       << "  wilfred sync-push       Upload backup to sync.url\n"
       << "  wilfred sync-pull       Download backup from sync.url\n"
+      << "  wilfred import --list   List importable launchers (Alfred, Raycast,\n"
+      << "                          PowerToys Run, Flow Launcher, ...)\n"
+      << "  wilfred import --detect Scan default locations for other launchers\n"
+      << "  wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]\n"
+      << "                          Import hotkey, web searches, snippets, ...\n"
       << "  wilfred history-clear   Erase local search history\n"
       << "  wilfred update [--check] Check for and install updates\n"
       << "  wilfred help            Show this message\n\n"
       << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
       << "On Windows the daemon has no console; quit from the tray icon.\n";
+}
+
+static void print_import_help() {
+  std::cout
+      << "Usage: wilfred import [launcher] [options]\n\n"
+      << "Import settings from other launchers into wilfred.yml.\n\n"
+      << "Launchers (see `wilfred import --list`):\n"
+      << "  alfred, raycast (macOS) | powertoys, flowlauncher, wox, keypirinha,\n"
+      << "  listary (Windows) | ulauncher, albert, krunner, rofi (Linux)\n"
+      << "  auto (default): import from every detected launcher.\n\n"
+      << "Examples:\n"
+      << "  wilfred import --list\n"
+      << "  wilfred import --detect\n"
+      << "  wilfred import auto --dry-run\n"
+      << "  wilfred import alfred --from ~/Alfred.alfredpreferences --dry-run\n"
+      << "  wilfred import flowlauncher --from Settings.json --overwrite\n"
+      << "  wilfred import --from ./shortcuts.json\n\n"
+      << "Options:\n"
+      << "  --from <path>      File or directory to import (auto-detects format).\n"
+      << "                     Without it, default locations are scanned.\n"
+      << "  --dry-run, -n      Preview without writing wilfred.yml.\n"
+      << "  --overwrite        Replace conflicting macros/quicklinks/snippets.\n"
+      << "                     Default is merge (keep existing, add new).\n"
+      << "  --no-hotkey        Skip the global hotkey.\n"
+      << "  --no-searches      Skip custom web searches (macros).\n"
+      << "  --no-snippets      Skip snippets.\n"
+      << "  --no-aliases       Skip aliases.\n"
+      << "  --no-quicklinks    Skip quicklinks.\n"
+      << "  --no-theme         Skip theme.\n"
+      << "  --no-browser       Skip the default search template.\n";
 }
 
 #ifdef _WIN32
@@ -159,6 +194,77 @@ static int wilfred_main(int argc, char** argv) {
         else if (a == "--yes" || a == "-y") auto_yes = true;
       }
       return wilfred::run_update_command(check_only, auto_yes);
+    }
+    if (cmd == "import") {
+      bool list = false, detect = false, dry_run = false, overwrite = false, help = false;
+      bool inc_hotkey = true, inc_searches = true, inc_snippets = true, inc_aliases = true,
+           inc_quicklinks = true, inc_theme = true, inc_browser = true;
+      std::string launcher, from;
+      for (int i = 2; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--list" || a == "--lists")
+          list = true;
+        else if (a == "--detect" || a == "--scan")
+          detect = true;
+        else if (a == "--dry-run" || a == "--preview" || a == "-n")
+          dry_run = true;
+        else if (a == "--overwrite" || a == "--force" || a == "-f")
+          overwrite = true;
+        else if (a == "--merge" || a == "--no-overwrite")
+          overwrite = false;
+        else if (a == "--no-hotkey" || a == "--no-hotkeys")
+          inc_hotkey = false;
+        else if (a == "--no-searches" || a == "--no-search" || a == "--no-macros")
+          inc_searches = false;
+        else if (a == "--no-snippets" || a == "--no-snippet")
+          inc_snippets = false;
+        else if (a == "--no-aliases" || a == "--no-alias")
+          inc_aliases = false;
+        else if (a == "--no-quicklinks" || a == "--no-quicklink")
+          inc_quicklinks = false;
+        else if (a == "--no-theme" || a == "--no-themes")
+          inc_theme = false;
+        else if (a == "--no-browser" || a == "--no-default-search")
+          inc_browser = false;
+        else if (a == "--from" || a == "--file" || a == "--dir" || a == "--path") {
+          if (i + 1 >= argc) {
+            std::cerr << "usage: wilfred import [--from <path>]\n";
+            return 2;
+          }
+          from = argv[++i];
+        } else if (a.rfind("--from=", 0) == 0)
+          from = a.substr(7);
+        else if (a.rfind("--file=", 0) == 0)
+          from = a.substr(7);
+        else if (a == "--help" || a == "-h" || a == "help")
+          help = true;
+        else if (a.rfind("--", 0) == 0) {
+          std::cerr << "unknown option " << a << "\n";
+          print_import_help();
+          return 2;
+        } else if (launcher.empty())
+          launcher = a;
+        else if (from.empty())
+          from = a;  // shorthand: `wilfred import flowlauncher Settings.json`
+        else {
+          std::cerr << "unexpected argument " << a << "\n";
+          print_import_help();
+          return 2;
+        }
+      }
+      if (help) {
+        print_import_help();
+        return 0;
+      }
+      if (list) return svc.run_import_list();
+      if (detect && launcher.empty() && from.empty()) return svc.run_import_detect();
+      if (launcher.empty() && from.empty() && !dry_run && !overwrite) {
+        // Bare `wilfred import` is read-only discovery, never a blind write.
+        return svc.run_import_detect();
+      }
+      if (launcher.empty()) launcher = "auto";
+      return svc.run_import(launcher, from, dry_run, overwrite, inc_hotkey, inc_searches,
+                            inc_snippets, inc_aliases, inc_quicklinks, inc_theme, inc_browser);
     }
     // Treat unknown first argument as a search query: `wilfred firefox`
     if (argc >= 2) {

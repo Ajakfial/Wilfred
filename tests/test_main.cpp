@@ -27,6 +27,7 @@ int main() {
   test_new_features();
   test_assist();
   test_powertools();
+  test_import();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

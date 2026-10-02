@@ -12,6 +12,7 @@
 #include "wilfred/ipc/http.hpp"
 #include "wilfred/ipc/server.hpp"
 #include "wilfred/browser/library.hpp"
+#include "wilfred/import/import.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/providers/provider.hpp"
@@ -33,6 +34,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -411,6 +413,318 @@ int Service::run_sync(bool push) {
     return 1;
   }
   std::cout << (push ? "sync push ok\n" : "sync pull ok\n");
+  return 0;
+}
+
+int Service::run_import_list() {
+  auto all = import::supported_launchers();
+  std::cout << "Supported launchers for `wilfred import`:\n";
+  for (auto& li : all) {
+    std::cout << "  " << li.id << "  (" << li.os << ") - " << li.name << "\n    " << li.description
+              << "\n    format: " << li.format << "\n";
+  }
+  std::cout << "\nUsage:\n"
+            << "  wilfred import --list                    Show this list\n"
+            << "  wilfred import --detect                  Scan default locations\n"
+            << "  wilfred import <id> [--from <path>] [--dry-run] [--overwrite]\n"
+            << "  wilfred import auto [--dry-run]          Import from all detected launchers\n"
+            << "  wilfred import --from <path>             Auto-detect format from file/dir\n";
+  return 0;
+}
+
+int Service::run_import_detect() {
+  auto found = import::detect_launchers();
+  if (found.empty()) {
+    std::cout << "No supported launchers detected in default locations.\n";
+    std::cout << "Use `wilfred import --list` for supported apps, or "
+              << "`wilfred import --from <path>` with an explicit export.\n";
+    return 0;
+  }
+  std::cout << "Detected launchers:\n";
+  for (auto& d : found) {
+    std::cout << "  " << d.info.id << " (" << d.info.name << ", " << d.info.os << ")\n"
+              << "    " << d.found_path << (d.is_directory ? "  [directory]" : "") << "\n";
+  }
+  return 0;
+}
+
+int Service::run_import(const std::string& launcher, const std::string& from_path, bool dry_run,
+                        bool overwrite, bool include_hotkey, bool include_searches,
+                        bool include_snippets, bool include_aliases, bool include_quicklinks,
+                        bool include_theme, bool include_browser) {
+  using namespace import;
+  std::string lid = to_lower_utf8(launcher);
+  while (!lid.empty() && (lid.front() == ' ' || lid.front() == '\t')) lid.erase(lid.begin());
+  while (!lid.empty() && (lid.back() == ' ' || lid.back() == '\t')) lid.pop_back();
+  if (lid.empty()) lid = from_path.empty() ? "auto" : "auto";
+
+  ImportOptions opts;
+  opts.overwrite = overwrite;
+  opts.dry_run = dry_run;
+  opts.include_hotkey = include_hotkey;
+  opts.include_searches = include_searches;
+  opts.include_snippets = include_snippets;
+  opts.include_aliases = include_aliases;
+  opts.include_quicklinks = include_quicklinks;
+  opts.include_theme = include_theme;
+  opts.include_browser = include_browser;
+
+  std::vector<ImportedSettings> batches;
+  std::vector<std::string> batch_labels;
+  std::string fatal;
+
+  auto is_dir_path = [](const std::string& p) {
+    std::error_code ec;
+    return std::filesystem::is_directory(std::filesystem::path(p), ec) && !ec;
+  };
+
+  auto parse_one_file = [&](const std::string& id, const std::string& path,
+                            ImportedSettings& out) -> bool {
+    if (is_dir_path(path)) {
+      std::vector<std::string> w;
+      std::string use_id = id;
+      if (use_id == "auto") {
+        use_id = detect_id_for_path(path, "");
+        if (use_id == "auto") use_id = "alfred";
+      }
+      out = parse_directory(use_id, path, w);
+      out.warnings.insert(out.warnings.end(), w.begin(), w.end());
+      return true;
+    }
+    std::string text;
+    if (!read_file_all(path, text)) {
+      fatal = "unable to read " + path;
+      return false;
+    }
+    std::vector<std::string> w;
+    if (id == "auto") {
+      std::string detected;
+      std::string err;
+      ImportedSettings tmp;
+      if (!parse_file_auto(path, tmp, detected, err)) {
+        fatal = err;
+        return false;
+      }
+      out = std::move(tmp);
+    } else {
+      out = parse_text(id, text, path, w);
+      out.warnings.insert(out.warnings.end(), w.begin(), w.end());
+      if (out.searches.empty() && out.snippets.empty() && out.quicklinks.empty() &&
+          out.aliases.empty() && !out.hotkey.has && !out.theme && !out.default_search_template) {
+        fatal = "no importable settings found in " + path + " (as " + id + ")";
+        if (!out.warnings.empty()) fatal += ": " + out.warnings.front();
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (!from_path.empty()) {
+    std::string use_id = lid;
+    if (use_id == "auto" || use_id == "all") {
+      ImportedSettings one;
+      std::string detected;
+      std::string err;
+      if (is_dir_path(from_path)) {
+        std::vector<std::string> w;
+        std::string guess = detect_id_for_path(from_path, "");
+        if (guess == "auto") guess = "alfred";
+        one = parse_directory(guess, from_path, w);
+        one.warnings.insert(one.warnings.end(), w.begin(), w.end());
+        detected = guess;
+        if (one.searches.empty() && one.snippets.empty() && one.quicklinks.empty() &&
+            !one.hotkey.has && !one.theme) {
+          std::cerr << "no importable settings found under " << from_path << "\n";
+          for (auto& wmsg : one.warnings) std::cerr << "  warn: " << wmsg << "\n";
+          return 1;
+        }
+      } else if (!parse_file_auto(from_path, one, detected, err)) {
+        std::cerr << err << "\n";
+        return 1;
+      }
+      batches.push_back(std::move(one));
+      batch_labels.push_back(from_path + " (detected as " + detected + ")");
+    } else {
+      const LauncherInfo* li = find_launcher(use_id);
+      if (!li) {
+        std::cerr << "unknown launcher \"" << launcher
+                  << "\". Use `wilfred import --list`.\n";
+        return 1;
+      }
+      if (!file_exists(from_path) && !is_dir_path(from_path)) {
+        std::cerr << "file not found: " << from_path << "\n";
+        return 1;
+      }
+      ImportedSettings one;
+      if (is_dir_path(from_path)) {
+        std::vector<std::string> w;
+        one = parse_directory(li->id, from_path, w);
+        one.warnings.insert(one.warnings.end(), w.begin(), w.end());
+      } else {
+        std::string text;
+        if (!read_file_all(from_path, text)) {
+          std::cerr << "unable to read " << from_path << "\n";
+          return 1;
+        }
+        std::vector<std::string> w;
+        one = parse_text(li->id, text, from_path, w);
+        one.warnings.insert(one.warnings.end(), w.begin(), w.end());
+        if (one.searches.empty() && one.snippets.empty() && one.quicklinks.empty() &&
+            one.aliases.empty() && !one.hotkey.has && !one.theme &&
+            !one.default_search_template) {
+          std::cerr << "no importable settings found in " << from_path << " (as " << li->id
+                    << ")\n";
+          for (auto& wmsg : one.warnings) std::cerr << "  warn: " << wmsg << "\n";
+          return 1;
+        }
+      }
+      batches.push_back(std::move(one));
+      batch_labels.push_back(from_path + " (as " + li->id + ")");
+    }
+  } else {
+    // No --from: use default locations.
+    if (lid == "auto" || lid == "all") {
+      auto found = detect_launchers();
+      if (found.empty()) {
+        std::cerr << "No supported launchers detected. Use `wilfred import --list` and "
+                  << "`wilfred import <id> --from <path>`.\n";
+        return 1;
+      }
+      for (auto& d : found) {
+        ImportedSettings one;
+        if (!parse_one_file(d.info.id, d.found_path, one)) {
+          std::cerr << "warn: skipping " << d.found_path << ": " << fatal << "\n";
+          fatal.clear();
+          continue;
+        }
+        batches.push_back(std::move(one));
+        batch_labels.push_back(d.found_path + " (" + d.info.id + ")");
+      }
+      if (batches.empty()) {
+        std::cerr << "Nothing importable found.\n";
+        return 1;
+      }
+    } else {
+      const LauncherInfo* li = find_launcher(lid);
+      if (!li) {
+        std::cerr << "unknown launcher \"" << launcher << "\". Use `wilfred import --list`.\n";
+        return 1;
+      }
+      bool any = false;
+      for (auto& cand : li->candidates) {
+        if (!file_exists(cand)) continue;
+        ImportedSettings one;
+        if (!parse_one_file(li->id, cand, one)) continue;
+        batches.push_back(std::move(one));
+        batch_labels.push_back(cand + " (" + li->id + ")");
+        any = true;
+      }
+      // Wox shares Flow's layout; if user asked for wox but only flow paths exist
+      // (or vice versa), try the sibling id as a fallback.
+      if (!any && (li->id == "wox" || li->id == "flowlauncher")) {
+        const LauncherInfo* other =
+            find_launcher(li->id == "wox" ? "flowlauncher" : "wox");
+        if (other) {
+          for (auto& cand : other->candidates) {
+            if (!file_exists(cand)) continue;
+            ImportedSettings one;
+            if (!parse_one_file(other->id, cand, one)) continue;
+            batches.push_back(std::move(one));
+            batch_labels.push_back(cand + " (" + other->id + ")");
+            any = true;
+          }
+        }
+      }
+      if (!any) {
+        std::cerr << "No " << li->name << " config found in default locations.\n";
+        std::cerr << "Looked in:\n";
+        for (auto& cand : li->candidates) std::cerr << "  " << cand << "\n";
+        std::cerr << "Pass an explicit file/dir with --from <path>.\n";
+        return 1;
+      }
+    }
+  }
+
+  // Load (or create) current Wilfred config without starting the index.
+  ConfigError cerr;
+  Config cfg = load_or_create_user_config(cerr);
+  if (!cerr.message.empty()) log_warn("config", cerr.message);
+
+  ImportCounts total;
+  std::vector<std::string> all_warnings;
+  int batch_no = 0;
+  for (auto& b : batches) {
+    std::vector<std::string> w;
+    ImportCounts c = apply_settings(cfg, b, opts, w);
+    total.macros_added += c.macros_added;
+    total.macros_overwritten += c.macros_overwritten;
+    total.macros_skipped += c.macros_skipped;
+    total.quicklinks_added += c.quicklinks_added;
+    total.quicklinks_overwritten += c.quicklinks_overwritten;
+    total.quicklinks_skipped += c.quicklinks_skipped;
+    total.snippets_added += c.snippets_added;
+    total.snippets_overwritten += c.snippets_overwritten;
+    total.snippets_skipped += c.snippets_skipped;
+    total.aliases_added += c.aliases_added;
+    total.aliases_overwritten += c.aliases_overwritten;
+    total.aliases_skipped += c.aliases_skipped;
+    if (c.hotkey_applied) total.hotkey_applied = true;
+    if (c.theme_applied) total.theme_applied = true;
+    if (c.browser_applied) total.browser_applied = true;
+    for (auto& msg : w)
+      all_warnings.push_back("[" + batch_labels[static_cast<std::size_t>(batch_no)] + "] " + msg);
+    ++batch_no;
+  }
+
+  auto print_summary = [&] {
+    std::cout << (dry_run ? "Import preview (dry run, nothing written):\n"
+                          : "Import result:\n");
+    for (auto& l : batch_labels) std::cout << "  source: " << l << "\n";
+    std::cout << "  macros: +" << total.macros_added << " new, " << total.macros_overwritten
+              << " overwritten, " << total.macros_skipped << " skipped\n";
+    std::cout << "  quicklinks: +" << total.quicklinks_added << " new, "
+              << total.quicklinks_overwritten << " overwritten, " << total.quicklinks_skipped
+              << " skipped\n";
+    std::cout << "  snippets: +" << total.snippets_added << " new, "
+              << total.snippets_overwritten << " overwritten, " << total.snippets_skipped
+              << " skipped\n";
+    std::cout << "  aliases: +" << total.aliases_added << " new, " << total.aliases_overwritten
+              << " overwritten, " << total.aliases_skipped << " skipped\n";
+    std::cout << "  hotkey: " << (total.hotkey_applied ? "imported" : "unchanged") << "\n";
+    std::cout << "  theme: " << (total.theme_applied ? "imported" : "unchanged") << "\n";
+    std::cout << "  default search: " << (total.browser_applied ? "imported" : "unchanged")
+              << "\n";
+    if (!all_warnings.empty()) {
+      std::cout << "  warnings:\n";
+      for (auto& wmsg : all_warnings) std::cout << "    - " << wmsg << "\n";
+    }
+  };
+
+  if (dry_run) {
+    print_summary();
+    return 0;
+  }
+
+  // Safety backup of the pre-import config.
+  {
+    std::string orig;
+    if (read_file_all(cfg.source_path.empty() ? default_config_path() : cfg.source_path, orig)) {
+      std::string bak = (cfg.source_path.empty() ? default_config_path() : cfg.source_path) +
+                        ".pre-import.bak";
+      create_directories(path_parent(bak));
+      write_file_atomic(bak, orig.data(), orig.size());
+      std::cout << "Backed up existing config to " << bak << "\n";
+    }
+  }
+  std::string dest = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+  std::string err;
+  if (!save_config_file(dest, cfg, err)) {
+    std::cerr << err << "\n";
+    return 1;
+  }
+  cfg_ = cfg;
+  print_summary();
+  std::cout << "Wrote " << dest << "\n";
   return 0;
 }
 

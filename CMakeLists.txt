@@ -84,6 +84,7 @@ set(WILFRED_CORE_SOURCES
   src/ai/vision.cpp
   src/plugin/host.cpp
   src/sync/backup.cpp
+  src/import/import.cpp
   src/query/classify.cpp
   src/query/interpreter.cpp
   src/math/expr.cpp
@@ -170,6 +171,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/plugin/abi.hpp
   include/wilfred/plugin/host.hpp
   include/wilfred/sync/backup.hpp
+  include/wilfred/import/import.hpp
   include/wilfred/query/classify.hpp
   include/wilfred/query/interpreter.hpp
   include/wilfred/math/expr.hpp
@@ -388,6 +390,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_new_features.cpp
   tests/test_assist.cpp
   tests/test_powertools.cpp
+  tests/test_import.cpp
 )
 
 if(WILFRED_BUILD_TESTS)

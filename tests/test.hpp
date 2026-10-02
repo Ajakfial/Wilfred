@@ -50,3 +50,4 @@ void test_extensibility();
 void test_new_features();
 void test_assist();
 void test_powertools();
+void test_import();

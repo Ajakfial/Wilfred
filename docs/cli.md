@@ -19,9 +19,16 @@ wilfred backup [path]    Write config/snippets/index archive
 wilfred restore [path]   Restore from a backup archive
 wilfred sync-push        Upload backup to sync.url
 wilfred sync-pull        Download backup from sync.url
+wilfred import --list    List importable launchers (Alfred, Raycast, PowerToys, ...)
+wilfred import --detect   Scan default locations for other launchers
+wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]
+                         Import hotkey, web searches, snippets, ...
 wilfred history-clear    Erase local search history
 wilfred help             Show the built-in help text
 ```
+
+See [import.md](import.md) for the per-launcher mapping (macOS / Windows /
+Linux) and merge semantics.
 
 Running `wilfred` with an argument that isn't one of the above subcommands
 treats the whole argument list as a search query — `wilfred firefox` is
@@ -137,6 +144,26 @@ See [sync-and-backup.md](sync-and-backup.md) for the archive format and
 transport details. `sync.interval_seconds` (if non-zero) additionally
 enables periodic auto-sync from within the running daemon; these CLI
 commands trigger a sync on demand regardless of that interval.
+
+## `wilfred import ...`
+
+Imports hotkeys, custom web searches (as `macros:` + `quicklinks:`),
+snippets, aliases, theme and the default search template from other
+launchers — Alfred / Raycast (macOS), PowerToys Run / Flow Launcher / Wox /
+Keypirinha / Listary (Windows), Ulauncher / Albert / KRunner / Rofi (Linux).
+See [import.md](import.md) for the full mapping and examples:
+
+```
+wilfred import --list
+wilfred import --detect
+wilfred import auto --dry-run
+wilfred import alfred --from Alfred.alfredpreferences --dry-run
+wilfred import flowlauncher --from Settings.json --overwrite
+```
+
+Default is merge (existing values win); `--overwrite` replaces conflicts.
+`--dry-run` previews without writing; a `.pre-import.bak` backup is written
+before every real import.
 
 ## `wilfred history-clear` / `wilfred clear-history`
 

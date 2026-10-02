@@ -24,12 +24,12 @@ void test_extensibility() {
   s.id = "sig";
   s.trigger = "sig";
   s.title = "Signature";
-  s.body = "Thanks,\nJay";
+  s.body = "Thanks,\nDemo";
   store.upsert(s);
   auto hits = store.match(";sig", cfg);
   CHECK(!hits.empty());
   CHECK_EQ(hits.front().action, ResultAction::Expand);
-  CHECK_EQ(hits.front().payload, "Thanks,\nJay");
+  CHECK_EQ(hits.front().payload, "Thanks,\nDemo");
 
   SearchResult file;
   file.title = "notes.md";
