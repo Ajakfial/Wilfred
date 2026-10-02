@@ -168,6 +168,25 @@ static std::string ax_error(const char* what, AXError err) {
   return buf;
 }
 
+static CGRect main_display_bounds() { return CGDisplayBounds(kCGDirectMainDisplay); }
+
+// Set an AX window frame. Returns true only if both position and size stuck.
+static bool ax_set_frame(AXUIElementRef win, CGFloat x, CGFloat y, CGFloat w, CGFloat h,
+                         AXError& err_out) {
+  CGPoint pos = CGPointMake(x, y);
+  CGSize size = CGSizeMake(w, h);
+  AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
+  AXValueRef size_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
+  AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
+                     : kAXErrorFailure;
+  AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
+                      : kAXErrorFailure;
+  if (pos_v) CFRelease(pos_v);
+  if (size_v) CFRelease(size_v);
+  err_out = pe != kAXErrorSuccess ? pe : se;
+  return pe == kAXErrorSuccess && se == kAXErrorSuccess;
+}
+
 bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& error) {
   if (!id) {
     error = "invalid window";
@@ -192,9 +211,14 @@ bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& erro
         error = ax_error("could not restore window", kAXErrorFailure);
       }
     } else if (op == NativeWindowOp::Maximize) {
-      // Fullscreen is the settable maximized state on macOS.
-      ok = ax_set_bool(win, kAXFullScreenAttribute, true);
-      if (!ok) error = ax_error("could not maximize window", kAXErrorFailure);
+      // No settable zoom attribute exists in the SDK; maximize by filling
+      // the main display, matching what layouts record and restore.
+      ax_set_bool(win, kAXMinimizedAttribute, false);
+      CGRect bounds = main_display_bounds();
+      AXError errc = kAXErrorSuccess;
+      ok = ax_set_frame(win, bounds.origin.x, bounds.origin.y, bounds.size.width,
+                        bounds.size.height, errc);
+      if (!ok) error = ax_error("could not maximize window", errc);
     } else if (op == NativeWindowOp::Close) {
       CFTypeRef btn_ref = nullptr;
       if (AXUIElementCopyAttributeValue(win, kAXCloseButtonAttribute, &btn_ref) ==
@@ -207,22 +231,12 @@ bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& erro
     } else {
       // SnapLeft/SnapRight: half of the main display via position+size.
       ax_set_bool(win, kAXMinimizedAttribute, false);
-      CGRect bounds = CGDisplayBounds(kCGDirectMainDisplay);
+      CGRect bounds = main_display_bounds();
       CGFloat half = bounds.size.width / 2;
       CGFloat x = op == NativeWindowOp::SnapLeft ? bounds.origin.x : bounds.origin.x + half;
-      CGPoint pos = CGPointMake(x, bounds.origin.y);
-      CGSize size = CGSizeMake(half, bounds.size.height);
-      AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
-      AXValueRef size_v =
-          AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
-      AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
-                         : kAXErrorFailure;
-      AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
-                          : kAXErrorFailure;
-      if (pos_v) CFRelease(pos_v);
-      if (size_v) CFRelease(size_v);
-      ok = pe == kAXErrorSuccess && se == kAXErrorSuccess;
-      if (!ok) error = ax_error("could not snap window", pe != kAXErrorSuccess ? pe : se);
+      AXError errc = kAXErrorSuccess;
+      ok = ax_set_frame(win, x, bounds.origin.y, half, bounds.size.height, errc);
+      if (!ok) error = ax_error("could not snap window", errc);
     }
     CFRelease(win);
     return ok;
@@ -254,14 +268,13 @@ bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& e
       rect.y = static_cast<int>(pos.y);
       rect.w = static_cast<int>(size.width);
       rect.h = static_cast<int>(size.height);
-      CFTypeRef zoom_ref = nullptr;
-      rect.maximized = false;
-      if (AXUIElementCopyAttributeValue(win, kAXFullScreenAttribute, &zoom_ref) ==
-                  kAXErrorSuccess &&
-          zoom_ref) {
-        rect.maximized = CFBooleanGetValue((CFBooleanRef)zoom_ref);
-        CFRelease(zoom_ref);
-      }
+      // No zoomed/fullscreen attribute exists in the SDK; treat a window
+      // filling the main display as maximized.
+      CGRect bounds = main_display_bounds();
+      rect.maximized = rect.x == static_cast<int>(bounds.origin.x) &&
+                       rect.y == static_cast<int>(bounds.origin.y) &&
+                       rect.w == static_cast<int>(bounds.size.width) &&
+                       rect.h == static_cast<int>(bounds.size.height);
     } else {
       error = ax_error("could not read window rect", kAXErrorFailure);
       ok = false;
