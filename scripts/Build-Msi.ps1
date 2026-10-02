@@ -82,7 +82,7 @@ foreach ($ref in @('ProductComponents', 'OverlayFiles')) {
     $hit = Select-Xml -Xml $xml -XPath "//wix:ComponentGroupRef[@Id='$ref']" -Namespace $ns
     if (-not $hit) { throw "Template missing ComponentGroupRef $ref." }
 }
-foreach ($id in @('WilfredExe', 'WilfredDocs', 'WilfredPath', 'WilfredMenuShortcuts')) {
+foreach ($id in @('WilfredExe', 'WilfredReadme', 'WilfredDefaults', 'WilfredPath', 'WilfredMenuShortcuts')) {
     $hit = Select-Xml -Xml $xml -XPath "//wix:Component[@Id='$id']" -Namespace $ns
     if (-not $hit) { throw "Template missing Component $id." }
 }

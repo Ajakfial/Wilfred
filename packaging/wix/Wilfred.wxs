@@ -52,7 +52,8 @@
 
     <ComponentGroup Id="ProductComponents">
       <ComponentRef Id="WilfredExe" />
-      <ComponentRef Id="WilfredDocs" />
+      <ComponentRef Id="WilfredReadme" />
+      <ComponentRef Id="WilfredDefaults" />
       <ComponentRef Id="WilfredPath" />
       <ComponentRef Id="WilfredMenuShortcuts" />
     </ComponentGroup>
@@ -68,9 +69,12 @@
             <File Id="WilfredExe" Source="$(var.SourceDir)\wilfred.exe" KeyPath="yes" />
           </Component>
 
-          <Component Id="WilfredDocs" Guid="*">
-            <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" />
-            <File Id="DefaultYml" Source="$(var.SourceDir)\wilfred.default.yml" />
+          <Component Id="WilfredReadme" Guid="*">
+            <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" KeyPath="yes" />
+          </Component>
+
+          <Component Id="WilfredDefaults" Guid="*">
+            <File Id="DefaultYml" Source="$(var.SourceDir)\wilfred.default.yml" KeyPath="yes" />
           </Component>
 
           <Component Id="WilfredPath" Guid="*">
