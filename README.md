@@ -52,10 +52,11 @@ single summonable search bar.
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
+* Import from other launchers (`wilfred import --list/--detect/auto --dry-run/--overwrite`): Alfred, Raycast, PowerToys Run, Flow Launcher/Wox, Keypirinha, Listary, Ulauncher, Albert, KRunner, Rofi — see `docs/import.md`
 * YAML configuration with validation, `Did you mean` hints, and human-readable errors
 * Global hotkey: `Ctrl+Alt+W` (Windows/Linux), `⌘+Alt+W` (macOS), configurable
 * Local search history (optional; disable or `wilfred history-clear`)
-* Overlay UI plus CLI (`search`, `launch`, `index`, `status`, backup/sync)
+* Overlay UI plus CLI (`search`, `launch`, `index`, `status`, backup/sync, `import`)
 
 
 
@@ -97,6 +98,12 @@ wilfred index
 
 # Statistics
 wilfred status
+
+# Import settings from another launcher
+wilfred import --list
+wilfred import --detect
+wilfred import auto --dry-run
+wilfred import alfred --from Alfred.alfredpreferences --dry-run
 ```
 
 User config is created on first run:
@@ -109,6 +116,22 @@ User config is created on first run:
 
 See `config/wilfred.default.yml` for the full schema (index roots, excludes,
 system directories, ranking weights, aliases, hotkey, history, browser).
+
+## Migrating from another launcher
+
+`wilfred import` brings hotkeys, custom web searches (as `macros:` +
+`quicklinks:`), snippets, aliases, theme, and the default search template
+into `wilfred.yml`. Merging is the default; `--overwrite` replaces
+conflicts, `--dry-run` previews, and a `.pre-import.bak` backup is written
+before every real import.
+
+| OS | Supported sources |
+|---|---|
+| macOS | Alfred (`Alfred.alfredpreferences` bundle), Raycast (quicklinks JSON) |
+| Windows | PowerToys Run, Flow Launcher, Wox, Keypirinha, Listary |
+| Linux | Ulauncher, Albert, KRunner / KDE, Rofi |
+
+See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 
 ## Query language (examples)
 
@@ -165,6 +188,7 @@ Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 * `apps` / `browser` / `history` / `hotkey` / `ipc` / `ui` / `service`
 * `plugin` — native `.dll`/`.so`/`.dylib` ABI and stdio plugins
 * `sync` — local backup archives and optional remote push/pull
+* `import` — cross-OS launcher settings importer (hotkeys, searches, snippets)
 * `providers` — registry for additional search backends
 
 ## Tests and benchmarks
