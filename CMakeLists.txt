@@ -69,6 +69,7 @@ set(WILFRED_CORE_SOURCES
   src/search/nettools.cpp
   src/search/media.cpp
   src/search/mpris_dbus.cpp
+  src/search/transcribe.cpp
   src/search/disktools.cpp
   src/search/workflows.cpp
   src/search/glyphs.cpp
@@ -151,6 +152,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/nettools.hpp
   include/wilfred/search/media.hpp
   include/wilfred/search/mpris_dbus.hpp
+  include/wilfred/search/transcribe.hpp
   include/wilfred/search/disktools.hpp
   include/wilfred/search/workflows.hpp
   include/wilfred/search/glyphs.hpp

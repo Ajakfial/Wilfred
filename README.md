@@ -38,7 +38,7 @@ single summonable search bar.
 * Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config) + parameterized quicklinks (`quicklinks:` with `{1}`/`{*}`/`{query}`)
 * Per-app extra context actions (`app_actions:`) on top of the built-in file actions
 * Large-file finder + duplicate candidates from the index (`large`, `dupes`)
-* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`)
+* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
@@ -138,6 +138,7 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `media play` / `media next` / `media mute` | Native media keys + volume (Win media keys; mac HID + Music/Spotify/VLC; Linux native MPRIS D-Bus + wpctl/pactl/amixer, playerctl optional) |
 | `ping example.com` / `dns example.com` / `myip` | Ping, DNS lookup, public IP |
 | `large 10` / `dupes` | Biggest files + duplicate candidates from the index |
+| `transcribe talk.mp3` | Speech-to-text for mp3/mp4 audio (needs whisper CLI) |
 | `clips url` / `clips code` | Clipboard history filtered by type (url/email/path/code/ip) |
 | `workflow review` / `run review` | Named multi-step workflows (`workflows` lists) |
 | `ql docs hello` / `ticket:ABC-123` | Parameterized quicklinks (`{1}` `{*}` `{query}`) |

@@ -324,8 +324,9 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "macros",   "scopes",  "custom_metadata", "history",
                                           "clipboard", "hotkey", "browser", "logging",
                                           "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "api",     "sync",
-                                          "snippets", "workflows", "quicklinks", "app_actions"};
+                                          "ai",       "sources", "transcription", "api",
+                                          "sync",     "snippets", "workflows", "quicklinks",
+                                          "app_actions"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
       if (!err.message.empty()) {
         err.message += " (in " +
@@ -767,6 +768,27 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.sources.max_results = static_cast<int>(so->integer("max_results", 8));
     if (c.sources.max_results < 1 || c.sources.max_results > 50) {
       err.message = "sources.max_results must be between 1 and 50";
+      return false;
+    }
+  }
+
+  if (auto* tr = root.get("transcription")) {
+    if (!tr->is_map()) {
+      err.message = "transcription: must be a mapping";
+      return false;
+    }
+    std::vector<std::string> valid = {"enabled", "binary", "model", "language", "save_txt"};
+    if (!check_unknown_keys(*tr, valid, "transcription", err)) return false;
+    if (!expect_bool(tr, "enabled", "transcription", err) ||
+        !expect_bool(tr, "save_txt", "transcription", err))
+      return false;
+    c.transcription.enabled = tr->boolean("enabled", true);
+    c.transcription.binary = tr->str("binary", "");
+    c.transcription.model = tr->str("model", "");
+    c.transcription.language = tr->str("language", "auto");
+    c.transcription.save_txt = tr->boolean("save_txt", true);
+    if (c.transcription.language.size() > 16) {
+      err.message = "transcription.language must be a short language tag like en or auto";
       return false;
     }
   }

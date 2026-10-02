@@ -1,6 +1,7 @@
 #include "test.hpp"
 
 #include "wilfred/config/config.hpp"
+#include "wilfred/core/mmap.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/math/expr.hpp"
 #include "wilfred/query/classify.hpp"
@@ -14,6 +15,7 @@
 #include "wilfred/search/nettools.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/timers.hpp"
+#include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 
 void test_powertools() {
@@ -367,6 +369,119 @@ app_actions:
       // Either we got players, or err explains why (no bus / no players /
       // Linux-only stub on Win/Mac). Just require no crash.
       CHECK(true);
+    }
+  }
+
+  // --- Audio transcription: pure helpers + safe error paths ---
+  // Never runs a real whisper binary here (slow, needs models).
+  {
+    CHECK(is_audio_extension("talk.MP3"));
+    CHECK(is_audio_extension("clip.mp4"));
+    CHECK(is_audio_extension("voice.wav"));
+    CHECK(is_audio_extension("note.m4a"));
+    CHECK(!is_audio_extension("photo.png"));
+    CHECK(!is_audio_extension("doc.txt"));
+    CHECK(!is_audio_extension("movie.mp4.bak"));
+    CHECK(is_transcribe_candidate("a.ogg"));
+    CHECK(!is_transcribe_candidate("a.txt"));
+
+    CHECK(parse_mini_intent("transcribe song.mp3").kind == MiniKind::Transcribe);
+    CHECK(parse_mini_intent("stt lecture").kind == MiniKind::Transcribe);
+    CHECK(parse_mini_intent("transcription").kind == MiniKind::Transcribe);
+
+    auto cmd = build_whisper_command("whisper-cli", "/m/ggml.bin", "/a/in.wav",
+                                     "/tmp/w-out", "auto");
+    CHECK(cmd.find("whisper-cli") != std::string::npos);
+    CHECK(cmd.find("-m") != std::string::npos);
+    CHECK(cmd.find("-otxt") != std::string::npos);
+    CHECK(cmd.find("-l") == std::string::npos);  // auto means no flag
+    auto cmd_en = build_whisper_command("whisper", "/m/g.bin", "/a.wav", "/o", "en");
+    CHECK(cmd_en.find("-l en") != std::string::npos);
+    auto ff = build_ffmpeg_command("/tmp/t.wav", "/v/clip.mp4");
+    CHECK(ff.find("ffmpeg") != std::string::npos);
+    CHECK(ff.find("16000") != std::string::npos);
+    CHECK(ff.find("pcm_s16le") != std::string::npos);
+    CHECK(!transcribe_install_hint("whisper").empty());
+    CHECK(!transcribe_install_hint("ffmpeg").empty());
+    CHECK(!transcribe_install_hint("model").empty());
+
+    // Config: explicit binary wins; missing model file resolves empty.
+    {
+      Config cfg;
+      cfg.transcription.binary = "definitely-not-a-real-binary-xyz";
+      CHECK_EQ(resolve_whisper_binary(cfg), "definitely-not-a-real-binary-xyz");
+      cfg.transcription.model = "definitely-not-a-real-model-xyz.bin";
+      CHECK(resolve_whisper_model(cfg).empty());
+      const std::string probe = "transcribe-test-model.bin";
+      CHECK(write_file_atomic(probe, "x", 1));
+      cfg.transcription.model = probe;
+      CHECK_EQ(resolve_whisper_model(cfg), probe);
+      remove_file(probe);
+    }
+    {
+      Config cfg;
+      ConfigError err;
+      CHECK(load_config_text("transcription:\n  enabled: false\n  language: en\n", cfg, err));
+      CHECK(!cfg.transcription.enabled);
+      CHECK_EQ(cfg.transcription.language, "en");
+      Config bad;
+      CHECK(!load_config_text("transcription:\n  enabled: [unclosed\n", bad, err));
+      CHECK(!load_config_text("transcription:\n  bogus_key: 1\n", bad, err));
+      CHECK(err.message.find("transcription") != std::string::npos);
+    }
+
+    // Safe failures: no side effects, no binaries executed.
+    {
+      Config cfg;
+      std::string text, err;
+      CHECK(!transcribe_audio_file("nope.mp3", cfg, text, err));
+      CHECK(!err.empty());
+      cfg.transcription.enabled = false;
+      CHECK(!transcribe_audio_file("nope.mp3", cfg, text, err));
+      CHECK(err.find("disabled") != std::string::npos);
+      CHECK(!transcribe_audio_file("nope.txt", cfg, text, err));
+    }
+    // Mini cards without running anything (bogus binary => usage card).
+    {
+      Config cfg;
+      cfg.transcription.binary = "definitely-not-a-real-binary-xyz";
+      const std::string probe = "transcribe-test-model2.bin";
+      CHECK(write_file_atomic(probe, "x", 1));
+      cfg.transcription.model = probe;
+      auto usage = mini_results("transcribe", cfg, "");
+      CHECK(!usage.empty());
+      auto missing = mini_results("transcribe C:/nope/missing-song.mp3", cfg, "");
+      CHECK(!missing.empty());
+      remove_file(probe);
+      Config off;
+      off.transcription.enabled = false;
+      auto dis = mini_results("transcribe x.mp3", off, "");
+      CHECK(!dis.empty());
+    }
+    // Sidecar round-trip.
+    {
+      const std::string src = "transcribe-sidecar-test.mp3";
+      CHECK(write_file_atomic(src, "x", 1));
+      std::string err, back;
+      CHECK(write_transcript_sidecar(src, "hello world", err));
+      CHECK(read_file_all(src + ".txt", back));
+      CHECK_EQ(back, "hello world");
+      remove_file(src);
+      remove_file(src + ".txt");
+    }
+    // Execute path fails cleanly on missing files (never reaches whisper).
+    {
+      Config cfg;
+      SearchResult r;
+      r.title = "Transcribe missing-song.mp3";
+      r.path = "C:/nope/missing-song.mp3";
+      r.payload = r.path;
+      r.category = "transcribe";
+      r.action = ResultAction::Copy;
+      std::string err;
+      CHECK(!execute_result_action(r, cfg, "transcribe_run"));
+      CHECK(!execute_result_action(r, cfg, ""));
+      (void)err;
     }
   }
 }

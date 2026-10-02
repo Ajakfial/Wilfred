@@ -32,6 +32,7 @@ export const QUERY_EXAMPLES: QueryExample[] = [
   { query: 'large 10', meaning: 'Biggest files in the index', kind: 'mini' },
   { query: 'dupes', meaning: 'Duplicate file candidates', kind: 'mini' },
   { query: 'clips url', meaning: 'Clipboard history filtered by type', kind: 'mini' },
+  { query: 'transcribe talk.mp3', meaning: 'Speech-to-text for audio files', kind: 'mini' },
   { query: 'workflow review', meaning: 'Run a named multi-step workflow', kind: 'mini' },
   { query: 'ql docs hello', meaning: 'Parameterized quicklink', kind: 'mini' },
   { query: '!yt cats', meaning: 'Search macro (YouTube)', kind: 'macro' },

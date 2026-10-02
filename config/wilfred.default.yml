@@ -198,6 +198,26 @@ sources:
   ocr_languages: "eng"
   max_results: 8
 
+# On-demand speech-to-text for audio files (`transcribe ...`).
+# Needs the `whisper-cli` binary (whisper.cpp) on PATH; `ffmpeg` is only
+# needed to extract audio from containers (mp4/m4a/...). WAV files need
+# neither ffmpeg nor conversion.
+transcription:
+  enabled: true
+  # Explicit whisper binary path or command name (empty probes PATH for
+  # `whisper-cli`, then `whisper`).
+  binary: ""
+  # Explicit whisper model file (.bin). Empty probes <data>/models for a
+  # ggml model. Download one, e.g. ggml-base.en.bin, from
+  # huggingface.co/ggerganov/whisper.cpp.
+  model: ""
+  # Language hint for whisper (`en`, `de`, ...). `auto` leaves detection
+  # to the model.
+  language: "auto"
+  # Write `<audio>.txt` next to the source on success (transcript also
+  # goes to the clipboard).
+  save_txt: true
+
 api:
   enabled: false
   bind: 127.0.0.1

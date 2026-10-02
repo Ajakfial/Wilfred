@@ -14,6 +14,7 @@
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
 #include "wilfred/search/timers.hpp"
+#include "wilfred/search/transcribe.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -183,6 +184,7 @@ std::string action_label_for(const std::string& id) {
   if (id == "new_folder") return "New folder here";
   if (id == "kill_process") return "Kill process";
   if (id == "timer_stop") return "Stop timer";
+  if (id == "transcribe_run") return "Transcribe";
   return id;
 }
 
@@ -195,7 +197,7 @@ bool is_file_like(const SearchResult& r) {
       r.category == "todo" || r.category == "kill" || r.category == "media" ||
       r.category == "workflow" || r.category == "quicklink" || r.category == "process" ||
       r.category == "ping" || r.category == "dns" || r.category == "myip" ||
-      r.category == "dupe" || r.category == "large")
+      r.category == "dupe" || r.category == "large" || r.category == "transcribe")
     return false;
   return true;
 }
@@ -269,6 +271,7 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id.rfind("open_with:", 0) == 0) return true;
   if (action_id.rfind("workflow:", 0) == 0) return true;
   if (action_id == "kill_process" || action_id.rfind("media:", 0) == 0) return true;
+  if (action_id == "transcribe_run") return true;
   return false;
 }
 
@@ -320,6 +323,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       // When the empty action comes from overlay Enter on a kill card with an
       // explicit kill action attached, prefer killing.
       if (r.category == "kill") id = "kill_process";
+    } else if (r.category == "transcribe") {
+      id = "transcribe_run";
     } else if (r.category == "media" && r.payload.rfind("media:", 0) == 0) {
       id = r.payload.substr(6);
       if (id.empty()) id = "copy_text";
@@ -515,6 +520,31 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     if (!native_kill_process(pid, err)) {
       log_warn("kill", err.empty() ? "kill failed" : err);
       return false;
+    }
+    return true;
+  }
+  // Audio transcription: Enter on a transcribe card runs it; the transcript
+  // lands on the clipboard (plus an optional sidecar) since the overlay has
+  // no channel for long async text.
+  if (id == "transcribe_run" || (r.category == "transcribe" && id == "open")) {
+    auto audio = r.path.empty() ? r.payload : r.path;
+    if (audio.empty() || !is_transcribe_candidate(audio)) {
+      log_warn("transcribe", "no audio file to transcribe");
+      return false;
+    }
+    std::string text, err;
+    if (!transcribe_audio_file(audio, cfg, text, err)) {
+      log_warn("transcribe", err.empty() ? "transcription failed" : err);
+      return false;
+    }
+    if (!write_clipboard(text)) {
+      log_warn("transcribe", "transcribed but clipboard write failed");
+      return false;
+    }
+    if (cfg.transcription.save_txt) {
+      std::string save_err;
+      if (!write_transcript_sidecar(audio, text, save_err))
+        log_warn("transcribe", save_err.empty() ? "sidecar save failed" : save_err);
     }
     return true;
   }

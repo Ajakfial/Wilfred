@@ -64,6 +64,7 @@ enum class MiniKind {
   Large,
   Workflow,
   Quicklink,
+  Transcribe,
 };
 
 struct MiniIntent {

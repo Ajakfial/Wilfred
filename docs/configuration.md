@@ -273,6 +273,32 @@ Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
 | `ocr_languages` | `eng` | Tesseract `-l` value |
 | `max_results` | `8` | Cap per source per query |
 
+## `transcription:` — speech-to-text for audio
+
+On-demand transcription of MP3s and MP4 audio (`transcribe <file>` in the
+overlay). Same philosophy as OCR: the core stays dependency-free and shells
+out to optional CLIs — `whisper.cpp` (`whisper-cli`) for recognition, plus
+`ffmpeg` only to extract audio from containers (mp4/m4a/...). WAV files need
+neither conversion nor ffmpeg. Nothing runs at query time: the mini resolves
+the file and Enter transcribes, delivering the transcript to the clipboard
+(plus an optional `<audio>.txt` sidecar, which then gets content-indexed on
+rescan).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Whether `transcribe ...` queries run at all |
+| `binary` | `""` | Explicit whisper binary path or command name; empty probes PATH for `whisper-cli`, then `whisper` |
+| `model` | `""` | Explicit whisper model file (`.bin`); empty probes `<data>/models` for a ggml model |
+| `language` | `"auto"` | Language hint passed as whisper `-l` (`en`, `de`, ...); `auto` leaves detection to the model |
+| `save_txt` | `true` | Write `<audio>.txt` next to the source on success |
+
+Setup per OS: Windows — a `whisper.cpp` release build plus `winget install
+ffmpeg`; macOS — `brew install whisper-cpp ffmpeg`; Linux — build
+[whisper.cpp](https://github.com/ggerganov/whisper.cpp) plus distro
+`ffmpeg`. Models (e.g. `ggml-base.en.bin`) come from
+`huggingface.co/ggerganov/whisper.cpp`. Missing pieces surface as cards
+with the exact install step instead of failing silently.
+
 ## `api:` — optional local HTTP API
 
 | Key | Default | Meaning |

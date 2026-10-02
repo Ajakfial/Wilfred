@@ -1,6 +1,8 @@
 #include "wilfred/search/minis.hpp"
 
 #include "wilfred/browser/library.hpp"
+#include "wilfred/core/mmap.hpp"
+#include "wilfred/core/paths.hpp"
 #include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
@@ -20,6 +22,7 @@
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
 #include "wilfred/search/timers.hpp"
+#include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 
 #include <algorithm>
@@ -1179,6 +1182,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "ql" || key == "quicklink" || key == "quicklinks" || key == "links" ||
            key == "link")
     set(MiniKind::Quicklink, false);
+  else if (key == "transcribe" || key == "transcribes" || key == "transcription" ||
+           key == "stt" || key == "speech-to-text" || key == "speech_to_text")
+    set(MiniKind::Transcribe, false);
   return it;
 }
 
@@ -2469,6 +2475,67 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return quicklink_results(m, clipboard);
   }
 
+  if (intent.kind == MiniKind::Transcribe) {
+    if (!cfg.transcription.enabled) {
+      out.push_back(card("Transcription disabled",
+                         "Set transcription.enabled: true in wilfred.yml", "", "transcribe", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    // Setup state first: without a whisper binary/model there is nothing to run.
+    auto binary = resolve_whisper_binary(cfg);
+    auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
+    if (binary.empty() || model.empty()) {
+      std::string what = binary.empty() ? transcribe_install_hint("whisper")
+                                        : transcribe_install_hint("model");
+      out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model", what, "",
+                         "transcribe", 9000, ResultAction::None));
+      return out;
+    }
+    auto target = trim_sv(intent.remainder);
+    if (target.size() >= 2 &&
+        ((target.front() == '"' && target.back() == '"') ||
+         (target.front() == '\'' && target.back() == '\'')))
+      target = target.substr(1, target.size() - 2);
+    if (target.empty()) {
+      out.push_back(card("Transcribe audio to text",
+                         "Type transcribe <file.mp3|file.mp4> · enter transcribes", "", "transcribe",
+                         8000, ResultAction::None));
+      return out;
+    }
+    std::vector<std::string> paths;
+    if (file_exists(target) && is_transcribe_candidate(target)) {
+      paths.push_back(target);
+    } else if (index) {
+      paths = find_audio_in_index(*index, target, 8);
+    }
+    if (paths.empty()) {
+      if (file_exists(target))
+        out.push_back(card("Not an audio file",
+                           "Wilfred transcribes mp3, wav, m4a, mp4, ogg, flac, opus, webm, aac, wma",
+                           "", "transcribe", 8000, ResultAction::None));
+      else
+        out.push_back(card("No audio found", "Try an absolute path or an indexed filename", "",
+                           "transcribe", 8000, ResultAction::None));
+      return out;
+    }
+    std::string dest_note =
+        cfg.transcription.save_txt ? " · transcript to clipboard + .txt" : " · transcript to clipboard";
+    int n = 0;
+    for (auto& p : paths) {
+      SearchResult r =
+          card("Transcribe " + path_filename(p), "Enter transcribes" + dest_note, p, "transcribe",
+               10000 - n * 10, ResultAction::Copy);
+      r.category = "transcribe";
+      r.actions.clear();
+      r.actions.push_back({"transcribe_run", "Transcribe"});
+      r.actions.push_back({"copy_path", "Copy path"});
+      out.push_back(std::move(r));
+      ++n;
+    }
+    return out;
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
                                   "time [zone]  ·  clock and date",
@@ -2487,6 +2554,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "process <name> · kill <pid|name>  ·  processes",
                                   "media play · next · mute · vol up  ·  playback",
                                   "ping <host> · dns <host> · myip  ·  network",
+                                  "transcribe <file>  ·  mp3/mp4 audio to text",
                                   "windows [name]  ·  switch to an open window",
                                   "screenshot [fullscreen|window|region]",
                                   "emoji [name]  ·  emoji picker",

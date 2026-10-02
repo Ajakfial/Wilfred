@@ -185,6 +185,7 @@ synthetic result card instead of searching the index
 | `myip` | `publicip`, `ip public` | Public IP (via api.ipify.org) + local IP |
 | `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
 | `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
+| `transcribe <file>` | `stt`, `transcription` | Speech-to-text for mp3/wav/m4a/mp4 via whisper (enter transcribes) |
 | `workflow [name]` | `workflows`, `flow`, `run` | Multi-step workflows (`workflows` lists; `run <name>` runs) |
 | `ql <name> <args>` | `quicklink`, `link` | Parameterized quicklinks (`{query}` `{1}` `{*}` `{clipboard}`) |
 | `lock` | `lockscreen` | Lock the session (enter runs) |

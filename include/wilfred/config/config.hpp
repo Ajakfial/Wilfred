@@ -173,6 +173,25 @@ struct Config {
     int max_results{8};
   } sources;
 
+  struct Transcription {
+    // On-demand speech-to-text for audio files (`transcribe ...`).
+    // Optional CLIs like OCR: whisper.cpp (`whisper-cli`) for recognition,
+    // ffmpeg only when container audio (mp4/m4a/...) needs extracting.
+    bool enabled{true};
+    // Explicit whisper binary path or command name. Empty means probe PATH
+    // for `whisper-cli`, then `whisper`.
+    std::string binary;
+    // Explicit whisper model file (.bin). Empty means probe
+    // <data>/models for a ggml model.
+    std::string model;
+    // BCP-47-ish language hint for whisper (`en`, `de`, ...).
+    // `auto` (default) leaves detection to the model.
+    std::string language{"auto"};
+    // Write `<audio>.txt` next to the source on success, in addition to
+    // copying the transcript to the clipboard.
+    bool save_txt{true};
+  } transcription;
+
   struct Api {
     bool enabled{false};
     std::string bind{"127.0.0.1"};
