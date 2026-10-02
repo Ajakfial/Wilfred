@@ -53,6 +53,12 @@ bool native_focus_window(std::uint64_t id);
 // lock | sleep | shutdown | restart | logout | empty_trash
 bool native_system_action(const std::string& id);
 
+// Process control + media keys (search/media.hpp re-exports these so minis and
+// actions can share one implementation).
+bool native_kill_process(std::uint32_t pid, std::string& error);
+// play | pause | playpause | next | prev | stop | mute | volup | voldn
+bool native_media_action(const std::string& id, std::string& error);
+
 enum class NativeScreenshotMode { Fullscreen, Window, Region };
 
 // Captures a screenshot. On success returns true; out_path is the saved

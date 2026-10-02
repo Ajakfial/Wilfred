@@ -24,6 +24,285 @@ static bool parse_level_ok(const std::string& s) {
   return l == "error" || l == "warn" || l == "info" || l == "debug";
 }
 
+namespace {
+
+// Levenshtein distance for "did you mean" suggestions. Case-insensitive;
+// inputs are already lowercased by callers in most cases.
+int edit_distance(const std::string& a, const std::string& b) {
+  std::vector<int> prev(b.size() + 1), cur(b.size() + 1);
+  for (std::size_t j = 0; j <= b.size(); ++j) prev[j] = static_cast<int>(j);
+  for (std::size_t i = 1; i <= a.size(); ++i) {
+    cur[0] = static_cast<int>(i);
+    for (std::size_t j = 1; j <= b.size(); ++j) {
+      int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+      int del = prev[j] + 1;
+      int ins = cur[j - 1] + 1;
+      int sub = prev[j - 1] + cost;
+      int best = del < ins ? del : ins;
+      cur[j] = best < sub ? best : sub;
+    }
+    prev.swap(cur);
+  }
+  return prev[b.size()];
+}
+
+std::string suggest_key(const std::string& bad, const std::vector<std::string>& valid) {
+  std::string best;
+  int best_d = 100;
+  auto lower_bad = to_lower_utf8(bad);
+  for (auto& v : valid) {
+    int d = edit_distance(lower_bad, to_lower_utf8(v));
+    // Allow longer keys a bit more slack.
+    int threshold = static_cast<int>(std::max<std::size_t>(2, v.size() / 3));
+    if (d < best_d && d <= threshold) {
+      best_d = d;
+      best = v;
+    }
+  }
+  return best;
+}
+
+std::string join_keys(const std::vector<std::string>& keys) {
+  std::string o;
+  for (std::size_t i = 0; i < keys.size(); ++i) {
+    if (i) o += ", ";
+    o += keys[i];
+  }
+  return o;
+}
+
+bool check_unknown_keys(const YamlValue& map, const std::vector<std::string>& valid,
+                        const std::string& section, ConfigError& err) {
+  if (!map.is_map()) return true;
+  for (auto& [k, v] : map.as_map()) {
+    (void)v;
+    bool known = false;
+    for (auto& ok : valid)
+      if (ok == k) {
+        known = true;
+        break;
+      }
+    if (!known) {
+      auto sug = suggest_key(k, valid);
+      err.message = "Unknown key '" + k + "' in '" + section + ":'";
+      if (!sug.empty()) err.message += ". Did you mean '" + sug + "'?";
+      err.message += " Valid keys are: " + join_keys(valid) + ".";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool is_bool_string(const std::string& s) {
+  auto l = to_lower_utf8(s);
+  // Trim whitespace.
+  std::string t;
+  for (char c : l)
+    if (c != ' ' && c != '\t' && c != '\n' && c != '\r') t.push_back(c);
+  return t == "true" || t == "false" || t == "yes" || t == "no" || t == "on" || t == "off" ||
+         t == "1" || t == "0" || t == "y" || t == "n";
+}
+
+bool is_int_string(const std::string& s) {
+  std::size_t i = 0;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
+  bool any = false;
+  while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
+    ++i;
+    any = true;
+  }
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  return any && i == s.size();
+}
+
+bool is_number_string(const std::string& s) {
+  std::size_t i = 0;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
+  bool any = false;
+  while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
+    ++i;
+    any = true;
+  }
+  if (i < s.size() && s[i] == '.') {
+    ++i;
+    while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
+      ++i;
+      any = true;
+    }
+  }
+  if (i < s.size() && (s[i] == 'e' || s[i] == 'E')) {
+    ++i;
+    if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
+    bool exp = false;
+    while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
+      ++i;
+      exp = true;
+    }
+    if (!exp) return false;
+  }
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  return any && i == s.size();
+}
+
+// Friendly type check: when a key is present, verify the raw YAML scalar
+// looks like the expected type. The lenient getters (boolean/integer/number)
+// silently fall back to defaults; this surfaces "expected integer, got 'abc'"
+// with an example instead.
+bool expect_bool(const YamlValue* section, const char* key, const std::string& sect,
+                 ConfigError& err) {
+  if (!section) return true;
+  auto* v = section->get(key);
+  if (!v || !v->is_string()) {
+    if (v && !v->is_string()) {
+      err.message = std::string("'") + sect + "." + key +
+                    "' must be true/false. Example: " + key + ": true";
+      return false;
+    }
+    return true;
+  }
+  if (!is_bool_string(v->as_string())) {
+    err.message = std::string("'") + sect + "." + key + "' must be true/false, got '" +
+                  v->as_string() + "'. Example: " + key + ": true";
+    return false;
+  }
+  return true;
+}
+
+bool expect_int(const YamlValue* section, const char* key, const std::string& sect,
+                ConfigError& err) {
+  if (!section) return true;
+  auto* v = section->get(key);
+  if (!v || !v->is_string()) {
+    if (v && !v->is_string()) {
+      err.message = std::string("'") + sect + "." + key +
+                    "' must be an integer. Example: " + key + ": 40";
+      return false;
+    }
+    return true;
+  }
+  if (!is_int_string(v->as_string())) {
+    err.message = std::string("'") + sect + "." + key + "' must be an integer, got '" +
+                  v->as_string() + "'. Example: " + key + ": 40";
+    return false;
+  }
+  return true;
+}
+
+bool expect_number(const YamlValue* section, const char* key, const std::string& sect,
+                   ConfigError& err) {
+  if (!section) return true;
+  auto* v = section->get(key);
+  if (!v || !v->is_string()) {
+    if (v && !v->is_string()) {
+      err.message = std::string("'") + sect + "." + key +
+                    "' must be a number. Example: " + key + ": 0.5";
+      return false;
+    }
+    return true;
+  }
+  if (!is_number_string(v->as_string())) {
+    err.message = std::string("'") + sect + "." + key + "' must be a number, got '" +
+                  v->as_string() + "'. Example: " + key + ": 0.5";
+    return false;
+  }
+  return true;
+}
+
+std::string trim_flow(std::string s) {
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.pop_back();
+  return s;
+}
+
+// The minimal YAML parser stores flow collections (`[a, b]`) as plain strings.
+// Expand them so `workflows:` / `app_actions:` accept both block lists:
+//   review:
+//     - copy_path
+//     - reveal
+// and flow / '+' forms:
+//   review: [copy_path, reveal]
+//   ship: "copy_path+reveal"
+std::vector<std::string> split_flow_or_plus(const std::string& s) {
+  std::string t = trim_flow(s);
+  std::vector<std::string> out;
+  if (t.size() >= 2 && t.front() == '[' && t.back() == ']') {
+    std::string inner = t.substr(1, t.size() - 2);
+    std::string cur;
+    for (char ch : inner + ",") {
+      if (ch == ',') {
+        auto item = trim_flow(cur);
+        // Strip surrounding quotes.
+        if (item.size() >= 2 &&
+            ((item.front() == '"' && item.back() == '"') ||
+             (item.front() == '\'' && item.back() == '\'')))
+          item = item.substr(1, item.size() - 2);
+        item = trim_flow(item);
+        if (!item.empty()) {
+          // Flow items may themselves be '+' chains.
+          std::string sub;
+          for (char c2 : item + "+") {
+            if (c2 == '+') {
+              auto st = trim_flow(sub);
+              if (!st.empty()) out.push_back(st);
+              sub.clear();
+            } else {
+              sub.push_back(c2);
+            }
+          }
+        }
+        cur.clear();
+      } else {
+        cur.push_back(ch);
+      }
+    }
+    return out;
+  }
+  std::string cur;
+  for (char ch : t + "+") {
+    if (ch == '+') {
+      auto item = trim_flow(cur);
+      if (!item.empty()) out.push_back(item);
+      cur.clear();
+    } else {
+      cur.push_back(ch);
+    }
+  }
+  return out;
+}
+
+bool is_valid_action_step(const std::string& s) {
+  if (s.empty() || s.size() > 128) return false;
+  bool has_alpha = false;
+  for (char c : s) {
+    bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+              c == '_' || c == ':' || c == '-' || c == '+' || c == '.' || c == '/';
+    if (!ok) return false;
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') has_alpha = true;
+  }
+  if (!has_alpha) return false;
+  static const char* known[] = {"open",        "reveal",       "copy_path",  "copy_name",
+                                "copy_posix",  "copy_file_uri", "copy_wsl",   "copy_text",
+                                "copy",        "hash_file",    "compress_zip", "open_terminal",
+                                "open_editor", "new_file",     "new_folder", "kill_process",
+                                "timer_stop",  "paste",        "expand",     "clip_pin",
+                                "clip_unpin",  "clip_clear",   "copy_name",  nullptr};
+  std::string low;
+  for (char c : s) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+  // Allow prefixed families.
+  if (low.rfind("open_with:", 0) == 0 || low.rfind("workflow:", 0) == 0 ||
+      low.rfind("media:", 0) == 0 || low.rfind("note_delete:", 0) == 0 ||
+      low.rfind("todo_done:", 0) == 0 || low.rfind("todo_undo:", 0) == 0 ||
+      low.rfind("todo_delete:", 0) == 0)
+    return true;
+  for (auto** p = known; *p; ++p)
+    if (low == *p) return true;
+  return false;
+}
+
+}  // namespace
+
 bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   err = {};
   YamlValue root;
@@ -40,11 +319,50 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
 
   Config c;
 
-  if (auto* search = root.get("search")) {
-    if (!search->is_map()) {
-      err.message = "search: must be a mapping";
+  {
+    std::vector<std::string> top_valid = {"search",   "index",   "ranking",  "aliases",
+                                          "macros",   "scopes",  "custom_metadata", "history",
+                                          "clipboard", "hotkey", "browser", "logging",
+                                          "ui",       "plugins", "providers", "embedding",
+                                          "ai",       "sources", "api",     "sync",
+                                          "snippets", "workflows", "quicklinks", "app_actions"};
+    if (!check_unknown_keys(root, top_valid, "config", err)) {
+      if (!err.message.empty()) {
+        err.message += " (in " +
+                       std::string(c.source_path.empty() ? "wilfred.yml" : c.source_path) + ")";
+      }
       return false;
     }
+  }
+
+  if (auto* search = root.get("search")) {
+    if (!search->is_map()) {
+      err.message = "search: must be a mapping, e.g.\nsearch:\n  max_results: 40";
+      return false;
+    }
+    std::vector<std::string> valid = {"include_system_files",
+                                      "include_hidden_files",
+                                      "show_system_in_results",
+                                      "max_results",
+                                      "debounce_ms",
+                                      "web_search_fallback",
+                                      "treat_urls_as_open",
+                                      "min_query_length",
+                                      "fuzzy",
+                                      "acronyms",
+                                      "context_aware",
+                                      "clipboard",
+                                      "minis",
+                                      "macros",
+                                      "snippets",
+                                      "plugins"};
+    if (!check_unknown_keys(*search, valid, "search", err)) return false;
+    for (auto* k : {"include_system_files", "include_hidden_files", "show_system_in_results",
+                    "web_search_fallback", "treat_urls_as_open", "fuzzy", "acronyms",
+                    "context_aware", "clipboard", "minis", "macros", "snippets", "plugins"})
+      if (!expect_bool(search, k, "search", err)) return false;
+    for (auto* k : {"max_results", "debounce_ms", "min_query_length"})
+      if (!expect_int(search, k, "search", err)) return false;
     c.search.include_system_files = search->boolean("include_system_files", false);
     c.search.include_hidden_files = search->boolean("include_hidden_files", true);
     c.search.show_system_in_results = search->boolean("show_system_in_results", false);
@@ -73,9 +391,38 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
 
   if (auto* index = root.get("index")) {
     if (!index->is_map()) {
-      err.message = "index: must be a mapping";
+      err.message = "index: must be a mapping, e.g.\nindex:\n  paths: []\n  exclude: [node_modules]";
       return false;
     }
+    std::vector<std::string> valid = {"paths",
+                                      "exclude",
+                                      "exclude_globs",
+                                      "system_directories",
+                                      "follow_symlinks",
+                                      "index_hidden",
+                                      "index_system",
+                                      "usn_scan",
+                                      "max_file_size_bytes",
+                                      "content_indexing",
+                                      "content_max_bytes",
+                                      "content_max_tokens",
+                                      "workers",
+                                      "cpu_percent_limit",
+                                      "memory_limit_mb",
+                                      "batch_size",
+                                      "debounce_fs_ms",
+                                      "rescan_interval_seconds",
+                                      "persist_every_records",
+                                      "wal_compact_bytes",
+                                      "extensions"};
+    if (!check_unknown_keys(*index, valid, "index", err)) return false;
+    for (auto* k : {"follow_symlinks", "index_hidden", "index_system", "usn_scan",
+                    "content_indexing"})
+      if (!expect_bool(index, k, "index", err)) return false;
+    for (auto* k : {"max_file_size_bytes", "content_max_bytes", "content_max_tokens", "workers",
+                    "cpu_percent_limit", "memory_limit_mb", "batch_size", "debounce_fs_ms",
+                    "rescan_interval_seconds", "persist_every_records", "wal_compact_bytes"})
+      if (!expect_int(index, k, "index", err)) return false;
     c.index.paths = index->string_list("paths");
     c.index.exclude = index->string_list("exclude");
     c.index.exclude_globs = index->string_list("exclude_globs");
@@ -460,6 +807,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "snippets: must be a mapping";
       return false;
     }
+    if (!expect_bool(sn, "expansion", "snippets", err) ||
+        !expect_bool(sn, "auto_paste", "snippets", err) ||
+        !expect_bool(sn, "global_expansion", "snippets", err))
+      return false;
     c.snippets.expansion = sn->boolean("expansion", true);
     c.snippets.prefix = sn->str("prefix", ";");
     c.snippets.auto_paste = sn->boolean("auto_paste", false);
@@ -483,6 +834,163 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       for (auto& [k, v] : sn->as_map()) {
         if (k == "expansion" || k == "prefix" || k == "auto_paste" || k == "items") continue;
         if (v.is_string()) c.snippets.items[k] = v.as_string();
+      }
+    }
+  }
+
+  if (auto* wf = root.get("workflows")) {
+    if (!wf->is_map()) {
+      err.message =
+          "workflows: must be a mapping of name -> steps, e.g.\nworkflows:\n  review:\n    - copy_path\n    - reveal";
+      return false;
+    }
+    for (auto& [k, v] : wf->as_map()) {
+      auto key = to_lower_utf8(k);
+      if (key.empty()) {
+        err.message = "workflows: names must be non-empty";
+        return false;
+      }
+      std::vector<std::string> steps;
+      if (v.is_string()) {
+        // "copy_path+reveal" or flow "[copy_path, reveal]" form.
+        steps = split_flow_or_plus(v.as_string());
+        if (steps.empty()) {
+          err.message = "workflows.'" + k + "' must list at least one action, e.g. 'copy_path+reveal'";
+          return false;
+        }
+      } else if (v.is_list()) {
+        for (auto& item : v.as_list()) {
+          if (!item.is_string() || item.as_string().empty()) {
+            err.message = "workflows.'" + k + "' steps must be non-empty strings";
+            return false;
+          }
+          // Block items may themselves be flow strings.
+          auto sub = split_flow_or_plus(item.as_string());
+          if (sub.empty()) sub.push_back(item.as_string());
+          steps.insert(steps.end(), sub.begin(), sub.end());
+        }
+        if (steps.empty()) {
+          err.message = "workflows.'" + k + "' must list at least one action";
+          return false;
+        }
+      } else if (v.is_map()) {
+        // { steps: [...] } form, optionally with description.
+        auto* steps_v = v.get("steps");
+        if (!steps_v) {
+          err.message = "workflows.'" + k + "' must have a 'steps' list, e.g.\nworkflows:\n  " + k +
+                        ":\n    steps: [copy_path, reveal]";
+          return false;
+        }
+        if (steps_v->is_string()) {
+          steps = split_flow_or_plus(steps_v->as_string());
+        } else if (steps_v->is_list()) {
+          for (auto& item : steps_v->as_list()) {
+            if (!item.is_string() || item.as_string().empty()) {
+              err.message = "workflows.'" + k + "' steps must be non-empty strings";
+              return false;
+            }
+            auto sub = split_flow_or_plus(item.as_string());
+            if (sub.empty()) sub.push_back(item.as_string());
+            // Avoid double-splitting plain ids like "copy_path" (no delimiters → single).
+            if (sub.size() == 1 && sub.front() == item.as_string())
+              steps.push_back(item.as_string());
+            else
+              steps.insert(steps.end(), sub.begin(), sub.end());
+          }
+        } else {
+          err.message = "workflows.'" + k + "' must have a 'steps' list";
+          return false;
+        }
+        if (steps.empty()) {
+          err.message = "workflows.'" + k + "' must list at least one action";
+          return false;
+        }
+      } else {
+        err.message = "workflows.'" + k +
+                      "' must be a list of actions or a '+'-joined string, e.g. 'copy_path+reveal'";
+        return false;
+      }
+      for (auto& st : steps) {
+        if (!is_valid_action_step(st)) {
+          err.message = "workflows.'" + k + "' has unknown action '" + st +
+                        "'. Valid actions include: open, reveal, copy_path, copy_text, hash_file, compress_zip, open_terminal, kill_process, media:play, timer_stop, ...";
+          return false;
+        }
+      }
+      c.workflows[key] = std::move(steps);
+    }
+  }
+
+  if (auto* ql = root.get("quicklinks")) {
+    if (!ql->is_map()) {
+      err.message =
+          "quicklinks: must be a mapping of name -> template, e.g.\nquicklinks:\n  docs: \"https://example.com/{query}\"";
+      return false;
+    }
+    for (auto& [k, v] : ql->as_map()) {
+      if (!v.is_string() || v.as_string().empty()) {
+        err.message = "quicklinks.'" + k +
+                      "' must be a non-empty template string, e.g. \"https://example.com/{query}\"";
+        return false;
+      }
+      auto tmpl = v.as_string();
+      if (tmpl.find("{query}") == std::string::npos && tmpl.find("{1}") == std::string::npos &&
+          tmpl.find("{*}") == std::string::npos && tmpl.find("{q}") == std::string::npos &&
+          tmpl.find("{clipboard}") == std::string::npos) {
+        err.message = "quicklinks.'" + k +
+                      "' should contain a placeholder like {query}, {1}, {*} or {clipboard}. Got '" +
+                      tmpl + "'";
+        return false;
+      }
+      c.quicklinks[to_lower_utf8(k)] = tmpl;
+    }
+  }
+
+  if (auto* aa = root.get("app_actions")) {
+    if (!aa->is_map()) {
+      err.message =
+          "app_actions: must be a mapping of app-name -> action list, e.g.\napp_actions:\n  code:\n    - copy_path\n    - open_terminal";
+      return false;
+    }
+    for (auto& [k, v] : aa->as_map()) {
+      auto key = to_lower_utf8(k);
+      std::vector<std::string> ids;
+      if (v.is_string()) {
+        auto raw = v.as_string();
+        ids = split_flow_or_plus(raw);
+        if (ids.empty()) {
+          err.message = "app_actions.'" + k + "' must list at least one action (got '" + raw + "')";
+          return false;
+        }
+      } else if (v.is_list()) {
+        for (auto& item : v.as_list()) {
+          if (!item.is_string() || item.as_string().empty()) {
+            err.message = "app_actions.'" + k + "' entries must be non-empty action ids";
+            return false;
+          }
+          auto sub = split_flow_or_plus(item.as_string());
+          if (sub.empty()) sub.push_back(item.as_string());
+          // Plain ids have no delimiters → single entry; avoid double work.
+          if (sub.size() == 1 && sub.front() == item.as_string())
+            ids.push_back(item.as_string());
+          else
+            ids.insert(ids.end(), sub.begin(), sub.end());
+        }
+        if (ids.empty()) {
+          err.message = "app_actions.'" + k + "' must list at least one action";
+          return false;
+        }
+      } else {
+        err.message = "app_actions.'" + k + "' must be an action id or list of ids";
+        return false;
+      }
+      for (auto& aid : ids) {
+        if (!is_valid_action_step(aid)) {
+          err.message = "app_actions.'" + k + "' has unknown action '" + aid +
+                        "'. Valid actions include: open, reveal, copy_path, open_terminal, ...";
+          return false;
+        }
+        c.app_actions[key].push_back(aid);
       }
     }
   }

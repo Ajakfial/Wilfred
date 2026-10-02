@@ -332,6 +332,43 @@ bool native_open_editor(const std::string& dir) {
   return native_launch(dir);
 }
 
+bool native_kill_process(std::uint32_t pid, std::string& error) {
+  if (!pid || pid == 0 || pid == 4) {
+    error = "invalid pid";
+    return false;
+  }
+  HANDLE h = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+  if (!h) {
+    error = "could not open pid " + std::to_string(pid) + " (try elevated)";
+    return false;
+  }
+  bool ok = TerminateProcess(h, 1) != 0;
+  if (!ok) error = "could not terminate pid " + std::to_string(pid);
+  CloseHandle(h);
+  return ok;
+}
+
+bool native_media_action(const std::string& id, std::string& error) {
+  auto key = [&](BYTE vk) {
+    INPUT in[2]{};
+    in[0].type = INPUT_KEYBOARD;
+    in[0].ki.wVk = vk;
+    in[1].type = INPUT_KEYBOARD;
+    in[1].ki.wVk = vk;
+    in[1].ki.dwFlags = KEYEVENTF_KEYUP;
+    return SendInput(2, in, sizeof(INPUT)) == 2;
+  };
+  if (id == "play" || id == "pause" || id == "playpause") return key(VK_MEDIA_PLAY_PAUSE);
+  if (id == "next") return key(VK_MEDIA_NEXT_TRACK);
+  if (id == "prev") return key(VK_MEDIA_PREV_TRACK);
+  if (id == "stop") return key(VK_MEDIA_STOP);
+  if (id == "mute") return key(VK_VOLUME_MUTE);
+  if (id == "volup") return key(VK_VOLUME_UP);
+  if (id == "voldn") return key(VK_VOLUME_DOWN);
+  error = "unknown media action '" + id + "'";
+  return false;
+}
+
 #else
 bool native_launch(const std::string&);
 #endif

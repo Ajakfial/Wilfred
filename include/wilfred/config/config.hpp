@@ -196,6 +196,19 @@ struct Config {
     std::unordered_map<std::string, std::string> items;
   } snippets;
 
+  // Named multi-step workflows: workflow name -> ordered action ids.
+  // Each step is an action id accepted by execute_result_action
+  // (e.g. "copy_path", "reveal", "open"), joined with '+' at runtime.
+  // Lowercased keys.
+  std::unordered_map<std::string, std::vector<std::string>> workflows;
+  // Parameterized quicklinks: name -> URL/path/command template.
+  // Placeholders: {query} {query_enc} {clipboard} {clipboard_enc}
+  // plus positional {1} {2} ... and {*} (all args). Lowercased keys.
+  std::unordered_map<std::string, std::string> quicklinks;
+  // Per-app extra context actions: app-name substring (lowercased)
+  // -> additional action ids appended to file/app results.
+  std::unordered_map<std::string, std::vector<std::string>> app_actions;
+
   std::string source_path;
 };
 

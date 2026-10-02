@@ -310,11 +310,57 @@ Snippet bodies support `{date} {time} {datetime} {year} {month} {day}
 {clipboard} {query}` placeholders. Snippets can carry a `folder:` in
 `snippets.yml` and are filtered with `;folder/name` or `snip folder/name`.
 
+## `workflows:` — named multi-step actions
+
+Maps a workflow name to an ordered list of result actions run in order.
+Each step is an action id accepted by `execute_result_action`
+(`open`, `reveal`, `copy_path`, `copy_text`, `open_terminal`, ...),
+or a `workflow:` reference. Query with `workflow <name>` to list,
+`workflow <name>` / `run <name>` to run, or pick `Run <name>` from a
+file's `Ctrl`/`⌘`+`K` actions. Ad-hoc chaining already works without
+config via `+` (e.g. action id `copy_path+reveal`).
+
+```yaml
+workflows:
+  review: [copy_path, reveal]
+  ship: "copy_path+reveal"
+  docs_review:
+    steps: [copy_path, reveal]
+```
+
+## `quicklinks:` — parameterized quicklinks
+
+Maps a name to a URL/path/command template with placeholders:
+`{query}` `{query_enc}` `{clipboard}` `{clipboard_enc}` plus positional
+`{1}` `{2}` ... and `{*}` (all args). Query with `ql <name> <args>`,
+`!name args`, or `name:args` (bare `name args` also works when the name
+is a known quicklink).
+
+```yaml
+quicklinks:
+  docs: "https://example.com/search?q={query}"
+  ticket: "https://example.com/t/{1}"
+```
+
+## `app_actions:` — per-app context actions
+
+Maps an app-name substring (case-insensitive, matched against the
+result title + path) to extra action ids appended to that app's
+file/app results.
+
+```yaml
+app_actions:
+  code: [open_terminal, open_editor, copy_path]
+```
+
 ## Validation and errors
 
 `load_config_file()` / `load_config_text()` return `false` and populate a
 `ConfigError{message}` on any parse or validation failure — Wilfred surfaces
 this as a startup error rather than falling back to partial defaults
-silently. Common causes: malformed YAML, a ranking weight or numeric field
+silently. Errors name the file, the offending `section.key`, what was
+got vs. expected, and an example; unknown keys suggest the closest
+valid key (`Did you mean 'max_results'?`) and list all valid keys.
+Common causes: malformed YAML, a ranking weight or numeric field
 that isn't an integer, or an unrecognized top-level key type mismatch (e.g.
 a scalar where a list is expected).

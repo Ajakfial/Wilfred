@@ -18,30 +18,35 @@ single summonable search bar.
 * Inline autocomplete: ghost completion (`→` to accept) + top-N candidates from history, commands and the index
 * Context-aware ranking (recent folders, file types, time-of-day, session queries)
 * Clipboard as a secondary source (text match, copied paths, clip history)
-* Persistent clipboard manager (`clips [query]`, pin, `clips clear`)
+* Persistent clipboard manager (`clips [query]`, pin, `clips clear`, `clips url|email|path|code|ip`)
 * Content indexing for source, config, and text documents
 * Real document text extraction (PDF, Office, RTF, HTML) into the content index
 * Optional semantic search: local embeddings (llama.cpp server/model or built-in hash) + HNSW vector index (`vectors.bin` next to WAL/snapshot) merged with trigram soft-match (`providers.semantic`, `embedding.*`)
 * Optional AI assistant (`ai ...`/`ask ...`) with your own keys: OpenAI, Anthropic, Gemini, Groq
 * Snippets with folders, `{date}`/`{clipboard}`/`{query}` placeholders, and optional global abbreviations in any app
+* Quick notes + todos (`note ...`, `todo ...`, persistent in the data dir)
+* Pomodoro / countdown timers + stopwatch (`timer`, `pomodoro`, `stopwatch`)
 * Rich file previews (documents, CSV, images, folders) in the overlay (`F3`) plus `wilfred preview`
 * Calendar (`.ics`), contacts (`.vcf`), and notes (Markdown) sources + optional OCR indexing via `tesseract` (`sources.*`)
 * Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with automatic X11 canvas fallback, all above/skip-taskbar) with `Ctrl`/`⌘`+`K` actions popover and matching shortcuts in both Linux backends
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
-* Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`)
-* Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, and more
-* Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config)
+* Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`) + named multi-step workflows (`workflows:`)
+* Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, timers, notes, media, network, and more
+* Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config) + parameterized quicklinks (`quicklinks:` with `{1}`/`{*}`/`{query}`)
+* Per-app extra context actions (`app_actions:`) on top of the built-in file actions
+* Large-file finder + duplicate candidates from the index (`large`, `dupes`)
+* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
 * Default-browser detection, URL open, and web-search fallback
-* Safe expression parser (arithmetic, functions, unit/currency/color/date conversion, uuid/base64/sha256/lorem/json)
+* Safe expression parser (arithmetic, functions, unit/currency/color/date conversion, uuid/base64/sha256/lorem/json, hex/dec/bin/oct, bits, regex/url/jwt)
 * Native and stdio plugins, plus extra search backends via providers
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
-* YAML configuration with validation and human-readable errors
+* YAML configuration with validation, `Did you mean` hints, and human-readable errors
 * Global hotkey: `Ctrl+Alt+W` (Windows/Linux), `⌘+Alt+W` (macOS), configurable
 * Local search history (optional; disable or `wilfred history-clear`)
 * Overlay UI plus CLI (`search`, `launch`, `index`, `status`, backup/sync)
@@ -115,7 +120,7 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `weather` / `weather London` | Mini card: local or city forecast |
 | `speedtest` | Live ping, download, and upload (`speedtest again` reruns) |
 | `time` `disk` `disku` `ram` `cpu` | Clock, drives, memory, processor |
-| `process chrome` / `top` | Live process CPU, RAM, threads |
+| `process chrome` / `top` | Live process CPU, RAM, threads (`kill <pid|name>` terminates) |
 | `screenshot` / `screenshot window` / `screenshot region` | Capture fullscreen, window, or region to `Pictures/Wilfred` |
 | `emoji smile` / `symbol euro` | Emoji and symbol picker (enter copies) |
 | `100 usd to eur` / `fx 25 gbp jpy` | Currency conversion |
@@ -124,6 +129,16 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `3pm est to pst` / `now in tokyo` / `tz london` | Timezones |
 | `today + 7 days` / `2024-01-31 + 1 month` | Date math |
 | `uuid` / `base64 hi` / `sha256 abc` / `lorem 12` / `json {"a":1}` | Dev utilities (enter copies) |
+| `hex 255` / `dec 0xff` / `0b1010` / `bit and 12 10` | Number bases + bit tools |
+| `regex foo.* foobar` / `urlencode a b` / `jwt <token>` | Regex tester, URL codec, JWT decode |
+| `timer 10m` / `pomodoro` / `stopwatch start` | Countdowns, Pomodoro presets, stopwatch |
+| `note buy milk` / `notes` / `todo ship it` / `todos` | Quick notes + todos (`todo done 1`) |
+| `media play` / `media next` / `media mute` | Native media keys + volume (Win media keys; mac HID + Music/Spotify/VLC; Linux native MPRIS D-Bus + wpctl/pactl/amixer, playerctl optional) |
+| `ping example.com` / `dns example.com` / `myip` | Ping, DNS lookup, public IP |
+| `large 10` / `dupes` | Biggest files + duplicate candidates from the index |
+| `clips url` / `clips code` | Clipboard history filtered by type (url/email/path/code/ip) |
+| `workflow review` / `run review` | Named multi-step workflows (`workflows` lists) |
+| `ql docs hello` / `ticket:ABC-123` | Parameterized quicklinks (`{1}` `{*}` `{query}`) |
 | `lock` / `sleep` / `shutdown` / `restart` / `logout` / `empty trash` | System commands |
 | `clip` / `clips` | Clipboard and recent clips |
 | `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |

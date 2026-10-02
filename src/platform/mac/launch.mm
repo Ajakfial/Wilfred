@@ -6,6 +6,7 @@
 #include <string>
 
 #import <AppKit/AppKit.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <CoreServices/CoreServices.h>
 
 namespace wilfred {
@@ -142,6 +143,99 @@ bool native_open_editor(const std::string& dir) {
     if (std::system(cmd.c_str()) == 0) return true;
   }
   return native_launch(dir);
+}
+
+// Genuine system-wide media keys via HID (no helper apps needed).
+// NX_KEYTYPE values from IOKit/hidsystem/ev_keymap.h (hardcoded to avoid a
+// new framework dependency; AppKit/CoreGraphics already linked):
+// PLAY=16, NEXT=17, PREVIOUS=18.
+static bool PostMediaHID(int nxKeyType) {
+  @autoreleasepool {
+    // subtype 8 = media keys; data1 = (keyCode << 16) | (0xa down / 0xb up << 8).
+    NSEvent* down = [NSEvent otherEventWithType:NSSystemDefined
+                                       location:NSZeroPoint
+                                  modifierFlags:0xa00
+                                      timestamp:0
+                                   windowNumber:0
+                                        context:nil
+                                        subtype:8
+                                          data1:((nxKeyType << 16) | (0xa << 8))
+                                          data2:-1];
+    if (down) CGEventPost(kCGHIDEventTap, [down CGEvent]);
+    NSEvent* up = [NSEvent otherEventWithType:NSSystemDefined
+                                     location:NSZeroPoint
+                                modifierFlags:0xa00
+                                    timestamp:0
+                                 windowNumber:0
+                                      context:nil
+                                      subtype:8
+                                        data1:((nxKeyType << 16) | (0xb << 8))
+                                        data2:-1];
+    if (up) CGEventPost(kCGHIDEventTap, [up CGEvent]);
+    return down != nil && up != nil;
+  }
+}
+
+static bool mac_osascript_ok(const std::string& script) {
+  std::string cmd = "osascript -e " + mac_shell_quote(script) + " >/dev/null 2>&1";
+  return std::system(cmd.c_str()) == 0;
+}
+
+bool native_media_action(const std::string& id, std::string& error) {
+  // System-wide HID first — works with any player (Music, Spotify, VLC,
+  // IINA, Chrome, Safari, …) with nothing to install.
+  if (id == "play" || id == "pause" || id == "playpause") {
+    if (PostMediaHID(16)) return true;
+  } else if (id == "next") {
+    if (PostMediaHID(17)) return true;
+  } else if (id == "prev") {
+    if (PostMediaHID(18)) return true;
+  }
+  // Fallback: per-app AppleScript for the big three when HID is blocked
+  // (e.g. accessibility permissions) or for Stop (no HID code).
+  if (id == "play" || id == "pause" || id == "playpause") {
+    if (mac_osascript_ok("tell application \"Music\" to playpause")) return true;
+    if (mac_osascript_ok("tell application \"Spotify\" to playpause")) return true;
+    if (mac_osascript_ok("tell application \"VLC\" to play")) return true;
+    error = "no controllable player found (tried system media keys + Music/Spotify/VLC)";
+    return false;
+  }
+  if (id == "next") {
+    if (mac_osascript_ok("tell application \"Music\" to next track")) return true;
+    if (mac_osascript_ok("tell application \"Spotify\" to next track")) return true;
+    if (mac_osascript_ok("tell application \"VLC\" to next")) return true;
+    error = "no controllable player found (tried system media keys + Music/Spotify/VLC)";
+    return false;
+  }
+  if (id == "prev") {
+    if (mac_osascript_ok("tell application \"Music\" to previous track")) return true;
+    if (mac_osascript_ok("tell application \"Spotify\" to previous track")) return true;
+    if (mac_osascript_ok("tell application \"VLC\" to previous")) return true;
+    error = "no controllable player found (tried system media keys + Music/Spotify/VLC)";
+    return false;
+  }
+  if (id == "stop") {
+    if (mac_osascript_ok("tell application \"Music\" to stop")) return true;
+    if (mac_osascript_ok("tell application \"Spotify\" to pause")) return true;
+    error = "stop failed (tried Music/Spotify)";
+    return false;
+  }
+  if (id == "mute") {
+    if (mac_osascript_ok("set volume output muted not (output muted of (get volume settings))"))
+      return true;
+    error = "mute failed";
+    return false;
+  }
+  if (id == "volup" || id == "voldn") {
+    std::string op = id == "volup" ? "+" : "-";
+    if (mac_osascript_ok("set volume output volume ((output volume of (get volume settings)) " +
+                         op + " 10)"))
+      return true;
+    error = "volume change failed";
+    return false;
+  }
+  error = "unknown media action '" + id + "'";
+  return false;
 }
 
 #endif

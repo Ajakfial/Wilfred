@@ -64,6 +64,13 @@ set(WILFRED_CORE_SOURCES
   src/search/content.cpp
   src/search/macros.cpp
   src/search/minis.cpp
+  src/search/timers.cpp
+  src/search/quicknotes.cpp
+  src/search/nettools.cpp
+  src/search/media.cpp
+  src/search/mpris_dbus.cpp
+  src/search/disktools.cpp
+  src/search/workflows.cpp
   src/search/glyphs.cpp
   src/search/snippets.cpp
   src/search/expander.cpp
@@ -139,6 +146,13 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/content.hpp
   include/wilfred/search/macros.hpp
   include/wilfred/search/minis.hpp
+  include/wilfred/search/timers.hpp
+  include/wilfred/search/quicknotes.hpp
+  include/wilfred/search/nettools.hpp
+  include/wilfred/search/media.hpp
+  include/wilfred/search/mpris_dbus.hpp
+  include/wilfred/search/disktools.hpp
+  include/wilfred/search/workflows.hpp
   include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
   include/wilfred/search/expander.hpp
@@ -353,6 +367,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_extensibility.cpp
   tests/test_new_features.cpp
   tests/test_assist.cpp
+  tests/test_powertools.cpp
 )
 
 if(WILFRED_BUILD_TESTS)

@@ -10,7 +10,10 @@
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/file_ops.hpp"
+#include "wilfred/search/media.hpp"
+#include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
+#include "wilfred/search/timers.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -154,12 +157,118 @@ void attach_result_actions(std::vector<SearchResult>& results) {
   }
 }
 
+namespace {
+
+std::string lower_copy(const std::string& s) {
+  std::string o;
+  o.reserve(s.size());
+  for (unsigned char c : s) o.push_back(static_cast<char>(std::tolower(c)));
+  return o;
+}
+
+std::string action_label_for(const std::string& id) {
+  if (id == "open") return "Open";
+  if (id == "reveal") return "Show in folder";
+  if (id == "copy_path") return "Copy path";
+  if (id == "copy_name") return "Copy name";
+  if (id == "copy_posix") return "Copy POSIX path";
+  if (id == "copy_file_uri") return "Copy file URL";
+  if (id == "copy_wsl") return "Copy WSL path";
+  if (id == "copy_text") return "Copy";
+  if (id == "hash_file") return "Copy SHA-256 hash";
+  if (id == "compress_zip") return "Compress to .zip";
+  if (id == "open_terminal") return "Open terminal here";
+  if (id == "open_editor") return "Open in editor";
+  if (id == "new_file") return "New file here";
+  if (id == "new_folder") return "New folder here";
+  if (id == "kill_process") return "Kill process";
+  if (id == "timer_stop") return "Stop timer";
+  return id;
+}
+
+bool is_file_like(const SearchResult& r) {
+  if (r.action == ResultAction::Screenshot || r.category == "screenshot") return false;
+  if (r.action == ResultAction::SwitchWindow || r.category == "window") return false;
+  if (r.action == ResultAction::System || r.category == "system") return false;
+  if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return false;
+  if (r.category == "timer" || r.category == "stopwatch" || r.category == "note" ||
+      r.category == "todo" || r.category == "kill" || r.category == "media" ||
+      r.category == "workflow" || r.category == "quicklink" || r.category == "process" ||
+      r.category == "ping" || r.category == "dns" || r.category == "myip" ||
+      r.category == "dupe" || r.category == "large")
+    return false;
+  return true;
+}
+
+void append_context_actions(SearchResult& r, const Config& cfg) {
+  if (!is_file_like(r) && r.kind != FileKind::Application) {
+    // Workflows still apply to process/media? No — only file-like + apps.
+    // But allow workflow on any actionable file result; skip pure text cards.
+    if (!is_file_like(r)) return;
+  }
+  // Per-app extras: match lowercased app substring against title + path.
+  if (!cfg.app_actions.empty()) {
+    std::string hay = lower_copy(r.title + " " + r.path + " " + r.payload);
+    for (auto& [app, ids] : cfg.app_actions) {
+      if (app.empty()) continue;
+      if (hay.find(app) == std::string::npos) continue;
+      for (auto& aid : ids) {
+        bool dup = false;
+        for (auto& a : r.actions)
+          if (a.id == aid) {
+            dup = true;
+            break;
+          }
+        if (dup) continue;
+        ResultActionItem it;
+        it.id = aid;
+        it.label = action_label_for(aid) + " · " + app;
+        r.actions.push_back(std::move(it));
+      }
+    }
+  }
+  // Named workflows as extra actions on file results.
+  if (!cfg.workflows.empty() && is_file_like(r)) {
+    for (auto& [name, steps] : cfg.workflows) {
+      std::string wid = "workflow:" + name;
+      bool dup = false;
+      for (auto& a : r.actions)
+        if (a.id == wid) {
+          dup = true;
+          break;
+        }
+      if (dup) continue;
+      ResultActionItem it;
+      it.id = wid;
+      it.label = "Run " + name;
+      r.actions.push_back(std::move(it));
+    }
+  }
+}
+
+}  // namespace
+
+void attach_result_actions(SearchResult& r, const Config& cfg) {
+  if (r.actions.empty() && r.action != ResultAction::Habit) attach_impl(r, true);
+  append_context_actions(r, cfg);
+}
+
+void attach_result_actions(std::vector<SearchResult>& results, const Config& cfg) {
+  attach_result_actions(results);
+  for (auto& r : results) {
+    if (r.action == ResultAction::Habit) continue;
+    append_context_actions(r, cfg);
+  }
+}
+
 bool action_hides_overlay(const std::string& action_id) {
   if (action_id.empty() || action_id == "open" || action_id == "reveal" || action_id == "paste" ||
       action_id == "expand" || action_id == "open_terminal" || action_id == "open_editor" ||
       action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder")
     return true;
   if (action_id.rfind("open_with:", 0) == 0) return true;
+  if (action_id.rfind("workflow:", 0) == 0) return true;
+  if (action_id == "kill_process" || action_id.rfind("media:", 0) == 0) return true;
   return false;
 }
 
@@ -200,7 +309,29 @@ bool native_simulate_paste() {
 bool execute_result_action(const SearchResult& r, const Config& cfg, const std::string& action_id) {
   auto id = action_id;
   if (id.empty()) {
-    if (r.action == ResultAction::Reveal) id = "reveal";
+    // Process kill cards default to killing; media cards run their action.
+    if (r.category == "process" || r.category == "kill") {
+      // `process` list cards: copy by default, `kill` cards: kill by default.
+      if (r.category == "kill") id = "kill_process";
+      else if (r.action == ResultAction::Copy || r.action == ResultAction::Mini)
+        id = "copy_text";
+      else
+        id = "open";
+      // When the empty action comes from overlay Enter on a kill card with an
+      // explicit kill action attached, prefer killing.
+      if (r.category == "kill") id = "kill_process";
+    } else if (r.category == "media" && r.payload.rfind("media:", 0) == 0) {
+      id = r.payload.substr(6);
+      if (id.empty()) id = "copy_text";
+      // Fall through to media handling below via id.
+      if (id != "copy_text") {
+        std::string err;
+        if (native_media_action(id, err)) return true;
+        log_warn("media", err.empty() ? "media action failed" : err);
+        return false;
+      }
+    } else if (r.action == ResultAction::Reveal)
+      id = "reveal";
     else if (r.action == ResultAction::Copy || r.action == ResultAction::Mini ||
              r.action == ResultAction::Calculate || r.action == ResultAction::Convert)
       id = "copy_text";
@@ -208,6 +339,23 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       id = "paste";
     else
       id = "open";
+  }
+  // Named workflows: "workflow:<name>" expands to its '+'-joined chain.
+  if (id.rfind("workflow:", 0) == 0) {
+    auto name = id.substr(9);
+    for (char& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    auto it = cfg.workflows.find(name);
+    if (it == cfg.workflows.end()) {
+      log_warn("workflow", "unknown workflow '" + name + "'");
+      return false;
+    }
+    std::string chain;
+    for (std::size_t i = 0; i < it->second.size(); ++i) {
+      if (i) chain += "+";
+      chain += it->second[i];
+    }
+    if (chain.empty()) return false;
+    return execute_result_action(r, cfg, chain);
   }
   // Workflow chaining: "copy_path+reveal" runs each step in order and
   // reports success only if every step succeeds. open_with targets may
@@ -343,6 +491,79 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   if (r.action == ResultAction::System || r.category == "system") {
     auto sys_id = r.payload.empty() ? r.path : r.payload;
     return native_system_action(sys_id);
+  }
+  // Process killer (works for both `process` list cards via r.id and `kill` cards).
+  if (id == "kill_process" || (r.category == "kill" && id == "open")) {
+    std::uint32_t pid = r.id;
+    if (!pid) {
+      // Fall back to parsing "pid:<n>" payloads.
+      auto raw = r.payload.empty() ? r.path : r.payload;
+      auto pos = raw.find("pid:");
+      if (pos != std::string::npos) {
+        try {
+          pid = static_cast<std::uint32_t>(std::stoul(raw.substr(pos + 4)));
+        } catch (...) {
+          pid = 0;
+        }
+      }
+    }
+    if (!pid) {
+      log_warn("kill", "no pid to kill");
+      return false;
+    }
+    std::string err;
+    if (!native_kill_process(pid, err)) {
+      log_warn("kill", err.empty() ? "kill failed" : err);
+      return false;
+    }
+    return true;
+  }
+  // Media controls on media cards or explicit media:<id> actions anywhere.
+  if (id.rfind("media:", 0) == 0) {
+    auto mid = id.substr(6);
+    std::string err;
+    if (!native_media_action(mid, err)) {
+      log_warn("media", err.empty() ? "media action failed" : err);
+      return false;
+    }
+    return true;
+  }
+  if (r.category == "media" && (id == "open" || id == "copy_text")) {
+    // Media list cards carry payload "media:<id>"; running beats copying.
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    if (raw.rfind("media:", 0) == 0) {
+      if (id == "open") return execute_result_action(r, cfg, raw);
+      // copy_text falls through to generic copy below.
+    }
+  }
+  // Timers / notes / todos maintenance actions.
+  if (id == "timer_stop") {
+    TimerStore::instance().stop("");
+    return true;
+  }
+  if (id.rfind("note_delete:", 0) == 0) {
+    return QuickNoteStore::instance().remove(id.substr(12));
+  }
+  if (id.rfind("todo_done:", 0) == 0) {
+    try {
+      return TodoStore::instance().set_done(std::stoi(id.substr(10)), true);
+    } catch (...) {
+      return false;
+    }
+  }
+  if (id.rfind("todo_undo:", 0) == 0) {
+    try {
+      return TodoStore::instance().set_done(std::stoi(id.substr(10)), false);
+    } catch (...) {
+      return false;
+    }
+  }
+  if (id.rfind("todo_delete:", 0) == 0) {
+    try {
+      return TodoStore::instance().remove(std::stoi(id.substr(12)));
+    } catch (...) {
+      return false;
+    }
   }
   if (r.action == ResultAction::Plugin || r.category == "plugin") {
     if (g_plugin_exec && g_plugin_exec->execute(r, id)) return true;

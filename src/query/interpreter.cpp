@@ -8,8 +8,10 @@
 #include "wilfred/math/expr.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/disktools.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/minis.hpp"
+#include "wilfred/search/workflows.hpp"
 
 namespace wilfred {
 
@@ -22,7 +24,7 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
   InterpretedQuery iq;
   iq.classification = classify_query(query);
   auto finish = [&]() -> InterpretedQuery {
-    attach_result_actions(iq.results);
+    attach_result_actions(iq.results, cfg);
     return iq;
   };
 
@@ -199,6 +201,16 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
   }
 
   if (iq.classification.kind == QueryKind::Command) {
+    // `run <workflow>` takes precedence over shell-command search when the
+    // remainder names a configured workflow.
+    {
+      std::string wf_name;
+      if (is_workflow_query(effective, cfg, wf_name) && !wf_name.empty()) {
+        iq.classification.kind = QueryKind::Mini;
+        iq.results = workflow_results(wf_name, cfg);
+        return finish();
+      }
+    }
     auto l = to_lower_utf8(effective);
     std::string rest = effective;
     if (l.rfind(">", 0) == 0)
@@ -243,13 +255,39 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     return finish();
   }
 
-  auto minis = mini_results(effective, cfg, clip.text);
+  auto minis = mini_results(effective, cfg, clip.text, &index_);
   if (!minis.empty()) {
     iq.classification.kind = QueryKind::Mini;
     iq.results.insert(iq.results.end(), minis.begin(), minis.end());
     auto intent = parse_mini_intent(effective);
     if (intent.exact) return finish();
   }
+
+  // Parameterized quicklinks (`ql name args`, `name:args`, `!name args`).
+  // Runs alongside macros; explicit invocations stop the pipeline.
+  {
+    auto ql = match_quicklink(effective, cfg);
+    if (ql.matched) {
+      iq.classification.kind = QueryKind::Macro;
+      auto cards = quicklink_results(ql, clip.text);
+      iq.results.insert(iq.results.end(), cards.begin(), cards.end());
+      bool explicit_form = !effective.empty() && (effective[0] == '!' || effective[0] == '/');
+      auto ll = to_lower_utf8(effective);
+      if (ll.rfind("ql ", 0) == 0 || ll.rfind("quicklink ", 0) == 0 || ll.rfind("link ", 0) == 0)
+        explicit_form = true;
+      if (!ql.args.empty() || explicit_form) {
+        if (iq.results.size() >= static_cast<std::size_t>(cfg.search.max_results)) return finish();
+        // Bare `name args` quicklinks still allow file hits below (non-exact).
+        if (explicit_form && !ql.args.empty()) {
+          // Keep file hits too unless the list is already full; quicklink stays on top.
+        }
+      }
+    }
+  }
+
+  // Workflows named on the command line without the `workflow` prefix are rare,
+  // but `run <name>` is handled by the Workflow mini above. No extra step needed
+  // here beyond minis; keep file search for non-exact minis.
 
   auto macro = match_macro(effective, cfg);
   if (macro.matched) {

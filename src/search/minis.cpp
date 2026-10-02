@@ -4,16 +4,23 @@
 #include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
+#include "wilfred/index/engine.hpp"
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/math/expr.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/disktools.hpp"
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/search/media.hpp"
+#include "wilfred/search/nettools.hpp"
+#include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
+#include "wilfred/search/timers.hpp"
+#include "wilfred/search/workflows.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -1106,12 +1113,77 @@ MiniIntent parse_mini_intent(std::string_view query) {
     it.kind = MiniKind::System;
     it.remainder = "empty_trash";
     it.exact = true;
-  }
+  } else if (key == "timer" || key == "timers" || key == "pomodoro" || key == "pomo" ||
+             key == "alarm" || key == "countdown")
+    set(MiniKind::Timer, false);
+  else if (key == "stopwatch" || key == "stop-watch" || key == "sw")
+    set(MiniKind::Stopwatch, false);
+  else if (key == "note" || key == "notes" || key == "notepad" || key == "memo" || key == "memos")
+    set(MiniKind::Note, false);
+  else if (key == "todo" || key == "todos" || key == "task" || key == "tasks")
+    set(MiniKind::Todo, false);
+  else if (key == "kill" || key == "killall" || key == "pkill" || key == "taskkill")
+    set(MiniKind::Kill, false);
+  else if (key == "media" || key == "player" || key == "music" || key == "mediakeys")
+    set(MiniKind::Media, false);
+  else if (key == "play" || key == "pause" || key == "next" || key == "previous" ||
+           key == "prev" || key == "mute" || key == "volume" || key == "vol") {
+    // Bare media verbs double as media controls (non-exact so file hits still show).
+    if (rest.empty() ||
+        to_lower_utf8(rest) == "track" || to_lower_utf8(rest) == "song" ||
+        to_lower_utf8(rest) == "music" || to_lower_utf8(rest) == "media" ||
+        to_lower_utf8(rest) == "up" || to_lower_utf8(rest) == "down" ||
+        to_lower_utf8(rest) == "next" || to_lower_utf8(rest) == "prev") {
+      it.kind = MiniKind::Media;
+      it.remainder = rest.empty() ? key : (key + " " + rest);
+      it.exact = false;
+    }
+  } else if (key == "ping")
+    set(MiniKind::Ping, false);
+  else if (key == "dns" || key == "nslookup" || key == "dig" || key == "resolve" ||
+           key == "lookup")
+    set(MiniKind::Dns, false);
+  else if (key == "myip" || key == "publicip" || key == "public-ip" || key == "my-ip" ||
+           key == "wanip" || (key == "ip" && (to_lower_utf8(rest) == "public" ||
+                                              to_lower_utf8(rest) == "wan" ||
+                                              to_lower_utf8(rest) == "external"))) {
+    it.kind = MiniKind::MyIp;
+    it.remainder = (key == "ip" ? rest : std::string());
+    it.exact = true;
+  } else if (key == "hex" || key == "dec" || key == "decimal" || key == "bin" ||
+             key == "binary" || key == "oct" || key == "octal" || key == "base" ||
+             key == "bit" || key == "bits" || key == "bitwise") {
+    // Number-base and bit tools also live in math/dev; expose as minis for help.
+    it.kind = (key == "bit" || key == "bits" || key == "bitwise") ? MiniKind::Bits : MiniKind::Base;
+    it.remainder = s.substr(key.size());
+    it.remainder = trim_sv(it.remainder);
+    if (!it.remainder.empty() && it.remainder[0] == ':')
+      it.remainder = trim_sv(it.remainder.substr(1));
+    it.exact = true;
+  } else if (key == "regex" || key == "regexp" || key == "re" || key == "regexi" || key == "rei")
+    set(MiniKind::Regex, false);
+  else if (key == "url" || key == "urlencode" || key == "urlenc" || key == "urldecode" ||
+           key == "urldec" || key == "encodeurl" || key == "decodeurl")
+    set(MiniKind::UrlCodec, rest.empty());
+  else if (key == "jwt" || key == "jwtdecode" || key == "jwt-decode")
+    set(MiniKind::Jwt, rest.empty());
+  else if (key == "dupes" || key == "dups" || key == "duplicates" || key == "duplicate" ||
+           key == "dedup" || key == "dedupe")
+    set(MiniKind::Dupes, false);
+  else if (key == "large" || key == "largefiles" || key == "large-files" || key == "bigfiles" ||
+           key == "big-files" || key == "biggest")
+    set(MiniKind::Large, false);
+  else if (key == "workflow" || key == "workflows" || key == "flow" || key == "flows" ||
+           key == "run" || key == "routines" || key == "routine")
+    set(MiniKind::Workflow, false);
+  else if (key == "ql" || key == "quicklink" || key == "quicklinks" || key == "links" ||
+           key == "link")
+    set(MiniKind::Quicklink, false);
   return it;
 }
 
 std::vector<SearchResult> mini_results(const std::string& query, const Config& cfg,
-                                       const std::string& clipboard) {
+                                       const std::string& clipboard, IndexEngine* index) {
   std::vector<SearchResult> out;
   if (!cfg.search.minis) return out;
   auto intent = parse_mini_intent(query);
@@ -1284,7 +1356,67 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       char sub[128];
       std::snprintf(sub, sizeof(sub), "PID %u  ·  %u threads", p.pid, p.threads);
       int meter = p.cpu >= 0 ? static_cast<int>(p.cpu) : -1;
-      out.push_back(card(title, sub, title, "process", 10000, ResultAction::Copy, meter));
+      SearchResult r = card(title, sub, title, "process", 10000, ResultAction::Copy, meter);
+      r.id = p.pid;
+      r.category = "process";
+      r.actions.clear();
+      r.actions.push_back({"copy_text", "Copy"});
+      r.actions.push_back({"kill_process", "Kill process"});
+      out.push_back(std::move(r));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Kill) {
+    auto target = trim_sv(intent.remainder);
+    if (target.empty()) {
+      out.push_back(card("Kill a process", "Type kill <pid or name> · lists matches first", "",
+                         "kill", 8000, ResultAction::None));
+      return out;
+    }
+    // Numeric PID: direct kill card.
+    bool numeric = !target.empty();
+    for (char c : target)
+      if (!std::isdigit(static_cast<unsigned char>(c))) numeric = false;
+    // Allow "pid 1234" prefix.
+    std::string needle = target;
+    auto tl = to_lower_utf8(target);
+    if (tl.rfind("pid ", 0) == 0) {
+      needle = trim_sv(target.substr(4));
+      numeric = !needle.empty();
+      for (char c : needle)
+        if (!std::isdigit(static_cast<unsigned char>(c))) numeric = false;
+    }
+    if (numeric) {
+      std::uint32_t pid = static_cast<std::uint32_t>(std::stoul(needle));
+      SearchResult r = card("Kill PID " + std::to_string(pid),
+                            "Terminate process " + std::to_string(pid) + " · enter kills",
+                            "pid:" + std::to_string(pid), "kill", 10000, ResultAction::Copy);
+      r.id = pid;
+      r.category = "process";
+      r.actions.clear();
+      r.actions.push_back({"kill_process", "Kill process"});
+      r.actions.push_back({"copy_text", "Copy"});
+      out.push_back(std::move(r));
+      return out;
+    }
+    auto procs = list_processes(needle);
+    if (procs.empty()) {
+      out.push_back(card("No matching process", needle, "", "kill", 9000, ResultAction::None));
+      return out;
+    }
+    for (auto& p : procs) {
+      char title[192];
+      std::snprintf(title, sizeof(title), "Kill %s (PID %u)  ·  RAM %s", p.name.c_str(), p.pid,
+                    human_bytes(p.working_set).c_str());
+      SearchResult r = card(title, "Enter terminates this process", "pid:" + std::to_string(p.pid),
+                            "kill", 10000, ResultAction::Copy);
+      r.id = p.pid;
+      r.category = "process";
+      r.actions.clear();
+      r.actions.push_back({"kill_process", "Kill process"});
+      r.actions.push_back({"copy_text", "Copy"});
+      out.push_back(std::move(r));
     }
     return out;
   }
@@ -1400,20 +1532,61 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       out.push_back(std::move(r));
       return out;
     }
+    // Typed search: `clips url [query]`, `clips email`, `clips path`, `clips code`,
+    // `clips ip`, `clips text`. First token is the type when it matches.
+    std::string type_filter;
+    std::string text_filter = filter;
+    {
+      auto sp = filter.find(' ');
+      std::string first = sp == std::string::npos ? filter : filter.substr(0, sp);
+      auto fl = to_lower_utf8(first);
+      if (fl == "url" || fl == "urls" || fl == "link" || fl == "links") {
+        type_filter = "url";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "email" || fl == "emails" || fl == "mail") {
+        type_filter = "email";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "path" || fl == "paths" || fl == "file" || fl == "files") {
+        type_filter = "path";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "code" || fl == "snippet" || fl == "snippets") {
+        type_filter = "code";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "ip" || fl == "ips") {
+        type_filter = "ip";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "text" || fl == "plain") {
+        type_filter = "text";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      }
+    }
     auto& store = ClipStore::instance();
-    auto hits = filter.empty() ? store.texts() : store.search(filter, 8);
-    if (!filter.empty() && hits.size() > 8) hits.resize(8);
+    auto hits = text_filter.empty() ? store.texts() : store.search(text_filter, 64);
+    if (!type_filter.empty()) {
+      std::vector<std::string> typed;
+      for (auto& t : hits) {
+        if (typed.size() >= 8) break;
+        auto ct = clip_type_of(t);
+        if (type_filter == "text" ? ct == "text" : ct == type_filter) typed.push_back(t);
+      }
+      hits.swap(typed);
+    } else if (!text_filter.empty() && hits.size() > 8) {
+      hits.resize(8);
+    }
     if (hits.empty()) {
-      out.push_back(card(filter.empty() ? "No clipboard history yet" : "No clips matching",
-                          filter.empty() ? "Copy text, then type clips" : "Try clips to list all",
-                          "", "clips", 9000, ResultAction::None));
+      out.push_back(card(text_filter.empty() && type_filter.empty()
+                             ? "No clipboard history yet"
+                             : (type_filter.empty() ? "No clips matching"
+                                                    : "No " + type_filter + " clips matching"),
+                         filter.empty() ? "Copy text, then type clips" : "Try clips to list all",
+                         "", "clips", 9000, ResultAction::None));
     } else {
       int n = 0;
       for (auto& t : hits) {
         bool pin = store.pinned(t);
-        SearchResult r =
-            card(clipboard_preview(t), pin ? "Pinned clip · enter copies" : "Clipboard history",
-                 t, "clips", 10000 - n);
+        std::string sub = pin ? "Pinned clip · enter copies" : "Clipboard history";
+        if (!type_filter.empty()) sub = type_filter + " clip · enter copies";
+        SearchResult r = card(clipboard_preview(t), sub, t, "clips", 10000 - n);
         r.category = "clips";
         r.actions.push_back({"copy_text", "Copy"});
         r.actions.push_back({pin ? "clip_unpin" : "clip_pin", pin ? "Unpin" : "Pin"});
@@ -1782,26 +1955,551 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Timer) {
+    auto rest = trim_sv(intent.remainder);
+    // Detect which word invoked us (timer vs pomodoro) for defaults.
+    auto ql = to_lower_utf8(query);
+    bool is_pomo = ql.rfind("pomodoro", 0) == 0 || ql.rfind("pomo", 0) == 0;
+    auto rl = to_lower_utf8(rest);
+    if (rl == "stop" || rl == "cancel" || rl == "clear" || rl == "off") {
+      auto msg = TimerStore::instance().stop("");
+      out.push_back(card(msg, "Timer", msg, "timer", 10000, ResultAction::Copy));
+      return out;
+    }
+    if (rl.rfind("stop ", 0) == 0) {
+      auto msg = TimerStore::instance().stop(trim_sv(rest.substr(5)));
+      out.push_back(card(msg, "Timer", msg, "timer", 10000, ResultAction::Copy));
+      return out;
+    }
+    if (rest.empty()) {
+      auto timers = TimerStore::instance().list();
+      if (timers.empty()) {
+        out.push_back(card(is_pomo ? "Pomodoro 25m · focus, 5m break" : "Timer",
+                           is_pomo ? "Type pomodoro / pomodoro 5 / pomodoro break"
+                                   : "Type timer 10m · timer stop · stopwatch",
+                           "", "timer", 8000, ResultAction::None));
+        return out;
+      }
+      auto now = unix_millis();
+      int n = 0;
+      for (auto& t : timers) {
+        auto rem = t.ends_at_ms - now;
+        std::string title = t.label + " · " + (rem <= 0 ? "done" : format_remaining_ms(rem));
+        SearchResult r = card(title, "Timer · enter copies", title, "timer", 10000 - n);
+        r.actions.clear();
+        r.actions.push_back({"copy_text", "Copy"});
+        r.actions.push_back({"timer_stop", "Stop"});
+        out.push_back(std::move(r));
+        ++n;
+      }
+      return out;
+    }
+    // Pomodoro presets: bare `pomodoro` = 25m, `pomodoro break` = 5m.
+    std::int64_t dur = 0;
+    std::string label = is_pomo ? "pomodoro" : "timer";
+    if (is_pomo && (rl.empty() || rl == "start" || rl == "focus" || rl == "work")) {
+      dur = 25 * 60 * 1000;
+    } else if (is_pomo && (rl == "break" || rl == "rest" || rl == "short")) {
+      dur = 5 * 60 * 1000;
+      label = "pomodoro break";
+    } else if (is_pomo && (rl == "long" || rl == "long break")) {
+      dur = 15 * 60 * 1000;
+      label = "pomodoro long break";
+    } else if (parse_duration_ms(rest, dur)) {
+      if (is_pomo) label = "pomodoro " + rest;
+    } else {
+      // Try "<label> <duration>"? Keep simple: fail with hint.
+      out.push_back(card("Can't parse that duration",
+                         "Try timer 10m · 25 · 1h30m · 5:00 · pomodoro break", "", "timer", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    auto msg = TimerStore::instance().start(label, dur, is_pomo);
+    SearchResult r = card(msg, (is_pomo ? "Pomodoro" : "Timer") + std::string(" · enter copies"),
+                          msg, "timer", 10000, ResultAction::Copy);
+    r.actions.clear();
+    r.actions.push_back({"copy_text", "Copy"});
+    r.actions.push_back({"timer_stop", "Stop"});
+    out.push_back(std::move(r));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Stopwatch) {
+    auto rest = to_lower_utf8(trim_sv(intent.remainder));
+    auto& sw = Stopwatch::instance();
+    if (rest == "start" || rest == "go" || rest.empty()) {
+      if (rest.empty() && sw.running()) {
+        auto el = sw.elapsed_ms();
+        out.push_back(card("Stopwatch · " + format_duration_ms(el), "Running · enter copies",
+                           format_duration_ms(el), "stopwatch", 10000, ResultAction::Copy));
+        auto laps = sw.laps();
+        int n = 0;
+        for (auto& lp : laps) out.push_back(card(lp, "Lap", lp, "stopwatch", 9900 - n++));
+        return out;
+      }
+      auto msg = sw.start();
+      out.push_back(card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000,
+                         ResultAction::Copy));
+      return out;
+    }
+    if (rest == "stop" || rest == "pause") {
+      auto msg = sw.stop();
+      out.push_back(card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000,
+                         ResultAction::Copy));
+      return out;
+    }
+    if (rest == "reset" || rest == "clear") {
+      auto msg = sw.reset();
+      out.push_back(card(msg, "Stopwatch", msg, "stopwatch", 10000, ResultAction::Copy));
+      return out;
+    }
+    if (rest.rfind("lap", 0) == 0) {
+      std::string label = trim_sv(intent.remainder.substr(3));
+      auto msg = sw.lap(label);
+      out.push_back(card(msg, "Stopwatch lap · enter copies", msg, "stopwatch", 10000,
+                         ResultAction::Copy));
+      return out;
+    }
+    auto el = sw.elapsed_ms();
+    out.push_back(card("Stopwatch · " + format_duration_ms(el),
+                       "start · stop · lap · reset", format_duration_ms(el), "stopwatch", 10000,
+                       ResultAction::Copy));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Note) {
+    auto rest = trim_sv(intent.remainder);
+    auto rl = to_lower_utf8(rest);
+    auto& store = QuickNoteStore::instance();
+    if (rl == "clear") {
+      store.clear();
+      out.push_back(card("Notes cleared", "All quick notes removed", "", "note", 10000,
+                         ResultAction::Copy));
+      return out;
+    }
+    if (rl.rfind("add ", 0) == 0) rest = trim_sv(rest.substr(4));
+    if (rl.rfind("rm ", 0) == 0 || rl.rfind("del ", 0) == 0 || rl.rfind("remove ", 0) == 0) {
+      auto id = trim_sv(rest.substr(rest.find(' ') + 1));
+      bool ok = store.remove(id);
+      out.push_back(card(ok ? "Note removed" : "No note " + id, ok ? id : "Try notes to list",
+                         "", "note", 9000, ResultAction::None));
+      return out;
+    }
+    if (!rest.empty() && rl != "list" && rl != "ls") {
+      // `note <text>` adds; `notes` lists.
+      auto ql = to_lower_utf8(query);
+      bool list_only = ql == "notes" || ql == "note" || rl == "list" || rl == "ls";
+      if (!list_only) {
+        auto id = store.add(rest);
+        out.push_back(card("Note saved (#" + id + ")", rest, rest, "note", 10000,
+                           ResultAction::Copy));
+        return out;
+      }
+    }
+    auto notes = store.list(rl == "list" || rl == "ls" ? "" : rest, 8);
+    if (notes.empty()) {
+      out.push_back(card("No notes yet", "Type note <text> to save one", "", "note", 9000,
+                         ResultAction::None));
+      return out;
+    }
+    int n = 0;
+    for (auto& nt : notes) {
+      SearchResult r = card("#" + nt.id + " · " + clipboard_preview(nt.text), "Note · enter copies",
+                            nt.text, "note", 10000 - n++);
+      r.actions.clear();
+      r.actions.push_back({"copy_text", "Copy"});
+      r.actions.push_back({"note_delete:" + nt.id, "Delete"});
+      out.push_back(std::move(r));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Todo) {
+    auto rest = trim_sv(intent.remainder);
+    auto rl = to_lower_utf8(rest);
+    auto& store = TodoStore::instance();
+    if (rl == "clear") {
+      store.clear_all();
+      out.push_back(card("Todos cleared", "All tasks removed", "", "todo", 10000,
+                         ResultAction::Copy));
+      return out;
+    }
+    if (rl == "clear done" || rl == "clear-done" || rl == "clean") {
+      store.clear_done();
+      out.push_back(card("Done todos cleared", "", "", "todo", 10000, ResultAction::Copy));
+      return out;
+    }
+    if (rl.rfind("done ", 0) == 0 || rl.rfind("check ", 0) == 0) {
+      auto id_s = trim_sv(rest.substr(rest.find(' ') + 1));
+      try {
+        int id = std::stoi(id_s);
+        bool ok = store.set_done(id, true);
+        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " done" : "No todo " + id_s, "",
+                           "", "todo", 9000, ResultAction::None));
+      } catch (...) {
+        out.push_back(card("Usage: todo done <id>", "Try todos to list ids", "", "todo", 8000,
+                           ResultAction::None));
+      }
+      return out;
+    }
+    if (rl.rfind("undo ", 0) == 0 || rl.rfind("uncheck ", 0) == 0 || rl.rfind("open ", 0) == 0) {
+      auto id_s = trim_sv(rest.substr(rest.find(' ') + 1));
+      try {
+        int id = std::stoi(id_s);
+        bool ok = store.set_done(id, false);
+        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " reopened" : "No todo " + id_s,
+                           "", "", "todo", 9000, ResultAction::None));
+      } catch (...) {
+        out.push_back(card("Usage: todo undo <id>", "", "", "todo", 8000, ResultAction::None));
+      }
+      return out;
+    }
+    if (rl.rfind("rm ", 0) == 0 || rl.rfind("del ", 0) == 0 || rl.rfind("remove ", 0) == 0) {
+      auto id_s = trim_sv(rest.substr(rest.find(' ') + 1));
+      try {
+        int id = std::stoi(id_s);
+        bool ok = store.remove(id);
+        out.push_back(card(ok ? "Todo removed" : "No todo " + id_s, "", "", "todo", 9000,
+                           ResultAction::None));
+      } catch (...) {
+        out.push_back(card("Usage: todo rm <id>", "", "", "todo", 8000, ResultAction::None));
+      }
+      return out;
+    }
+    if (rl.rfind("add ", 0) == 0) rest = trim_sv(rest.substr(4));
+    if (!rest.empty()) {
+      auto ql = to_lower_utf8(query);
+      bool list_only = ql == "todos" || ql == "todo" || rl == "list" || rl == "ls";
+      if (!list_only) {
+        auto id = store.add(rest);
+        out.push_back(card("Todo #" + id + " added", rest, rest, "todo", 10000,
+                           ResultAction::Copy));
+        return out;
+      }
+    }
+    auto items = store.list(true, (rl == "list" || rl == "ls") ? "" : rest, 12);
+    if (items.empty()) {
+      out.push_back(card("No todos", "Type todo <task> to add one", "", "todo", 9000,
+                         ResultAction::None));
+      return out;
+    }
+    int n = 0;
+    for (auto& t : items) {
+      std::string title = (t.done ? "[x] " : "[ ] ") + std::string("#") + std::to_string(t.id) +
+                          " · " + t.text;
+      SearchResult r = card(title, t.done ? "Done · enter copies" : "Open · todo done " +
+                                                                          std::to_string(t.id),
+                            t.text, "todo", 10000 - n++);
+      r.actions.clear();
+      r.actions.push_back({"copy_text", "Copy"});
+      r.actions.push_back({t.done ? "todo_undo:" + std::to_string(t.id)
+                                  : "todo_done:" + std::to_string(t.id),
+                           t.done ? "Reopen" : "Done"});
+      r.actions.push_back({"todo_delete:" + std::to_string(t.id), "Delete"});
+      out.push_back(std::move(r));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Media) {
+    auto rest = trim_sv(intent.remainder);
+    auto rl = to_lower_utf8(rest);
+    // Normalize "play"/"pause"/etc with optional nouns.
+    std::string act;
+    if (rl.empty() || rl == "play" || rl == "pause" || rl == "playpause" || rl == "toggle" ||
+        rl == "play pause" || rl == "play/pause")
+      act = "playpause";
+    else if (rl == "next" || rl == "next track" || rl == "skip" || rl == "forward")
+      act = "next";
+    else if (rl == "prev" || rl == "previous" || rl == "previous track" || rl == "back")
+      act = "prev";
+    else if (rl == "stop" || rl == "stop music")
+      act = "stop";
+    else if (rl == "mute" || rl == "unmute" || rl == "mute toggle")
+      act = "mute";
+    else if (rl == "vol up" || rl == "volume up" || rl == "up" || rl == "louder" || rl == "vol+")
+      act = "volup";
+    else if (rl == "vol down" || rl == "volume down" || rl == "down" || rl == "quieter" ||
+             rl == "vol-")
+      act = "voldn";
+    else if (rl.rfind("volume ", 0) == 0 || rl.rfind("vol ", 0) == 0)
+      act = "";
+    if (act.empty() && !rl.empty()) {
+      out.push_back(card("Media", "Try media play · pause · next · prev · mute · vol up/down", "",
+                         "media", 8000, ResultAction::None));
+      return out;
+    }
+    if (!act.empty()) {
+      std::string err;
+      bool ok = native_media_action(act, err);
+      std::string title = ok ? ("Media · " + act) : ("Media failed · " + err);
+      SearchResult r = card(title, ok ? "Sent to system player" : err, title, "media",
+                            10000, ok ? ResultAction::Copy : ResultAction::None);
+      r.category = "media";
+      r.actions.clear();
+      r.actions.push_back({"media:" + act, "Run again"});
+      out.push_back(std::move(r));
+      return out;
+    }
+    struct Row {
+      const char* id;
+      const char* title;
+    };
+    static const Row rows[] = {{"playpause", "Play / pause"},
+                               {"next", "Next track"},
+                               {"prev", "Previous track"},
+                               {"mute", "Mute toggle"},
+                               {"volup", "Volume up"},
+                               {"voldn", "Volume down"},
+                               {nullptr, nullptr}};
+    int n = 0;
+    for (auto* p = rows; p->id; ++p) {
+      SearchResult r = card(p->title, "Media control · enter runs", std::string("media:") + p->id,
+                            "media", 10000 - n++ * 10, ResultAction::Copy);
+      r.category = "media";
+      r.actions.clear();
+      r.actions.push_back({std::string("media:") + p->id, "Run"});
+      out.push_back(std::move(r));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Ping) {
+    auto host = trim_sv(intent.remainder);
+    if (host.empty()) {
+      out.push_back(card("Ping", "Type ping <host>", "", "ping", 8000, ResultAction::None));
+      return out;
+    }
+    auto sum = ping_summary(host);
+    out.push_back(card(host + " · " + (sum.empty() ? "no response" : sum), "Ping · enter copies",
+                       sum.empty() ? host : sum, "ping", 10000, ResultAction::Copy));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Dns) {
+    auto host = trim_sv(intent.remainder);
+    // Allow `dns <host>` or `dns <host> <extra>`? Take first token.
+    {
+      auto sp = host.find(' ');
+      if (sp != std::string::npos) host.resize(sp);
+    }
+    if (host.empty()) {
+      out.push_back(card("DNS lookup", "Type dns <hostname>", "", "dns", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    auto ips = dns_lookup(host);
+    if (ips.empty()) {
+      out.push_back(card("No address for " + host, "DNS lookup failed", "", "dns", 9000,
+                         ResultAction::None));
+      return out;
+    }
+    int n = 0;
+    for (auto& ip : ips)
+      out.push_back(card(ip, host + " · DNS · enter copies", ip, "dns", 10000 - n++ * 10,
+                         ResultAction::Copy));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::MyIp) {
+    auto ip = public_ip();
+    if (ip.empty()) {
+      if (!g_net)
+        out.push_back(card("Public IP", "Network checks are disabled", "", "myip", 8000,
+                           ResultAction::None));
+      else
+        out.push_back(card("Public IP unavailable", "Offline or blocked", "", "myip", 8000,
+                           ResultAction::None));
+      return out;
+    }
+    out.push_back(card(ip, "Public IP · enter copies", ip, "myip", 10000, ResultAction::Copy));
+    auto local = first_ipv4();
+    if (!local.empty() && local != ip)
+      out.push_back(card(local, "Local IPv4 · enter copies", local, "myip", 9900,
+                         ResultAction::Copy));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Base || intent.kind == MiniKind::Bits ||
+      intent.kind == MiniKind::Regex || intent.kind == MiniKind::UrlCodec ||
+      intent.kind == MiniKind::Jwt) {
+    // Delegate to the calculator/dev utilities so `hex`, `bit`, `regex`, `url`,
+    // `jwt` work with or without extra words, using clipboard as fallback.
+    std::string expr = query;
+    // `base`/`bit` with no payload: show usage, not an error card that blocks.
+    auto rem = trim_sv(intent.remainder);
+    if (rem.empty()) {
+      if (intent.kind == MiniKind::Base)
+        out.push_back(card("Number bases", "Try hex 255 · dec 0xff · bin 10 · base 16 255",
+                           "", "base", 8000, ResultAction::None));
+      else if (intent.kind == MiniKind::Bits)
+        out.push_back(card("Bit tools", "Try bit and 12 10 · bit or 12 10 · bit not 5",
+                           "", "bits", 8000, ResultAction::None));
+      else if (intent.kind == MiniKind::Regex)
+        out.push_back(card("Regex tester", "Try regex foo.* \"foobar\" · regexi hi HELLO", "",
+                           "regex", 8000, ResultAction::None));
+      else if (intent.kind == MiniKind::UrlCodec)
+        out.push_back(card("URL codec", "Try urlencode a b&c · urldecode a%20b", "", "url", 8000,
+                           ResultAction::None));
+      else
+        out.push_back(card("JWT decode", "Paste a header.payload.signature token", "", "jwt",
+                           8000, ResultAction::None));
+      // If clipboard can complete it, also show the converted clipboard.
+      if (!clipboard.empty()) {
+        MathResult m;
+        if (convert_devutil(expr + " " + clipboard, m) && m.ok)
+          out.push_back(card(m.display, "From clipboard · enter copies", m.display, "dev", 9900,
+                             ResultAction::Convert));
+      }
+      return out;
+    }
+    MathResult m;
+    if (convert_devutil(expr, m) && m.ok) {
+      out.push_back(card(m.display, "Dev · enter copies", m.display, "dev", 10000,
+                         ResultAction::Convert));
+      // For base overview, also offer each radix as its own copyable card.
+      if (intent.kind == MiniKind::Base && m.display.find('=') != std::string::npos) {
+        // display is "255 = 0xFF = 0b... = 0o..." — split for convenience.
+        std::string d = m.display;
+        std::size_t pos = d.find('=');
+        if (pos != std::string::npos) {
+          // Keep single card; splitting risks noise. Intentionally single.
+        }
+      }
+      return out;
+    }
+    out.push_back(card("Can't convert that", "Check the syntax · type help for examples", "",
+                       "dev", 8000, ResultAction::None));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Dupes || intent.kind == MiniKind::Large) {
+    auto filter = trim_sv(intent.remainder);
+    // Strip optional keywords: `dupes in <dir>`, `large 10 in <dir>`, `large <dir>`.
+    int limit = 8;
+    std::string dir = filter;
+    {
+      auto l = to_lower_utf8(filter);
+      // `large 20 foo` → limit 20, dir foo.
+      std::string first, rest2;
+      auto sp = filter.find(' ');
+      if (sp != std::string::npos) {
+        first = filter.substr(0, sp);
+        rest2 = trim_sv(filter.substr(sp + 1));
+      } else {
+        first = filter;
+      }
+      bool first_is_num = !first.empty();
+      for (char c : first)
+        if (!std::isdigit(static_cast<unsigned char>(c))) first_is_num = false;
+      if (first_is_num && !first.empty()) {
+        try {
+          limit = std::stoi(first);
+        } catch (...) {
+          limit = 8;
+        }
+        if (limit < 1) limit = 1;
+        if (limit > 25) limit = 25;
+        dir = rest2;
+      }
+      auto il = to_lower_utf8(dir);
+      if (il.rfind("in ", 0) == 0) dir = trim_sv(dir.substr(3));
+    }
+    if (!index) {
+      out.push_back(card(intent.kind == MiniKind::Dupes ? "Duplicates need the index"
+                                                        : "Large files need the index",
+                         "Open Wilfred with an index, or type wilfred index", "", "disk", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    Config cfg2 = cfg;
+    if (intent.kind == MiniKind::Dupes)
+      return dupe_file_results(*index, cfg2, dir, limit);
+    return large_file_results(*index, cfg2, dir, limit);
+  }
+
+  if (intent.kind == MiniKind::Workflow) {
+    auto rest = trim_sv(intent.remainder);
+    // `run` doubles as the shell-command prefix (`run ipconfig`); only claim it
+    // when the remainder names a configured workflow.
+    auto ql = to_lower_utf8(query);
+    if (ql.rfind("run ", 0) == 0) {
+      std::string nm;
+      auto sp = rest.find(' ');
+      nm = to_lower_utf8(sp == std::string::npos ? rest : rest.substr(0, sp));
+      if (cfg.workflows.find(nm) == cfg.workflows.end()) return out;
+      return workflow_results(nm, cfg);
+    }
+    if (rest.empty()) return workflow_results("", cfg);
+    std::string nm;
+    {
+      auto sp = rest.find(' ');
+      nm = to_lower_utf8(sp == std::string::npos ? rest : rest.substr(0, sp));
+    }
+    auto it = cfg.workflows.find(nm);
+    if (it == cfg.workflows.end()) {
+      // `workflows foo` with unknown name → list with hint.
+      auto all = workflow_results("", cfg);
+      out.insert(out.end(), all.begin(), all.end());
+      return out;
+    }
+    return workflow_results(nm, cfg);
+  }
+
+  if (intent.kind == MiniKind::Quicklink) {
+    auto m = match_quicklink(query, cfg);
+    if (!m.matched) {
+      if (cfg.quicklinks.empty())
+        out.push_back(card("No quicklinks yet",
+                           "Add quicklinks: in wilfred.yml with {query} or {1} placeholders", "",
+                           "quicklink", 8000, ResultAction::None));
+      else
+        out.push_back(card("Quicklink", "Type ql <name> <args> · try ql to list", "",
+                           "quicklink", 8000, ResultAction::None));
+      // List configured ones for discovery.
+      int n = 0;
+      for (auto& [name, tmpl] : cfg.quicklinks) {
+        if (n++ >= 8) break;
+        SearchResult r = card("Quicklink · " + name, tmpl, "ql " + name + " ", "quicklink",
+                              9000 - n, ResultAction::Habit);
+        out.push_back(std::move(r));
+      }
+      return out;
+    }
+    return quicklink_results(m, clipboard);
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
                                   "time [zone]  ·  clock and date",
+                                  "timer 10m · pomodoro · stopwatch  ·  focus timers",
+                                  "note <text> · notes  ·  quick notes",
+                                  "todo <task> · todos · todo done <id>  ·  tasks",
                                   "tz tokyo  ·  world clock / zone convert",
                                   "color #ff5500  ·  hex / rgb / hsl",
+                                  "hex 255 · dec 0xff · base 16 255  ·  number bases",
+                                  "bit and 12 10 · bit not 5  ·  bit tools",
+                                  "regex pattern text · urlencode · jwt <token>  ·  text tools",
+                                  "json {\"a\":1} · base64 · sha256 · uuid · lorem",
                                   "disk / disku  ·  drive space",
+                                  "large [n] [dir] · dupes [dir]  ·  big + duplicate files",
                                   "ram / cpu / swap  ·  memory and load",
-                                  "process <name>  ·  app CPU and RAM",
+                                  "process <name> · kill <pid|name>  ·  processes",
+                                  "media play · next · mute · vol up  ·  playback",
+                                  "ping <host> · dns <host> · myip  ·  network",
                                   "windows [name]  ·  switch to an open window",
                                   "screenshot [fullscreen|window|region]",
                                   "emoji [name]  ·  emoji picker",
                                   "symbol [name]  ·  punctuation and signs",
                                   "fx 100 usd to eur  ·  currency conversion",
-                                  "uuid / base64 / sha256 <text> / lorem / json",
                                   "lock / sleep / shutdown / restart / logout",
                                   "empty trash  ·  recycle bin",
                                   "speedtest  ·  live download and upload",
                                   "battery / ip / hostname / uptime / user",
-                                  "clip / clips [query]  ·  clipboard history, pin, clips clear",
+                                  "clip / clips [type] [query]  ·  clips url · clips code",
                                   "bm [query]  ·  bookmarks, history, open tabs",
+                                  "workflow <name> · run <name>  ·  multi-step actions",
+                                  "ql <name> <args>  ·  parameterized quicklinks",
                                   "snip / ;keyword  ·  text snippets",
                                   "snip save <name>  ·  save clipboard as snippet",
                                   "os / cores / screen",

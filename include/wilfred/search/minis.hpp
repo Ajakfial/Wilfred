@@ -46,6 +46,24 @@ enum class MiniKind {
   System,
   Screenshot,
   Browser,
+  Timer,
+  Stopwatch,
+  Note,
+  Todo,
+  Kill,
+  Media,
+  Ping,
+  Dns,
+  MyIp,
+  Base,
+  Bits,
+  Regex,
+  UrlCodec,
+  Jwt,
+  Dupes,
+  Large,
+  Workflow,
+  Quicklink,
 };
 
 struct MiniIntent {
@@ -56,7 +74,7 @@ struct MiniIntent {
 
 MiniIntent parse_mini_intent(std::string_view query);
 std::vector<SearchResult> mini_results(const std::string& query, const Config& cfg,
-                                       const std::string& clipboard);
+                                       const std::string& clipboard, class IndexEngine* index = nullptr);
 void set_mini_network_enabled(bool enabled);
 
 }  // namespace wilfred

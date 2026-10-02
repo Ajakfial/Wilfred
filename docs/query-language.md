@@ -104,6 +104,15 @@ with no payload). `sha256 <text>` hashes the rest of the query. `lorem`
 /`lorem 40` emits placeholder words. `json {…}` pretty-prints; `json
 minify {…}` compact-prints. Enter copies the result.
 
+Number bases and bits: `hex 255`, `dec 0xff`, `bin 10`, `oct 8`,
+`base 16 255`, bare `0xff` / `0b1010` / `0o17` (all show
+`dec = hex = bin = oct`), `255 to hex`, `bit and/or/xor <a> <b>`,
+`bit not <a>`, `bit shl/shr <a> <n>`. URL codec: `urlencode <text>`,
+`urldecode <text>` (`url encode/decode` also work). JWT: `jwt <token>`
+decodes header/payload without verifying the signature. Regex tester:
+`regex <pattern> <text>` (`regexi` ignores case, `/pat/i` flags work,
+quoted patterns allow spaces).
+
 The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) —
 there is no `eval`/scripting backdoor.
 
@@ -159,12 +168,34 @@ synthetic result card instead of searching the index
 | `sha256 [text]` | `sha`, `hash` (with text) | SHA-256 of the argument or clipboard |
 | `lorem [n]` | `ipsum`, `loremipsum` | Placeholder text (`n` words, default 30) |
 | `json [value]` | `prettyjson`, `pretty {…}` | Pretty-print JSON; `json minify {…}` compact-prints |
+| `hex/dec/bin/oct [value]` | `base` | Number-base convert (`hex 255`, `dec 0xff`, `0b1010`, `base 16 255`) |
+| `bit <op> …` | `bits`, `bitwise` | Bit tools (`bit and 12 10`, `bit not 5`, `bit shl 1 4`) |
+| `regex <pat> <text>` | `regexp`, `re`, `regexi` | Regex tester (enter copies match/groups or `no match`) |
+| `urlencode/urldecode` | `url`, `encodeurl` | URL percent-encode/decode |
+| `jwt <token>` | `jwtdecode` | Decode JWT header/payload (signature not verified) |
+| `timer [duration]` | `timers`, `alarm`, `countdown` | Countdown (`timer 10m`, `timer 25`, `timer stop`) |
+| `pomodoro [preset]` | `pomo` | Pomodoro (`pomodoro`, `pomodoro break`, `pomodoro 5`) |
+| `stopwatch [cmd]` | `stop-watch`, `sw` | Stopwatch (`stopwatch start/stop/lap/reset`) |
+| `note [text]` | `notes`, `memo` | Quick notes (`note buy milk`, `notes`, `note clear`) |
+| `todo [task]` | `todos`, `task` | Todos (`todo ship it`, `todos`, `todo done 1`, `todo clear`) |
+| `kill <pid\|name>` | `killall`, `pkill` | Process killer (enter terminates; `process` lists) |
+| `media [action]` | `player`, `music`, `play`, `pause`, `next`, `prev`, `mute`, `volume` | Native media controls, nothing to install — Win: system media keys; macOS: system HID keys + Music/Spotify/VLC fallback; Linux: native MPRIS D-Bus (Spotify/VLC/Chrome/…) with optional `playerctl`, volume via built-in `wpctl` → `pactl` → `amixer` → `pamixer` |
+| `ping <host>` | | Ping summary via the OS ping CLI |
+| `dns <host>` | `nslookup`, `resolve` | DNS lookup via getaddrinfo |
+| `myip` | `publicip`, `ip public` | Public IP (via api.ipify.org) + local IP |
+| `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
+| `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
+| `workflow [name]` | `workflows`, `flow`, `run` | Multi-step workflows (`workflows` lists; `run <name>` runs) |
+| `ql <name> <args>` | `quicklink`, `link` | Parameterized quicklinks (`{query}` `{1}` `{*}` `{clipboard}`) |
 | `lock` | `lockscreen` | Lock the session (enter runs) |
 | `sleep` | `suspend` | Sleep / suspend the machine |
 | `shutdown` | `poweroff`, `halt`, `power off` | Power off |
 | `restart` | `reboot` | Reboot |
 | `logout` | `logoff`, `signout`, `log out` | Sign out of this session |
 | `empty trash` | `emptyrecycle`, `empty bin` | Empty the recycle bin / trash |
+
+`clips` also filters by type: `clips url`, `clips email`, `clips path`,
+`clips code`, `clips ip` (plus an optional text query after the type).
 
 Minis can be disabled entirely with `search.minis: false`. `weather`, `speedtest`,
 and live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`
@@ -227,6 +258,25 @@ Built-in macros (all templates support `{query}`, `{query_enc}`,
 Add your own or override a built-in name in `config.macros` — see
 [configuration.md](configuration.md#macros--query-templates). List them all
 at any time with the `macros` mini.
+
+### Quicklinks and workflows
+
+Quicklinks (`config.quicklinks`) are macros with positional parameters:
+`{1}` `{2}` ... plus `{*}` (all args) alongside the usual
+`{query}`/`{clipboard}` forms. Invoke as `ql <name> <args>`,
+`!name args`, or `name:args`:
+
+```
+ql ticket ABC-123
+ticket:ABC-123
+!docs some query
+```
+
+Workflows (`config.workflows`) are named multi-step result actions.
+`workflows` lists them; `workflow <name>` / `run <name>` shows the
+chain; picking `Run <name>` from a file's actions (`Ctrl`/`⌘`+`K`)
+executes each step in order. Steps are the same ids as per-file
+actions, joined with `+` ad-hoc (`copy_path+reveal`).
 
 ## 7. Filtered search — inline filter clauses
 

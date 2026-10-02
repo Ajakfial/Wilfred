@@ -222,3 +222,27 @@ snippets:
   # Snippet placeholders: {date} {time} {datetime} {year} {month} {day}
   #   {clipboard} {query}. Folders: set `folder:` per snippet in snippets.yml
   #   and filter with `;folder/name` or `snip folder/name`.
+
+# Named multi-step workflows: each workflow is an ordered list of result
+# actions run in order (see actions: open, reveal, copy_path, copy_text...).
+# Query with `workflow <name>` or `run <name>`, chain with '+' already works
+# ad-hoc (e.g. action id "copy_path+reveal").
+workflows:
+  review: [copy_path, reveal]
+  # docs_review:
+  #   steps: [copy_path, reveal]
+
+# Parameterized quicklinks: name -> URL/path/command template.
+# Placeholders: {query} {query_enc} {clipboard} {clipboard_enc}
+# plus positional {1} {2} ... and {*} (all args).
+# Query with `ql <name> <args>` or as a macro (`!name args`, `name:args`).
+quicklinks:
+  # docs: "https://example.com/search?q={query}"
+  # ticket: "https://example.com/t/{1}"
+
+# Per-app extra context actions: app-name substring (case-insensitive)
+# -> additional action ids appended to file/app results for that app.
+# Example: always offer terminal/editor actions on VS Code results.
+app_actions:
+  code: [open_terminal, open_editor, copy_path]
+  # photoshop: [reveal]

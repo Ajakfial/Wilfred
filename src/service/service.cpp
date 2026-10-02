@@ -17,6 +17,7 @@
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/expander.hpp"
+#include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/semantic.hpp"
 #include "wilfred/search/suggest.hpp"
 #include "wilfred/sources/sources.hpp"
@@ -123,6 +124,10 @@ bool Service::boot() {
                                   cfg_.clipboard.persist, default_clips_path());
   if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
   snippets_.load(default_snippets_path(), cfg_);
+  QuickNoteStore::instance().configure(path_join(data_directory(), "quicknotes.txt"));
+  QuickNoteStore::instance().load();
+  TodoStore::instance().configure(path_join(data_directory(), "todos.txt"));
+  TodoStore::instance().load();
   for (auto& d : default_plugin_directories()) create_directories(d);
   plugins_.load(cfg_);
   set_plugin_host_for_actions(&plugins_);
