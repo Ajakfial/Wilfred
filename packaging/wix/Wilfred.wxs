@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Wilfred Windows installer (WiX Toolset v3, candle/light).
+
+  Built by scripts/Build-Msi.ps1, which supplies:
+    -dProductVersion=1.2.3   (sanitized numeric X.Y.Z from the release tag)
+    -dSourceDir=<staging>    (Package step output: wilfred.exe + ui/overlay + docs)
+    -dOverlaySource=<staging>\ui\overlay  (heat fragment source)
+    -dHasIcon=yes|no, -dIconPath=<path>   (optional packaging/wix/icon.ico drop-in)
+
+  Identity rules (do not change lightly):
+  - Manufacturer is always "Wilfred Open Contributors" (matches the
+    VERSIONINFO stamp and the Authenticode subject). Shown as the
+    Publisher in Add/Remove Programs.
+  - UpgradeCode below is stable forever. Changing it orphans installed
+    versions (side-by-side installs instead of upgrades).
+  - Product Id="*" + MajorUpgrade gives clean major upgrades.
+  - Per-user scope (LocalAppData, HKCU): no UAC elevation required.
+  - x64 only (matches the windows-x64 release matrix).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="Wilfred"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="Wilfred Open Contributors"
+           UpgradeCode="70E15177-4531-45D4-AEF7-D2E91D92F937">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perUser"
+             InstallPrivileges="limited"
+             Description="Wilfred - fast desktop search and launcher"
+             Manufacturer="Wilfred Open Contributors"
+             Platform="x64" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Wilfred is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <?if $(var.HasIcon) = "yes" ?>
+    <Icon Id="WilfredIcon" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="WilfredIcon" />
+    <?endif ?>
+
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ajakfial/wilfred" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/ajakfial/wilfred#readme" />
+
+    <Feature Id="ProductFeature" Title="Wilfred" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="OverlayFiles" />
+    </Feature>
+
+    <ComponentGroup Id="ProductComponents">
+      <ComponentRef Id="WilfredExe" />
+      <ComponentRef Id="WilfredDocs" />
+      <ComponentRef Id="WilfredPath" />
+      <ComponentRef Id="WilfredMenuShortcuts" />
+    </ComponentGroup>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLDIR" Name="Wilfred">
+          <Directory Id="UiDir" Name="ui">
+            <Directory Id="OverlayDir" Name="overlay" />
+          </Directory>
+
+          <Component Id="WilfredExe" Guid="*" Win64="yes">
+            <File Id="WilfredExe" Source="$(var.SourceDir)\wilfred.exe" KeyPath="yes" />
+          </Component>
+
+          <Component Id="WilfredDocs" Guid="*">
+            <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" />
+            <File Id="DefaultYml" Source="$(var.SourceDir)\wilfred.default.yml" />
+          </Component>
+
+          <Component Id="WilfredPath" Guid="*">
+            <RegistryValue Root="HKCU"
+                           Key="Software\Wilfred Open Contributors\Wilfred"
+                           Name="installed"
+                           Type="integer"
+                           Value="1"
+                           KeyPath="yes" />
+            <Environment Id="WilfredPathEnv"
+                         Name="PATH"
+                         Value="[INSTALLDIR]"
+                         Permanent="no"
+                         Part="last"
+                         Action="set"
+                         System="no" />
+          </Component>
+
+        </Directory>
+      </Directory>
+
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="Wilfred" />
+      </Directory>
+    </Directory>
+
+    <!-- Start Menu shortcuts (per-user ProgramMenuFolder, no elevation). -->
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="WilfredMenuShortcuts" Guid="*">
+        <RegistryValue Root="HKCU"
+                       Key="Software\Wilfred Open Contributors\Wilfred"
+                       Name="menushortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <?if $(var.HasIcon) = "yes" ?>
+        <Shortcut Id="MenuWilfred"
+                  Name="Wilfred"
+                  Description="Wilfred - fast desktop search and launcher"
+                  Target="[INSTALLDIR]wilfred.exe"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="WilfredIcon" IconIndex="0" />
+        <?else ?>
+        <Shortcut Id="MenuWilfred"
+                  Name="Wilfred"
+                  Description="Wilfred - fast desktop search and launcher"
+                  Target="[INSTALLDIR]wilfred.exe"
+                  WorkingDirectory="INSTALLDIR" />
+        <?endif ?>
+        <Shortcut Id="MenuUninstall"
+                  Name="Uninstall Wilfred"
+                  Description="Uninstall Wilfred"
+                  Target="[SystemFolder]msiexec.exe"
+                  Arguments="/x [ProductCode]" />
+        <RemoveFolder Id="MenuFolder" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Optional launch-on-exit checkbox (WixUI_Minimal exit dialog). -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Wilfred" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+    <CustomAction Id="LaunchWilfred"
+                  FileKey="WilfredExe"
+                  ExeCommand=""
+                  Return="asyncNoWait"
+                  Impersonate="yes" />
+    <UI>
+      <Publish Dialog="ExitDialog"
+               Control="Finish"
+               Event="DoAction"
+               Value="LaunchWilfred">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+    </UI>
+    <UIRef Id="WixUI_Minimal" />
+
+  </Product>
+</Wix>

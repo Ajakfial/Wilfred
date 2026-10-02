@@ -114,6 +114,44 @@ jobs:
           Copy-Item 'config\wilfred.default.yml' $staging -ErrorAction SilentlyContinue
           Compress-Archive -Path $staging -DestinationPath "dist\wilfred-$tag-$id.zip" -Force
 
+      - name: MSI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WILFRED_PFX_PASSWORD: ${{ secrets.WILFRED_PFX_PASSWORD }}
+          WILFRED_PFX_BASE64: ${{ secrets.WILFRED_PFX_BASE64 }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $id = '${{ matrix.id }}'
+          $staging = "dist\wilfred-$tag-$id"
+          if (-not (Test-Path "$staging\wilfred.exe")) { throw "Staging dir not found: $staging" }
+          $msi = "dist\wilfred-$tag-$id.msi"
+          ./scripts/Build-Msi.ps1 -Staging $staging -Out $msi -Version $tag
+          # An unsigned MSI installs fine but SmartScreen still warns; sign it
+          # with the same identity as the exe when secrets are present.
+          $signed = $false
+          if ($env:WILFRED_PFX_BASE64) {
+            $pfx = 'build\windows\msi-signing.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WILFRED_PFX_BASE64))
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $msi -PfxPath $pfx
+            Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+            $signed = $true
+          } elseif ($env:AZURE_TENANT_ID -and $env:AZURE_CLIENT_ID -and $env:AZURE_CLIENT_SECRET -and ($env:AZURE_TRUSTED_SIGNING_ENDPOINT -or ($env:AZURE_TRUSTED_SIGNING_ACCOUNT -and $env:AZURE_TRUSTED_SIGNING_PROFILE))) {
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $msi
+            $signed = $true
+          } else {
+            Write-Host '::warning::No signing secrets; shipping unsigned MSI (installs fine, SmartScreen still warns). See docs/signing.md.'
+          }
+          if ($signed) {
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $msi -VerifyOnly
+          }
+
       - name: Package (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -146,6 +184,7 @@ jobs:
           name: wilfred-${{ github.ref_name }}-${{ matrix.id }}
           path: |
             dist/*.zip
+            dist/*.msi
             dist/*.tar.gz
           if-no-files-found: error
 
@@ -167,7 +206,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(artifacts/*.zip artifacts/*.tar.gz)
+          files=(artifacts/*.zip artifacts/*.msi artifacts/*.tar.gz)
           if [[ ${#files[@]} -eq 0 ]]; then
             echo "No release files found" >&2
             find artifacts -type f || true

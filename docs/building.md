@@ -150,7 +150,8 @@ The `.github/workflows/release.yml` workflow builds `wilfred` for
 Windows/Linux/macOS whenever a `v*.*.*` tag is pushed, then packages each
 platform's binary alongside `ui/overlay/`, `README.md`, and
 `config/wilfred.default.yml` into a zip/tar.gz and attaches it to a GitHub
-Release. On Windows it also stamps Publisher `Wilfred Open Contributors`
+Release. Windows additionally produces a signed `.msi` installer from the
+same staging dir (see [installer.md](installer.md)). On Windows it also stamps Publisher `Wilfred Open Contributors`
 via VERSIONINFO on every build and Authenticode-signs when signing secrets
 are present — see [signing.md](signing.md). There is currently no CI job
 that runs on pull requests — run `ctest` locally before submitting a change (see

@@ -13,6 +13,8 @@ param(
     [string]$SignThumbprint = '',
     [string]$SignPfx = '',
     [string]$SignTimestamp = 'http://timestamp.digicert.com',
+    [switch]$Msi,
+    [string]$MsiVersion = '',
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CMakeArgs
 )
@@ -130,6 +132,39 @@ if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
     Write-Host 'Skipping Authenticode signing (VERSIONINFO publisher stamp still applied).'
     Write-Host 'Pass -Sign to sign with your Wilfred Open Contributors dev cert,'
     Write-Host 'or set WILFRED_SIGN=1. See docs/signing.md.'
+}
+
+if ($Msi) {
+    Write-Host ''
+    Write-Host 'Building Windows installer (.msi)...'
+    $msiStaging = Join-Path ([IO.Path]::GetTempPath()) ('wilfred-msi-staging-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $msiStaging | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $msiStaging 'ui') | Out-Null
+    try {
+        Copy-Item $exe $msiStaging
+        Copy-Item -Recurse (Join-Path $Root 'ui\overlay') (Join-Path $msiStaging 'ui\overlay')
+        Copy-Item (Join-Path $Root 'README.md') $msiStaging -ErrorAction SilentlyContinue
+        Copy-Item (Join-Path $Root 'config\wilfred.default.yml') $msiStaging -ErrorAction SilentlyContinue
+        if ($MsiVersion) {
+            $msiTag = $MsiVersion
+        } else {
+            $projLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
+                Select-String -Pattern 'project\(Wilfred VERSION ([0-9.]+)' |
+                Select-Object -First 1
+            $msiTag = 'v' + $projLine.Matches[0].Groups[1].Value
+        }
+        $msiOut = Join-Path $Root "dist\wilfred-$msiTag-windows-x64.msi"
+        $msiParams = @{ Staging = $msiStaging; Out = $msiOut; Version = $msiTag }
+        & (Join-Path $PSScriptRoot 'Build-Msi.ps1') @msiParams
+        if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
+            Write-Host 'Signing installer...'
+            $signParams.ExePath = $msiOut
+            & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @signParams
+        }
+        Write-Host "Installer: $msiOut"
+    } finally {
+        Remove-Item -Recurse -Force $msiStaging -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host ""
