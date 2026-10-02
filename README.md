@@ -2,6 +2,8 @@
 
 # Wilfred
 
+**Website:** https://ajakfial.github.io/Wilfred/
+
 Wilfred is a fast, lightweight, cross-platform desktop search engine and
 application launcher. It is designed as a deep OS search layer: files, folders,
 applications, browser integration, calculator, and filtered queries from a
