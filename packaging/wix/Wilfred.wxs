@@ -65,7 +65,9 @@
             <Directory Id="OverlayDir" Name="overlay" />
           </Directory>
 
-          <Component Id="WilfredExe" Guid="*" Win64="yes">
+          <!-- Mixed file+registry components cannot use auto GUIDs (CNDL0230);
+               these stable GUIDs must never change once released. -->
+          <Component Id="WilfredExe" Guid="087C5014-07E6-4C6E-AEDD-DF9DD2E5B191" Win64="yes">
             <RegistryValue Root="HKCU"
                            Key="Software\Wilfred Open Contributors\Wilfred"
                            Name="exe"
@@ -75,7 +77,7 @@
             <File Id="WilfredExe" Source="$(var.SourceDir)\wilfred.exe" KeyPath="no" />
           </Component>
 
-          <Component Id="WilfredReadme" Guid="*">
+          <Component Id="WilfredReadme" Guid="E9EDCA13-C720-43CF-AB6B-3A71F98C923F">
             <RegistryValue Root="HKCU"
                            Key="Software\Wilfred Open Contributors\Wilfred"
                            Name="readme"
@@ -85,7 +87,7 @@
             <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" KeyPath="no" />
           </Component>
 
-          <Component Id="WilfredDefaults" Guid="*">
+          <Component Id="WilfredDefaults" Guid="A4E29D79-9841-4E7A-8CE2-B420C7D7E872">
             <RegistryValue Root="HKCU"
                            Key="Software\Wilfred Open Contributors\Wilfred"
                            Name="defaults"
