@@ -19,24 +19,43 @@ macros, filters, plugin support (native + stdio), local backup/sync, the
 overlay UI, and the CLI — is implemented today. See
 [docs/](docs/README.md) for how each subsystem works.
 
+Also shipped since: productivity minis (countdown timers, Pomodoro
+presets, stopwatch, quick notes, todos), process listing plus `kill`,
+number-base and bit tools, regex tester, URL codec and JWT decode next to
+the existing uuid/base64/sha256/lorem/json utilities, native media
+controls (Windows media keys, macOS HID keys plus Music/Spotify/VLC
+fallback, Linux native MPRIS D-Bus with optional `playerctl` and a
+`wpctl` → `pactl` → `amixer` volume chain), network tools (`ping`,
+`dns`, `myip`), clipboard history filtered by type (`clips url|email|
+path|code|ip`), largest-file and duplicate-candidate finders over the
+index, named multi-step workflows, parameterized quicklinks, per-app
+context actions, and friendlier config diagnostics with `Did you mean`
+hints. Windows releases carry the `Wilfred Open Contributors` publisher
+stamp (VERSIONINFO), Authenticode signing when secrets are configured
+(see [docs/signing.md](docs/signing.md)), a per-user `.msi` installer,
+and a Chocolatey package (see [docs/installer.md](docs/installer.md)).
+
 ## Near-term
 
-* **Run tests in CI on every PR.** The only current workflow
-  (`.github/workflows/release.yml`) builds release binaries on tagged
-  pushes; it does not run `ctest` on pull requests yet (contributors run
-  it locally per CONTRIBUTING.md). Adding a CI job for this is the
-  highest-priority infra gap.
+* **Run tests in CI on every PR.** The current workflows are
+  `.github/workflows/lint.yml` (formatting/lint) and
+  `.github/workflows/release.yml` (tagged release builds plus Windows
+  sign/MSI/Choco steps); neither runs `ctest` on pull requests yet
+  (contributors run it locally per CONTRIBUTING.md). Adding a CI job for
+  this is the highest-priority infra gap.
 * ~~**Enforce formatting/linting in CI.**~~ Done —
   `.github/workflows/lint.yml` runs `clang-format` and `clang-tidy` on
   changed C/C++ files for every PR (scoped to the diff, not a full-tree
   reformat, since most of the codebase predates these configs).
-* **Packaged installers.** Releases currently ship as a zip/tar.gz per
-  platform (see the release workflow). A Homebrew formula, a winget/
-  Scoop manifest, and a `.deb`/AppImage would lower the install barrier.
-* **Expand the mini and macro library.** The `RankPipeline`/mini
-  extension points already support this without core changes — see
+* **Packaged installers.** Windows now ships an `.msi` (per-user, WiX)
+  and a Chocolatey package from the release workflow, alongside the
+  zip/tar.gz per platform. Still open: a Homebrew formula, a
+  winget/Scoop submission, and a `.deb`/AppImage.
+* **Expand the mini and macro library.** Largely expanded (timers, notes,
+  media, network, workflows, quicklinks — see
   [docs/query-language.md](docs/query-language.md) and
-  `include/wilfred/search/minis.hpp`.
+  `include/wilfred/search/minis.hpp`); the `RankPipeline`/mini extension
+  points still accept more without core changes.
 
 ## Mid-term
 
@@ -44,9 +63,10 @@ overlay UI, and the CLI — is implemented today. See
   are currently found only via local directories; a lightweight registry
   or index of known third-party plugins would make them easier to find
   and trust.
-* **Config validation UX.** Friendlier diagnostics when `wilfred.yml`
-  fails to parse or a key is misspelled, beyond the current
-  human-readable YAML errors.
+* ~~**Config validation UX.**~~ Done — unknown keys suggest the closest
+  valid key, type errors show what was got versus expected with an
+  example, and `workflows:`/`quicklinks:`/`app_actions:` validate action
+  ids and placeholders instead of failing silently.
 * **Optional encrypted sync.** The backup/sync format
   ([docs/sync-and-backup.md](docs/sync-and-backup.md)) is a plain
   dependency-free binary container; encryption-at-rest for the archive
