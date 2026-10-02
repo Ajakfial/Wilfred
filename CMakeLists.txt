@@ -316,6 +316,20 @@ else()
 endif()
 target_link_libraries(wilfred PRIVATE wilfred_core)
 
+# Windows publisher identity: stamp every wilfred.exe (local or CI) with
+# CompanyName "Wilfred Open Contributors" via VERSIONINFO. This controls
+# what Explorer shows under Details > Copyright; SmartScreen trust still
+# requires Authenticode signing, see docs/signing.md.
+if(WIN32)
+  set(WILFRED_VERSION_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/wilfred_version_info.rc")
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/win_version_info.rc.in
+    ${WILFRED_VERSION_RC}
+    @ONLY
+  )
+  target_sources(wilfred PRIVATE ${WILFRED_VERSION_RC})
+endif()
+
 # Ship only the runtime overlay files (index.html, style.css, vendor assets,
 # and the committed dist/ bundle) — never node_modules or TS sources.
 add_custom_command(TARGET wilfred POST_BUILD

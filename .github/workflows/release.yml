@@ -45,6 +45,46 @@ jobs:
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Config Release -Tests
 
+      - name: Sign (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WILFRED_PFX_PASSWORD: ${{ secrets.WILFRED_PFX_PASSWORD }}
+          WILFRED_PFX_BASE64: ${{ secrets.WILFRED_PFX_BASE64 }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+        run: |
+          $bin = Get-ChildItem -Path 'build\windows' -Recurse -Filter 'wilfred.exe' |
+            Where-Object { $_.FullName -notmatch 'CMakeFiles' } |
+            Select-Object -First 1
+          if (-not $bin) { throw 'Could not find wilfred.exe' }
+          Write-Host "Found $($bin.FullName)"
+          # Publisher identity is always stamped via VERSIONINFO
+          # (CompanyName Wilfred Open Contributors). Authenticode trust
+          # needs a Microsoft-trusted signature; see docs/signing.md.
+          $signed = $false
+          if ($env:WILFRED_PFX_BASE64) {
+            Write-Host 'PFX secret present: signing with OV/EV certificate.'
+            $pfx = 'build\windows\release-signing.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WILFRED_PFX_BASE64))
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $bin.FullName -PfxPath $pfx
+            Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+            $signed = $true
+          } elseif ($env:AZURE_TENANT_ID -and $env:AZURE_CLIENT_ID -and $env:AZURE_CLIENT_SECRET -and ($env:AZURE_TRUSTED_SIGNING_ENDPOINT -or ($env:AZURE_TRUSTED_SIGNING_ACCOUNT -and $env:AZURE_TRUSTED_SIGNING_PROFILE))) {
+            Write-Host 'Azure Trusted Signing secrets present: signing with Microsoft-trusted timestamp.'
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $bin.FullName
+            $signed = $true
+          } else {
+            Write-Host '::warning::No signing secrets (WILFRED_PFX_BASE64 or Azure Trusted Signing). Shipping with VERSIONINFO publisher stamp only; SmartScreen will still warn until trusted signing is configured. See docs/signing.md.'
+          }
+          if ($signed) {
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $bin.FullName -VerifyOnly
+          }
+
       - name: Build (Linux)
         if: runner.os == 'Linux'
         shell: bash

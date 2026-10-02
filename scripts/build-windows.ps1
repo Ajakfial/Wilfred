@@ -9,6 +9,10 @@ param(
     [switch]$Clean,
     [string]$Generator = '',
     [string]$Arch = 'x64',
+    [switch]$Sign,
+    [string]$SignThumbprint = '',
+    [string]$SignPfx = '',
+    [string]$SignTimestamp = 'http://timestamp.digicert.com',
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CMakeArgs
 )
@@ -110,6 +114,22 @@ if ($Tests) {
 $exeDir = Join-Path $BuildDir $Config
 if (-not (Test-Path (Join-Path $exeDir 'wilfred.exe'))) {
     $exeDir = $BuildDir
+}
+
+$exe = Join-Path $exeDir 'wilfred.exe'
+if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
+    Write-Host ''
+    Write-Host 'Signing Windows binary (Publisher: Wilfred Open Contributors)...'
+    $signParams = @{ ExePath = $exe }
+    if ($SignThumbprint) { $signParams.Thumbprint = $SignThumbprint }
+    if ($SignPfx) { $signParams.PfxPath = $SignPfx }
+    if ($SignTimestamp) { $signParams.TimestampUrl = $SignTimestamp }
+    & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @signParams
+} else {
+    Write-Host ''
+    Write-Host 'Skipping Authenticode signing (VERSIONINFO publisher stamp still applied).'
+    Write-Host 'Pass -Sign to sign with your Wilfred Open Contributors dev cert,'
+    Write-Host 'or set WILFRED_SIGN=1. See docs/signing.md.'
 }
 
 Write-Host ""
