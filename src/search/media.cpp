@@ -1,5 +1,7 @@
 #include "wilfred/search/media.hpp"
 
+#include "wilfred/search/mpris_dbus.hpp"
+
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -27,8 +29,6 @@ bool native_kill_process(std::uint32_t pid, std::string& error) {
 }
 
 #ifndef __APPLE__
-
-#include "wilfred/search/mpris_dbus.hpp"
 
 namespace {
 
