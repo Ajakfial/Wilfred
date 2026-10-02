@@ -192,7 +192,8 @@ bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& erro
         error = ax_error("could not restore window", kAXErrorFailure);
       }
     } else if (op == NativeWindowOp::Maximize) {
-      ok = ax_set_bool(win, kAXZoomedAttribute, true);
+      // Fullscreen is the settable maximized state on macOS.
+      ok = ax_set_bool(win, kAXFullScreenAttribute, true);
       if (!ok) error = ax_error("could not maximize window", kAXErrorFailure);
     } else if (op == NativeWindowOp::Close) {
       CFTypeRef btn_ref = nullptr;
@@ -211,8 +212,9 @@ bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& erro
       CGFloat x = op == NativeWindowOp::SnapLeft ? bounds.origin.x : bounds.origin.x + half;
       CGPoint pos = CGPointMake(x, bounds.origin.y);
       CGSize size = CGSizeMake(half, bounds.size.height);
-      AXValueRef pos_v = AXValueCreate(kAXValueCGPointType, &pos);
-      AXValueRef size_v = AXValueCreate(kAXValueCGSizeType, &size);
+      AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
+      AXValueRef size_v =
+          AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
       AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
                          : kAXErrorFailure;
       AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
@@ -246,15 +248,16 @@ bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& e
                   kAXErrorSuccess &&
               AXUIElementCopyAttributeValue(win, kAXSizeAttribute, &size_ref) == kAXErrorSuccess;
     if (ok && pos_ref && size_ref) {
-      AXValueGetValue((AXValueRef)pos_ref, kAXValueCGPointType, &pos);
-      AXValueGetValue((AXValueRef)size_ref, kAXValueCGSizeType, &size);
+      AXValueGetValue((AXValueRef)pos_ref, static_cast<AXValueType>(kAXValueCGPointType), &pos);
+      AXValueGetValue((AXValueRef)size_ref, static_cast<AXValueType>(kAXValueCGSizeType), &size);
       rect.x = static_cast<int>(pos.x);
       rect.y = static_cast<int>(pos.y);
       rect.w = static_cast<int>(size.width);
       rect.h = static_cast<int>(size.height);
       CFTypeRef zoom_ref = nullptr;
       rect.maximized = false;
-      if (AXUIElementCopyAttributeValue(win, kAXZoomedAttribute, &zoom_ref) == kAXErrorSuccess &&
+      if (AXUIElementCopyAttributeValue(win, kAXFullScreenAttribute, &zoom_ref) ==
+                  kAXErrorSuccess &&
           zoom_ref) {
         rect.maximized = CFBooleanGetValue((CFBooleanRef)zoom_ref);
         CFRelease(zoom_ref);
@@ -283,14 +286,14 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
     }
     ax_set_bool(win, kAXMinimizedAttribute, false);
     CGPoint pos = CGPointMake(x, y);
-    AXValueRef pos_v = AXValueCreate(kAXValueCGPointType, &pos);
+    AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
     AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
                        : kAXErrorFailure;
     if (pos_v) CFRelease(pos_v);
     bool ok = pe == kAXErrorSuccess;
     if (ok && w > 0 && h > 0) {
       CGSize size = CGSizeMake(w, h);
-      AXValueRef size_v = AXValueCreate(kAXValueCGSizeType, &size);
+      AXValueRef size_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
       AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
                           : kAXErrorFailure;
       if (size_v) CFRelease(size_v);
