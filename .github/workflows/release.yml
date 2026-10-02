@@ -184,6 +184,10 @@ jobs:
           } else {
             Write-Host '::warning::No CHOCO_API_KEY secret; skipping community push (nupkg still attached to release).'
           }
+          # The tolerated push above leaves a non-zero LASTEXITCODE behind,
+          # which the runner would fail the step on. The nupkg is built and
+          # will be attached, so this step always succeeds from here.
+          exit 0
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
