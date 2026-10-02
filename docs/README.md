@@ -16,6 +16,9 @@ developers extending it.
 | [indexing.md](indexing.md) | How the index is built, stored, watched, and recovered |
 | [ranking.md](ranking.md) | How search results are scored and ordered |
 | [plugins.md](plugins.md) | Writing native and stdio plugins, the manifest format |
+| [automation.md](automation.md) | System-wide hotkeys, CLI triggers, and window/layout workflow steps |
+| [installer.md](installer.md) | Windows MSI and Chocolatey packaging |
+| [signing.md](signing.md) | Publisher identity and Authenticode trust |
 | [ipc-and-api.md](ipc-and-api.md) | The local IPC protocol and the optional local HTTP API |
 | [sync-and-backup.md](sync-and-backup.md) | Backup archive format and remote sync |
 

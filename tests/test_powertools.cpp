@@ -1,5 +1,7 @@
 #include "test.hpp"
 
+#include "wilfred/ai/assistant.hpp"
+#include "wilfred/ai/vision.hpp"
 #include "wilfred/config/config.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/index/engine.hpp"
@@ -16,6 +18,8 @@
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/transcribe.hpp"
+#include "wilfred/search/layouts.hpp"
+#include "wilfred/ai/vision.hpp"
 #include "wilfred/search/workflows.hpp"
 
 void test_powertools() {
@@ -483,5 +487,207 @@ app_actions:
       CHECK(!execute_result_action(r, cfg, ""));
       (void)err;
     }
+  }
+
+  // --- Window management: verbs, actions, safe no-op paths ---
+  {
+    CHECK(parse_mini_intent("minimize chrome").kind == MiniKind::WindowOp);
+    CHECK(parse_mini_intent("maximise term").kind == MiniKind::WindowOp);
+    auto cw = parse_mini_intent("close window spotify");
+    CHECK(cw.kind == MiniKind::WindowOp);
+    CHECK_EQ(cw.op, "close");
+    CHECK_EQ(cw.remainder, "spotify");
+    Config cfg;
+    auto mw = mini_results("minimize ___no_such_window___", cfg, "");
+    CHECK(!mw.empty());
+    SearchResult win;
+    win.action = ResultAction::SwitchWindow;
+    win.category = "window";
+    win.title = "Demo";
+    win.payload = "0";  // invalid id: safe no-op on every OS
+    win.path = win.payload;
+    attach_result_actions(win, cfg);
+    bool has_min = false, has_close = false, has_snap = false;
+    for (auto& a : win.actions) {
+      if (a.id == "window_minimize") has_min = true;
+      if (a.id == "window_close") has_close = true;
+      if (a.id == "window_snap_left") has_snap = true;
+    }
+    CHECK(has_min && has_close && has_snap);
+    CHECK(action_hides_overlay("window_minimize"));
+    CHECK(action_hides_overlay("window_snap_right"));
+    // Invalid ids never touch real windows on any OS.
+    CHECK(!execute_result_action(win, cfg, "window_minimize"));
+    CHECK(!execute_result_action(win, cfg, "window_bogus"));
+    CHECK(!execute_result_action(win, cfg, "focus_window:___no_such_window___"));
+  }
+
+  // --- Screen-aware AI: pure image + payload units, no network ---
+  {
+    CHECK(base64_encode_bytes(reinterpret_cast<const std::uint8_t*>("Man"), 3) == "TWFu");
+    CHECK(base64_encode_bytes(reinterpret_cast<const std::uint8_t*>("Ma"), 2) == "TWE=");
+    CHECK(base64_encode_bytes(reinterpret_cast<const std::uint8_t*>("M"), 1) == "TQ==");
+    // 2x2 24-bit BMP, bottom-up: red, green / blue, white.
+    std::vector<std::uint8_t> bmp(70, 0);
+    bmp[0] = 'B';
+    bmp[1] = 'M';
+    bmp[10] = 54;
+    bmp[14] = 40;
+    bmp[18] = 2;
+    bmp[22] = 2;
+    bmp[26] = 1;
+    bmp[28] = 24;
+    auto put_px = [&](int row, int x, int b, int g, int r) {
+      std::size_t o = 54 + static_cast<std::size_t>(row) * 8 + x * 3;
+      bmp[o] = static_cast<std::uint8_t>(b);
+      bmp[o + 1] = static_cast<std::uint8_t>(g);
+      bmp[o + 2] = static_cast<std::uint8_t>(r);
+    };
+    put_px(0, 0, 0, 0, 255);
+    put_px(0, 1, 0, 255, 0);
+    put_px(1, 0, 255, 0, 0);
+    put_px(1, 1, 255, 255, 255);
+    std::uint32_t fsize = static_cast<std::uint32_t>(bmp.size());
+    bmp[2] = static_cast<std::uint8_t>(fsize & 0xff);
+    bmp[3] = static_cast<std::uint8_t>((fsize >> 8) & 0xff);
+    int w = 0, h = 0;
+    std::vector<std::uint8_t> rgb;
+    CHECK(decode_bmp_24(bmp.data(), bmp.size(), w, h, rgb));
+    CHECK_EQ(w, 2);
+    CHECK_EQ(h, 2);
+    // Top output row = file row 1: blue (0,0,255), white (255,255,255).
+    CHECK_EQ(rgb[0], 0);
+    CHECK_EQ(rgb[1], 0);
+    CHECK_EQ(rgb[2], 255);
+    CHECK_EQ(rgb[3], 255);
+    CHECK_EQ(rgb[4], 255);
+    CHECK_EQ(rgb[5], 255);
+    // Second row: red (255,0,0), green (0,255,0).
+    CHECK_EQ(rgb[6], 255);
+    CHECK_EQ(rgb[10], 255);
+    CHECK(!decode_bmp_24(bmp.data(), 10, w, h, rgb));
+    CHECK(decode_bmp_24(bmp.data(), bmp.size(), w, h, rgb));  // restore for encode below
+    std::vector<std::uint8_t> big(4 * 2 * 3, 7);
+    int bw = 4, bh = 2;
+    downscale_box(big, bw, bh, 2);
+    CHECK_EQ(bw, 2);
+    CHECK_EQ(bh, 1);
+    std::vector<std::uint8_t> png;
+    CHECK(encode_png_rgb(2, 2, rgb, png));
+    CHECK(png.size() > 8);
+    CHECK_EQ(png[0], 137);
+    CHECK_EQ(png[1], static_cast<std::uint8_t>('P'));
+    auto rd_be = [&](std::size_t o) {
+      return (static_cast<std::uint32_t>(png[o]) << 24) |
+             (static_cast<std::uint32_t>(png[o + 1]) << 16) |
+             (static_cast<std::uint32_t>(png[o + 2]) << 8) | png[o + 3];
+    };
+    CHECK_EQ(rd_be(16), 2u);  // IHDR width
+    CHECK_EQ(rd_be(20), 2u);  // IHDR height
+    CHECK(!encode_png_rgb(0, 2, rgb, png));
+    std::string err;
+    std::vector<std::uint8_t> out;
+    std::string mime;
+    CHECK(!prepare_vision_image("nope-not-here.png", out, mime, 1568, err));
+    CHECK(!err.empty());
+
+    auto bo = build_openai_vision_body("m", "hi \"there\"", "QUJD", "image/png", 10, 0.7);
+    CHECK(bo.find("image_url") != std::string::npos);
+    CHECK(bo.find("hi \\\"there\\\"") != std::string::npos);
+    auto ba = build_anthropic_vision_body("m", "hi", "QUJD", "image/png", 10);
+    CHECK(ba.find("media_type") != std::string::npos);
+    auto bg = build_gemini_vision_body("hi", "QUJD", "image/png");
+    CHECK(bg.find("inline_data") != std::string::npos);
+
+    std::string vp;
+    CHECK(ai_vision_is_request("ai see what is this", vp));
+    CHECK_EQ(vp, "what is this");
+    CHECK(!ai_vision_is_request("ai seeing things", vp));
+    CHECK(!ai_vision_is_request("ai hello", vp));
+    CHECK(ai_vision_is_request("ai see", vp) && vp.empty());
+  }
+
+  // --- Dictation: mic command shapes + safe failures (no recording) ---
+  {
+    CHECK(parse_mini_intent("dictate").kind == MiniKind::Dictate);
+    CHECK(parse_mini_intent("dictate 15").kind == MiniKind::Dictate);
+    auto mc = build_mic_command("/tmp/t.wav", 15, "");
+    CHECK(mc.find("-t 15") != std::string::npos);
+    CHECK(mc.find("16000") != std::string::npos);
+    auto mc0 = build_mic_command("/tmp/t.wav", 0, "");
+    CHECK(mc0.find("-t 1") != std::string::npos);
+    auto mc9 = build_mic_command("/tmp/t.wav", 9999, "");
+    CHECK(mc9.find("-t 120") != std::string::npos);
+    Config cfg;
+    auto d0 = mini_results("dictate", cfg, "");
+    CHECK(!d0.empty());
+    auto d1 = mini_results("dictate blah", cfg, "");
+    CHECK(!d1.empty());
+    // Bogus device fails fast on every OS (or no ffmpeg at all).
+    std::string err;
+    CHECK(!record_microphone("/tmp/___wilfred_nope.wav", 1, "___no_such_device_xyz___", err));
+    CHECK(!err.empty());
+  }
+
+  // --- Window layouts: store round-trip + validation, no windows touched ---
+  {
+    CHECK(LayoutStore::valid_name("work"));
+    CHECK(LayoutStore::valid_name("a-b_c9"));
+    CHECK(!LayoutStore::valid_name(""));
+    CHECK(!LayoutStore::valid_name("has space"));
+    CHECK(!LayoutStore::valid_name("semi;colon"));
+    Layout lay;
+    lay.name = "work";
+    lay.entries.push_back({"code", 0, 0, 960, 1040, false});
+    lay.entries.push_back({"term", 960, 0, 960, 1040, true});
+    auto blob = LayoutStore::serialize(lay);
+    CHECK(blob.find("\"work\"") != std::string::npos);
+    CHECK(blob.find("maximized\":true") != std::string::npos);
+    Layout back;
+    CHECK(LayoutStore::parse(blob, back));
+    CHECK_EQ(back.name, "work");
+    CHECK_EQ(back.entries.size(), 2u);
+    CHECK_EQ(back.entries[1].maximized, true);
+    CHECK_EQ(back.entries[0].x, 0);
+    Layout empty;
+    CHECK(!LayoutStore::parse("{}", empty));
+    CHECK(!LayoutStore::parse("{\"name\":\"x\",\"windows\":[]}", empty));
+    CHECK(parse_mini_intent("layout").kind == MiniKind::Layout);
+    CHECK(parse_mini_intent("layouts").kind == MiniKind::Layout);
+    CHECK(parse_mini_intent("layout save work").kind == MiniKind::Layout);
+    Config cfg;
+    auto lc = mini_results("layout ___no_such_layout___", cfg, "");
+    CHECK(!lc.empty());
+    auto ll = mini_results("layouts", cfg, "");
+    CHECK(!ll.empty());
+    Config wcfg;
+    ConfigError werr;
+    CHECK(load_config_text("workflows:\n  w: [window_snap_left, layout_apply:work, focus_window:code, "
+                           "dictate_run:5]\n",
+                           wcfg, werr));
+    CHECK_EQ(wcfg.workflows["w"].size(), 4u);
+    Config wbad;
+    CHECK(!load_config_text("workflows:\n  w: [window_bogus]\n", wbad, werr));
+  }
+
+  // --- Automation hotkeys: config parsing + validation ---
+  {
+    Config cfg;
+    ConfigError err;
+    CHECK(load_config_text("hotkeys:\n  google-clip:\n    modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip\n"
+                           "  lock-it:\n    key: L\n    run: system:lock\n",
+                           cfg, err));
+    CHECK_EQ(cfg.hotkeys.size(), 2u);
+    CHECK_EQ(cfg.hotkeys[0].name, "google-clip");
+    CHECK_EQ(cfg.hotkeys[0].key, "G");
+    CHECK_EQ(cfg.hotkeys[0].run, "macro:gclip");
+    CHECK_EQ(cfg.hotkeys[1].modifiers.size(), 2u);  // default ctrl,alt
+    Config bad;
+    CHECK(!load_config_text("hotkeys:\n  x:\n    key: G\n    run: bogus-action\n", bad, err));
+    CHECK(err.message.find("run must be") != std::string::npos);
+    CHECK(!load_config_text("hotkeys:\n  x:\n    run: show\n", bad, err));
+    CHECK(err.message.find("key") != std::string::npos);
+    CHECK(!load_config_text("hotkeys:\n  x:\n    key: G\n    run: show\n    bogus: 1\n", bad, err));
+    CHECK(!load_config_text("hotkeys: nope\n", bad, err));
   }
 }

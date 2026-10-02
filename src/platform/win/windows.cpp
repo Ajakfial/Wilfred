@@ -103,5 +103,129 @@ bool native_focus_window(std::uint64_t id) {
   return GetForegroundWindow() == hwnd || IsWindowVisible(hwnd);
 }
 
+namespace {
+
+bool window_work_area(HWND hwnd, RECT& work) {
+  HMONITOR mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO mi{};
+  mi.cbSize = sizeof(mi);
+  if (mon && GetMonitorInfoW(mon, &mi)) {
+    work = mi.rcWork;
+    return true;
+  }
+  return SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0) != 0;
+}
+
+}  // namespace
+
+bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  HWND hwnd = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(id));
+  if (!IsWindow(hwnd)) {
+    error = "window no longer exists";
+    return false;
+  }
+  switch (op) {
+    case NativeWindowOp::Minimize:
+      if (!ShowWindow(hwnd, SW_MINIMIZE)) {
+        error = "could not minimize window";
+        return false;
+      }
+      return true;
+    case NativeWindowOp::Maximize:
+      if (!ShowWindow(hwnd, SW_MAXIMIZE)) {
+        error = "could not maximize window";
+        return false;
+      }
+      return true;
+    case NativeWindowOp::Restore:
+      if (!ShowWindow(hwnd, SW_RESTORE)) {
+        error = "could not restore window";
+        return false;
+      }
+      return true;
+    case NativeWindowOp::Close:
+      if (!PostMessageW(hwnd, WM_CLOSE, 0, 0)) {
+        error = "could not close window";
+        return false;
+      }
+      return true;
+    case NativeWindowOp::SnapLeft:
+    case NativeWindowOp::SnapRight: {
+      if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+      RECT work{};
+      if (!window_work_area(hwnd, work)) {
+        error = "could not read screen work area";
+        return false;
+      }
+      int half = (work.right - work.left) / 2;
+      int x = op == NativeWindowOp::SnapLeft ? work.left : work.left + half;
+      if (!SetWindowPos(hwnd, nullptr, x, work.top, half, work.bottom - work.top,
+                        SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW)) {
+        error = "could not snap window";
+        return false;
+      }
+      return true;
+    }
+  }
+  error = "unknown window operation";
+  return false;
+}
+
+bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  HWND hwnd = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(id));
+  if (!IsWindow(hwnd)) {
+    error = "window no longer exists";
+    return false;
+  }
+  RECT r{};
+  if (!GetWindowRect(hwnd, &r)) {
+    error = "could not read window rect";
+    return false;
+  }
+  rect.x = r.left;
+  rect.y = r.top;
+  rect.w = r.right - r.left;
+  rect.h = r.bottom - r.top;
+  rect.maximized = IsZoomed(hwnd) != 0;
+  return true;
+}
+
+bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  HWND hwnd = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(id));
+  if (!IsWindow(hwnd)) {
+    error = "window no longer exists";
+    return false;
+  }
+  if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+  UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW;
+  int use_w = w, use_h = h;
+  if (use_w <= 0 || use_h <= 0) {
+    RECT r{};
+    if (!GetWindowRect(hwnd, &r)) {
+      error = "could not read window rect";
+      return false;
+    }
+    if (use_w <= 0) use_w = r.right - r.left;
+    if (use_h <= 0) use_h = r.bottom - r.top;
+  }
+  if (!SetWindowPos(hwnd, nullptr, x, y, use_w, use_h, flags)) {
+    error = "could not move window";
+    return false;
+  }
+  return true;
+}
+
 #endif
 }  // namespace wilfred

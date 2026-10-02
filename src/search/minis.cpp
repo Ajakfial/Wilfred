@@ -16,6 +16,7 @@
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
+#include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/nettools.hpp"
@@ -1051,7 +1052,22 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "windows" || key == "window" || key == "winswitch" || key == "wswitch" ||
            key == "switchto" || key == "switch")
     set(MiniKind::Windows, rest.empty());
-  else if (key == "emoji" || key == "emojis" || key == "emote" || key == "emotes")
+  else if (key == "minimize" || key == "minimise") {
+    it.kind = MiniKind::WindowOp;
+    it.remainder = rest;
+    it.op = "minimize";
+    it.exact = false;
+  } else if (key == "maximize" || key == "maximise") {
+    it.kind = MiniKind::WindowOp;
+    it.remainder = rest;
+    it.op = "maximize";
+    it.exact = false;
+  } else if (key == "close" && to_lower_utf8(rest).rfind("window", 0) == 0) {
+    it.kind = MiniKind::WindowOp;
+    it.remainder = trim_sv(rest.substr(6));
+    it.op = "close";
+    it.exact = false;
+  } else if (key == "emoji" || key == "emojis" || key == "emote" || key == "emotes")
     set(MiniKind::Emoji, true);
   else if (key == "symbol" || key == "symbols" || key == "glyph" || key == "glyphs")
     set(MiniKind::Symbol, true);
@@ -1185,6 +1201,10 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "transcribe" || key == "transcribes" || key == "transcription" ||
            key == "stt" || key == "speech-to-text" || key == "speech_to_text")
     set(MiniKind::Transcribe, false);
+  else if (key == "dictate" || key == "dictation" || key == "dictating")
+    set(MiniKind::Dictate, false);
+  else if (key == "layout" || key == "layouts")
+    set(MiniKind::Layout, false);
   return it;
 }
 
@@ -1341,6 +1361,46 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     std::sort(hits.begin(), hits.end(), [](auto& a, auto& b) { return a.score > b.score; });
     if (hits.size() > 16) hits.resize(16);
     return hits;
+  }
+
+  if (intent.kind == MiniKind::WindowOp) {
+    auto op = intent.op;
+    std::string verb = op == "minimize" ? "Minimize" : op == "maximize" ? "Maximize" : "Close";
+    auto wins = native_list_windows();
+    auto needle = fold_search(intent.remainder);
+    int idx = 0;
+    for (auto& w : wins) {
+      if (!needle.empty()) {
+        auto title_sc = score_fuzzy(needle, fold_search(w.title), w.title);
+        auto owner_sc = score_fuzzy(needle, fold_search(w.owner), w.owner);
+        if (!title_sc.matched && !owner_sc.matched &&
+            to_lower_utf8(w.title).find(to_lower_utf8(intent.remainder)) == std::string::npos &&
+            to_lower_utf8(w.owner).find(to_lower_utf8(intent.remainder)) == std::string::npos)
+          continue;
+      }
+      SearchResult r;
+      r.title = verb + " " + w.title;
+      r.subtitle = w.owner.empty() ? "Window · enter runs" : w.owner + " · enter runs";
+      r.payload = std::to_string(w.id);
+      r.path = r.payload;
+      r.action = ResultAction::Copy;
+      r.score = 10000 - idx;
+      r.kind_label = "window";
+      r.category = "window";
+      r.actions.clear();
+      r.actions.push_back({"window_" + op, verb});
+      r.actions.push_back({"open", "Switch"});
+      r.actions.push_back({"copy_name", "Copy title"});
+      out.push_back(std::move(r));
+      ++idx;
+      if (idx >= 8) break;
+    }
+    if (out.empty()) {
+      out.push_back(card(intent.remainder.empty() ? "No open windows" : "No matching window",
+                         "Type minimize <name>, maximize <name>, or close window <name>", "",
+                         "window", 9000, ResultAction::None));
+    }
+    return out;
   }
 
   if (intent.kind == MiniKind::Process) {
@@ -2536,6 +2596,152 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Dictate) {
+    if (!cfg.transcription.enabled) {
+      out.push_back(card("Dictation disabled",
+                         "Set transcription.enabled: true in wilfred.yml", "", "dictate", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    int seconds = 10;
+    auto rest = trim_sv(intent.remainder);
+    if (!rest.empty()) {
+      // Bare number of seconds; anything else is usage.
+      bool numeric = true;
+      for (char c : rest)
+        if (!std::isdigit(static_cast<unsigned char>(c))) numeric = false;
+      if (!numeric) {
+        out.push_back(card("Dictate from the microphone",
+                           "Type dictate [seconds] · enter records, transcript goes to clipboard",
+                           "", "dictate", 8000, ResultAction::None));
+        return out;
+      }
+      try {
+        seconds = std::stoi(rest);
+      } catch (...) {
+        seconds = 10;
+      }
+      if (seconds < 1) seconds = 1;
+      if (seconds > 120) seconds = 120;
+    }
+    if (!ffmpeg_available()) {
+      out.push_back(card("Microphone needs ffmpeg", transcribe_install_hint("ffmpeg"), "",
+                         "dictate", 9000, ResultAction::None));
+      return out;
+    }
+    auto binary = resolve_whisper_binary(cfg);
+    auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
+    if (binary.empty() || model.empty()) {
+      out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model",
+                         binary.empty() ? transcribe_install_hint("whisper")
+                                        : transcribe_install_hint("model"),
+                         "", "dictate", 9000, ResultAction::None));
+      return out;
+    }
+    SearchResult r = card("Dictate " + std::to_string(seconds) + "s",
+                          "Enter records the microphone · transcript to clipboard",
+                          std::to_string(seconds), "dictate", 10000, ResultAction::Copy);
+    r.category = "dictate";
+    r.actions.clear();
+    r.actions.push_back({"dictate_run:" + std::to_string(seconds), "Dictate"});
+    out.push_back(std::move(r));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Layout) {
+    auto rest = trim_sv(intent.remainder);
+    auto rl = to_lower_utf8(rest);
+    auto& store = LayoutStore::instance();
+    auto list_card = [&](const std::string& name, int entries, int score) {
+      SearchResult r = card("Layout · " + name,
+                            std::to_string(entries) + " windows · enter applies", "layout_apply:" + name,
+                            "layout", score, ResultAction::Copy);
+      r.category = "layout";
+      r.actions.clear();
+      r.actions.push_back({"layout_apply:" + name, "Apply"});
+      return r;
+    };
+    if (rest.empty() || rl == "list" || rl == "ls" || rl == "layouts") {
+      auto names = store.list();
+      if (names.empty()) {
+        out.push_back(card("No saved layouts",
+                           "Type layout save <name> to capture open windows", "", "layout", 8000,
+                           ResultAction::None));
+        return out;
+      }
+      int n = 0;
+      for (auto& name : names) {
+        Layout lay;
+        std::string err;
+        if (!store.load_layout(name, lay, err)) continue;
+        out.push_back(list_card(name, static_cast<int>(lay.entries.size()), 10000 - n * 10));
+        ++n;
+        if (n >= 8) break;
+      }
+      return out;
+    }
+    if (rl == "save" || rl.rfind("save ", 0) == 0) {
+      auto name = trim_sv(rest.size() > 4 ? rest.substr(4) : "");
+      if (!LayoutStore::valid_name(name)) {
+        out.push_back(card("Usage: layout save <name>",
+                           "Names use letters, digits, _ and -", "", "layout", 8000,
+                           ResultAction::None));
+        return out;
+      }
+      Layout lay;
+      lay.name = to_lower_utf8(name);
+      for (auto& w : native_list_windows()) {
+        NativeWindowRect rc;
+        std::string err;
+        LayoutEntry e;
+        e.match = w.title.empty() ? w.owner : w.title;
+        if (native_window_rect(w.id, rc, err)) {
+          e.x = rc.x;
+          e.y = rc.y;
+          e.w = rc.w;
+          e.h = rc.h;
+          e.maximized = rc.maximized;
+        }
+        lay.entries.push_back(std::move(e));
+        if (lay.entries.size() >= 64) break;
+      }
+      std::string err;
+      if (lay.entries.empty() || !store.save_layout(lay, err)) {
+        out.push_back(card(lay.entries.empty() ? "No open windows to save" : "Could not save layout",
+                           err, "", "layout", 8000, ResultAction::None));
+        return out;
+      }
+      out.push_back(card("Layout " + lay.name + " saved",
+                         std::to_string(lay.entries.size()) + " windows · type layout " + lay.name +
+                             " to apply",
+                         "layout_apply:" + lay.name, "layout", 10000, ResultAction::Copy));
+      return out;
+    }
+    if (rl == "delete" || rl.rfind("delete ", 0) == 0 || rl.rfind("rm ", 0) == 0 ||
+        rl.rfind("remove ", 0) == 0 || rl.rfind("del ", 0) == 0) {
+      auto sp = rest.find(' ');
+      auto name = sp == std::string::npos ? std::string() : to_lower_utf8(trim_sv(rest.substr(sp + 1)));
+      if (store.delete_layout(name))
+        out.push_back(card("Layout " + name + " deleted", "", "", "layout", 10000,
+                           ResultAction::Copy));
+      else
+        out.push_back(card("No layout " + name, "Try layouts to list", "", "layout", 8000,
+                           ResultAction::None));
+      return out;
+    }
+    {
+      Layout lay;
+      std::string err;
+      if (!store.load_layout(to_lower_utf8(rest), lay, err)) {
+        out.push_back(card("No layout " + rest, "Try layouts to list, or layout save <name>", "",
+                           "layout", 8000, ResultAction::None));
+        return out;
+      }
+      out.push_back(list_card(lay.name, static_cast<int>(lay.entries.size()), 10000));
+      return out;
+    }
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
                                   "time [zone]  ·  clock and date",
@@ -2555,7 +2761,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "media play · next · mute · vol up  ·  playback",
                                   "ping <host> · dns <host> · myip  ·  network",
                                   "transcribe <file>  ·  mp3/mp4 audio to text",
+                                  "dictate [seconds]  ·  mic to text via whisper",
+                                  "layout save <name> · layout <name>  ·  window layouts",
                                   "windows [name]  ·  switch to an open window",
+                                  "minimize/maximize <name> · close window <name>",
                                   "screenshot [fullscreen|window|region]",
                                   "emoji [name]  ·  emoji picker",
                                   "symbol [name]  ·  punctuation and signs",

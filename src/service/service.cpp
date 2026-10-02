@@ -12,24 +12,31 @@
 #include "wilfred/ipc/http.hpp"
 #include "wilfred/ipc/server.hpp"
 #include "wilfred/browser/library.hpp"
+#include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/expander.hpp"
+#include "wilfred/search/layouts.hpp"
+#include "wilfred/search/macros.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/semantic.hpp"
 #include "wilfred/search/suggest.hpp"
+#include "wilfred/search/workflows.hpp"
 #include "wilfred/sources/sources.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
 #include "wilfred/ui/web_ui.hpp"
 #include "wilfred/updater/updater.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -91,6 +98,8 @@ Service::Service() : search_(index_), interpreter_(index_, search_, &snippets_, 
 Service::~Service() {
   running_ = false;
   if (hotkey_) hotkey_->stop();
+  for (auto& h : extra_hotkeys_)
+    if (h) h->stop();
   if (watcher_) watcher_->stop();
   if (http_) http_->stop();
   if (ipc_) ipc_->stop();
@@ -124,8 +133,9 @@ bool Service::boot() {
                                   cfg_.clipboard.persist, default_clips_path());
   if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
   snippets_.load(default_snippets_path(), cfg_);
-  QuickNoteStore::instance().configure(path_join(data_directory(), "quicknotes.txt"));
+  QuickNoteStore::instance().configure(path_join(data_directory(), "notes"));
   QuickNoteStore::instance().load();
+  LayoutStore::instance().configure(path_join(data_directory(), "layouts"));
   TodoStore::instance().configure(path_join(data_directory(), "todos.txt"));
   TodoStore::instance().load();
   for (auto& d : default_plugin_directories()) create_directories(d);
@@ -151,6 +161,65 @@ void Service::on_hotkey() {
     else
       ui_->show();
   }
+}
+
+// System-wide automation: run one hotkey binding action from anywhere.
+// `show` toggles the overlay; macro/system/media/workflow actions run
+// headless against the clipboard (workflows use targetless steps here).
+void Service::run_hotkey_action(const std::string& run) {
+  auto l = to_lower_utf8(run);
+  while (!l.empty() && (l.front() == ' ' || l.front() == '\t')) l.erase(l.begin());
+  if (l == "show") {
+    on_hotkey();
+    return;
+  }
+  if (l.rfind("system:", 0) == 0) {
+    if (!native_system_action(run.substr(7)))
+      log_warn("hotkey", "system action failed: " + run);
+    return;
+  }
+  if (l.rfind("media:", 0) == 0) {
+    std::string err;
+    if (!native_media_action(run.substr(6), err))
+      log_warn("hotkey", err.empty() ? "media action failed" : err);
+    return;
+  }
+  if (l.rfind("macro:", 0) == 0) {
+    auto text = run.substr(6);
+    while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.erase(text.begin());
+    ClipboardSnapshot clip;
+    if (cfg_.search.clipboard) clip = read_clipboard();
+    auto m = match_macro(text, cfg_);
+    std::vector<SearchResult> cards;
+    if (m.matched)
+      cards = macro_results(m, clip.text);
+    else {
+      auto q = match_quicklink(text, cfg_);
+      if (q.matched) cards = quicklink_results(q, clip.text);
+    }
+    if (cards.empty()) {
+      log_warn("hotkey", "no macro matched: " + text);
+      return;
+    }
+    execute_result(cards.front(), cfg_, "open");
+    return;
+  }
+  if (l.rfind("workflow:", 0) == 0) {
+    auto name = to_lower_utf8(run.substr(9));
+    while (!name.empty() && (name.front() == ' ' || name.front() == '\t'))
+      name.erase(name.begin());
+    ClipboardSnapshot clip;
+    if (cfg_.search.clipboard) clip = read_clipboard();
+    SearchResult r;
+    r.title = "Hotkey workflow";
+    r.payload = clip.text;
+    r.path = "";
+    r.action = ResultAction::Copy;
+    if (!execute_result(r, cfg_, "workflow:" + name))
+      log_warn("hotkey", "workflow failed: " + name);
+    return;
+  }
+  log_warn("hotkey", "unknown hotkey action: " + run);
 }
 
 int Service::run_search(const std::string& query, int limit) {
@@ -193,6 +262,65 @@ int Service::launch_by_query(const std::string& query) {
   }
   bool ok = execute_result(*pick, cfg_);
   if (cfg_.history.persist) history_.save(default_history_path());
+  return ok ? 0 : 1;
+}
+
+int Service::run_workflow(const std::string& name, const std::string& target) {
+  if (!boot()) return 1;
+  auto key = to_lower_utf8(name);
+  auto it = cfg_.workflows.find(key);
+  if (it == cfg_.workflows.end()) {
+    std::cerr << "unknown workflow \"" << name << "\"";
+    if (!cfg_.workflows.empty()) {
+      std::vector<std::string> names;
+      for (auto& [k, _] : cfg_.workflows) names.push_back(k);
+      std::sort(names.begin(), names.end());
+      std::cerr << " (try:";
+      for (auto& n : names) std::cerr << " " << n;
+      std::cerr << ")";
+    }
+    std::cerr << "\n";
+    return 1;
+  }
+  if (target.empty()) {
+    std::cout << key << ": " << workflow_chain(key, cfg_) << "\n";
+    return 0;
+  }
+  if (index_.store().live_count() == 0) index_.scan_roots();
+  history_.record_query(target);
+  auto iq = interpreter_.interpret(target, cfg_, &history_);
+  const SearchResult* pick = nullptr;
+  for (auto& r : iq.results) {
+    if (r.action == ResultAction::Habit) continue;
+    if ((r.path.empty() ? r.payload : r.path).empty()) continue;
+    pick = &r;
+    break;
+  }
+  if (!pick) {
+    std::cerr << "no results\n";
+    return 1;
+  }
+  auto file = pick->path.empty() ? pick->payload : pick->path;
+  history_.record_selection(file);
+  history_.record_choice(target, file);
+  bool ok = execute_result(*pick, cfg_, "workflow:" + key);
+  if (cfg_.history.persist) history_.save(default_history_path());
+  std::cout << (ok ? "ok\n" : "workflow failed\n");
+  return ok ? 0 : 1;
+}
+
+int Service::run_exec(const std::string& action, const std::string& target) {
+  if (!boot()) return 1;
+  if (action.empty()) {
+    std::cerr << "usage: wilfred exec <action> [target]\n";
+    return 2;
+  }
+  SearchResult r;
+  r.title = target;
+  r.path = target;
+  r.payload = target;
+  bool ok = execute_result(r, cfg_, action);
+  std::cout << (ok ? "ok\n" : "action failed\n");
   return ok ? 0 : 1;
 }
 
@@ -392,6 +520,19 @@ int Service::run_daemon() {
   if (cfg_.hotkey.enabled) {
     if (!hotkey_->start(cfg_, [this] { on_hotkey(); }))
       log_warn("hotkey", "failed to register global hotkey");
+  }
+  // Extra system-wide bindings from `hotkeys:` (each gets its own backend
+  // instance; a failed binding only warns).
+  for (auto& b : cfg_.hotkeys) {
+    auto hk = std::make_unique<GlobalHotkey>();
+    std::string run = b.run;
+    std::string label = b.name.empty() ? run : b.name;
+    if (hk->start_binding(b.modifiers, b.key, cfg_.hotkey.use_command_on_macos,
+                          [this, run] { run_hotkey_action(run); })) {
+      extra_hotkeys_.push_back(std::move(hk));
+    } else {
+      log_warn("hotkey", "failed to register extra hotkey: " + label);
+    }
   }
 
   ipc_->start(ipc_endpoint(), [this](const IpcRequest& req) {

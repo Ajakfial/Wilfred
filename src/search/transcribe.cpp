@@ -6,8 +6,11 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/engine.hpp"
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #ifdef _WIN32
 #define POPEN _popen
@@ -130,6 +133,51 @@ std::string build_whisper_command(const std::string& binary, const std::string& 
 std::string build_ffmpeg_command(const std::string& wav_out, const std::string& src) {
   return "ffmpeg -y -v error -i " + shell_quote(src) + " -vn -ar 16000 -ac 1 -c:a pcm_s16le " +
          shell_quote(wav_out) + kNullRedir;
+}
+
+std::string build_mic_command(const std::string& wav_out, int seconds, const std::string& mic) {
+  if (seconds < 1) seconds = 1;
+  if (seconds > 120) seconds = 120;
+  std::string tail = " -t " + std::to_string(seconds) +
+                     " -ar 16000 -ac 1 -c:a pcm_s16le " + shell_quote(wav_out) + kNullRedir;
+#ifdef _WIN32
+  std::string dev = mic.empty() ? "Microphone" : mic;
+  return "ffmpeg -y -v error -f dshow -i " + shell_quote("audio=" + dev) + tail;
+#elif defined(__APPLE__)
+  std::string dev = mic.empty() ? ":0" : mic;
+  if (dev.find(':') == std::string::npos) dev = ":" + dev;
+  return "ffmpeg -y -v error -f avfoundation -i " + shell_quote(dev) + tail;
+#else
+  std::string dev = mic.empty() ? "default" : mic;
+  return "ffmpeg -y -v error -f alsa -i " + shell_quote(dev) + tail;
+#endif
+}
+
+bool record_microphone(const std::string& wav_out, int seconds, const std::string& mic,
+                       std::string& error) {
+  error.clear();
+  if (wav_out.empty()) {
+    error = "no output path for recording";
+    return false;
+  }
+  if (!ffmpeg_available()) {
+    error = "Microphone recording needs ffmpeg. " + transcribe_install_hint("ffmpeg");
+    return false;
+  }
+  create_directories(path_parent(wav_out));
+  remove_file(wav_out);
+  if (std::system(build_mic_command(wav_out, seconds, mic).c_str()) != 0 ||
+      !file_exists(wav_out)) {
+#ifdef _WIN32
+    error = "Could not open the microphone. Set transcription.mic to your input device name "
+            "(see it with: ffmpeg -list_devices true -f dshow -i dummy)";
+#else
+    error = "Could not open the microphone. Set transcription.mic to your input device";
+#endif
+    remove_file(wav_out);
+    return false;
+  }
+  return true;
 }
 
 std::string transcribe_install_hint(const std::string& missing) {

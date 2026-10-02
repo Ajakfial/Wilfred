@@ -54,6 +54,9 @@ std::vector<std::string> default_contacts_roots() {
 
 std::vector<std::string> default_notes_roots() {
   std::vector<std::string> out;
+  // Quick notes live here as real Markdown files, so they are searchable
+  // both as quick-note cards and through the notes provider.
+  out.push_back(path_join(data_directory(), "notes"));
   auto home = home_directory();
   if (home.empty()) return out;
   out.push_back(path_join(home, "Notes"));

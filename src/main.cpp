@@ -23,6 +23,9 @@ static void print_help() {
       << "  wilfred daemon          Same as above\n"
       << "  wilfred search <query>  Search the local index and print results\n"
       << "  wilfred launch <query>  Search and open the top result\n"
+      << "  wilfred workflow <name> [target]  Run a named workflow on a search target\n"
+      << "  wilfred exec <action> [target]    Run any result action (copy_path+reveal,\n"
+      << "                                    workflow:name, media:play, ...)\n"
   << "  wilfred preview <path>  Show a file preview (text head / listing)\n"
       << "  wilfred index           Scan configured roots and persist the index\n"
       << "  wilfred status          Print index statistics\n"
@@ -87,6 +90,32 @@ static int wilfred_main(int argc, char** argv) {
         return 2;
       }
       return svc.launch_by_query(query);
+    }
+    if (cmd == "workflow") {
+      if (argc < 3) {
+        std::cerr << "usage: wilfred workflow <name> [target query]\n";
+        return 2;
+      }
+      std::string name = argv[2];
+      std::string target;
+      for (int i = 3; i < argc; ++i) {
+        if (!target.empty()) target.push_back(' ');
+        target += argv[i];
+      }
+      return svc.run_workflow(name, target);
+    }
+    if (cmd == "exec" || cmd == "action") {
+      if (argc < 3) {
+        std::cerr << "usage: wilfred exec <action> [target]\n";
+        return 2;
+      }
+      std::string action = argv[2];
+      std::string target;
+      for (int i = 3; i < argc; ++i) {
+        if (!target.empty()) target.push_back(' ');
+        target += argv[i];
+      }
+      return svc.run_exec(action, target);
     }
     if (cmd == "index") return svc.run_index_now();
     if (cmd == "status") return svc.run_status();

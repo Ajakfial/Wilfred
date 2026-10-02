@@ -61,6 +61,19 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
   ClipboardSnapshot clip;
   if (cfg.search.clipboard) clip = read_clipboard();
 
+  // Screen-aware AI (`ai see ...`): capture first, ask with vision input.
+  // Checked before plain `ai ...` since `ai see x` also matches that prefix.
+  {
+    std::string vprompt;
+    if (ai_vision_is_request(effective, vprompt)) {
+      AiAssistant ai;
+      auto cards = ai.results_for_image(vprompt, cfg);
+      iq.results.insert(iq.results.end(), cards.begin(), cards.end());
+      if (!vprompt.empty() && ai.configured(cfg)) return finish();
+      // Unconfigured or bare prefix: fall through to normal search as well.
+    }
+  }
+
   // Local AI assistant (`ai ...` / `ask ...`). Optional; needs ai.api_key.
   {
     std::string prompt;

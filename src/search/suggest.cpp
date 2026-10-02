@@ -27,7 +27,8 @@ std::vector<std::string> command_vocabulary(const Config& cfg) {
       "screencapture", "printscreen", "bookmarks", "history", "tabs", "calendar", "contacts",
       "notes", "ai", "ask", "content:", "type:", "size:", "intext", "scope:", "clips clear",
       "speedtest again", "screenshot window", "screenshot region", "screen capture",
-      "transcribe", "transcription", "stt",
+      "transcribe", "transcription", "stt", "minimize", "maximize", "minimise",
+      "dictate", "dictation", "layout", "layouts",
   };
   // Built-in + custom macros.
   for (auto& [k, _] : builtin_macros()) {

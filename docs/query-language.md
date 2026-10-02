@@ -186,6 +186,11 @@ synthetic result card instead of searching the index
 | `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
 | `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
 | `transcribe <file>` | `stt`, `transcription` | Speech-to-text for mp3/wav/m4a/mp4 via whisper (enter transcribes) |
+| `dictate [seconds]` | `dictation` | Record the microphone and transcribe it (transcript to clipboard) |
+| `windows [name]` | `window`, `switch` | List open windows (enter switches; actions minimize/maximize/close/snap) |
+| `minimize/maximize <name>` | `minimise` | Direct window cards for one verb |
+| `close window <name>` | | Direct window-close cards |
+| `layout save <name>` | `layouts` | Capture open-window geometry; `layout <name>` applies, `layouts` lists |
 | `workflow [name]` | `workflows`, `flow`, `run` | Multi-step workflows (`workflows` lists; `run <name>` runs) |
 | `ql <name> <args>` | `quicklink`, `link` | Parameterized quicklinks (`{query}` `{1}` `{*}` `{clipboard}`) |
 | `lock` | `lockscreen` | Lock the session (enter runs) |
@@ -381,11 +386,19 @@ local assistant (`ai.enabled` + `ai.api_key`). Supports OpenAI, Anthropic,
 Gemini, and Groq over HTTPS (WinHTTP on Windows, `curl` elsewhere). Answers
 return as a single copyable card; failures are non-blocking hints.
 
+`ai see <question>` / `ask see <question>` is screen-aware: Wilfred captures
+the screen silently, downscales Windows BMP captures to PNG locally (no image
+library needed), and sends the screenshot plus your question as vision input
+to whichever provider is configured. Needs the same `ai.*` setup; capture or
+vision failures surface as hint cards instead of answers.
+
 ## Calendar / contacts / notes
 
 When `sources.calendar/contacts/notes` are on, `.ics` events, `.vcf`
 contacts, and Markdown notes under the configured + platform-default roots
-are searched as `calendar` / `contact` / `note` results alongside files.
+(including the quick-notes directory `<data>/notes`, so `note ...` captures
+are searchable as `note` results) are searched as `calendar` / `contact` /
+`note` results alongside files.
 
 ## Plugin queries
 

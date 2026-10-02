@@ -102,6 +102,21 @@ struct Config {
     bool use_command_on_macos{true};
   } hotkey;
 
+  // Extra system-wide hotkeys fired from anywhere, keyed by binding name.
+  // Each runs one action: `show` toggles the overlay, `macro:<text>` opens
+  // a macro/quicklink URL (clipboard feeds {clipboard} placeholders),
+  // `system:<id>` runs a session command, `media:<id>` presses a media key,
+  // `workflow:<name>` runs a named workflow against the clipboard.
+  // Hotkey workflows should use targetless steps; file steps fail
+  // gracefully per step.
+  struct HotkeyBinding {
+    std::string name;
+    std::vector<std::string> modifiers{"ctrl", "alt"};
+    std::string key;
+    std::string run{"show"};
+  };
+  std::vector<HotkeyBinding> hotkeys;
+
   struct Browser {
     std::string provider{"auto"};
     std::string search_template{"https://www.google.com/search?q={query}"};
@@ -190,6 +205,10 @@ struct Config {
     // Write `<audio>.txt` next to the source on success, in addition to
     // copying the transcript to the clipboard.
     bool save_txt{true};
+    // Microphone device for `dictate` (ffmpeg syntax for this OS). Empty
+    // means the OS default: dshow audio device name on Windows, avfoundation
+    // audio index (or ":idx") on macOS, ALSA device on Linux.
+    std::string mic;
   } transcription;
 
   struct Api {

@@ -65,12 +65,17 @@ enum class MiniKind {
   Workflow,
   Quicklink,
   Transcribe,
+  WindowOp,
+  Dictate,
+  Layout,
 };
 
 struct MiniIntent {
   MiniKind kind{MiniKind::None};
   std::string remainder;
   bool exact{false};
+  // Window verb for MiniKind::WindowOp (minimize/maximize/restore/close/snap).
+  std::string op;
 };
 
 MiniIntent parse_mini_intent(std::string_view query);

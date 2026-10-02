@@ -287,14 +287,19 @@ bool is_valid_action_step(const std::string& s) {
                                 "copy",        "hash_file",    "compress_zip", "open_terminal",
                                 "open_editor", "new_file",     "new_folder", "kill_process",
                                 "timer_stop",  "paste",        "expand",     "clip_pin",
-                                "clip_unpin",  "clip_clear",   "copy_name",  nullptr};
+                                "clip_unpin",  "clip_clear",   "copy_name",  "transcribe_run",
+                                "dictate_run",
+                                "window_minimize", "window_maximize", "window_restore",
+                                "window_close", "window_snap_left", "window_snap_right",
+                                nullptr};
   std::string low;
   for (char c : s) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
   // Allow prefixed families.
   if (low.rfind("open_with:", 0) == 0 || low.rfind("workflow:", 0) == 0 ||
       low.rfind("media:", 0) == 0 || low.rfind("note_delete:", 0) == 0 ||
       low.rfind("todo_done:", 0) == 0 || low.rfind("todo_undo:", 0) == 0 ||
-      low.rfind("todo_delete:", 0) == 0)
+      low.rfind("todo_delete:", 0) == 0 || low.rfind("layout_apply:", 0) == 0 ||
+      low.rfind("focus_window:", 0) == 0 || low.rfind("dictate_run:", 0) == 0)
     return true;
   for (auto** p = known; *p; ++p)
     if (low == *p) return true;
@@ -326,7 +331,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "ui",       "plugins", "providers", "embedding",
                                           "ai",       "sources", "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
-                                          "app_actions"};
+                                          "app_actions", "hotkeys"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
       if (!err.message.empty()) {
         err.message += " (in " +
@@ -625,6 +630,48 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.hotkey.use_command_on_macos = hk->boolean("use_command_on_macos", true);
   }
 
+  if (auto* hks = root.get("hotkeys")) {
+    if (!hks->is_map()) {
+      err.message =
+          "hotkeys: must be a mapping of name -> binding, e.g.\nhotkeys:\n  google-clip:\n    modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip";
+      return false;
+    }
+    for (auto& [k, v] : hks->as_map()) {
+      auto where = "hotkeys.'" + k + "'";
+      if (!v.is_map()) {
+        err.message = where + " must be a mapping with modifiers/key/run";
+        return false;
+      }
+      std::vector<std::string> valid = {"modifiers", "key", "run"};
+      if (!check_unknown_keys(v, valid, where, err)) return false;
+      Config::HotkeyBinding b;
+      b.name = to_lower_utf8(k);
+      b.modifiers = v.string_list("modifiers");
+      if (b.modifiers.size() == 1 && !b.modifiers[0].empty() && b.modifiers[0].front() == '[')
+        b.modifiers = split_flow_or_plus(b.modifiers[0]);  // inline [ctrl, alt] form
+      if (b.modifiers.empty()) b.modifiers = {"ctrl", "alt"};
+      b.key = v.str("key", "");
+      if (b.key.empty()) {
+        err.message = where + " needs a non-empty key name (e.g. key: G)";
+        return false;
+      }
+      b.run = v.str("run", "show");
+      auto rl = to_lower_utf8(b.run);
+      bool ok_run = rl == "show" || rl.rfind("macro:", 0) == 0 || rl.rfind("system:", 0) == 0 ||
+                    rl.rfind("media:", 0) == 0 || rl.rfind("workflow:", 0) == 0;
+      if (!ok_run) {
+        err.message = where + " run must be show, macro:<text>, system:<id>, media:<id>, or " +
+                      "workflow:<name>; got '" + b.run + "'";
+        return false;
+      }
+      c.hotkeys.push_back(std::move(b));
+      if (c.hotkeys.size() > 16) {
+        err.message = "hotkeys: at most 16 extra bindings";
+        return false;
+      }
+    }
+  }
+
   if (auto* b = root.get("browser")) {
     if (!b->is_map()) {
       err.message = "browser: must be a mapping";
@@ -777,7 +824,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "transcription: must be a mapping";
       return false;
     }
-    std::vector<std::string> valid = {"enabled", "binary", "model", "language", "save_txt"};
+    std::vector<std::string> valid = {"enabled", "binary", "model",
+                                      "language", "save_txt", "mic"};
     if (!check_unknown_keys(*tr, valid, "transcription", err)) return false;
     if (!expect_bool(tr, "enabled", "transcription", err) ||
         !expect_bool(tr, "save_txt", "transcription", err))
@@ -787,6 +835,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.transcription.model = tr->str("model", "");
     c.transcription.language = tr->str("language", "auto");
     c.transcription.save_txt = tr->boolean("save_txt", true);
+    c.transcription.mic = tr->str("mic", "");
     if (c.transcription.language.size() > 16) {
       err.message = "transcription.language must be a short language tag like en or auto";
       return false;

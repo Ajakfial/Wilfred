@@ -29,10 +29,14 @@ class WinHotkey final : public HotkeyBackend {
 public:
   ~WinHotkey() override { stop(); }
   bool start(const Config& cfg, HotkeyFn cb) override {
+    return start_binding(cfg.hotkey.modifiers, cfg.hotkey.key, false, std::move(cb));
+  }
+  bool start_binding(const std::vector<std::string>& modifiers, const std::string& key,
+                     bool /*use_command_on_macos*/, HotkeyFn cb) override {
     stop();
     cb_ = std::move(cb);
     UINT mods = 0;
-    for (auto& m : cfg.hotkey.modifiers) {
+    for (auto& m : modifiers) {
       auto l = to_lower_utf8(m);
       if (l == "ctrl" || l == "control") mods |= MOD_CONTROL;
       else if (l == "alt")
@@ -42,7 +46,7 @@ public:
       else if (l == "win" || l == "super" || l == "meta" || l == "cmd")
         mods |= MOD_WIN;
     }
-    vk_ = vk_from_key(cfg.hotkey.key);
+    vk_ = vk_from_key(key);
     mods_ = mods;
 
     WNDCLASSW wc{};
@@ -62,7 +66,7 @@ public:
     }
 
     if (!RegisterHotKey(hwnd_, 1, mods_ | MOD_NOREPEAT, vk_)) {
-      log_warn("hotkey", "RegisterHotKey failed (is Ctrl+Alt+W already in use?)");
+      log_warn("hotkey", "RegisterHotKey failed (is the binding already in use?)");
       DestroyWindow(hwnd_);
       hwnd_ = nullptr;
       return false;

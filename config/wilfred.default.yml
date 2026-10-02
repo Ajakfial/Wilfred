@@ -130,6 +130,18 @@ hotkey:
   key: W
   use_command_on_macos: true
 
+# Extra system-wide hotkeys, fired from any app. Each binding runs one action:
+# `show` toggles the overlay, `macro:<text>` opens a macro/quicklink URL
+# (clipboard feeds {clipboard} placeholders), `system:<id>` runs a session
+# command (lock, sleep, ...), `media:<id>` presses a media key,
+# `workflow:<name>` runs a named workflow against the clipboard (use
+# targetless steps; file steps fail gracefully per step).
+#hotkeys:
+#  google-clip:
+#    modifiers: [ctrl, alt]
+#    key: G
+#    run: macro:gclip
+
 browser:
   provider: auto
   search_template: "https://www.google.com/search?q={query}"
@@ -217,6 +229,9 @@ transcription:
   # Write `<audio>.txt` next to the source on success (transcript also
   # goes to the clipboard).
   save_txt: true
+  # Microphone device for `dictate` (ffmpeg syntax for this OS). Empty means
+  # the OS default.
+  mic: ""
 
 api:
   enabled: false

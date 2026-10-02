@@ -69,6 +69,7 @@ set(WILFRED_CORE_SOURCES
   src/search/nettools.cpp
   src/search/media.cpp
   src/search/mpris_dbus.cpp
+  src/search/layouts.cpp
   src/search/transcribe.cpp
   src/search/disktools.cpp
   src/search/workflows.cpp
@@ -80,6 +81,7 @@ set(WILFRED_CORE_SOURCES
   src/search/file_ops.cpp
   src/sources/sources.cpp
   src/ai/assistant.cpp
+  src/ai/vision.cpp
   src/plugin/host.cpp
   src/sync/backup.cpp
   src/query/classify.cpp
@@ -152,6 +154,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/nettools.hpp
   include/wilfred/search/media.hpp
   include/wilfred/search/mpris_dbus.hpp
+  include/wilfred/search/layouts.hpp
   include/wilfred/search/transcribe.hpp
   include/wilfred/search/disktools.hpp
   include/wilfred/search/workflows.hpp
@@ -160,6 +163,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/expander.hpp
   include/wilfred/sources/sources.hpp
   include/wilfred/ai/assistant.hpp
+  include/wilfred/ai/vision.hpp
   include/wilfred/search/actions.hpp
   include/wilfred/search/screenshot.hpp
   include/wilfred/search/file_ops.hpp

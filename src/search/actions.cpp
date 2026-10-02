@@ -3,13 +3,16 @@
 #include "wilfred/apps/discovery.hpp"
 #include "wilfred/browser/browser.hpp"
 #include "wilfred/core/log.hpp"
+#include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/core/utf8.hpp"
 #include "wilfred/index/record.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/file_ops.hpp"
+#include "wilfred/search/layouts.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
@@ -117,6 +120,12 @@ void attach_impl(SearchResult& r, bool include_open_with) {
   }
   if (r.action == ResultAction::SwitchWindow || r.category == "window") {
     add("open", "Switch");
+    add("window_minimize", "Minimize");
+    add("window_maximize", "Maximize");
+    add("window_restore", "Restore");
+    add("window_close", "Close");
+    add("window_snap_left", "Snap left");
+    add("window_snap_right", "Snap right");
     add("copy_name", "Copy title");
     return;
   }
@@ -185,6 +194,16 @@ std::string action_label_for(const std::string& id) {
   if (id == "kill_process") return "Kill process";
   if (id == "timer_stop") return "Stop timer";
   if (id == "transcribe_run") return "Transcribe";
+  if (id.rfind("dictate_run", 0) == 0) return "Dictate";
+  if (id.rfind("layout_apply:", 0) == 0) return "Apply layout";
+  if (id.rfind("focus_window:", 0) == 0) return "Focus window";
+  if (id == "window_minimize") return "Minimize";
+  if (id == "window_maximize") return "Maximize";
+  if (id == "window_restore") return "Restore";
+  if (id == "window_close") return "Close";
+  if (id == "window_snap_left") return "Snap left";
+  if (id == "window_snap_right") return "Snap right";
+  if (id == "layout_apply") return "Apply layout";
   return id;
 }
 
@@ -197,7 +216,8 @@ bool is_file_like(const SearchResult& r) {
       r.category == "todo" || r.category == "kill" || r.category == "media" ||
       r.category == "workflow" || r.category == "quicklink" || r.category == "process" ||
       r.category == "ping" || r.category == "dns" || r.category == "myip" ||
-      r.category == "dupe" || r.category == "large" || r.category == "transcribe")
+      r.category == "dupe" || r.category == "large" || r.category == "transcribe" ||
+      r.category == "dictate" || r.category == "layout")
     return false;
   return true;
 }
@@ -271,7 +291,11 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id.rfind("open_with:", 0) == 0) return true;
   if (action_id.rfind("workflow:", 0) == 0) return true;
   if (action_id == "kill_process" || action_id.rfind("media:", 0) == 0) return true;
+  if (action_id.rfind("window_", 0) == 0) return true;
   if (action_id == "transcribe_run") return true;
+  if (action_id.rfind("dictate_run", 0) == 0) return true;
+  if (action_id.rfind("layout_apply:", 0) == 0) return true;
+  if (action_id.rfind("focus_window:", 0) == 0) return true;
   return false;
 }
 
@@ -325,6 +349,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       if (r.category == "kill") id = "kill_process";
     } else if (r.category == "transcribe") {
       id = "transcribe_run";
+    } else if (r.payload.rfind("layout_apply:", 0) == 0) {
+      id = r.payload;
     } else if (r.category == "media" && r.payload.rfind("media:", 0) == 0) {
       id = r.payload.substr(6);
       if (id.empty()) id = "copy_text";
@@ -545,6 +571,133 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       std::string save_err;
       if (!write_transcript_sidecar(audio, text, save_err))
         log_warn("transcribe", save_err.empty() ? "sidecar save failed" : save_err);
+    }
+    return true;
+  }
+  // Window management on window cards (payload holds the numeric window id).
+  if (id.rfind("window_", 0) == 0 && (r.action == ResultAction::SwitchWindow || r.category == "window")) {
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    char* end = nullptr;
+    auto wid = std::strtoull(raw.c_str(), &end, 10);
+    if (!end || end == raw.c_str() || *end != '\0') {
+      log_warn("window", "no window id to act on");
+      return false;
+    }
+    auto op = id.substr(7);
+    NativeWindowOp wop = NativeWindowOp::Restore;
+    if (op == "minimize")
+      wop = NativeWindowOp::Minimize;
+    else if (op == "maximize")
+      wop = NativeWindowOp::Maximize;
+    else if (op == "restore")
+      wop = NativeWindowOp::Restore;
+    else if (op == "close")
+      wop = NativeWindowOp::Close;
+    else if (op == "snap_left")
+      wop = NativeWindowOp::SnapLeft;
+    else if (op == "snap_right")
+      wop = NativeWindowOp::SnapRight;
+    else {
+      log_warn("window", "unknown window action '" + id + "'");
+      return false;
+    }
+    std::string err;
+    if (!native_window_action(static_cast<std::uint64_t>(wid), wop, err)) {
+      log_warn("window", err.empty() ? "window action failed" : err);
+      return false;
+    }
+    return true;
+  }
+  // Built-in dictation: record the mic, transcribe, clipboard the text.
+  // Dictated audio is transient (data-dir WAV, deleted after), so unlike
+  // file transcription there is no sidecar — the clipboard is the delivery.
+  if (id.rfind("dictate_run", 0) == 0) {
+    int seconds = 10;
+    if (id.size() > 12 && id[12] == ':') {
+      try {
+        seconds = std::stoi(id.substr(13));
+      } catch (...) {
+        seconds = 10;
+      }
+      if (seconds < 1) seconds = 1;
+      if (seconds > 120) seconds = 120;
+    }
+    if (!cfg.transcription.enabled) {
+      log_warn("dictate", "transcription is disabled");
+      return false;
+    }
+    create_directories(data_directory());
+    auto wav = path_join(data_directory(), "transcribe-mic.wav");
+    std::string err;
+    if (!record_microphone(wav, seconds, cfg.transcription.mic, err)) {
+      log_warn("dictate", err.empty() ? "recording failed" : err);
+      return false;
+    }
+    std::string text;
+    if (!transcribe_audio_file(wav, cfg, text, err)) {
+      remove_file(wav);
+      log_warn("dictate", err.empty() ? "transcription failed" : err);
+      return false;
+    }
+    remove_file(wav);
+    if (!write_clipboard(text)) {
+      log_warn("dictate", "transcribed but clipboard write failed");
+      return false;
+    }
+    return true;
+  }
+  // Window layouts + focus-by-name (automation-friendly window steps).
+  if (id.rfind("layout_apply:", 0) == 0 || id.rfind("focus_window:", 0) == 0) {
+    bool focus_only = id.rfind("focus_window:", 0) == 0;
+    auto name = to_lower_utf8(id.substr(id.find(':') + 1));
+    if (focus_only) {
+      if (name.empty()) {
+        log_warn("window", "no window name to focus");
+        return false;
+      }
+      for (auto& w : native_list_windows()) {
+        auto hay = to_lower_utf8(w.title + " " + w.owner);
+        if (hay.find(name) != std::string::npos) {
+          std::string err;
+          if (!native_focus_window(w.id)) {
+            log_warn("window", "could not focus window");
+            return false;
+          }
+          return true;
+        }
+      }
+      log_warn("window", "no window matching \"" + name + "\"");
+      return false;
+    }
+    Layout lay;
+    std::string err;
+    if (!LayoutStore::instance().load_layout(name, lay, err)) {
+      log_warn("layout", err.empty() ? "unknown layout" : err);
+      return false;
+    }
+    auto wins = native_list_windows();
+    std::vector<std::uint64_t> used;
+    for (auto& e : lay.entries) {
+      auto needle = to_lower_utf8(e.match);
+      for (auto& w : wins) {
+        bool taken = false;
+        for (auto u : used)
+          if (u == w.id) {
+            taken = true;
+            break;
+          }
+        if (taken) continue;
+        auto hay = to_lower_utf8(w.title + " " + w.owner);
+        if (hay.find(needle) == std::string::npos) continue;
+        used.push_back(w.id);
+        if (e.maximized) {
+          if (!native_window_action(w.id, NativeWindowOp::Maximize, err))
+            log_warn("layout", err.empty() ? "maximize failed" : err);
+        } else if (!native_window_move(w.id, e.x, e.y, e.w, e.h, err)) {
+          log_warn("layout", err.empty() ? "move failed" : err);
+        }
+        break;
+      }
     }
     return true;
   }

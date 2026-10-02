@@ -20,12 +20,16 @@ struct TodoItem {
   std::int64_t when{0};
 };
 
-// In-memory stores with optional file persistence. Paths default to
-// <data dir>/quicknotes.txt and <data dir>/todos.txt when configured.
+// Quick notes live as real Markdown files (`<id>.md`) inside the configured
+// notes directory, so they are readable, editable, and searchable outside
+// Wilfred. Todos stay in `<data dir>/todos.txt` (tasks are not documents).
 class QuickNoteStore {
  public:
   static QuickNoteStore& instance();
-  void configure(std::string path);
+  // Configure the notes directory (e.g. `<data dir>/notes`). Empty means
+  // memory-only, which is what unit tests use. A legacy `quicknotes.txt`
+  // next to the directory is imported once on load().
+  void configure(std::string dir);
   bool load();
   bool save_now();
   std::string add(const std::string& text);
@@ -38,7 +42,7 @@ class QuickNoteStore {
   QuickNoteStore() = default;
   mutable std::mutex mu_;
   std::vector<QuickNote> notes_;
-  std::string path_;
+  std::string dir_;
   int next_{1};
 };
 

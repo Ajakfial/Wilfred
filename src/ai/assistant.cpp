@@ -1,9 +1,11 @@
 #include "wilfred/ai/assistant.hpp"
 
+#include "wilfred/ai/vision.hpp"
 #include "wilfred/config/config.hpp"
 #include "wilfred/core/json.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/search/engine.hpp"
+#include "wilfred/search/screenshot.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -195,6 +197,24 @@ bool ai_query_is_request(const std::string& query, std::string& prompt_out) {
   return false;
 }
 
+bool ai_vision_is_request(const std::string& query, std::string& prompt_out) {
+  auto l = lower_trim(query);
+  const char* prefixes[] = {"ai see", "ask see", "gpt see"};
+  for (auto* p : prefixes) {
+    std::size_t n = std::strlen(p);
+    if (l.rfind(p, 0) == 0 && (l.size() == n || l[n] == ' ' || l[n] == ':')) {
+      std::string raw = normalize_query(query);
+      prompt_out = raw.size() > n ? raw.substr(n) : std::string();
+      while (!prompt_out.empty() &&
+             (prompt_out.front() == ' ' || prompt_out.front() == ':'))
+        prompt_out.erase(prompt_out.begin());
+      while (!prompt_out.empty() && prompt_out.back() == ' ') prompt_out.pop_back();
+      return true;  // empty prompt => hint card, like bare ai/ask
+    }
+  }
+  return false;
+}
+
 std::string ai_provider_default_model(const std::string& provider) {
   auto p = to_lower_utf8(provider);
   if (p == "anthropic") return "claude-3-5-sonnet-latest";
@@ -359,6 +379,136 @@ std::vector<SearchResult> AiAssistant::results_for(const std::string& prompt,
   r.kind_label = "ai";
   r.category = "ai";
   out.push_back(std::move(r));
+  return out;
+}
+
+AiAnswer AiAssistant::ask_with_image(const std::string& prompt,
+                                     const std::vector<std::uint8_t>& png_bytes,
+                                     const std::string& mime, const Config& cfg) const {
+  AiAnswer ans;
+  if (!configured(cfg)) {
+    ans.error = "AI assistant is off (set ai.enabled + ai.api_key)";
+    return ans;
+  }
+  if (prompt.empty()) {
+    ans.error = "empty prompt";
+    return ans;
+  }
+  if (png_bytes.empty()) {
+    ans.error = "empty screenshot";
+    return ans;
+  }
+  std::string provider = active_provider(cfg);
+  std::string model = active_model(cfg);
+  ans.model = model;
+  int timeout = cfg.ai.timeout_ms > 0 ? cfg.ai.timeout_ms : 30000;
+  int max_tokens = cfg.ai.max_tokens > 0 ? cfg.ai.max_tokens : 1024;
+
+  std::string image_b64 =
+      base64_encode_bytes(png_bytes.data(), png_bytes.size());
+  std::string use_mime = mime.empty() ? "image/png" : mime;
+
+  std::string url;
+  std::string body;
+  std::vector<std::string> headers;
+  headers.push_back("Content-Type: application/json");
+
+  if (provider == "anthropic") {
+    url = cfg.ai.endpoint.empty() ? ai_provider_default_endpoint("anthropic") : cfg.ai.endpoint;
+    headers.push_back("x-api-key: " + cfg.ai.api_key);
+    headers.push_back("anthropic-version: 2023-06-01");
+    body = build_anthropic_vision_body(model, prompt, image_b64, use_mime, max_tokens);
+  } else if (provider == "gemini") {
+    std::string base = cfg.ai.endpoint;
+    if (base.empty()) {
+      base = "https://generativelanguage.googleapis.com/v1beta/models/" + model +
+             ":generateContent?key=" + cfg.ai.api_key;
+    } else if (base.find("key=") == std::string::npos && !cfg.ai.api_key.empty()) {
+      base += (base.find('?') == std::string::npos ? "?" : "&") + std::string("key=") +
+              cfg.ai.api_key;
+    }
+    url = base;
+    body = build_gemini_vision_body(prompt, image_b64, use_mime);
+  } else {
+    // OpenAI-compatible (OpenAI + Groq + self-hosted).
+    if (!cfg.ai.endpoint.empty())
+      url = cfg.ai.endpoint;
+    else if (provider == "groq")
+      url = ai_provider_default_endpoint("groq");
+    else
+      url = ai_provider_default_endpoint("openai");
+    if (!cfg.ai.api_key.empty()) headers.push_back("Authorization: Bearer " + cfg.ai.api_key);
+    body = build_openai_vision_body(model, prompt, image_b64, use_mime, max_tokens,
+                                    cfg.ai.temperature);
+  }
+
+  int status = 0;
+  std::string resp = https_post(url, body, headers, timeout, status);
+  if (resp.empty()) {
+    ans.error = "request failed (offline or bad endpoint)";
+    return ans;
+  }
+  std::string text = extract_answer_text(provider, resp);
+  if (text.empty()) {
+    std::string em = json_get_string(resp, "error");
+    if (em.empty()) em = json_get_string(resp, "message");
+    ans.error = em.empty() ? "empty response" : em.substr(0, 240);
+    return ans;
+  }
+  ans.ok = true;
+  ans.text = text;
+  return ans;
+}
+
+std::vector<SearchResult> AiAssistant::results_for_image(const std::string& prompt,
+                                                        const Config& cfg) const {
+  std::vector<SearchResult> out;
+  auto ai_card = [&](const std::string& title, const std::string& subtitle,
+                     const std::string& payload, int score) {
+    SearchResult r;
+    r.title = title;
+    r.subtitle = subtitle;
+    r.payload = payload;
+    r.path = "";
+    r.action = ResultAction::Copy;
+    r.score = score;
+    r.kind_label = "ai";
+    r.category = "ai";
+    out.push_back(std::move(r));
+  };
+  if (prompt.empty()) {
+    ai_card("Look at the screen", "Type `ai see what is on my screen` · needs ai.api_key", "",
+            7000);
+    return out;
+  }
+  if (!configured(cfg)) {
+    ai_card("AI assistant is not configured",
+            "Set ai.enabled: true and ai.api_key in wilfred.yml", prompt, 6000);
+    return out;
+  }
+  std::string shot;
+  std::string shot_err;
+  if (!take_screenshot(ScreenshotMode::Fullscreen, shot, shot_err) || shot.empty()) {
+    ai_card("Screen capture failed",
+            (shot_err.empty() ? "could not capture the screen" : shot_err) + " · enter copies prompt",
+            prompt, 5000);
+    return out;
+  }
+  std::vector<std::uint8_t> png;
+  std::string mime;
+  std::string prep_err;
+  if (!prepare_vision_image(shot, png, mime, 1568, prep_err)) {
+    ai_card("Screenshot not usable for vision",
+            prep_err + " · enter copies prompt", prompt, 5000);
+    return out;
+  }
+  AiAnswer ans = ask_with_image(prompt, png, mime, cfg);
+  if (ans.ok) {
+    ai_card(ans.text.size() > 220 ? ans.text.substr(0, 220) + "…" : ans.text,
+            "AI vision · " + ans.model + " · enter copies", ans.text, 9500);
+  } else {
+    ai_card("AI vision request failed", ans.error + " · enter copies prompt", prompt, 5000);
+  }
   return out;
 }
 

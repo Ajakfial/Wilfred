@@ -19,12 +19,17 @@ class LinuxHotkey final : public HotkeyBackend {
 public:
   ~LinuxHotkey() override { stop(); }
   bool start(const Config& cfg, HotkeyFn cb) override {
+    return start_binding(cfg.hotkey.modifiers, cfg.hotkey.key, false, std::move(cb));
+  }
+  bool start_binding(const std::vector<std::string>& modifiers, const std::string& key,
+                     bool /*use_command_on_macos*/, HotkeyFn cb) override {
 #ifdef WILFRED_HAS_X11
+    stop();
     cb_ = std::move(cb);
     dpy_ = XOpenDisplay(nullptr);
     if (!dpy_) return false;
     unsigned int mods = 0;
-    for (auto& m : cfg.hotkey.modifiers) {
+    for (auto& m : modifiers) {
       auto l = to_lower_utf8(m);
       if (l == "ctrl" || l == "control") mods |= ControlMask;
       else if (l == "alt")
@@ -34,10 +39,10 @@ public:
       else if (l == "super" || l == "win" || l == "meta")
         mods |= Mod4Mask;
     }
-    KeySym ks = XStringToKeysym(cfg.hotkey.key.c_str());
-    if (ks == NoSymbol) ks = XStringToKeysym(to_lower_utf8(cfg.hotkey.key).c_str());
-    if (ks == NoSymbol && !cfg.hotkey.key.empty())
-      ks = static_cast<KeySym>(std::tolower(static_cast<unsigned char>(cfg.hotkey.key[0])));
+    KeySym ks = XStringToKeysym(key.c_str());
+    if (ks == NoSymbol) ks = XStringToKeysym(to_lower_utf8(key).c_str());
+    if (ks == NoSymbol && !key.empty())
+      ks = static_cast<KeySym>(std::tolower(static_cast<unsigned char>(key[0])));
     key_ = XKeysymToKeycode(dpy_, ks);
     mods_ = mods;
     Window root = DefaultRootWindow(dpy_);

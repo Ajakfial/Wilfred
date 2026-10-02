@@ -144,11 +144,190 @@ bool native_focus_window(std::uint64_t id) {
   return true;
 }
 
+namespace {
+
+bool x_send_root_msg(Display* dpy, Window win, const char* msg_type, long l0, long l1, long l2) {
+  Window root = DefaultRootWindow(dpy);
+  Atom msg = XInternAtom(dpy, msg_type, False);
+  XEvent ev{};
+  ev.xclient.type = ClientMessage;
+  ev.xclient.window = win;
+  ev.xclient.message_type = msg;
+  ev.xclient.format = 32;
+  ev.xclient.data.l[0] = l0;
+  ev.xclient.data.l[1] = l1;
+  ev.xclient.data.l[2] = l2;
+  return XSendEvent(dpy, root, False, SubstructureRedirectMask | SubstructureNotifyMask, &ev) != 0;
+}
+
+bool x_has_wm_state(Display* dpy, Window win, const char* state) {
+  Atom prop = XInternAtom(dpy, "_NET_WM_STATE", False);
+  Atom want = XInternAtom(dpy, state, False);
+  Atom actual = None;
+  int fmt = 0;
+  unsigned long nitems = 0, after = 0;
+  unsigned char* data = nullptr;
+  bool found = false;
+  if (XGetWindowProperty(dpy, win, prop, 0, 64, False, XA_ATOM, &actual, &fmt, &nitems, &after,
+                         &data) == Success &&
+      data) {
+    auto* atoms = reinterpret_cast<Atom*>(data);
+    for (unsigned long i = 0; i < nitems; ++i)
+      if (atoms[i] == want) {
+        found = true;
+        break;
+      }
+  }
+  if (data) XFree(data);
+  return found;
+}
+
+}  // namespace
+
+bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  Display* dpy = XOpenDisplay(nullptr);
+  if (!dpy) {
+    error = "could not open display";
+    return false;
+  }
+  Window win = static_cast<Window>(id);
+  int screen = DefaultScreen(dpy);
+  bool ok = false;
+  switch (op) {
+    case NativeWindowOp::Minimize:
+      ok = XIconifyWindow(dpy, win, screen) != 0;
+      if (!ok) error = "could not minimize window";
+      break;
+    case NativeWindowOp::Maximize:
+      ok = x_send_root_msg(dpy, win, "_NET_WM_STATE", 1,
+                           static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False)),
+                           static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)));
+      if (ok)
+        ok = x_send_root_msg(dpy, win, "_NET_WM_STATE", 1,
+                             static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)),
+                             0);
+      if (!ok) error = "could not maximize window";
+      break;
+    case NativeWindowOp::Restore: {
+      // Clear maximized state; un-minimize via map+focus like native_focus_window.
+      x_send_root_msg(dpy, win, "_NET_WM_STATE", 0,
+                      static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False)),
+                      static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)));
+      XMapRaised(dpy, win);
+      XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+      ok = true;
+      break;
+    }
+    case NativeWindowOp::Close:
+      ok = x_send_root_msg(dpy, win, "_NET_CLOSE_WINDOW", CurrentTime, 0, 0);
+      if (!ok) error = "could not close window";
+      break;
+    case NativeWindowOp::SnapLeft:
+    case NativeWindowOp::SnapRight: {
+      int sw = XDisplayWidth(dpy, screen);
+      int sh = XDisplayHeight(dpy, screen);
+      int half = sw / 2;
+      int x = op == NativeWindowOp::SnapLeft ? 0 : half;
+      XRaiseWindow(dpy, win);
+      ok = XMoveResizeWindow(dpy, win, x, 0, static_cast<unsigned>(half),
+                             static_cast<unsigned>(sh)) != 0;
+      if (!ok) error = "could not snap window";
+      break;
+    }
+  }
+  XFlush(dpy);
+  XCloseDisplay(dpy);
+  return ok;
+}
+
+bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  Display* dpy = XOpenDisplay(nullptr);
+  if (!dpy) {
+    error = "could not open display";
+    return false;
+  }
+  Window win = static_cast<Window>(id);
+  Window root = DefaultRootWindow(dpy);
+  XWindowAttributes attr{};
+  if (!XGetWindowAttributes(dpy, win, &attr)) {
+    error = "could not read window attributes";
+    XCloseDisplay(dpy);
+    return false;
+  }
+  int rx = 0, ry = 0;
+  Window child = None;
+  XTranslateCoordinates(dpy, win, root, 0, 0, &rx, &ry, &child);
+  rect.x = rx;
+  rect.y = ry;
+  rect.w = attr.width;
+  rect.h = attr.height;
+  rect.maximized = x_has_wm_state(dpy, win, "_NET_WM_STATE_MAXIMIZED_VERT");
+  XCloseDisplay(dpy);
+  return true;
+}
+
+bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::string& error) {
+  if (!id) {
+    error = "invalid window";
+    return false;
+  }
+  Display* dpy = XOpenDisplay(nullptr);
+  if (!dpy) {
+    error = "could not open display";
+    return false;
+  }
+  Window win = static_cast<Window>(id);
+  int use_w = w, use_h = h;
+  if (use_w <= 0 || use_h <= 0) {
+    XWindowAttributes attr{};
+    if (!XGetWindowAttributes(dpy, win, &attr)) {
+      error = "could not read window attributes";
+      XCloseDisplay(dpy);
+      return false;
+    }
+    if (use_w <= 0) use_w = attr.width;
+    if (use_h <= 0) use_h = attr.height;
+  }
+  XRaiseWindow(dpy, win);
+  bool ok = XMoveResizeWindow(dpy, win, x, y, static_cast<unsigned>(use_w),
+                             static_cast<unsigned>(use_h)) != 0;
+  XFlush(dpy);
+  XCloseDisplay(dpy);
+  if (!ok) {
+    error = "could not move window";
+    return false;
+  }
+  return true;
+}
+
 #else
 
 std::vector<NativeWindowInfo> native_list_windows() { return {}; }
 
 bool native_focus_window(std::uint64_t) { return false; }
+
+bool native_window_action(std::uint64_t, NativeWindowOp, std::string& error) {
+  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  return false;
+}
+
+bool native_window_rect(std::uint64_t, NativeWindowRect&, std::string& error) {
+  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  return false;
+}
+
+bool native_window_move(std::uint64_t, int, int, int, int, std::string& error) {
+  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  return false;
+}
 
 #endif
 #endif

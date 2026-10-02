@@ -10,6 +10,8 @@ wilfred                 Run the background daemon (overlay + indexer)
 wilfred daemon           Same as above
 wilfred search <query>   Search the local index and print results
 wilfred launch <query>   Search and open the top result
+wilfred workflow <name> [target]  Run a named workflow on a search target
+wilfred exec <action> [target]    Run any result action directly
 wilfred index            Scan configured roots and persist the index
 wilfred status           Print index statistics
 wilfred preview <path>   Print a file preview (text head, directory listing, or image info)
@@ -57,6 +59,34 @@ Same search as above, but immediately executes the top result's default
 action (open the file/app, open the URL, etc.) instead of printing results —
 equivalent to typing a query in the overlay and pressing Enter without
 looking at the list.
+
+## `wilfred workflow <name> [target]`
+
+Runs a named workflow from `workflows:` in `wilfred.yml` without the
+overlay. With no target it prints the workflow's steps; with a target query
+it resolves the top file hit (recording history like `launch` does) and
+executes the chain on it:
+
+```
+wilfred workflow review
+wilfred workflow review "Q3 report"
+```
+
+Unknown workflow names list the configured ones on stderr. See
+[automation.md](automation.md).
+
+## `wilfred exec <action> [target]`
+
+Runs any result action id directly (`copy_path+reveal`, `workflow:review`,
+`media:play`, `focus_window:code`, `layout_apply:work`, ...), mirroring the
+`exec`/`action` IPC command and the `POST /exec` HTTP API:
+
+```
+wilfred exec copy_path C:/tmp/notes.md
+wilfred exec media:play
+```
+
+Exit code is `0` when the action reports success, `1` when it fails.
 
 ## `wilfred index`
 

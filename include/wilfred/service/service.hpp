@@ -12,6 +12,7 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace wilfred {
 
@@ -46,6 +47,11 @@ public:
   int run_backup(const std::string& dest, bool include_index);
   int run_restore(const std::string& src);
   int run_sync(bool push);
+  // Automation triggers: run a named workflow against a search target
+  // (empty target lists the workflow), or run any result action id
+  // directly (`copy_path+reveal`, `workflow:review`, `media:play`, ...).
+  int run_workflow(const std::string& name, const std::string& target);
+  int run_exec(const std::string& action, const std::string& target);
 
   Config& config() { return cfg_; }
   IndexEngine& index() { return index_; }
@@ -53,6 +59,7 @@ public:
 private:
   bool boot();
   void on_hotkey();
+  void run_hotkey_action(const std::string& run);
   void apply_logging();
 
   Config cfg_;
@@ -65,6 +72,7 @@ private:
   HistoryStore history_;
   std::unique_ptr<FsWatcher> watcher_;
   std::unique_ptr<GlobalHotkey> hotkey_;
+  std::vector<std::unique_ptr<GlobalHotkey>> extra_hotkeys_;
   std::unique_ptr<IpcServer> ipc_;
   std::unique_ptr<HttpApiServer> http_;
   std::unique_ptr<OverlayUi> ui_;

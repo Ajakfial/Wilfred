@@ -27,6 +27,13 @@ std::unique_ptr<WatcherBackend> create_watcher_backend();
 struct HotkeyBackend {
   virtual ~HotkeyBackend() = default;
   virtual bool start(const Config& cfg, HotkeyFn cb) = 0;
+  // One extra binding from cfg.hotkeys. Default: unsupported (the primary
+  // summon hotkey keeps working through start()).
+  virtual bool start_binding(const std::vector<std::string>& /*modifiers*/,
+                             const std::string& /*key*/, bool /*use_command_on_macos*/,
+                             HotkeyFn /*cb*/) {
+    return false;
+  }
   virtual void stop() = 0;
 };
 
@@ -49,6 +56,23 @@ struct NativeWindowInfo {
 
 std::vector<NativeWindowInfo> native_list_windows();
 bool native_focus_window(std::uint64_t id);
+
+// Window management ops shared by the `windows` mini, layouts, and
+// window workflow steps. All three platforms implement these; Linux
+// without X11 reports unsupported via error.
+enum class NativeWindowOp { Minimize, Maximize, Restore, Close, SnapLeft, SnapRight };
+
+struct NativeWindowRect {
+  int x{0};
+  int y{0};
+  int w{0};
+  int h{0};
+  bool maximized{false};
+};
+
+bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& error);
+bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& error);
+bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::string& error);
 
 // lock | sleep | shutdown | restart | logout | empty_trash
 bool native_system_action(const std::string& id);

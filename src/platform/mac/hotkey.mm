@@ -81,13 +81,18 @@ public:
   ~MacHotkey() override { stop(); }
 
   bool start(const Config& cfg, HotkeyFn cb) override {
+    return start_binding(cfg.hotkey.modifiers, cfg.hotkey.key, cfg.hotkey.use_command_on_macos,
+                         std::move(cb));
+  }
+  bool start_binding(const std::vector<std::string>& modifiers, const std::string& key,
+                     bool use_command_on_macos, HotkeyFn cb) override {
+    stop();
     cb_ = std::move(cb);
     UInt32 mods = optionKey;
-    bool use_cmd = cfg.hotkey.use_command_on_macos;
-    for (auto& m : cfg.hotkey.modifiers) {
+    for (auto& m : modifiers) {
       auto l = to_lower_utf8(m);
       if (l == "ctrl" || l == "control") {
-        if (use_cmd)
+        if (use_command_on_macos)
           mods |= cmdKey;
         else
           mods |= controlKey;
@@ -100,8 +105,10 @@ public:
     }
     EventTypeSpec spec = {kEventClassKeyboard, kEventHotKeyPressed};
     InstallApplicationEventHandler(&MacHotkey::handler, 1, &spec, this, &handler_);
-    EventHotKeyID hid{static_cast<OSType>('WLFD'), 1};
-    OSStatus st = RegisterEventHotKey(mac_vk(cfg.hotkey.key), mods, hid, GetApplicationEventTarget(),
+    // Unique id per instance so extra bindings coexist with the primary one.
+    UInt32 slot = s_next_id.fetch_add(1);
+    EventHotKeyID hid{static_cast<OSType>('WLFD'), slot};
+    OSStatus st = RegisterEventHotKey(mac_vk(key), mods, hid, GetApplicationEventTarget(),
                                       0, &hotkey_);
     running_ = st == noErr;
     return running_;
@@ -130,7 +137,10 @@ private:
   EventHotKeyRef hotkey_{nullptr};
   EventHandlerRef handler_{nullptr};
   std::atomic<bool> running_{false};
+  static std::atomic<UInt32> s_next_id;
 };
+
+std::atomic<UInt32> MacHotkey::s_next_id{2};
 
 std::unique_ptr<HotkeyBackend> create_hotkey_backend() { return std::make_unique<MacHotkey>(); }
 

@@ -24,7 +24,7 @@ single summonable search bar.
 * Content indexing for source, config, and text documents
 * Real document text extraction (PDF, Office, RTF, HTML) into the content index
 * Optional semantic search: local embeddings (llama.cpp server/model or built-in hash) + HNSW vector index (`vectors.bin` next to WAL/snapshot) merged with trigram soft-match (`providers.semantic`, `embedding.*`)
-* Optional AI assistant (`ai ...`/`ask ...`) with your own keys: OpenAI, Anthropic, Gemini, Groq
+* Optional AI assistant (`ai ...`/`ask ...`, screen-aware `ai see ...`) with your own keys: OpenAI, Anthropic, Gemini, Groq
 * Snippets with folders, `{date}`/`{clipboard}`/`{query}` placeholders, and optional global abbreviations in any app
 * Quick notes + todos (`note ...`, `todo ...`, persistent in the data dir)
 * Pomodoro / countdown timers + stopwatch (`timer`, `pomodoro`, `stopwatch`)
@@ -34,7 +34,11 @@ single summonable search bar.
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`) + named multi-step workflows (`workflows:`)
-* Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, timers, notes, media, network, and more
+* Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, timers, notes, media, network, layouts, and more
+* Window management (`windows`, `minimize`/`maximize`/`close window`, snap) plus saved window layouts (`layout save`, `layout`)
+* Screen-aware AI (`ai see ...` sends a screenshot as vision input to your provider)
+* Quick notes now live as real Markdown files, searchable both as cards and through notes search
+* System-wide automation: extra global hotkeys (`hotkeys:`), `wilfred workflow` / `wilfred exec` CLI triggers
 * Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config) + parameterized quicklinks (`quicklinks:` with `{1}`/`{*}`/`{query}`)
 * Per-app extra context actions (`app_actions:`) on top of the built-in file actions
 * Large-file finder + duplicate candidates from the index (`large`, `dupes`)
@@ -138,7 +142,9 @@ system directories, ranking weights, aliases, hotkey, history, browser).
 | `media play` / `media next` / `media mute` | Native media keys + volume (Win media keys; mac HID + Music/Spotify/VLC; Linux native MPRIS D-Bus + wpctl/pactl/amixer, playerctl optional) |
 | `ping example.com` / `dns example.com` / `myip` | Ping, DNS lookup, public IP |
 | `large 10` / `dupes` | Biggest files + duplicate candidates from the index |
-| `transcribe talk.mp3` | Speech-to-text for mp3/mp4 audio (needs whisper CLI) |
+| `transcribe talk.mp3` / `dictate 10` | Speech-to-text for mp3/mp4 audio, mic dictation (needs whisper CLI) |
+| `windows chrome` / `minimize spotify` | List, switch, minimize, maximize, close, snap windows |
+| `layout save work` / `layout work` | Save and restore window layouts |
 | `clips url` / `clips code` | Clipboard history filtered by type (url/email/path/code/ip) |
 | `workflow review` / `run review` | Named multi-step workflows (`workflows` lists) |
 | `ql docs hello` / `ticket:ABC-123` | Parameterized quicklinks (`{1}` `{*}` `{query}`) |

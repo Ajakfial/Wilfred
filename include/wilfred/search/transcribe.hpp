@@ -47,6 +47,17 @@ std::string build_whisper_command(const std::string& binary, const std::string& 
 // Build the ffmpeg container-audio extraction command (pure, unit-testable).
 std::string build_ffmpeg_command(const std::string& wav_out, const std::string& src);
 
+// Build the ffmpeg microphone capture command for this OS (pure,
+// unit-testable). `seconds` is clamped to 1..120. `mic` selects the device:
+// Windows dshow audio device name, macOS avfoundation audio index (or full
+// ":idx" spec), Linux ALSA device. Empty `mic` means the OS default.
+std::string build_mic_command(const std::string& wav_out, int seconds, const std::string& mic);
+
+// Record `seconds` of microphone audio to a 16 kHz mono WAV. Never throws;
+// failures (no ffmpeg, bad device) report through `error`.
+bool record_microphone(const std::string& wav_out, int seconds, const std::string& mic,
+                       std::string& error);
+
 // Run one transcription. Returns true with collapsed transcript text.
 // Never throws; failures report through `error`.
 bool transcribe_audio_file(const std::string& audio_path, const Config& cfg, std::string& out_text,
