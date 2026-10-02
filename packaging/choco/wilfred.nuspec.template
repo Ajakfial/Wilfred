@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chocolatey package manifest template for Wilfred.
+  Built by scripts/Build-Choco.ps1, which replaces %%VERSION%% with the
+  normalized Chocolatey version (tag without leading v, e.g. 1.2.3).
+
+  Publisher is fixed to Wilfred Open Contributors (matches the VERSIONINFO
+  stamp, the MSI Manufacturer, and the Authenticode subject).
+  Package id is wilfred; if that id is taken on the community feed, the
+  first choco push reports 409 and the id here plus docs must be renamed.
+-->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>wilfred</id>
+    <version>%%VERSION%%</version>
+    <title>Wilfred</title>
+    <authors>Wilfred Open Contributors</authors>
+    <owners>Wilfred Open Contributors</owners>
+    <summary>Fast, lightweight desktop search and application launcher.</summary>
+    <description>Wilfred is a fast, lightweight, cross-platform desktop search engine and application launcher: files, folders, applications, calculations, timers, notes, clipboard history and more from a single summonable search bar.</description>
+    <projectUrl>https://github.com/ajakfial/wilfred</projectUrl>
+    <projectSourceUrl>https://github.com/ajakfial/wilfred</projectSourceUrl>
+    <docsUrl>https://github.com/ajakfial/wilfred#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/ajakfial/wilfred/issues</bugTrackerUrl>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>search launcher productivity desktop finder</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

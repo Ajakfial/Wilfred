@@ -147,7 +147,7 @@ try {
 
     & $candle -nologo -arch x64 -ext WixUIExtension `
         (Join-Path $work 'Wilfred.wxs') (Join-Path $work 'overlay_files.wxs') `
-        @defines -out (Join-Path $work 'wilfred.wixobj')
+        @defines -out ($work.TrimEnd('\') + '\')
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     $outDir = Split-Path -Parent $Out

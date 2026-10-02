@@ -152,6 +152,28 @@ jobs:
             ./scripts/Sign-WindowsBinary.ps1 -ExePath $msi -VerifyOnly
           }
 
+      - name: Choco (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $id = '${{ matrix.id }}'
+          $staging = "dist\wilfred-$tag-$id"
+          if (-not (Test-Path "$staging\wilfred.exe")) { throw "Staging dir not found: $staging" }
+          ./scripts/Build-Choco.ps1 -Staging $staging -OutDir dist -Version $tag
+          # Push to the Chocolatey community feed only when configured;
+          # the .nupkg is still attached to the GitHub Release either way.
+          if ($env:CHOCO_API_KEY) {
+            $nupkg = Get-ChildItem -Path 'dist' -Filter 'wilfred.*.nupkg' |
+              Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if (-not $nupkg) { throw 'Chocolatey package not produced.' }
+            choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY --no-progress
+          } else {
+            Write-Host '::warning::No CHOCO_API_KEY secret; skipping community push (nupkg still attached to release).'
+          }
+
       - name: Package (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -185,6 +207,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.msi
+            dist/*.nupkg
             dist/*.tar.gz
           if-no-files-found: error
 
@@ -206,7 +229,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(artifacts/*.zip artifacts/*.msi artifacts/*.tar.gz)
+          files=(artifacts/*.zip artifacts/*.msi artifacts/*.nupkg artifacts/*.tar.gz)
           if [[ ${#files[@]} -eq 0 ]]; then
             echo "No release files found" >&2
             find artifacts -type f || true

@@ -15,6 +15,8 @@ param(
     [string]$SignTimestamp = 'http://timestamp.digicert.com',
     [switch]$Msi,
     [string]$MsiVersion = '',
+    [switch]$Choco,
+    [string]$ChocoVersion = '',
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CMakeArgs
 )
@@ -134,36 +136,47 @@ if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
     Write-Host 'or set WILFRED_SIGN=1. See docs/signing.md.'
 }
 
-if ($Msi) {
+function Get-ReleaseTag {
+    $projLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
+        Select-String -Pattern 'project\(Wilfred VERSION ([0-9.]+)' |
+        Select-Object -First 1
+    return 'v' + $projLine.Matches[0].Groups[1].Value
+}
+
+if ($Msi -or $Choco) {
     Write-Host ''
-    Write-Host 'Building Windows installer (.msi)...'
-    $msiStaging = Join-Path ([IO.Path]::GetTempPath()) ('wilfred-msi-staging-' + [guid]::NewGuid().ToString('N'))
-    New-Item -ItemType Directory -Force -Path $msiStaging | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $msiStaging 'ui') | Out-Null
+    Write-Host 'Assembling release staging...'
+    $pkgStaging = Join-Path ([IO.Path]::GetTempPath()) ('wilfred-pkg-staging-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $pkgStaging | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $pkgStaging 'ui') | Out-Null
     try {
-        Copy-Item $exe $msiStaging
-        Copy-Item -Recurse (Join-Path $Root 'ui\overlay') (Join-Path $msiStaging 'ui\overlay')
-        Copy-Item (Join-Path $Root 'README.md') $msiStaging -ErrorAction SilentlyContinue
-        Copy-Item (Join-Path $Root 'config\wilfred.default.yml') $msiStaging -ErrorAction SilentlyContinue
-        if ($MsiVersion) {
-            $msiTag = $MsiVersion
-        } else {
-            $projLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
-                Select-String -Pattern 'project\(Wilfred VERSION ([0-9.]+)' |
-                Select-Object -First 1
-            $msiTag = 'v' + $projLine.Matches[0].Groups[1].Value
+        Copy-Item $exe $pkgStaging
+        Copy-Item -Recurse (Join-Path $Root 'ui\overlay') (Join-Path $pkgStaging 'ui\overlay')
+        Copy-Item (Join-Path $Root 'README.md') $pkgStaging -ErrorAction SilentlyContinue
+        Copy-Item (Join-Path $Root 'config\wilfred.default.yml') $pkgStaging -ErrorAction SilentlyContinue
+
+        if ($Msi) {
+            Write-Host 'Building Windows installer (.msi)...'
+            $msiTag = if ($MsiVersion) { $MsiVersion } else { Get-ReleaseTag }
+            $msiOut = Join-Path $Root "dist\wilfred-$msiTag-windows-x64.msi"
+            $msiParams = @{ Staging = $pkgStaging; Out = $msiOut; Version = $msiTag }
+            & (Join-Path $PSScriptRoot 'Build-Msi.ps1') @msiParams
+            if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
+                Write-Host 'Signing installer...'
+                $signParams.ExePath = $msiOut
+                & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @signParams
+            }
+            Write-Host "Installer: $msiOut"
         }
-        $msiOut = Join-Path $Root "dist\wilfred-$msiTag-windows-x64.msi"
-        $msiParams = @{ Staging = $msiStaging; Out = $msiOut; Version = $msiTag }
-        & (Join-Path $PSScriptRoot 'Build-Msi.ps1') @msiParams
-        if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
-            Write-Host 'Signing installer...'
-            $signParams.ExePath = $msiOut
-            & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @signParams
+
+        if ($Choco) {
+            Write-Host 'Building Chocolatey package (.nupkg)...'
+            $chocoTag = if ($ChocoVersion) { $ChocoVersion } else { Get-ReleaseTag }
+            & (Join-Path $PSScriptRoot 'Build-Choco.ps1') -Staging $pkgStaging `
+                -OutDir (Join-Path $Root 'dist') -Version $chocoTag
         }
-        Write-Host "Installer: $msiOut"
     } finally {
-        Remove-Item -Recurse -Force $msiStaging -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force $pkgStaging -ErrorAction SilentlyContinue
     }
 }
 

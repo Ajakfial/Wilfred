@@ -53,3 +53,23 @@ a Microsoft-trusted signature plus reputation (see [signing.md](signing.md)).
 - Scope is intentionally per-user. Switching to per-machine would require
   `InstallScope="perMachine"`, elevation, and HKLM/Program Files moves —
   a deliberate change, not a flag.
+
+## Chocolatey package (.nupkg)
+
+Releases also ship an embedded portable Chocolatey package built from the
+same staging dir — no downloads at install time, works offline.
+
+- Manifest: `packaging/choco/wilfred.nuspec.template` (id `wilfred`,
+  authors/owners `Wilfred Open Contributors`, MIT). Version is normalized
+  from the tag (`v1.2.3` → `1.2.3`).
+- Hooks: `packaging/choco/tools/chocolateyinstall.ps1` creates the Start
+  Menu shortcut (the `wilfred.exe` shim is automatic);
+  `chocolateyuninstall.ps1` removes the shortcut.
+- Build: `./scripts/Build-Choco.ps1 -Staging <dir> -OutDir dist -Version v1.2.3`
+  (`-ValidateOnly` checks the template and hooks without `choco.exe`), or
+  `./scripts/build-windows.ps1 -Choco` for a local one-command build.
+- The release workflow attaches the `.nupkg` to the GitHub Release and
+  pushes it to the community feed only when the `CHOCO_API_KEY` secret is
+  set — otherwise it logs a warning and skips the push.
+- If the `wilfred` id is taken on the community feed (first push answers
+  409), rename the id in the template and here, e.g. `wilfred-launcher`.
