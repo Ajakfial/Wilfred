@@ -66,15 +66,33 @@
           </Directory>
 
           <Component Id="WilfredExe" Guid="*" Win64="yes">
-            <File Id="WilfredExe" Source="$(var.SourceDir)\wilfred.exe" KeyPath="yes" />
+            <RegistryValue Root="HKCU"
+                           Key="Software\Wilfred Open Contributors\Wilfred"
+                           Name="exe"
+                           Type="integer"
+                           Value="1"
+                           KeyPath="yes" />
+            <File Id="WilfredExe" Source="$(var.SourceDir)\wilfred.exe" KeyPath="no" />
           </Component>
 
           <Component Id="WilfredReadme" Guid="*">
-            <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" KeyPath="yes" />
+            <RegistryValue Root="HKCU"
+                           Key="Software\Wilfred Open Contributors\Wilfred"
+                           Name="readme"
+                           Type="integer"
+                           Value="1"
+                           KeyPath="yes" />
+            <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" KeyPath="no" />
           </Component>
 
           <Component Id="WilfredDefaults" Guid="*">
-            <File Id="DefaultYml" Source="$(var.SourceDir)\wilfred.default.yml" KeyPath="yes" />
+            <RegistryValue Root="HKCU"
+                           Key="Software\Wilfred Open Contributors\Wilfred"
+                           Name="defaults"
+                           Type="integer"
+                           Value="1"
+                           KeyPath="yes" />
+            <File Id="DefaultYml" Source="$(var.SourceDir)\wilfred.default.yml" KeyPath="no" />
           </Component>
 
           <Component Id="WilfredPath" Guid="*">
@@ -91,6 +109,9 @@
                          Part="last"
                          Action="set"
                          System="no" />
+            <RemoveFolder Id="RmInstallDir" Directory="INSTALLDIR" On="uninstall" />
+            <RemoveFolder Id="RmUiDir" Directory="UiDir" On="uninstall" />
+            <RemoveFolder Id="RmOverlayDir" Directory="OverlayDir" On="uninstall" />
           </Component>
 
         </Directory>

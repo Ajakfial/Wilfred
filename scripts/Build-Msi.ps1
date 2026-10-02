@@ -47,6 +47,10 @@ function Get-MsiVersion([string]$Tag) {
     return "$($nums[0]).$($nums[1]).$($nums[2])"
 }
 
+# ICE38/ICE64 repair for per-user installs lives in its own file so it can
+# be unit-tested without running the full build (see Repair-HeatFragment.ps1).
+. (Join-Path $PSScriptRoot 'Repair-HeatFragment.ps1')
+
 function Find-WixTool([string]$Name) {
     $roots = @()
     if (${env:ProgramFiles(x86)}) { $roots += Join-Path ${env:ProgramFiles(x86)} 'WiX Toolset v3.14\bin' }
@@ -136,6 +140,7 @@ try {
         -gg -g1 -scom -sreg -sfrag -srd -var var.OverlaySource `
         -out (Join-Path $work 'overlay_files.wxs')
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Repair-HeatFragment (Join-Path $work 'overlay_files.wxs')
 
     $defines = @(
         "-dProductVersion=$msiVersion",
@@ -154,7 +159,10 @@ try {
     if ($outDir -and -not (Test-Path $outDir)) {
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     }
-    & $light -nologo -ext WixUIExtension `
+    # ICE91 (per-user dirs not varying by ALLUSERS) is by design here; the
+    # per-user scope is intentional, so silence that warning only. ICE38/64
+    # stay enforced via the registry keypaths and RemoveFolders above.
+    & $light -nologo -sice:ICE91 -ext WixUIExtension `
         (Join-Path $work 'Wilfred.wixobj') (Join-Path $work 'overlay_files.wixobj') `
         -out $Out
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
