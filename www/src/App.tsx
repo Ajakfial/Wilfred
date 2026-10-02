@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FEATURES, INSTALL_OPTIONS, QUERY_EXAMPLES, RELEASES_URL, REPO_URL } from './data';
+import { FEATURES, IMPORT_COMMANDS, IMPORT_SOURCES, INSTALL_OPTIONS, QUERY_EXAMPLES, RELEASES_URL, REPO_URL } from './data';
 
 function Logo() {
   return (
@@ -104,6 +104,36 @@ function Features() {
   );
 }
 
+function Import() {
+  return (
+    <section id="import" className="section">
+      <h2>Switching launchers? Bring your settings</h2>
+      <p className="muted">
+        Wilfred imports hotkeys, custom web searches (as macros + quicklinks),
+        snippets, aliases, theme and the default search template. Merging is the
+        default; <code>--overwrite</code> replaces conflicts, <code>--dry-run</code> previews
+        without writing, and a <code>.pre-import.bak</code> backup is written before every real import.
+      </p>
+      <ul className="demo-list">
+        {IMPORT_SOURCES.map((s) => (
+          <li key={s.os} className="demo-row">
+            <code>{s.os}</code>
+            <span className="demo-meaning">{s.apps}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="install-panel">
+        {IMPORT_COMMANDS.map((c) => (
+          <pre key={c}>
+            <code>{c}</code>
+          </pre>
+        ))}
+        <p className="muted">See docs/import.md for per-launcher mapping and merge semantics.</p>
+      </div>
+    </section>
+  );
+}
+
 function Install() {
   const [tab, setTab] = useState('Windows');
   const active = INSTALL_OPTIONS.find((o) => o.os === tab) ?? INSTALL_OPTIONS[0];
@@ -140,6 +170,7 @@ function Install() {
 
 function Docs() {
   const links = [
+    { title: 'Import', href: `${REPO_URL}/blob/main/docs/import.md`, body: 'Bring settings from Alfred, Raycast, PowerToys, Flow Launcher, Ulauncher and more.' },
     { title: 'Query language', href: `${REPO_URL}/blob/main/docs/query-language.md`, body: 'Every query form, in classification order.' },
     { title: 'Configuration', href: `${REPO_URL}/blob/main/docs/configuration.md`, body: 'All wilfred.yml keys plus workflows, quicklinks, app actions.' },
     { title: 'Installer', href: `${REPO_URL}/blob/main/docs/installer.md`, body: 'MSI and Chocolatey packaging details.' },
@@ -170,6 +201,7 @@ export default function App() {
         <nav>
           <a href="#features">Features</a>
           <a href="#queries">Queries</a>
+          <a href="#import">Import</a>
           <a href="#install">Install</a>
           <a href="#docs">Docs</a>
           <a className="btn small" href={REPO_URL}>
@@ -181,6 +213,7 @@ export default function App() {
         <Hero />
         <QueryDemo />
         <Features />
+        <Import />
         <Install />
         <Docs />
       </main>

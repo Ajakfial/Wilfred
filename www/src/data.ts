@@ -87,6 +87,11 @@ export const FEATURES: Feature[] = [
     icon: '⛓',
   },
   {
+    title: 'Import from other launchers',
+    body: 'Bring hotkeys, web searches, snippets, theme and default search from Alfred, Raycast, PowerToys Run, Flow Launcher, Ulauncher, Albert, KRunner and Rofi.',
+    icon: '⇄',
+  },
+  {
     title: 'Private by design',
     body: 'Local-first, dependency-free core. History optional, sync opt-in to infrastructure you control.',
     icon: '◈',
@@ -119,4 +124,23 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     commands: ['tar -xzf wilfred-<version>-macos-arm64.tar.gz', 'cd wilfred-<version>-macos-arm64 && ./wilfred'],
     note: 'Hotkey defaults to Command+Option+W on macOS.',
   },
+];
+
+export interface ImportSource {
+  os: string;
+  apps: string;
+}
+
+export const IMPORT_SOURCES: ImportSource[] = [
+  { os: 'macOS', apps: 'Alfred (plist bundle), Raycast (quicklinks JSON)' },
+  { os: 'Windows', apps: 'PowerToys Run, Flow Launcher, Wox, Keypirinha, Listary' },
+  { os: 'Linux', apps: 'Ulauncher, Albert, KRunner / KDE, Rofi' },
+];
+
+export const IMPORT_COMMANDS: string[] = [
+  'wilfred import --list',
+  'wilfred import --detect',
+  'wilfred import auto --dry-run',
+  'wilfred import alfred --from Alfred.alfredpreferences --dry-run',
+  'wilfred import flowlauncher --from Settings.json --overwrite',
 ];
