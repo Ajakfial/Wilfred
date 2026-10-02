@@ -165,11 +165,22 @@ jobs:
           ./scripts/Build-Choco.ps1 -Staging $staging -OutDir dist -Version $tag
           # Push to the Chocolatey community feed only when configured;
           # the .nupkg is still attached to the GitHub Release either way.
+          # A failed push (bad key, or the wilfred id owned by someone else)
+          # must not fail the release: warn and continue.
           if ($env:CHOCO_API_KEY) {
             $nupkg = Get-ChildItem -Path 'dist' -Filter 'wilfred.*.nupkg' |
               Sort-Object LastWriteTime -Descending | Select-Object -First 1
             if (-not $nupkg) { throw 'Chocolatey package not produced.' }
+            # A failed push must not fail the release: tolerate the native
+            # non-zero exit first (the runner aborts on it otherwise), then warn.
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
             choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY --no-progress
+            $pushRc = $LASTEXITCODE
+            $ErrorActionPreference = $prevEap
+            if ($pushRc -ne 0) {
+              Write-Host '::warning::Community push failed. 403 usually means a bad key or the wilfred id owned by another account (check community.chocolatey.org/packages/wilfred); rename the nuspec id if so. The nupkg is still attached to the GitHub Release.'
+            }
           } else {
             Write-Host '::warning::No CHOCO_API_KEY secret; skipping community push (nupkg still attached to release).'
           }
