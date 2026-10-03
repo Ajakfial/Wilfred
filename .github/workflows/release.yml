@@ -242,14 +242,30 @@ jobs:
           java-version: "17"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${HOME}/android-sdk"
+          mkdir -p "${SDK_ROOT}/cmdline-tools"
+          cd /tmp
+          curl -fsSLO https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          rm -rf "${SDK_ROOT}/cmdline-tools/latest"
+          unzip -q -o commandlinetools-linux-11076708_latest.zip -d "${SDK_ROOT}/cmdline-tools"
+          mv "${SDK_ROOT}/cmdline-tools/cmdline-tools" "${SDK_ROOT}/cmdline-tools/latest"
+          rm -f commandlinetools-linux-11076708_latest.zip
+          {
+            echo "ANDROID_HOME=${SDK_ROOT}"
+            echo "ANDROID_SDK_ROOT=${SDK_ROOT}"
+            echo "ANDROID_NDK_HOME=${SDK_ROOT}/ndk/26.3.11579264"
+          } >> "${GITHUB_ENV}"
+          echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> "${GITHUB_PATH}"
+          echo "${SDK_ROOT}/platform-tools" >> "${GITHUB_PATH}"
+          sdkmanager --version
 
       - name: Install Android packages
         run: |
           set -euo pipefail
-          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/26.3.11579264" >> "${GITHUB_ENV}"
           yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
