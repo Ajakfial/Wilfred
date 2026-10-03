@@ -307,6 +307,11 @@ elseif(ANDROID)
   # C++ core runs headless and links only against NDK system libs.
   find_package(Threads REQUIRED)
   target_link_libraries(wilfred_core PUBLIC Threads::Threads log android)
+  # NDK libc++ marks fs::u8path deprecated (native narrow encoding is
+  # already UTF-8 on Android, so it stays correct). The 60+ call sites use
+  # it deliberately for Windows UTF-8 handling; migrating them to a
+  # char8_t/path helper is follow-up work, not release-blocking noise.
+  target_compile_definitions(wilfred_core PRIVATE _LIBCPP_DISABLE_DEPRECATION_WARNINGS)
 else()
   find_package(Threads REQUIRED)
   find_package(X11)

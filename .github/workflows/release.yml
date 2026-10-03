@@ -310,11 +310,23 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          bash ./scripts/build-android.sh --release --apk --bundle
+          bash ./scripts/build-android.sh --release --apk --bundle 2>&1 | tee "${GITHUB_WORKSPACE}/android-build.log"
           echo "APK:"
           find android/app/build/outputs/apk -name '*.apk' || true
           echo "AAB:"
           find android/app/build/outputs/bundle -name '*.aab' || true
+
+      - name: Surface Kotlin errors
+        if: failure()
+        run: |
+          LOG="${GITHUB_WORKSPACE}/android-build.log"
+          if [[ -f "${LOG}" ]]; then
+            echo "--- Kotlin compiler errors ---"
+            grep -E "^e: |error: " "${LOG}" | head -n 60 || true
+            echo "--- end ---"
+          else
+            echo "No android-build.log captured."
+          fi
 
       - name: Verify signature
         run: |
