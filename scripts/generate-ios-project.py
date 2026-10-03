@@ -326,6 +326,78 @@ def main() -> int:
     os.makedirs(PROJ_DIR, exist_ok=True)
     with open(PBXPROJ, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
+
+    # Shared scheme (required: xcodebuild demands -scheme/-xctestrun with
+    # -derivedDataPath; scripts/build-ios.sh builds -scheme Wilfred).
+    scheme_dir = os.path.join(PROJ_DIR, "xcshareddata", "xcschemes")
+    os.makedirs(scheme_dir, exist_ok=True)
+    with open(os.path.join(scheme_dir, "Wilfred.xcscheme"), "w", encoding="utf-8",
+              newline="\n") as f:
+        f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{target}"
+               BuildableName = "Wilfred.app"
+               BlueprintName = "Wilfred"
+               ReferencedContainer = "container:Wilfred.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{target}"
+            BuildableName = "Wilfred.app"
+            BlueprintName = "Wilfred"
+            ReferencedContainer = "container:Wilfred.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{target}"
+            BuildableName = "Wilfred.app"
+            BlueprintName = "Wilfred"
+            ReferencedContainer = "container:Wilfred.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+</Scheme>
+""")
     print(f"wrote {PBXPROJ} ({len(core)} core + {len(backend)} ios + {len(app)} app)")
     return 0
 

@@ -50,7 +50,7 @@ if [[ "$CLEAN" -eq 1 ]]; then
 fi
 
 ARGS=(-project ios/Wilfred.xcodeproj
-  -target Wilfred
+  -scheme Wilfred
   -configuration "$CONFIG"
   -derivedDataPath "$DERIVED")
 
