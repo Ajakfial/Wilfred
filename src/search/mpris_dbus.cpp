@@ -4,6 +4,12 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
+// struct timeval for the socket timeouts below: transient on glibc,
+// absent on NetBSD without the direct include.
+#include <sys/time.h>
+#endif
+
 namespace wilfred {
 namespace {
 
