@@ -103,6 +103,7 @@ export interface InstallOption {
   label: string;
   commands: string[];
   note: string;
+  experimental?: boolean;
 }
 
 export const INSTALL_OPTIONS: InstallOption[] = [
@@ -129,6 +130,14 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     label: 'Android',
     commands: ['./scripts/build-android.sh --release', 'adb install android/app/build/outputs/apk/release/*.apk'],
     note: 'Kotlin UI (floating W + search bar) over the C++ core via the NDK. Needs JDK 17, Android SDK/NDK, Gradle.',
+    experimental: true,
+  },
+  {
+    os: 'iOS',
+    label: 'iOS',
+    commands: ['./scripts/build-ios.sh --simulator', 'xcrun simctl install booted ios/build/DerivedData/Build/Products/Release-iphonesimulator/Wilfred.app'],
+    note: 'SwiftUI (same search UI as Android, app-icon entry) over the same C++ core. Simulator builds are unsigned; device and TestFlight distribution need Apple signing — see docs/ios.md.',
+    experimental: true,
   },
 ];
 

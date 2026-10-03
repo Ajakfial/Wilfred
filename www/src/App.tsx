@@ -149,11 +149,19 @@ function Install() {
             className={o.os === tab ? 'tab active' : 'tab'}
             onClick={() => setTab(o.os)}
           >
-            {o.label}
+            {o.label}{' '}
+            {o.experimental && <span className="chip experimental">Experimental</span>}
           </button>
         ))}
       </div>
       <div className="install-panel">
+        {active.experimental && (
+          <p className="warning" role="note">
+            <strong>Experimental build (as of v23.0.5).</strong> It installs and runs, but
+            should not be used as a daily driver until further testing and development
+            land. Desktop (Windows, macOS, Linux) remains the stable target.
+          </p>
+        )}
         {active.commands.map((c) => (
           <pre key={c}>
             <code>{c}</code>
