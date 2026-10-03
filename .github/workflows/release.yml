@@ -533,7 +533,8 @@ jobs:
         uses: actions/checkout@v4
 
       # Same staging as the freebsd job so the release upload below
-      # picks the tarball up via dist/*.tar.gz.
+      # picks the tarball up via dist/*.tar.gz. No pkgin on the stock
+      # image: pkg_add(1) from base + explicit PKG_PATH (amd64, not x86_64).
       - name: Build + test + package on NetBSD
         uses: vmactions/netbsd-vm@v1
         with:
@@ -541,7 +542,15 @@ jobs:
           copyback: true
           run: |
             set -euo pipefail
-            pkgin -y install cmake ninja pkgconf bash
+            export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+            if command -v pkgin >/dev/null 2>&1; then
+              pkgin -y install cmake ninja pkgconf bash
+            else
+              arch="$(uname -m)"; [ "$arch" = x86_64 ] && arch=amd64
+              rel="$(uname -r | cut -d. -f1-2)"
+              export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${arch}/${rel}/All/"
+              pkg_add cmake ninja pkgconf bash
+            fi
             bash ./scripts/build-bsd.sh --release --tests
             TAG="${GITHUB_REF_NAME}"
             STAGING="dist/wilfred-${TAG}-netbsd-x64"

@@ -150,12 +150,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Same shape as bsd above; NetBSD packages come via pkgin.
+      # Same shape as bsd above. The netbsd-vm image has no pkgin preinstalled
+      # and a minimal PATH: pkg_add(1) from base + an explicit PKG_PATH for
+      # binary packages (pkgsrc uses amd64, not x86_64, in the path).
       - name: Build + test on NetBSD
         uses: vmactions/netbsd-vm@v1
         with:
           usesh: true
           copyback: false
           run: |
-            pkgin -y install cmake ninja pkgconf bash
+            export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
+            if command -v pkgin >/dev/null 2>&1; then
+              pkgin -y install cmake ninja pkgconf bash
+            else
+              arch="$(uname -m)"; [ "$arch" = x86_64 ] && arch=amd64
+              rel="$(uname -r | cut -d. -f1-2)"
+              export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${arch}/${rel}/All/"
+              pkg_add cmake ninja pkgconf bash
+            fi
             bash ./scripts/build-bsd.sh --release --tests

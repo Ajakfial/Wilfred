@@ -88,6 +88,19 @@
 #endif
 #endif
 
+#if defined(__OpenBSD__)
+// OpenBSD ships no sysctlbyname(3): resolve names via sysctlnametomib.
+// The macro keeps every call site below (uptime, physmem, cp_time,
+// uvmexp) working unchanged on this platform.
+static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldlenp) {
+  int mib[CTL_MAXNAME];
+  std::size_t mlen = sizeof(mib) / sizeof(mib[0]);
+  if (sysctlnametomib(name, mib, &mlen) != 0) return -1;
+  return sysctl(mib, static_cast<u_int>(mlen), oldp, oldlenp, nullptr, 0);
+}
+#define sysctlbyname openbsd_sysctlbyname
+#endif
+
 namespace wilfred {
 namespace {
 
