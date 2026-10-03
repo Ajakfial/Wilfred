@@ -545,12 +545,19 @@ jobs:
             export PATH="/usr/pkg/sbin:/usr/pkg/bin:$PATH"
             if command -v pkgin >/dev/null 2>&1; then
               pkgin -y install cmake ninja pkgconf bash
+              for cc in gcc14 gcc13 gcc12 clang; do
+                if pkgin -y install "$cc"; then break; fi
+              done
             else
               arch="$(uname -m)"; [ "$arch" = x86_64 ] && arch=amd64
               rel="$(uname -r | cut -d. -f1-2)"
               export PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/${arch}/${rel}/All/"
               pkg_add cmake ninja pkgconf bash
+              for cc in gcc14 gcc13 gcc12 clang; do
+                if pkg_add "$cc"; then break; fi
+              done
             fi
+            command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1 || { echo "no C compiler" >&2; exit 1; }
             bash ./scripts/build-bsd.sh --release --tests
             TAG="${GITHUB_REF_NAME}"
             STAGING="dist/wilfred-${TAG}-netbsd-x64"

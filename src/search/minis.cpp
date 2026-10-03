@@ -89,14 +89,28 @@
 #endif
 
 #if defined(__OpenBSD__)
-// OpenBSD ships no sysctlbyname(3): resolve names via sysctlnametomib.
-// The macro keeps every call site below (uptime, physmem, cp_time,
-// uvmexp) working unchanged on this platform.
-static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldlenp) {
-  int mib[CTL_MAXNAME];
-  std::size_t mlen = sizeof(mib) / sizeof(mib[0]);
-  if (sysctlnametomib(name, mib, &mlen) != 0) return -1;
-  return sysctl(mib, static_cast<u_int>(mlen), oldp, oldlenp, nullptr, 0);
+// OpenBSD libc exposes only raw sysctl(2): neither sysctlbyname nor
+// sysctlnametomib exist there. Map the names used in this TU to numeric
+// MIBs so every call site below stays unchanged.
+static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldlenp, void* newp,
+                                std::size_t newlen) {
+  int mib[2] = {0, 0};
+  if (std::strcmp(name, "kern.boottime") == 0) {
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_BOOTTIME;
+  } else if (std::strcmp(name, "hw.physmem") == 0) {
+    mib[0] = CTL_HW;
+    mib[1] = HW_PHYSMEM;
+  } else if (std::strcmp(name, "kern.cp_time") == 0) {
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_CP_TIME;
+  } else if (std::strcmp(name, "vm.uvmexp") == 0) {
+    mib[0] = CTL_VM;
+    mib[1] = VM_UVMEXP;
+  } else {
+    return -1;
+  }
+  return sysctl(mib, 2, oldp, oldlenp, newp, newlen);
 }
 #define sysctlbyname openbsd_sysctlbyname
 #endif
