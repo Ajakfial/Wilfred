@@ -65,7 +65,8 @@ public:
     });
     return true;
 #else
-    (void)cfg;
+    (void)modifiers;
+    (void)key;
     (void)cb;
     return false;
 #endif
