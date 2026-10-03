@@ -5,6 +5,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/engine.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/updater/inflate.hpp"
 
 #include <algorithm>
