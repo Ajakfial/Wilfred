@@ -2,9 +2,14 @@
 #include "wilfred/platform/platform.hpp"
 
 #include <string>
+#include <vector>
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/ucred.h>
+#if defined(__NetBSD__)
+// NetBSD has no getmntinfo(2): same snapshot via getvfsstat(2).
+#include <sys/statvfs.h>
+#endif
 
 namespace wilfred {
 #if defined(WILFRED_BSD)
@@ -15,6 +20,53 @@ namespace wilfred {
 // reported as root so callers have at least one volume.
 std::vector<VolumeInfo> native_list_volumes() {
   std::vector<VolumeInfo> out;
+  auto skip_pseudo = [](const std::string& type) {
+    return type == "devfs" || type == "procfs" || type == "linprocfs" ||
+           type == "fdescfs" || type == "tmpfs" || type == "kernfs" || type == "ptyfs";
+  };
+#if defined(__NetBSD__)
+  // getvfsstat(2) instead of getmntinfo(2); statvfs carries the same
+  // mount-point and fs-type names.
+  int n = getvfsstat(nullptr, 0, MNT_NOWAIT);
+  if (n <= 0) {
+    VolumeInfo v;
+    v.path = "/";
+    v.name = "root";
+    out.push_back(v);
+    return out;
+  }
+  std::vector<statvfs> mnt(static_cast<std::size_t>(n));
+  n = getvfsstat(mnt.data(), mnt.size() * sizeof(statvfs), MNT_NOWAIT);
+  if (n <= 0) {
+    VolumeInfo v;
+    v.path = "/";
+    v.name = "root";
+    out.push_back(v);
+    return out;
+  }
+  for (int i = 0; i < n; ++i) {
+    std::string mp = mnt[static_cast<std::size_t>(i)].f_mntonname;
+    std::string type = mnt[static_cast<std::size_t>(i)].f_fstypename;
+    if (mp.empty()) continue;
+    if (mp == "/") {
+      VolumeInfo v;
+      v.path = "/";
+      v.name = "root";
+      v.fs_type = type;
+      out.push_back(std::move(v));
+      continue;
+    }
+    if (skip_pseudo(type)) continue;
+    VolumeInfo v;
+    v.path = mp;
+    v.name = mp;
+    v.fs_type = type;
+    v.network = type.find("nfs") != std::string::npos || type.find("smb") != std::string::npos;
+    v.removable = mp.rfind("/media/", 0) == 0 || mp.rfind("/mnt/", 0) == 0;
+    out.push_back(std::move(v));
+  }
+  return out;
+#else
   struct statfs* mnt = nullptr;
   int n = getmntinfo(&mnt, MNT_NOWAIT);
   if (n <= 0 || !mnt) {
@@ -24,10 +76,6 @@ std::vector<VolumeInfo> native_list_volumes() {
     out.push_back(v);
     return out;
   }
-  auto skip_pseudo = [](const std::string& type) {
-    return type == "devfs" || type == "procfs" || type == "linprocfs" ||
-           type == "fdescfs" || type == "tmpfs";
-  };
   for (int i = 0; i < n; ++i) {
     std::string mp = mnt[i].f_mntonname;
     std::string type = mnt[i].f_fstypename;
@@ -50,6 +98,7 @@ std::vector<VolumeInfo> native_list_volumes() {
     out.push_back(std::move(v));
   }
   return out;
+#endif
 }
 
 #endif
