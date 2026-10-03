@@ -35,8 +35,8 @@ std::vector<VolumeInfo> native_list_volumes() {
     out.push_back(v);
     return out;
   }
-  std::vector<statvfs> mnt(static_cast<std::size_t>(n));
-  n = getvfsstat(mnt.data(), mnt.size() * sizeof(statvfs), MNT_NOWAIT);
+  std::vector<struct statvfs> mnt(static_cast<std::size_t>(n));
+  n = getvfsstat(mnt.data(), mnt.size() * sizeof(struct statvfs), MNT_NOWAIT);
   if (n <= 0) {
     VolumeInfo v;
     v.path = "/";
