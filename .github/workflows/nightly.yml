@@ -1,0 +1,108 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            id: windows-x64
+          - os: ubuntu-latest
+            id: linux-x64
+          - os: macos-latest
+            id: macos-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libx11-dev
+
+      - name: Install macOS packages
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Build + test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Config Release -Tests
+
+      - name: Build + test (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash ./scripts/build-linux.sh --release --tests
+
+      - name: Build + test (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash ./scripts/build-macos.sh --release --tests
+
+      - name: Stage nightly archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bin = Get-ChildItem -Path 'build\windows' -Recurse -Filter 'wilfred.exe' |
+            Where-Object { $_.FullName -notmatch 'CMakeFiles' } |
+            Select-Object -First 1
+          if (-not $bin) { throw 'Could not find wilfred.exe' }
+          $staging = "dist\wilfred-nightly-${{ matrix.id }}"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          New-Item -ItemType Directory -Force -Path "$staging\ui" | Out-Null
+          Copy-Item $bin.FullName $staging
+          Copy-Item -Recurse 'ui\overlay' "$staging\ui\overlay"
+          Copy-Item 'README.md' $staging -ErrorAction SilentlyContinue
+          Copy-Item 'config\wilfred.default.yml' $staging -ErrorAction SilentlyContinue
+          Compress-Archive -Path $staging -DestinationPath "dist\wilfred-nightly-${{ matrix.id }}.zip" -Force
+
+      - name: Stage nightly archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ID="${{ matrix.id }}"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            ROOT=build/linux
+          else
+            ROOT=build/macos
+          fi
+          BIN="$(find "${ROOT}" -maxdepth 2 -type f -name wilfred -not -path '*/CMakeFiles/*' | head -n 1)"
+          if [[ -z "${BIN}" || ! -f "${BIN}" ]]; then
+            echo "Could not find wilfred binary" >&2
+            find build -name 'wilfred*' || true
+            exit 1
+          fi
+          STAGING="dist/wilfred-nightly-${ID}"
+          mkdir -p "${STAGING}/ui"
+          cp "${BIN}" "${STAGING}/"
+          cp -R ui/overlay "${STAGING}/ui/overlay"
+          cp README.md "${STAGING}/" || true
+          cp config/wilfred.default.yml "${STAGING}/" || true
+          tar -C dist -czf "dist/wilfred-nightly-${ID}.tar.gz" "wilfred-nightly-${ID}"
+
+      - name: Upload nightly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-nightly-${{ matrix.id }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          retention-days: 14
+          if-no-files-found: error
