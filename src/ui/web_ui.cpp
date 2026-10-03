@@ -236,7 +236,7 @@ static std::string exe_directory() {
   char buf[PATH_MAX];
 #if defined(__FreeBSD__) || defined(__DragonFly__)
   // No /proc by default: ask the kernel directly. Other BSDs fall through
-  // to the /proc attempt below (present only with procfs mounted).
+  // to the /proc attempts below (present only with procfs mounted).
   {
     int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     std::size_t len = sizeof(buf);
@@ -245,8 +245,20 @@ static std::string exe_directory() {
       return path_parent(buf);
     }
   }
+#elif defined(__NetBSD__)
+  // Executable pathname lives under KERN_PROC_ARGS on NetBSD (sysctl(7)).
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(getpid()), KERN_PROC_PATHNAME};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return path_parent(buf);
+    }
+  }
 #endif
+  // OpenBSD has no sysctl for this; NetBSD also covers its procfs layout.
   ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+  if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
   if (n <= 0) return ".";
   buf[n] = 0;
   return path_parent(buf);

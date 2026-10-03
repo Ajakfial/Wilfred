@@ -9,10 +9,19 @@
 #include <string>
 #include <vector>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(__DragonFly__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
+#endif
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+// kinfo_proc via <sys/user.h> (DragonFly documents sys/user.h first,
+// which pulls in sys/kinfo.h).
 #include <sys/user.h>
+#endif
+#if defined(__OpenBSD__) || defined(__NetBSD__)
+// kinfo_proc / kinfo_proc2 live in <sys/sysctl.h> here.
+#include <sys/param.h>
 #endif
 
 #if defined(WILFRED_HAS_X11)
@@ -62,6 +71,28 @@ std::string owner_from_pid(unsigned long pid) {
   std::size_t len = sizeof(kp);
   if (sysctl(mib, 4, &kp, &len, nullptr, 0) != 0) return {};
   return std::string(kp.ki_comm, strnlen(kp.ki_comm, sizeof(kp.ki_comm)));
+#elif defined(__OpenBSD__)
+  // Same shape as FreeBSD but struct kinfo_proc uses p_ field names.
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast<int>(pid)};
+  kinfo_proc kp{};
+  std::size_t len = sizeof(kp);
+  if (sysctl(mib, 4, &kp, &len, nullptr, 0) != 0 || len == 0) return {};
+  return std::string(kp.p_comm, strnlen(kp.p_comm, sizeof(kp.p_comm)));
+#elif defined(__NetBSD__)
+  // KERN_PROC2 with element size + count trailing the op.
+  int mib[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast<int>(pid),
+                (int)sizeof(struct kinfo_proc2), 0};
+  struct kinfo_proc2 kp{};
+  std::size_t len = sizeof(kp);
+  if (sysctl(mib, 6, &kp, &len, nullptr, 0) != 0 || len == 0) return {};
+  return std::string(kp.p_comm, strnlen(kp.p_comm, sizeof(kp.p_comm)));
+#elif defined(__DragonFly__)
+  // struct kinfo_proc via <sys/user.h>; kp_ field names (see sys/kinfo.h).
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast<int>(pid)};
+  kinfo_proc kp{};
+  std::size_t len = sizeof(kp);
+  if (sysctl(mib, 4, &kp, &len, nullptr, 0) != 0 || len == 0) return {};
+  return std::string(kp.kp_comm, strnlen(kp.kp_comm, sizeof(kp.kp_comm)));
 #else
   std::ifstream comm("/proc/" + std::to_string(pid) + "/comm");
   std::string name;

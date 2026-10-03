@@ -259,7 +259,9 @@ bool native_open_url(const std::string& url) {
 bool native_system_action(const std::string& id) {
 #ifdef WILFRED_BSD
   // No systemd/logind on BSD: lock via screensavers, power via shutdown(8).
-  // Logout needs a session-manager hook and stays unsupported.
+  // Logout needs a session-manager hook and stays unsupported. Sleep is
+  // per-OS below (acpiconf on FreeBSD/DragonFly, zzz on OpenBSD, ACPI
+  // sleep state on NetBSD).
   if (id == "lock") {
     return sys("xdg-screensaver lock >/dev/null 2>&1") ||
            sys("xscreensaver-command -lock >/dev/null 2>&1");
@@ -269,6 +271,11 @@ bool native_system_action(const std::string& id) {
     return sys("acpiconf -s 3 >/dev/null 2>&1");
 #elif defined(__OpenBSD__)
     return sys("zzz >/dev/null 2>&1");
+#elif defined(__NetBSD__)
+    // suspend-to-RAM via the ACPI sleep state (NetBSD power mgmt guide).
+    return sys("sysctl -w hw.acpi.sleep.state=3 >/dev/null 2>&1");
+#elif defined(__DragonFly__)
+    return sys("acpiconf -s 3 >/dev/null 2>&1");
 #else
     return false;
 #endif

@@ -62,8 +62,21 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #endif
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/user.h>
+#endif
+#if defined(__OpenBSD__) || defined(__NetBSD__)
+// <sys/param.h> for DEV_BSIZE + MAXCOMLEN; <sys/swap.h> for swapctl(2).
+#include <sys/param.h>
+#include <sys/swap.h>
+#endif
+#if defined(__OpenBSD__)
+// struct uvmexp via vm.uvmexp (same layout htop's OpenBSD backend uses).
+#include <uvm/uvmexp.h>
+#endif
+#if defined(__NetBSD__)
+// struct uvmexp via vm.uvmexp; kinfo_proc2 via <sys/sysctl.h> above.
+#include <uvm/uvm_extern.h>
 #endif
 #if defined(WILFRED_BSD)
 // Order matters: socket types precede interface and address headers.
@@ -707,13 +720,15 @@ static void ram_stats(std::uint64_t& total, std::uint64_t& used) {
   total = mem;
   used = 0;
 #elif defined(WILFRED_BSD)
-  // hw.physmem exists on every BSD; per-OS free-page counters differ, so
-  // only FreeBSD (vm.stats.vm.v_free_count) reports `used` — like macOS,
-  // other BSDs report the total with used left at 0.
+  // hw.physmem exists on every BSD; `used` needs a free-page counter.
+  // FreeBSD reports it exactly, the others below are validated best
+  // efforts that fall back to total-only (like macOS) on any mismatch.
   unsigned long phys = 0;
   std::size_t sz = sizeof(phys);
   if (sysctlbyname("hw.physmem", &phys, &sz, nullptr, 0) == 0) total = phys;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  // vm.stats.vm.v_free_count is FreeBSD-documented; DragonFly shares the
+  // FreeBSD-derived VM sysctl tree, otherwise this quietly no-ops.
   unsigned free_pages = 0;
   sz = sizeof(free_pages);
   long page = sysconf(_SC_PAGESIZE);
@@ -721,6 +736,16 @@ static void ram_stats(std::uint64_t& total, std::uint64_t& used) {
       sysctlbyname("vm.stats.vm.v_free_count", &free_pages, &sz, nullptr, 0) == 0) {
     std::uint64_t freeb = static_cast<std::uint64_t>(free_pages) * static_cast<std::uint64_t>(page);
     if (freeb < total) used = total - freeb;
+  }
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
+  // vm.uvmexp: npages/free are page counts (cf. htop's OpenBSD backend).
+  struct uvmexp uv{};
+  std::size_t uvsz = sizeof(uv);
+  long page = sysconf(_SC_PAGESIZE);
+  if (total && page > 0 && sysctlbyname("vm.uvmexp", &uv, &uvsz, nullptr, 0) == 0 &&
+      uv.npages > 0 && uv.free >= 0 && uv.free <= uv.npages) {
+    used =
+        static_cast<std::uint64_t>(uv.npages - uv.free) * static_cast<std::uint64_t>(page);
   }
 #endif
 #else
@@ -880,9 +905,9 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
   }
   CloseHandle(snap);
 #elif defined(__FreeBSD__)
-  // No /proc by default: enumerate via sysctl KERN_PROC_PROC. Other BSDs
-  // keep the /proc path below (empty without procfs); extending this branch
-  // needs per-OS kinfo layouts, deliberately not guessed here.
+  // No /proc by default: enumerate via sysctl KERN_PROC_PROC. The other
+  // BSDs have their own branches below; remaining Unix keeps the /proc
+  // scan (empty without procfs).
   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PROC, 0};
   std::size_t len = 0;
   if (sysctl(mib, 4, nullptr, &len, nullptr, 0) == 0 && len > 0) {
@@ -904,6 +929,90 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
         p.working_set =
             static_cast<std::uint64_t>(kp[i].ki_rssize) * static_cast<std::uint64_t>(page);
         p.threads = static_cast<std::uint32_t>(kp[i].ki_numthreads);
+        out.push_back(std::move(p));
+      }
+    }
+  }
+#elif defined(__OpenBSD__)
+  // sysctl KERN_PROC_ALL returns an array of struct kinfo_proc
+  // (see sysctl(3)); p_vm_rssize is a page count, same as htop uses it.
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
+  std::size_t len = 0;
+  if (sysctl(mib, 4, nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len + 16);
+    if (sysctl(mib, 4, buf.data(), &len, nullptr, 0) == 0 && len >= sizeof(kinfo_proc)) {
+      long page = sysconf(_SC_PAGESIZE);
+      if (page <= 0) page = 4096;
+      std::size_t n = len / sizeof(kinfo_proc);
+      auto* kp = reinterpret_cast<kinfo_proc*>(buf.data());
+      for (std::size_t i = 0; i < n; ++i) {
+        if (kp[i].p_pid <= 0) continue;
+        std::string name(kp[i].p_comm, strnlen(kp[i].p_comm, sizeof(kp[i].p_comm)));
+        if (name.empty()) continue;
+        auto folded = to_lower_utf8(name);
+        if (!want.empty() && folded.find(want) == std::string::npos) continue;
+        ProcInfo p;
+        p.pid = static_cast<std::uint32_t>(kp[i].p_pid);
+        p.name = name;
+        p.working_set =
+            static_cast<std::uint64_t>(kp[i].p_vm_rssize) * static_cast<std::uint64_t>(page);
+        out.push_back(std::move(p));
+      }
+    }
+  }
+#elif defined(__NetBSD__)
+  // KERN_PROC2 takes a 6-element MIB: op, id, element size, max count
+  // (0 = no limit). kinfo_proc2 carries p_pid/p_comm plus p_vm_rssize
+  // in pages.
+  int mib[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0, (int)sizeof(struct kinfo_proc2), 0};
+  std::size_t len = 0;
+  if (sysctl(mib, 6, nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len + 16);
+    if (sysctl(mib, 6, buf.data(), &len, nullptr, 0) == 0 &&
+        len >= sizeof(struct kinfo_proc2)) {
+      long page = sysconf(_SC_PAGESIZE);
+      if (page <= 0) page = 4096;
+      std::size_t n = len / sizeof(struct kinfo_proc2);
+      auto* kp = reinterpret_cast<struct kinfo_proc2*>(buf.data());
+      for (std::size_t i = 0; i < n; ++i) {
+        if (kp[i].p_pid <= 0) continue;
+        std::string name(kp[i].p_comm, strnlen(kp[i].p_comm, sizeof(kp[i].p_comm)));
+        if (name.empty()) continue;
+        auto folded = to_lower_utf8(name);
+        if (!want.empty() && folded.find(want) == std::string::npos) continue;
+        ProcInfo p;
+        p.pid = static_cast<std::uint32_t>(kp[i].p_pid);
+        p.name = name;
+        p.working_set =
+            static_cast<std::uint64_t>(kp[i].p_vm_rssize) * static_cast<std::uint64_t>(page);
+        out.push_back(std::move(p));
+      }
+    }
+  }
+#elif defined(__DragonFly__)
+  // KERN_PROC_ALL returns struct kinfo_proc (see sys/kinfo.h via
+  // <sys/user.h>); kp_vm_rssize is in pages, kp_nthreads is exact.
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
+  std::size_t len = 0;
+  if (sysctl(mib, 4, nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len + 16);
+    if (sysctl(mib, 4, buf.data(), &len, nullptr, 0) == 0 && len >= sizeof(kinfo_proc)) {
+      long page = sysconf(_SC_PAGESIZE);
+      if (page <= 0) page = 4096;
+      std::size_t n = len / sizeof(kinfo_proc);
+      auto* kp = reinterpret_cast<kinfo_proc*>(buf.data());
+      for (std::size_t i = 0; i < n; ++i) {
+        if (kp[i].kp_pid <= 0) continue;
+        std::string name(kp[i].kp_comm, strnlen(kp[i].kp_comm, sizeof(kp[i].kp_comm)));
+        if (name.empty()) continue;
+        auto folded = to_lower_utf8(name);
+        if (!want.empty() && folded.find(want) == std::string::npos) continue;
+        ProcInfo p;
+        p.pid = static_cast<std::uint32_t>(kp[i].kp_pid);
+        p.name = name;
+        p.working_set =
+            static_cast<std::uint64_t>(kp[i].kp_vm_rssize) * static_cast<std::uint64_t>(page);
+        p.threads = static_cast<std::uint32_t>(kp[i].kp_nthreads);
         out.push_back(std::move(p));
       }
     }
@@ -1965,11 +2074,61 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     } else {
       out.push_back(card("No swap", "Swap is unused or disabled", "No swap", "swap"));
     }
-#elif defined(WILFRED_BSD)
-    // swapinfo(8) is FreeBSD-only; other BSDs get an honest card instead of
-    // a "No swap" claim (their /proc path below would always read empty).
-    out.push_back(card("Swap stats unavailable", "Swap reporting needs FreeBSD for now", "",
-                       "swap"));
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
+    // swapctl(2): SWAP_NSWAP counts devices, SWAP_STATS fills struct
+    // swapent (se_nblks/se_inuse in 512-byte blocks).
+    std::uint64_t total = 0, used = 0;
+    int nswap = swapctl(SWAP_NSWAP, nullptr, 0);
+    if (nswap > 0) {
+      std::vector<swapent> sw(static_cast<std::size_t>(nswap));
+      int got = swapctl(SWAP_STATS, sw.data(), nswap);
+      for (int i = 0; i < got; ++i) {
+        if (!(sw[static_cast<std::size_t>(i)].se_flags & SWF_ENABLE)) continue;
+        total += static_cast<std::uint64_t>(sw[static_cast<std::size_t>(i)].se_nblks) * 512ull;
+        used += static_cast<std::uint64_t>(sw[static_cast<std::size_t>(i)].se_inuse) * 512ull;
+      }
+    }
+    if (total && used <= total) {
+      int pct = static_cast<int>((used * 100) / total);
+      char title[128];
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
+                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
+    } else {
+      out.push_back(card("Swap stats unavailable", "No swap devices reported", "No swap", "swap"));
+    }
+#elif defined(__DragonFly__)
+    // DragonFly ships swapinfo(8) with -k like FreeBSD, but the column
+    // layout is only best-effort here: validate before showing numbers.
+    std::uint64_t total = 0, used = 0;
+    if (FILE* f = popen("swapinfo -k 2>/dev/null", "r")) {
+      char line[256];
+      bool header = true;
+      while (fgets(line, sizeof(line), f)) {
+        if (header) {
+          header = false;
+          continue;
+        }
+        std::string dev;
+        unsigned long t = 0, u = 0;
+        std::istringstream is(line);
+        if (is >> dev >> t >> u) {
+          total += static_cast<std::uint64_t>(t) * 1024ull;
+          used += static_cast<std::uint64_t>(u) * 1024ull;
+        }
+      }
+      pclose(f);
+    }
+    if (total && used <= total) {
+      int pct = static_cast<int>((used * 100) / total);
+      char title[128];
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
+                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
+    } else {
+      out.push_back(card("Swap stats unavailable", "Swap reporting needs verification here", "",
+                         "swap"));
+    }
 #else
     std::ifstream in("/proc/meminfo");
     std::string k, unit;

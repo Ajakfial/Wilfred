@@ -71,11 +71,24 @@ std::string current_executable_path() {
       return std::string(buf);
     }
   }
+#elif defined(__NetBSD__)
+  // NetBSD keeps the executable pathname under KERN_PROC_ARGS
+  // (cf. libuv's uv_exepath); documented in sysctl(7).
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(getpid()), KERN_PROC_PATHNAME};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return std::string(buf);
+    }
+  }
 #endif
+  // OpenBSD has no sysctl for this; all BSDs fall through to procfs here
+  // (present only when mounted — otherwise "" and callers degrade).
   ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (len < 0) {
-    // Fallback: try /proc/self/exe on macOS
-    len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    // NetBSD procfs layout.
+    len = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
   }
   if (len < 0) return "";
   buf[len] = '\0';

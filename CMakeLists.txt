@@ -408,6 +408,12 @@ else()
   if(NOT BSD)
     target_link_libraries(wilfred_core PUBLIC dl)
   endif()
+  if(BSD)
+    # Clang/libc++ marks fs::u8path deprecated (same as iOS/Android above).
+    # The call sites use it deliberately for Windows UTF-8 handling;
+    # migrating them to a char8_t/path helper is follow-up work.
+    target_compile_definitions(wilfred_core PRIVATE _LIBCPP_DISABLE_DEPRECATION_WARNINGS)
+  endif()
 endif()
 
 if(NOT ANDROID AND NOT IOS)

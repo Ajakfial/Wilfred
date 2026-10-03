@@ -489,9 +489,81 @@ jobs:
             dist/*.tar.gz
           if-no-files-found: error
 
+  openbsd:
+    name: Build openbsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same staging as the freebsd job so the release upload below
+      # picks the tarball up via dist/*.tar.gz.
+      - name: Build + test + package on OpenBSD
+        uses: vmactions/openbsd-vm@v1
+        with:
+          usesh: true
+          copyback: true
+          run: |
+            set -euo pipefail
+            pkg_add cmake ninja pkgconf bash
+            bash ./scripts/build-bsd.sh --release --tests
+            TAG="${GITHUB_REF_NAME}"
+            STAGING="dist/wilfred-${TAG}-openbsd-x64"
+            mkdir -p "${STAGING}/ui"
+            cp build/bsd/wilfred "${STAGING}/"
+            cp -R ui/overlay "${STAGING}/ui/overlay"
+            cp README.md "${STAGING}/" || true
+            cp config/wilfred.default.yml "${STAGING}/" || true
+            tar -C dist -czf "dist/wilfred-${TAG}-openbsd-x64.tar.gz" "wilfred-${TAG}-openbsd-x64"
+            ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-${{ github.ref_name }}-openbsd-x64
+          path: |
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  netbsd:
+    name: Build netbsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same staging as the freebsd job so the release upload below
+      # picks the tarball up via dist/*.tar.gz.
+      - name: Build + test + package on NetBSD
+        uses: vmactions/netbsd-vm@v1
+        with:
+          usesh: true
+          copyback: true
+          run: |
+            set -euo pipefail
+            pkgin -y install cmake ninja pkgconf bash
+            bash ./scripts/build-bsd.sh --release --tests
+            TAG="${GITHUB_REF_NAME}"
+            STAGING="dist/wilfred-${TAG}-netbsd-x64"
+            mkdir -p "${STAGING}/ui"
+            cp build/bsd/wilfred "${STAGING}/"
+            cp -R ui/overlay "${STAGING}/ui/overlay"
+            cp README.md "${STAGING}/" || true
+            cp config/wilfred.default.yml "${STAGING}/" || true
+            tar -C dist -czf "dist/wilfred-${TAG}-netbsd-x64.tar.gz" "wilfred-${TAG}-netbsd-x64"
+            ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-${{ github.ref_name }}-netbsd-x64
+          path: |
+            dist/*.tar.gz
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: [build, android, ios, bsd]
+    needs: [build, android, ios, bsd, openbsd, netbsd]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts

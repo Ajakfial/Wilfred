@@ -125,3 +125,37 @@ jobs:
           run: |
             pkg install -y cmake ninja pkgconf shells/bash
             bash ./scripts/build-bsd.sh --release --tests
+
+  openbsd:
+    name: Build openbsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same shape as bsd above; OpenBSD packages come via pkg_add.
+      - name: Build + test on OpenBSD
+        uses: vmactions/openbsd-vm@v1
+        with:
+          usesh: true
+          copyback: false
+          run: |
+            pkg_add cmake ninja pkgconf bash
+            bash ./scripts/build-bsd.sh --release --tests
+
+  netbsd:
+    name: Build netbsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Same shape as bsd above; NetBSD packages come via pkgin.
+      - name: Build + test on NetBSD
+        uses: vmactions/netbsd-vm@v1
+        with:
+          usesh: true
+          copyback: false
+          run: |
+            pkgin -y install cmake ninja pkgconf bash
+            bash ./scripts/build-bsd.sh --release --tests

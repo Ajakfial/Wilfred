@@ -51,10 +51,10 @@ with BSD-native replacements for the Linux-only pieces:
 | Filesystem watcher | inotify (`linux/fs_watch.cpp`) | kqueue (`bsd/fs_watch.cpp`) |
 | Volume list | `/proc/mounts` | `getmntinfo` (`bsd/volumes.cpp`) |
 | RAM / CPU / uptime | `/proc/meminfo`, `/proc/stat`, `/proc/uptime` | `hw.physmem`, `kern.cp_time`, `kern.boottime` via sysctl |
-| Process list | `/proc` scan | sysctl `KERN_PROC_PROC` (FreeBSD) |
-| Swap | `/proc/meminfo` | `swapinfo -k` (FreeBSD) |
+| Process list | `/proc` scan | per-OS sysctl (`minis.cpp`): `KERN_PROC_PROC` (FreeBSD), `KERN_PROC_ALL` (OpenBSD/DragonFly), `KERN_PROC2` (NetBSD) |
+| Swap | `/proc/meminfo` | `swapinfo -k` (FreeBSD, best-effort DragonFly), `swapctl(2)` (OpenBSD/NetBSD) |
 | Ping timeout | `-W` seconds | `-W` milliseconds (FreeBSD/DragonFly), `-w` seconds (NetBSD) |
-| exe path | `/proc/self/exe` | `KERN_PROC_PATHNAME` (FreeBSD/DragonFly) |
+| exe path | `/proc/self/exe` | `KERN_PROC_PATHNAME` (FreeBSD/DragonFly), `KERN_PROC_ARGS` + `KERN_PROC_PATHNAME` (NetBSD), procfs only (OpenBSD) |
 
 Config and data live in the same XDG locations as on Linux
 (`~/.config/wilfred/wilfred.yml`, `~/.local/share/wilfred/`), and the
@@ -64,26 +64,35 @@ ports put `.desktop` files in `/usr/local/share/applications`.
 
 ## Known gaps (by OS)
 
-* **Process list / swap stats**: implemented via sysctl/`swapinfo` on
-  FreeBSD only. OpenBSD, NetBSD, and DragonFly show an empty process list
-  and a "stats unavailable" swap card — everything else works.
+* **DragonFly swap stats**: parsed from `swapinfo -k` best-effort (its
+  column layout is not guaranteed); anything unparseable shows an honest
+  "unavailable" card instead of wrong numbers.
+* **DragonFly RAM used**: best-effort `vm.stats.vm.v_free_count`
+  (FreeBSD-derived tree); falls back to total-only when absent.
+* **OpenBSD exe path**: no sysctl for this exists (procfs is deprecated
+  there), so self-update staging and overlay dir resolution need procfs
+  mounted — otherwise they degrade gracefully.
 * **Ping timeout**: OpenBSD `ping` has no wait-timeout flag, so an
   unreachable host takes the full default wait to fail there (FreeBSD and
   DragonFly use `-W` in milliseconds, NetBSD `-w` in seconds).
 * **`logout` system action**: unsupported on BSD (no logind session to
   terminate); `shutdown` / `restart` use `shutdown(8)`, `sleep` uses
-  `acpiconf` (FreeBSD) / `zzz` (OpenBSD).
+  `acpiconf` (FreeBSD/DragonFly), `zzz` (OpenBSD), `hw.acpi.sleep.state`
+  (NetBSD).
 * **MPRIS media control**: works over D-Bus where a session bus with
   players exists; the "Linux-only" fallback message is shown otherwise.
 * **Packages**: no ports/packages yet — build from source, grab a tagged
-  FreeBSD release tarball, or use the nightly FreeBSD CI job.
+  FreeBSD/OpenBSD/NetBSD release tarball, or use the nightly CI jobs.
   `pkg`/`ports` submissions welcome; see `docs/installer.md` for how the
   other artifacts are staged.
 
 ## CI
 
-`.github/workflows/nightly.yml` has a `bsd` job that builds and runs the
-full test suite on FreeBSD (`vmactions/freebsd-vm`). Tagged releases also
-ship a `wilfred-<tag>-freebsd-x64.tar.gz`, built by the `bsd` job in
-`.github/workflows/release.yml` with the same staging as the Linux tarball
-(binary + `ui/overlay/` + README + default config).
+`.github/workflows/nightly.yml` has `bsd`, `openbsd`, and `netbsd` jobs
+that build and run the full test suite in VMs (`vmactions/freebsd-vm`,
+`vmactions/openbsd-vm`, `vmactions/netbsd-vm`). Tagged releases ship
+`wilfred-<tag>-{freebsd,openbsd,netbsd}-x64.tar.gz`, built by the matching
+jobs in `.github/workflows/release.yml` with the same staging as the Linux
+tarball (binary + `ui/overlay/` + README + default config). DragonFly has
+no VM runner available, so it stays manual: `./scripts/build-bsd.sh
+--release --tests` on a DragonFly host.
