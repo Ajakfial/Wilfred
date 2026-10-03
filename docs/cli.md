@@ -19,6 +19,8 @@ wilfred backup [path]    Write config/snippets/index archive
 wilfred restore [path]   Restore from a backup archive
 wilfred sync-push        Upload backup to sync.url
 wilfred sync-pull        Download backup from sync.url
+wilfred convert ...    Convert audio/image files (wav to mp3, bmp to png, ...)
+wilfred bgremove ...   Remove image background to transparent PNG
 wilfred import --list    List importable launchers (Alfred, Raycast, PowerToys, ...)
 wilfred import --detect   Scan default locations for other launchers
 wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]
@@ -129,6 +131,45 @@ index scan).
 wilfred backup ~/wilfred-backup.tar
 wilfred backup --no-index
 ```
+
+## `wilfred convert <src> [--to <fmt>] [--out <dst>]`
+
+Converts audio and image files. WAV to WAV (resample / remix / bit-depth)
+and WAV to RAW plus BMP / PNG / PPM / TGA image conversion run natively
+with no extra installs; compressed formats (mp3, ogg, opus, flac, m4a/aac,
+wma, jpg, gif, webp, ...) transcode through an optional `ffmpeg` on PATH:
+
+```
+wilfred convert song.wav --to mp3
+wilfred convert song.wav out.ogg
+wilfred convert song.wav --to wav --rate 44100 --stereo --bits 16
+wilfred convert photo.bmp --to png
+wilfred convert photo.jpg out.png
+```
+
+With a bare format the output is written next to the source
+(`song.mp3`, `photo.png`, `song 2.mp3` when taken). The same conversions
+are available from the overlay as `convert <file> to <fmt>` (Enter converts
+and reveals the output). No config keys are needed.
+
+## `wilfred bgremove <src> [--out <dst>] [--tolerance N] [--color C]`
+
+Removes the background of a PNG, BMP, PPM, or TGA image (JPG / GIF / WebP
+via `ffmpeg` when installed) and writes a transparent PNG. The background
+color is auto-sampled from the image corners unless `--color` is given;
+`--tolerance 0-100` (default 32) controls how close a pixel must be, with
+`--global` for chroma-keying every matching pixel instead of the default
+border flood-fill, and `--feather 0-8` for edge smoothing:
+
+```
+wilfred bgremove photo.png
+wilfred bgremove photo.png --tolerance 40 --color "#ffffff"
+wilfred bgremove photo.png --out clean.png --global
+```
+
+Also available from the overlay as `bgremove <image> [tolerance] [#color]`.
+Output is always PNG (alpha cannot survive in JPEG), defaulting to
+`<stem>.transparent.png` next to the source.
 
 ## `wilfred restore <path>`
 

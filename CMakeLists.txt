@@ -87,6 +87,7 @@ set(WILFRED_CORE_SOURCES
   src/search/actions.cpp
   src/search/screenshot.cpp
   src/search/file_ops.cpp
+  src/search/convert.cpp
   src/sources/sources.cpp
   src/ai/assistant.cpp
   src/ai/vision.cpp
@@ -177,6 +178,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/actions.hpp
   include/wilfred/search/screenshot.hpp
   include/wilfred/search/file_ops.hpp
+  include/wilfred/search/convert.hpp
   include/wilfred/plugin/abi.hpp
   include/wilfred/plugin/host.hpp
   include/wilfred/sync/backup.hpp
@@ -501,6 +503,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_new_features.cpp
   tests/test_assist.cpp
   tests/test_powertools.cpp
+  tests/test_convert.cpp
   tests/test_import.cpp
   tests/test_android.cpp
   tests/test_ios.cpp

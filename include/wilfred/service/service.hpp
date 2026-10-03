@@ -52,6 +52,8 @@ public:
   // directly (`copy_path+reveal`, `workflow:review`, `media:play`, ...).
   int run_workflow(const std::string& name, const std::string& target);
   int run_exec(const std::string& action, const std::string& target);
+  int run_convert(const std::vector<std::string>& args);
+  int run_bgremove(const std::vector<std::string>& args);
   int run_import_list();
   int run_import_detect();
   int run_import(const std::string& launcher, const std::string& from_path, bool dry_run,

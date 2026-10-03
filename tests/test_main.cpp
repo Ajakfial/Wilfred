@@ -27,6 +27,7 @@ int main() {
   test_new_features();
   test_assist();
   test_powertools();
+  test_convert();
   test_import();
   test_android();
   test_ios();

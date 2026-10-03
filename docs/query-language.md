@@ -186,6 +186,8 @@ synthetic result card instead of searching the index
 | `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
 | `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
 | `transcribe <file>` | `stt`, `transcription` | Speech-to-text for mp3/wav/m4a/mp4 via whisper (enter transcribes) |
+| `convert <file> to <fmt>` | `transcode`, `conversion` | File conversion: audio (`convert song.wav to mp3`, `convert clip.mp4 to wav`) and images (`convert photo.bmp to png`, `convert scan.tga to jpg`); WAV/WAV+RAW and BMP/PNG/PPM/TGA run natively, compressed targets use `ffmpeg` when installed (enter converts + reveals) |
+| `bgremove <image>` | `removebg`, `remove-bg`, `transparent`, `remove bg` | Background removal to transparent PNG (`bgremove photo.png`, `bgremove photo.png 40 #ffffff`, `bgremove photo.png global`); native flood-fill + feather, no model needed (enter saves `<stem>.transparent.png`) |
 | `dictate [seconds]` | `dictation` | Record the microphone and transcribe it (transcript to clipboard) |
 | `windows [name]` | `window`, `switch` | List open windows (enter switches; actions minimize/maximize/close/snap) |
 | `minimize/maximize <name>` | `minimise` | Direct window cards for one verb |

@@ -12,6 +12,7 @@
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/convert.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/media.hpp"
@@ -197,6 +198,8 @@ std::string action_label_for(const std::string& id) {
   if (id == "kill_process") return "Kill process";
   if (id == "timer_stop") return "Stop timer";
   if (id == "transcribe_run") return "Transcribe";
+  if (id == "convert_run") return "Convert";
+  if (id == "bgremove_run") return "Remove background";
   if (id.rfind("dictate_run", 0) == 0) return "Dictate";
   if (id.rfind("layout_apply:", 0) == 0) return "Apply layout";
   if (id.rfind("focus_window:", 0) == 0) return "Focus window";
@@ -220,7 +223,8 @@ bool is_file_like(const SearchResult& r) {
       r.category == "workflow" || r.category == "quicklink" || r.category == "process" ||
       r.category == "ping" || r.category == "dns" || r.category == "myip" ||
       r.category == "dupe" || r.category == "large" || r.category == "transcribe" ||
-      r.category == "dictate" || r.category == "layout")
+      r.category == "dictate" || r.category == "layout" || r.category == "convert" ||
+      r.category == "bgremove")
     return false;
   return true;
 }
@@ -296,6 +300,8 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id == "kill_process" || action_id.rfind("media:", 0) == 0) return true;
   if (action_id.rfind("window_", 0) == 0) return true;
   if (action_id == "transcribe_run") return true;
+  if (action_id == "convert_run") return true;
+  if (action_id == "bgremove_run") return true;
   if (action_id.rfind("dictate_run", 0) == 0) return true;
   if (action_id.rfind("layout_apply:", 0) == 0) return true;
   if (action_id.rfind("focus_window:", 0) == 0) return true;
@@ -352,6 +358,10 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       if (r.category == "kill") id = "kill_process";
     } else if (r.category == "transcribe") {
       id = "transcribe_run";
+    } else if (r.category == "convert") {
+      id = "convert_run";
+    } else if (r.category == "bgremove") {
+      id = "bgremove_run";
     } else if (r.payload.rfind("layout_apply:", 0) == 0) {
       id = r.payload;
     } else if (r.category == "media" && r.payload.rfind("media:", 0) == 0) {
@@ -575,6 +585,62 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       if (!write_transcript_sidecar(audio, text, save_err))
         log_warn("transcribe", save_err.empty() ? "sidecar save failed" : save_err);
     }
+    return true;
+  }
+  // File conversion: Enter on a convert card writes the output next to the
+  // source (or to the explicit destination), then reveals it. The payload
+  // carries "src\nfmt\ndst\nrate\nchannels".
+  if (id == "convert_run" || (r.category == "convert" && id == "open")) {
+    std::string src, fmt, dst;
+    int rate = 0, channels = 0;
+    if (!decode_convert_payload(r.payload, src, fmt, dst, rate, channels)) {
+      src = r.path.empty() ? r.payload : r.path;
+      fmt.clear();
+      dst.clear();
+    }
+    if (src.empty() || !fs_exists(src)) {
+      log_warn("convert", "no source file to convert");
+      return false;
+    }
+    if (dst.empty()) {
+      std::string err;
+      dst = resolve_convert_output(src, fmt, err);
+      if (dst.empty()) {
+        log_warn("convert", err.empty() ? "cannot resolve output" : err);
+        return false;
+      }
+    }
+    std::string out_path, err;
+    if (!convert_media_file(src, dst, rate, channels, 0, out_path, err)) {
+      log_warn("convert", err.empty() ? "conversion failed" : err);
+      return false;
+    }
+    // Best effort: show the result and leave its path on the clipboard.
+    write_clipboard(out_path);
+    reveal_path(out_path);
+    return true;
+  }
+  // Background removal: Enter writes "<stem>.transparent.png" next to the
+  // source (or the explicit destination) and reveals it.
+  if (id == "bgremove_run" || (r.category == "bgremove" && id == "open")) {
+    std::string src, dst;
+    BgRemoveOptions opts;
+    if (!decode_bgremove_payload(r.payload, src, opts, dst)) {
+      src = r.path.empty() ? r.payload : r.path;
+      dst.clear();
+      opts = BgRemoveOptions{};
+    }
+    if (src.empty() || !fs_exists(src)) {
+      log_warn("bgremove", "no image file to process");
+      return false;
+    }
+    std::string out_path, err;
+    if (!bgremove_file(src, dst, opts, out_path, err)) {
+      log_warn("bgremove", err.empty() ? "background removal failed" : err);
+      return false;
+    }
+    write_clipboard(out_path);
+    reveal_path(out_path);
     return true;
   }
   // Window management on window cards (payload holds the numeric window id).

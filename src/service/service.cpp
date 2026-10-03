@@ -18,6 +18,7 @@
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/convert.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/layouts.hpp"
@@ -324,6 +325,230 @@ int Service::run_exec(const std::string& action, const std::string& target) {
   bool ok = execute_result(r, cfg_, action);
   std::cout << (ok ? "ok\n" : "action failed\n");
   return ok ? 0 : 1;
+}
+
+int Service::run_convert(const std::vector<std::string>& args) {
+  if (!boot()) return 1;
+  std::string src, fmt, dst;
+  int rate = 0, channels = 0, bits = 0;
+  std::vector<std::string> positional;
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    const std::string& a = args[i];
+    auto need = [&](std::string& out) -> bool {
+      if (i + 1 >= args.size()) {
+        std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n";
+        return false;
+      }
+      out = args[++i];
+      return true;
+    };
+    if (a == "--to" || a == "--format" || a == "--fmt" || a == "-t") {
+      if (!need(fmt)) return 2;
+    } else if (a == "--out" || a == "--output" || a == "-o") {
+      if (!need(dst)) return 2;
+    } else if (a == "--rate" || a == "--ar") {
+      std::string v;
+      if (!need(v)) return 2;
+      try {
+        rate = std::stoi(v);
+      } catch (...) {
+        std::cerr << "bad --rate " << v << "\n";
+        return 2;
+      }
+    } else if (a == "--channels" || a == "--ac") {
+      std::string v;
+      if (!need(v)) return 2;
+      try {
+        channels = std::stoi(v);
+      } catch (...) {
+        std::cerr << "bad --channels " << v << "\n";
+        return 2;
+      }
+    } else if (a == "--bits") {
+      std::string v;
+      if (!need(v)) return 2;
+      try {
+        bits = std::stoi(v);
+      } catch (...) {
+        std::cerr << "bad --bits " << v << "\n";
+        return 2;
+      }
+    } else if (a == "--mono") {
+      channels = 1;
+    } else if (a == "--stereo") {
+      channels = 2;
+    } else if (a == "--help" || a == "-h" || a == "help") {
+      std::cout << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n"
+                   "  wilfred convert song.wav --to mp3\n"
+                   "  wilfred convert song.wav out.ogg\n"
+                   "  wilfred convert photo.bmp --to png\n";
+      return 0;
+    } else if (a == "to" || a == "as") {
+      continue;
+    } else if (!a.empty() && a[0] == '-') {
+      std::cerr << "unknown option " << a << "\n";
+      return 2;
+    } else {
+      positional.push_back(a);
+    }
+  }
+  if (!positional.empty()) src = positional[0];
+  if (positional.size() >= 2) {
+    // Second positional is the target format or output path.
+    if (dst.empty() && fmt.empty()) {
+      const std::string& t = positional[1];
+      bool looks_path = t.find('/') != std::string::npos || t.find('\\') != std::string::npos ||
+                        t.find('.') != std::string::npos;
+      if (looks_path && t.find('.') != std::string::npos) dst = t;
+      else fmt = t;
+    }
+  }
+  if (positional.size() > 2) {
+    std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>]\n";
+    return 2;
+  }
+  if (src.empty()) {
+    std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n";
+    return 2;
+  }
+  if (dst.empty()) {
+    if (fmt.empty()) {
+      std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>]\n";
+      return 2;
+    }
+    std::string err;
+    dst = resolve_convert_output(src, fmt, err);
+    if (dst.empty()) {
+      std::cerr << err << "\n";
+      return 1;
+    }
+  }
+  std::string out_path, err;
+  if (!convert_media_file(src, dst, rate, channels, bits, out_path, err)) {
+    std::cerr << err << "\n";
+    return 1;
+  }
+  std::cout << out_path << "\n";
+  return 0;
+}
+
+int Service::run_bgremove(const std::vector<std::string>& args) {
+  if (!boot()) return 1;
+  std::string src, dst, color;
+  int tolerance = 32, feather = 2;
+  bool contiguous = true;
+  bool tol_set = false;
+  std::vector<std::string> positional;
+  for (std::size_t i = 0; i < args.size(); ++i) {
+    const std::string& a = args[i];
+    auto need = [&](std::string& out) -> bool {
+      if (i + 1 >= args.size()) {
+        std::cerr << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance N] [--color #rrggbb] [--global|--contiguous] [--feather N]\n";
+        return false;
+      }
+      out = args[++i];
+      return true;
+    };
+    if (a == "--out" || a == "--output" || a == "-o") {
+      if (!need(dst)) return 2;
+    } else if (a == "--tolerance" || a == "--tol" || a == "-t") {
+      std::string v;
+      if (!need(v)) return 2;
+      try {
+        tolerance = std::stoi(v);
+        tol_set = true;
+      } catch (...) {
+        std::cerr << "bad --tolerance " << v << "\n";
+        return 2;
+      }
+    } else if (a == "--color" || a == "--bg" || a == "-c") {
+      if (!need(color)) return 2;
+    } else if (a == "--global" || a == "--chroma") {
+      contiguous = false;
+    } else if (a == "--contiguous" || a == "--flood") {
+      contiguous = true;
+    } else if (a == "--feather") {
+      std::string v;
+      if (!need(v)) return 2;
+      try {
+        feather = std::stoi(v);
+      } catch (...) {
+        std::cerr << "bad --feather " << v << "\n";
+        return 2;
+      }
+    } else if (a == "--help" || a == "-h" || a == "help") {
+      std::cout << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color #rrggbb] [--global|--contiguous] [--feather 0-8]\n";
+      return 0;
+    } else if (!a.empty() && a[0] == '-') {
+      std::cerr << "unknown option " << a << "\n";
+      return 2;
+    } else {
+      positional.push_back(a);
+    }
+  }
+  if (!positional.empty()) src = positional[0];
+  // Convenience: `bgremove photo.png 40` and `bgremove photo.png out.png`.
+  for (std::size_t i = 1; i < positional.size(); ++i) {
+    const std::string& t = positional[i];
+    std::uint8_t r = 0, g = 0, b = 0;
+    bool is_color = parse_hex_color(t, r, g, b);
+    std::string l = t;
+    for (char& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    bool is_named = l == "white" || l == "black" || l == "red" || l == "green" || l == "blue";
+    int v = -1;
+    try {
+      std::size_t p = 0;
+      int x = std::stoi(t, &p);
+      if (p == t.size()) v = x;
+    } catch (...) {
+    }
+    if (dst.empty() && (t.find('.') != std::string::npos)) {
+      dst = t;
+    } else if (color.empty() && (is_color || is_named)) {
+      color = t;
+    } else if (!tol_set && v >= 0 && v <= 100) {
+      tolerance = v;
+      tol_set = true;
+    } else if (dst.empty()) {
+      dst = t;
+    } else {
+      std::cerr << "unexpected argument " << t << "\n";
+      return 2;
+    }
+  }
+  if (src.empty()) {
+    std::cerr << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color #rrggbb]\n";
+    return 2;
+  }
+  BgRemoveOptions opts;
+  opts.tolerance = std::max(0, std::min(100, tolerance));
+  opts.contiguous = contiguous;
+  opts.feather = std::max(0, std::min(8, feather));
+  if (!color.empty()) {
+    std::uint8_t r = 0, g = 0, b = 0;
+    std::string l = color;
+    for (char& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (l == "white") { r = 255; g = 255; b = 255; }
+    else if (l == "black") { r = 0; g = 0; b = 0; }
+    else if (l == "red") { r = 255; g = 0; b = 0; }
+    else if (l == "green") { r = 0; g = 128; b = 0; }
+    else if (l == "blue") { r = 0; g = 0; b = 255; }
+    else if (!parse_hex_color(color, r, g, b)) {
+      std::cerr << "bad --color " << color << " (try #rrggbb)\n";
+      return 2;
+    }
+    opts.r = r;
+    opts.g = g;
+    opts.b = b;
+    opts.has_color = true;
+  }
+  std::string out_path, err;
+  if (!bgremove_file(src, dst, opts, out_path, err)) {
+    std::cerr << err << "\n";
+    return 1;
+  }
+  std::cout << out_path << "\n";
+  return 0;
 }
 
 int Service::run_index_now() {

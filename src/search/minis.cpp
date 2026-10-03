@@ -13,6 +13,7 @@
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/convert.hpp"
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
@@ -1469,6 +1470,24 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Dictate, false);
   else if (key == "layout" || key == "layouts")
     set(MiniKind::Layout, false);
+  else if (key == "convert" || key == "converts" || key == "conversion" || key == "transcode" ||
+           key == "transcoding" || key == "wav2mp3" || key == "convertfile")
+    set(MiniKind::Convert, false);
+  else if (key == "bgremove" || key == "bg-remove" || key == "removebg" || key == "remove-bg" ||
+           key == "unbackground" || key == "transparent" || key == "bgclear" || key == "clearbg" ||
+           key == "rmbg")
+    set(MiniKind::BgRemove, false);
+  else if ((key == "remove" || key == "clear") &&
+           (to_lower_utf8(rest) == "bg" || to_lower_utf8(rest) == "background" ||
+            to_lower_utf8(rest).rfind("bg ", 0) == 0 ||
+            to_lower_utf8(rest).rfind("background ", 0) == 0)) {
+    // `remove bg <file>` / `remove background <file>`.
+    it.kind = MiniKind::BgRemove;
+    auto rl = trim_sv(rest);
+    auto sp = rl.find(' ');
+    it.remainder = sp == std::string::npos ? std::string() : trim_sv(rl.substr(sp + 1));
+    it.exact = false;
+  }
   return it;
 }
 
@@ -3010,6 +3029,150 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return out;
   }
 
+  if (intent.kind == MiniKind::Convert) {
+    auto target = trim_sv(intent.remainder);
+    if (target.size() >= 2 &&
+        ((target.front() == '"' && target.back() == '"') ||
+         (target.front() == '\'' && target.back() == '\'')))
+      target = target.substr(1, target.size() - 2);
+    if (target.empty()) {
+      out.push_back(card("Convert audio or image files",
+                         "Type convert <file> to <mp3|wav|ogg|flac|png|jpg|bmp> · enter converts",
+                         "", "convert", 8000, ResultAction::None));
+      return out;
+    }
+    ConvertRequest req;
+    if (!parse_convert_query(target, req) || req.src.empty()) {
+      out.push_back(card("Can't parse that conversion",
+                         "Try convert song.wav to mp3 · convert photo.bmp to png", "",
+                         "convert", 8000, ResultAction::None));
+      return out;
+    }
+    // Resolve the source: absolute path first, then the index.
+    std::vector<std::string> paths;
+    if (file_exists(req.src) && is_convertible(req.src)) {
+      paths.push_back(req.src);
+    } else if (index) {
+      paths = find_convertible_in_index(*index, req.src, 8);
+    } else if (file_exists(req.src)) {
+      paths.push_back(req.src);
+    }
+    if (paths.empty()) {
+      if (file_exists(req.src))
+        out.push_back(card("Not a convertible file",
+                           "Audio: wav mp3 ogg opus flac m4a aac wma · Images: png jpg bmp ppm tga",
+                           "", "convert", 8000, ResultAction::None));
+      else
+        out.push_back(card("No file found", "Try an absolute path or an indexed filename", "",
+                           "convert", 8000, ResultAction::None));
+      return out;
+    }
+    // Source known but no target format yet: offer the sensible ones.
+    if (req.fmt.empty() && req.dst.empty()) {
+      bool audio = is_audio_convertible(paths.front());
+      const char* choices = audio ? "mp3|wav|ogg|flac" : "png|jpg|bmp|tga";
+      out.push_back(card("Convert " + path_filename(paths.front()),
+                         std::string("Pick a target: convert ") + paths.front() + " to <" +
+                             choices + ">",
+                         "", "convert", 8000, ResultAction::None));
+      return out;
+    }
+    int n = 0;
+    for (auto& p : paths) {
+      std::string fmt = req.fmt;
+      std::string dst = req.dst;
+      if (dst.empty()) {
+        std::string err;
+        dst = resolve_convert_output(p, fmt, err);
+        if (dst.empty()) {
+          out.push_back(card("Can't convert that", err, "", "convert", 8000,
+                             ResultAction::None));
+          return out;
+        }
+      } else if (fmt.empty()) {
+        auto e = to_lower_utf8(path_extension(dst));
+        if (!e.empty() && e[0] == '.') e = e.substr(1);
+        fmt = normalize_format_token(e);
+      }
+      // Compressed audio targets need ffmpeg; surface that before Enter.
+      if (is_audio_format(fmt) && !(fmt == "wav" || fmt == "raw" || fmt == "pcm") &&
+          !ffmpeg_available_convert()) {
+        SearchResult r = card("Convert " + path_filename(p) + " to " + fmt,
+                              convert_install_hint("ffmpeg"), "", "convert", 9000,
+                              ResultAction::None);
+        r.category = "convert";
+        out.push_back(std::move(r));
+        continue;
+      }
+      std::string label_fmt = fmt;
+      for (char& c : label_fmt) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      SearchResult r =
+          card("Convert " + path_filename(p) + " to " + label_fmt,
+               "Enter converts · saves as " + path_filename(dst), encode_convert_payload(p, fmt, dst,
+                                                                                         req.sample_rate,
+                                                                                         req.channels),
+               "convert", 10000 - n * 10, ResultAction::Copy);
+      r.path = p;
+      r.category = "convert";
+      r.actions.clear();
+      r.actions.push_back({"convert_run", "Convert"});
+      r.actions.push_back({"copy_path", "Copy path"});
+      out.push_back(std::move(r));
+      ++n;
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::BgRemove) {
+    auto target = trim_sv(intent.remainder);
+    if (target.empty()) {
+      out.push_back(card("Remove image background",
+                         "Type bgremove <photo.png> [tolerance 0-100] [#rrggbb] · saves transparent PNG",
+                         "", "bgremove", 8000, ResultAction::None));
+      return out;
+    }
+    BgRemoveRequest req;
+    if (!parse_bgremove_query(target, req) || req.src.empty()) {
+      out.push_back(card("Can't parse that",
+                         "Try bgremove photo.png · bgremove photo.png 40 #ffffff", "",
+                         "bgremove", 8000, ResultAction::None));
+      return out;
+    }
+    std::vector<std::string> paths;
+    if (file_exists(req.src) && is_image_convertible(req.src)) {
+      paths.push_back(req.src);
+    } else if (index) {
+      paths = find_image_in_index(*index, req.src, 8);
+    } else if (file_exists(req.src)) {
+      paths.push_back(req.src);
+    }
+    if (paths.empty()) {
+      if (file_exists(req.src))
+        out.push_back(card("Not an image file",
+                           "Background removal works on png, bmp, ppm, tga (jpg/gif/webp via ffmpeg)",
+                           "", "bgremove", 8000, ResultAction::None));
+      else
+        out.push_back(card("No image found", "Try an absolute path or an indexed filename", "",
+                           "bgremove", 8000, ResultAction::None));
+      return out;
+    }
+    int n = 0;
+    for (auto& p : paths) {
+      SearchResult r = card("Remove background · " + path_filename(p),
+                            "Enter removes the background · saves transparent PNG",
+                            encode_bgremove_payload(p, req.opts, req.dst), "bgremove",
+                            10000 - n * 10, ResultAction::Copy);
+      r.path = p;
+      r.category = "bgremove";
+      r.actions.clear();
+      r.actions.push_back({"bgremove_run", "Remove background"});
+      r.actions.push_back({"copy_path", "Copy path"});
+      out.push_back(std::move(r));
+      ++n;
+    }
+    return out;
+  }
+
   if (intent.kind == MiniKind::Layout) {
     auto rest = trim_sv(intent.remainder);
     auto rl = to_lower_utf8(rest);
@@ -3123,7 +3286,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                                   "media play · next · mute · vol up  ·  playback",
                                   "ping <host> · dns <host> · myip  ·  network",
                                   "transcribe <file>  ·  mp3/mp4 audio to text",
-                                  "dictate [seconds]  ·  mic to text via whisper",
+                                  "convert <file> to <mp3|wav|ogg|png|jpg>  ·  file conversion",
+                                   "bgremove <image> [tolerance] [#color]  ·  transparent background",
+                                   "dictate [seconds]  ·  mic to text via whisper",
                                   "layout save <name> · layout <name>  ·  window layouts",
                                   "windows [name]  ·  switch to an open window",
                                   "minimize/maximize <name> · close window <name>",

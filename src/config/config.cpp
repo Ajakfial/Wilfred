@@ -288,7 +288,7 @@ bool is_valid_action_step(const std::string& s) {
                                 "open_editor", "new_file",     "new_folder", "kill_process",
                                 "timer_stop",  "paste",        "expand",     "clip_pin",
                                 "clip_unpin",  "clip_clear",   "copy_name",  "transcribe_run",
-                                "dictate_run",
+                                "dictate_run", "convert_run", "bgremove_run",
                                 "window_minimize", "window_maximize", "window_restore",
                                 "window_close", "window_snap_left", "window_snap_right",
                                 nullptr};

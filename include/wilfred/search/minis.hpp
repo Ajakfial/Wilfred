@@ -68,6 +68,8 @@ enum class MiniKind {
   WindowOp,
   Dictate,
   Layout,
+  Convert,
+  BgRemove,
 };
 
 struct MiniIntent {

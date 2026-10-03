@@ -42,6 +42,7 @@ single summonable search bar.
 * Search macros (`!yt`, `gh`, `wiki`, plus custom templates in config) + parameterized quicklinks (`quicklinks:` with `{1}`/`{*}`/`{query}`)
 * Per-app extra context actions (`app_actions:`) on top of the built-in file actions
 * Large-file finder + duplicate candidates from the index (`large`, `dupes`)
+* File conversion (`convert song.wav to mp3`, `convert photo.bmp to png`: native WAV/RAW + BMP/PNG/PPM/TGA, ffmpeg for mp3/ogg/flac/jpg/webp) + background removal (`bgremove photo.png` to transparent PNG, no model needed)
 * Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
@@ -173,6 +174,8 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `ping example.com` / `dns example.com` / `myip` | Ping, DNS lookup, public IP |
 | `large 10` / `dupes` | Biggest files + duplicate candidates from the index |
 | `transcribe talk.mp3` / `dictate 10` | Speech-to-text for mp3/mp4 audio, mic dictation (needs whisper CLI) |
+| `convert song.wav to mp3` / `convert photo.bmp to png` | File conversion (native PCM + BMP/PNG/PPM/TGA, ffmpeg for compressed) |
+| `bgremove photo.png` / `bgremove photo.png 40 #ffffff` | Background removal to transparent PNG (auto corners or explicit color) |
 | `windows chrome` / `minimize spotify` | List, switch, minimize, maximize, close, snap windows |
 | `layout save work` / `layout work` | Save and restore window layouts |
 | `clips url` / `clips code` | Clipboard history filtered by type (url/email/path/code/ip) |

@@ -27,6 +27,8 @@ static void print_help() {
       << "  wilfred exec <action> [target]    Run any result action (copy_path+reveal,\n"
       << "                                    workflow:name, media:play, ...)\n"
   << "  wilfred preview <path>  Show a file preview (text head / listing)\n"
+      << "  wilfred convert <src> [--to <fmt>] [--out <dst>]  Convert audio/image files\n"
+      << "  wilfred bgremove <src> [--out <dst>] [--tolerance N]  Remove image background\n"
       << "  wilfred index           Scan configured roots and persist the index\n"
       << "  wilfred status          Print index statistics\n"
       << "  wilfred backup [path]   Write config/snippets/index archive\n"
@@ -154,6 +156,16 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "index") return svc.run_index_now();
     if (cmd == "status") return svc.run_status();
+    if (cmd == "convert") {
+      std::vector<std::string> args;
+      for (int i = 2; i < argc; ++i) args.push_back(argv[i]);
+      return svc.run_convert(args);
+    }
+    if (cmd == "bgremove" || cmd == "bg-remove" || cmd == "removebg" || cmd == "rmbg") {
+      std::vector<std::string> args;
+      for (int i = 2; i < argc; ++i) args.push_back(argv[i]);
+      return svc.run_bgremove(args);
+    }
     if (cmd == "preview") {
       if (query.empty()) {
         std::cerr << "usage: wilfred preview <path>\n";
