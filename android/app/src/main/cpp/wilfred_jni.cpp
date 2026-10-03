@@ -1,7 +1,7 @@
 // Wilfred Android JNI bridge: thin mutex-guarded wrapper around AndroidCore.
 // All UI lives in Kotlin; all search/index logic lives in C++ (wilfred_core).
 // Build with the Android NDK (see scripts/build-android.sh and
-// android/app/build.gradle).
+// android/app/build.gradle.kts).
 
 #include <jni.h>
 
