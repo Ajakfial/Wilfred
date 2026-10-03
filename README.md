@@ -30,7 +30,7 @@ single summonable search bar.
 * Pomodoro / countdown timers + stopwatch (`timer`, `pomodoro`, `stopwatch`)
 * Rich file previews (documents, CSV, images, folders) in the overlay (`F3`) plus `wilfred preview`
 * Calendar (`.ics`), contacts (`.vcf`), and notes (Markdown) sources + optional OCR indexing via `tesseract` (`sources.*`)
-* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with automatic X11 canvas fallback, all above/skip-taskbar) with `Ctrl`/`⌘`+`K` actions popover and matching shortcuts in both Linux backends
+* Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with automatic X11 canvas fallback, layer-shell anchored on Wayland compositors, all above/skip-taskbar) with `Ctrl`/`⌘`+`K` actions popover and matching shortcuts in both Linux backends
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`) + named multi-step workflows (`workflows:`)
@@ -81,7 +81,11 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
 
-On Linux, X11 development headers enable the overlay (`libx11-dev`).
+On Linux, X11 development headers enable the overlay (`libx11-dev`); on
+Wayland sessions the WebKit overlay additionally becomes a native
+layer-shell surface when `libgtk-layer-shell-dev` is installed
+(Sway/wlroots, KDE Plasma — GNOME has no layer-shell protocol, where the
+window stays a plain toplevel).
 
 ## Run
 
@@ -209,7 +213,8 @@ classification, config validation, history, paths, IPC, and application discover
 Wilfred is a single C++20 binary with no vendored third-party libraries —
 everything (JSON, YAML, mmap wrapper, CRC32) is implemented in-tree, so
 there is nothing extra to install (the Linux overlay uses system X11/WebKit
-libraries when present, with an X11-canvas fallback). The
+libraries when present, plus gtk-layer-shell for native Wayland anchoring,
+with an X11-canvas fallback). The
 speed comes from the index design (see `docs/architecture.md`):
 
 * Compact memory-mapped record store with a string intern pool (no duplicate

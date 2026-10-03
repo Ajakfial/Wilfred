@@ -10,7 +10,9 @@ mmap wrapper, etc.) is implemented in-tree.
 * **A C++20 compiler**: MSVC (Windows), Apple Clang (macOS), or GCC/Clang
   (Linux)
 * **Linux only**: X11 development headers for the overlay window
-  (`libx11-dev` on Debian/Ubuntu, `libX11-devel` on Fedora)
+  (`libx11-dev` on Debian/Ubuntu, `libX11-devel` on Fedora); optional
+  `libgtk-layer-shell-dev` for native Wayland anchoring (top layer,
+  exclusive keyboard) on compositors with the layer-shell protocol
 * Optional: **Ninja**, used automatically by the build scripts if present
   (falls back to Makefiles on Linux, or the default Visual Studio/Xcode
   generator otherwise)
@@ -172,6 +174,18 @@ that runs on pull requests — run `ctest` locally before submitting a change (s
 
 * **Linux: overlay fails to build / link errors mentioning X11** — install
   `libx11-dev` (or run the build script with `--deps`).
+* **Linux Wayland: overlay shows but the summon hotkey does nothing** — the
+  global key grab is X11-only, so on pure Wayland (no XWayland) nothing can
+  listen for `Ctrl+Alt+W`. The overlay itself is native there (layer-shell
+  when `libgtk-layer-shell-dev` was installed at build time). Workarounds:
+  run under XWayland, or bind a compositor shortcut that talks to the
+  daemon — enable the local HTTP API (`api:` in `wilfred.yml`, see
+  [ipc-and-api.md](ipc-and-api.md)) and `POST /show`, or drive headless
+  actions with `wilfred exec` / `wilfred workflow`.
+* **Linux Wayland: overlay is a plain window, not pinned on top** — your
+  compositor lacks the layer-shell protocol (notably GNOME). Install
+  `libgtk-layer-shell-dev` and rebuild; on GNOME the window still works,
+  just without compositor anchoring.
 * **Windows: `VsDevCmd.bat not found`** — install the "Desktop development
   with C++" workload in Visual Studio Build Tools; `build-windows.ps1` looks
   it up via `vswhere.exe`.

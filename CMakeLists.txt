@@ -363,6 +363,21 @@ else()
     else()
       message(STATUS "Wilfred: WebKitGTK not found — using X11 fallback overlay")
     endif()
+    # Wayland native overlay: gtk-layer-shell turns the WebKitGTK window into
+    # a layer-shell surface (top-anchored, always on top, exclusive keyboard)
+    # on compositors with the protocol (Sway/wlroots, KDE). Optional: without
+    # it the WebKit window is a plain Wayland toplevel, and GNOME (no
+    # layer-shell support) is unaffected either way.
+    pkg_check_modules(LAYER_SHELL QUIET gtk-layer-shell-0>=0.6)
+    if(LAYER_SHELL_FOUND)
+      target_include_directories(wilfred_core PUBLIC ${LAYER_SHELL_INCLUDE_DIRS})
+      target_link_libraries(wilfred_core PUBLIC ${LAYER_SHELL_LIBRARIES})
+      target_compile_options(wilfred_core PUBLIC ${LAYER_SHELL_CFLAGS_OTHER})
+      target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_LAYER_SHELL=1)
+      message(STATUS "Wilfred: layer-shell overlay enabled (${LAYER_SHELL_VERSION})")
+    else()
+      message(STATUS "Wilfred: gtk-layer-shell not found — WebKit overlay without layer-shell anchoring")
+    endif()
   endif()
   target_link_libraries(wilfred_core PUBLIC dl)
 endif()
@@ -455,6 +470,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_import.cpp
   tests/test_android.cpp
   tests/test_ios.cpp
+  tests/test_wayland.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

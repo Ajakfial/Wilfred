@@ -53,3 +53,4 @@ void test_powertools();
 void test_import();
 void test_android();
 void test_ios();
+void test_wayland();

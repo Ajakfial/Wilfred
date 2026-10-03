@@ -1,5 +1,6 @@
 #include "wilfred/service/service.hpp"
 #include "wilfred/ui/overlay.hpp"
+#include "wilfred/ui/wayland.hpp"
 #include "wilfred/ui/web_ui.hpp"
 
 #include "wilfred/core/paths.hpp"
@@ -15,17 +16,28 @@
 
 // Modern Linux overlay: WebKitGTK (same HTML/JS as Windows/macOS) when
 // available, with an X11 canvas fallback for minimal containers and
-// X11-only WMs. Both speak the identical overlay protocol (results +
-// correction + ghost + candidates) so typo safety and autocomplete behave
-// the same on every platform. When both backends are compiled in, WebKit is
-// tried first and the X11 canvas is used automatically if WebKit cannot
-// start (missing runtime, no display, gtk_init failure).
+// X11-only WMs. On Wayland sessions the WebKit window additionally becomes
+// a layer-shell surface (gtk-layer-shell, when built in): top-anchored,
+// always on top, exclusive keyboard — the things plain GTK hints cannot do
+// under a Wayland compositor. Both speak the identical overlay protocol
+// (results + correction + ghost + candidates) so typo safety and
+// autocomplete behave the same on every platform. When both backends are
+// compiled in, WebKit is tried first and the X11 canvas is used
+// automatically if WebKit cannot start (missing runtime, no display,
+// gtk_init failure).
 
 #ifdef WILFRED_HAS_WEBKIT
 // WebKitGTK headers are pulled via pkg-config cflags (see CMakeLists).
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 #include <jsc/jsc.h>
+#endif
+
+#ifdef WILFRED_HAS_LAYER_SHELL
+// gtk-layer-shell (pkg-config gtk-layer-shell-0): turns the GTK window into
+// a native Wayland layer-shell surface. Optional at build time and
+// self-disabling at runtime on compositors without the protocol.
+#include <gtk-layer-shell/gtk-layer-shell.h>
 #endif
 
 #if defined(WILFRED_HAS_X11)
@@ -148,6 +160,37 @@ static void wk_place(int w, int h) {
   gtk_window_move(GTK_WINDOW(g_wk.window), x, y);
   gtk_window_resize(GTK_WINDOW(g_wk.window), w, h);
 }
+
+#ifdef WILFRED_HAS_LAYER_SHELL
+// Wayland native path: promote the GTK window to a layer-shell surface.
+// Called from create(), before the window is ever realized (a layer-shell
+// requirement). Anchored TOP only, so the compositor centers the bar
+// horizontally; the top margin mirrors wk_place's sy/6 offset. TOP layer +
+// auto exclusive zone keeps maximized windows from covering it; EXCLUSIVE
+// keyboard routes keys to the overlay while visible (launcher convention,
+// cf. wofi/bemenu). Safe no-ops when the checks fail: off-Wayland sessions
+// never reach the library, and gtk-layer-shell ignores compositors without
+// the protocol (notably GNOME, which has no layer-shell support).
+static void wk_maybe_layer_shell() {
+  if (!g_wk.window) return;
+  if (!wayland_session_hint()) return;
+  // Standalone-safe: does its own roundtrip, so unsupported compositors
+  // (notably GNOME) bail out here before any window state is touched.
+  if (!gtk_layer_is_supported()) return;
+  GtkWindow* win = GTK_WINDOW(g_wk.window);
+  gtk_layer_init_for_window(win);
+  gtk_layer_set_namespace(win, "wilfred");
+  gtk_layer_set_layer(win, GTK_LAYER_SHELL_LAYER_TOP);
+  gtk_layer_set_anchor(win, GTK_LAYER_SHELL_EDGE_TOP, TRUE);
+  GdkScreen* screen = gdk_screen_get_default();
+  int sy = screen ? gdk_screen_get_height(screen) : 800;
+  gtk_layer_set_margin(win, GTK_LAYER_SHELL_EDGE_TOP, sy / 6);
+  gtk_layer_set_keyboard_mode(win, GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+  gtk_layer_auto_exclusive_zone_enable(win);
+}
+#else
+static void wk_maybe_layer_shell() {}
+#endif
 
 static void wk_handle_json(const std::string& json) {
   std::string type;
@@ -288,6 +331,7 @@ class LinuxWebkitOverlay final : public OverlayUi {
     std::string uri = "file://" + html;
     webkit_web_view_load_uri(web, uri.c_str());
     wk_place(760, 140);
+    wk_maybe_layer_shell();
     return true;
   }
   void show() override {

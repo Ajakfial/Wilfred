@@ -10,8 +10,8 @@
 namespace wilfred {
 
 // Unified overlay response shared by all native hosts (Windows WebView2,
-// macOS WKWebView, Linux WebKitGTK/X11). The web UI (ui/overlay) consumes
-// the same JSON shape on every platform.
+// macOS WKWebView, Linux WebKitGTK/layer-shell/X11). The web UI (ui/overlay)
+// consumes the same JSON shape on every platform.
 struct OverlayResponse {
   std::vector<SearchResult> results;
   // "Did you mean" rewrite for typo safety. Empty = no confident correction.

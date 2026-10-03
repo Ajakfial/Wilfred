@@ -117,7 +117,7 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     os: 'Linux',
     label: 'Linux',
     commands: ['tar -xzf wilfred-<version>-linux-x64.tar.gz', 'cd wilfred-<version>-linux-x64 && ./wilfred'],
-    note: 'Needs libx11-dev for the overlay. X11 fallback when WebKitGTK is absent.',
+    note: 'Needs libx11-dev for the overlay. X11 fallback when WebKitGTK is absent. Optional libgtk-layer-shell-dev for native Wayland anchoring.',
   },
   {
     os: 'macOS',

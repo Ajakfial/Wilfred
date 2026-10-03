@@ -43,7 +43,7 @@ std::vector<std::string> autocomplete_candidates(const std::string& query, const
 
 // Combined assist payload sent to the overlay with every results message.
 // Cross-platform: Windows (WebView2), macOS (WKWebView) and Linux
-// (WebKitGTK/X11) all consume the same fields.
+// (WebKitGTK/layer-shell/X11) all consume the same fields.
 struct AssistResult {
   // Confident "did you mean" rewrite ("weahter" -> "weather"). Empty = none.
   std::string correction;
