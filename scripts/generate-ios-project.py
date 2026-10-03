@@ -265,6 +265,7 @@ def main() -> int:
     xcconfig(cfg_proj_dbg, "Debug", {"SDKROOT": "iphoneos"})
     xcconfig(cfg_proj_rel, "Release", {"SDKROOT": "iphoneos"})
     base_tgt = {
+        "ALWAYS_SEARCH_USER_PATHS": "NO",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
         "CLANG_CXX_LANGUAGE_STANDARD": '"c++20"',
@@ -278,6 +279,7 @@ def main() -> int:
         "PRODUCT_BUNDLE_IDENTIFIER": "com.wilfred.launcher",
         "PRODUCT_NAME": '"$(TARGET_NAME)"',
         "SWIFT_OBJC_BRIDGING_HEADER": '"Wilfred/Wilfred-Bridging-Header.h"',
+        "SWIFT_VERSION": "5.0",
         "TARGETED_DEVICE_FAMILY": '"1,2"',
     }
     dbg = dict(base_tgt)

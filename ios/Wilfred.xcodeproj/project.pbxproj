@@ -276,6 +276,7 @@
 			SDKROOT = iphoneos;
 		}; name = Release; };
 		7061205E0F2619D9B77D9B62 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 			CLANG_CXX_LANGUAGE_STANDARD = "c++20";
@@ -295,9 +296,11 @@
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SWIFT_OBJC_BRIDGING_HEADER = "Wilfred/Wilfred-Bridging-Header.h";
 			SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			SWIFT_VERSION = 5.0;
 			TARGETED_DEVICE_FAMILY = "1,2";
 		}; name = Debug; };
 		AA097BD7177F1229A4084A4F /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 			CLANG_CXX_LANGUAGE_STANDARD = "c++20";
@@ -315,6 +318,7 @@
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SWIFT_OBJC_BRIDGING_HEADER = "Wilfred/Wilfred-Bridging-Header.h";
 			SWIFT_OPTIMIZATION_LEVEL = "-O";
+			SWIFT_VERSION = 5.0;
 			TARGETED_DEVICE_FAMILY = "1,2";
 		}; name = Release; };
 /* End XCBuildConfiguration section */
