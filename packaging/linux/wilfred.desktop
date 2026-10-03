@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Wilfred
+Comment=Fast keyboard launcher and automation hub
+Exec=wilfred
+Icon=wilfred
+Terminal=false
+Categories=Utility;Productivity;
+StartupWMClass=wilfred

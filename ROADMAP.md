@@ -48,9 +48,9 @@ and a Chocolatey package (see [docs/installer.md](docs/installer.md)).
   changed C/C++ files for every PR (scoped to the diff, not a full-tree
   reformat, since most of the codebase predates these configs).
 * **Packaged installers.** Windows now ships an `.msi` (per-user, WiX)
-  and a Chocolatey package from the release workflow, alongside the
-  zip/tar.gz per platform. Still open: a Homebrew formula, a
-  winget/Scoop submission, and a `.deb`/AppImage.
+  and a Chocolatey package from the release workflow, Linux a `.deb` and
+  an AppImage, alongside the zip/tar.gz per platform. Still open: a
+  Homebrew formula and a winget/Scoop submission.
 * **Expand the mini and macro library.** Largely expanded (timers, notes,
   media, network, workflows, quicklinks — see
   [docs/query-language.md](docs/query-language.md) and

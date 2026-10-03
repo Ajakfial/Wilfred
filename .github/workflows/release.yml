@@ -215,6 +215,20 @@ jobs:
           cp config/wilfred.default.yml "${STAGING}/" || true
           tar -C dist -czf "dist/wilfred-${TAG}-${ID}.tar.gz" "wilfred-${TAG}-${ID}"
 
+      - name: DEB + AppImage (Linux)
+        if: matrix.id == 'linux-x64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          STAGING="dist/wilfred-${TAG}-linux-x64"
+          sudo apt-get install -y dpkg-dev curl
+          bash ./scripts/build-deb.sh --staging "${STAGING}" \
+            --out "dist/wilfred-${TAG}-linux-x64.deb" --version "${TAG}"
+          bash ./scripts/build-appimage.sh --staging "${STAGING}" \
+            --out "dist/wilfred-${TAG}-linux-x86_64.AppImage" --version "${TAG}"
+          ls -la dist/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -224,6 +238,8 @@ jobs:
             dist/*.msi
             dist/*.nupkg
             dist/*.tar.gz
+            dist/*.deb
+            dist/*.AppImage
           if-no-files-found: error
 
   android:

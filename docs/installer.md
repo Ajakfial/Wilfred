@@ -73,3 +73,21 @@ same staging dir — no downloads at install time, works offline.
   set — otherwise it logs a warning and skips the push.
 - If the `wilfred` id is taken on the community feed (first push answers
   409), rename the id in the template and here, e.g. `wilfred-launcher`.
+
+## Linux packages (.deb, AppImage)
+
+Releases ship `wilfred-<tag>-linux-x64.deb` and
+`wilfred-<tag>-linux-x86_64.AppImage` alongside the tarball, built from
+the same staging dir as the tarball (binary + `ui/overlay/` + README +
+default config).
+
+- `.deb`: installable with `apt install ./wilfred-*.deb`; puts the binary
+  at `/usr/bin/wilfred`, the overlay under `/usr/share/wilfred/`, and a
+  `wilfred.desktop` + icon in the standard locations
+  (`packaging/linux/wilfred.desktop`, icon is `www/public/favicon.svg`).
+  Build: `./scripts/build-deb.sh --staging <dir> --out <file.deb> --version v1.2.3`
+  (needs `dpkg-deb`).
+- AppImage: portable single file, no install; run with
+  `./wilfred-*.AppImage` (AppRun just execs the bundled binary).
+  Build: `./scripts/build-appimage.sh --staging <dir> --out <file.AppImage> --version v1.2.3`
+  (downloads appimagetool, extracted so no FUSE is needed).
