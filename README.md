@@ -203,6 +203,96 @@ cmake --build build --config Release --target wilfred_tests wilfred_bench
 
 Tests cover index CRUD, persistence/recovery, fuzzy/rank/filter, math, query
 classification, config validation, history, paths, IPC, and application discovery.
-Benchmarks measure intern, insert, query, fuzzy, ranking, filter, math, and snapshot I/O
-on 1K–100K synthetic records.
+
+## Performance
+
+Wilfred is a single C++20 binary with no vendored third-party libraries —
+everything (JSON, YAML, mmap wrapper, CRC32) is implemented in-tree, so
+there is nothing extra to install (the Linux overlay uses system X11/WebKit
+libraries when present, with an X11-canvas fallback). The
+speed comes from the index design (see `docs/architecture.md`):
+
+* Compact memory-mapped record store with a string intern pool (no duplicate
+  path/name strings in RAM)
+* Trigram + token indexes so queries hit posting lists, not full scans
+* Write-ahead log with periodic snapshots and crash recovery — writes are
+  appends, reads never block on persistence
+* Incremental, debounced filesystem-watcher updates instead of rescans
+* Bounded result sets (top-40) with per-query timeouts on plugins
+
+`wilfred_bench` (`benches/bench_main.cpp`) measures the hot paths on
+synthetic 1K–100K filename datasets (10 timed iterations + 1 warmup, 5 for
+the 100K insert) and reports Min / Median / Mean / P95 / Max milliseconds:
+
+| Benchmark | What it measures |
+|---|---|
+| String pool: intern 100K | Interning throughput (index memory efficiency) |
+| Tokenizer: tokenize 100K | Filename tokenization |
+| Index insert: 1K / 10K / 100K | Bulk index build |
+| Index query: 10K / 100K records | Posting-list lookup |
+| Fuzzy search: 10K targets | Damerau-aware scoring throughput |
+| Ranking: 10K scored hits | Weight scoring + top-40 selection |
+| Filter chain: 10K records | Extension/kind filter evaluation |
+| Math evaluation: 1K expressions | Calculator parse + eval |
+| Snapshot save / load: 10K | Persistence round-trip |
+| Memory reporting: 100K index | Index footprint accounting |
+
+Run it on your own hardware before quoting numbers — results depend on CPU,
+disk, and dataset shape:
+
+```bash
+cmake --build build --config Release --target wilfred_bench
+./build/wilfred_bench          # or build/Release/wilfred_bench.exe
+```
+
+## Packaging
+
+Pushing a `v*.*.*` tag runs `.github/workflows/release.yml`, which builds
+Release binaries and attaches one archive per platform to the GitHub Release
+(see `docs/building.md#packaging-what-ci-does`):
+
+| Job | Artifacts |
+|---|---|
+| `windows-x64` | Portable `.zip`, signed `.msi` (WiX v3, per-user, no UAC), Chocolatey `.nupkg` (embedded portable, no downloads at install) |
+| `linux-x64` | Portable `.tar.gz` |
+| `macos-arm64` | Portable `.tar.gz` |
+| `android` | `.apk` + `.aab` — signed when keystore secrets exist, otherwise `-unsigned` suffixed (see `docs/android.md`) |
+| `ios` | Unsigned simulator `.zip` (see `docs/ios.md`) |
+
+Desktop archives stage the binary with `ui/overlay/`, `README.md`, and
+`config/wilfred.default.yml`. Windows binaries always carry the publisher
+stamp `Wilfred Open Contributors` via VERSIONINFO; Authenticode trust comes
+from PFX or Azure Trusted Signing secrets when configured
+(see `docs/signing.md`, `docs/installer.md`).
+
+## Production deployment
+
+* **Run the daemon, not one-shots.** `wilfred daemon` (bare `wilfred`) is the
+  long-lived process: indexer + watcher + hotkey + overlay + IPC server.
+  Run it as a login item / autostart entry; the tray icon (Windows) quits it.
+  CLI subcommands (`search`, `launch`, `status`, …) talk to the running
+  daemon over the local IPC socket when available (see `docs/cli.md`,
+  `docs/ipc-and-api.md`).
+* **Config is code.** First run writes a validated `wilfred.yml`
+  (locations table above); invalid keys fail with human-readable errors and
+  `Did you mean` hints, never silent defaults. For fleets, distribute a
+  baseline `wilfred.yml` (roots, excludes, weights, aliases — full schema in
+  `docs/configuration.md` and `config/wilfred.default.yml`) and let users
+  override locally.
+* **Data and DR.** Index, history, clips, notes, and logs live in the per-OS
+  data dir (table above). `backup` / `restore` move a machine's state;
+  `sync-push` / `sync-pull` replicate it (see `docs/sync-and-backup.md`).
+  Test restores before you need them.
+* **Observe it.** `wilfred status` reports index health; `logging.*` keys
+  control log verbosity/retention; the optional local HTTP API (`api.*`,
+  authenticated) exposes `/search`, `/status`, `/index`, `/launch`, and
+  backup/sync endpoints for dashboards and automation.
+* **Privacy posture.** Local-first: no account, no telemetry, no network
+  calls unless you enable them (weather/AI/sync). Disable or cap history
+  via `history.*` where policy requires; AI providers need the user's own
+  API keys (`ai.*`, off by default).
+* **Mobile is experimental (as of v23.0.5).** The Android (`.apk`) and iOS
+  (simulator `.app`) builds install and run but are not daily-driver ready
+  pending further testing and development — deploy desktop first
+  (see `docs/android.md`, `docs/ios.md`).
 
