@@ -102,8 +102,10 @@ static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldle
     mib[0] = CTL_HW;
     mib[1] = HW_PHYSMEM;
   } else if (std::strcmp(name, "kern.cp_time") == 0) {
+    // Note the spelling: KERN_CPTIME on OpenBSD (long[CPUSTATES]),
+    // not FreeBSD's KERN_CP_TIME.
     mib[0] = CTL_KERN;
-    mib[1] = KERN_CP_TIME;
+    mib[1] = KERN_CPTIME;
   } else if (std::strcmp(name, "vm.uvmexp") == 0) {
     mib[0] = CTL_VM;
     mib[1] = VM_UVMEXP;
