@@ -3,6 +3,18 @@
 #include <string>
 #include <functional>
 
+// FreeBSD (and other BSDs) define function-like macros major/minor via
+// <sys/types.h>, which break `Version::major`/`minor` when written as
+// `major(maj)` in a mem-initializer. Undo them here; the constructor below
+// also avoids the `major(...)` pattern so it stays safe even if the macros
+// are reintroduced by a later include.
+#ifdef major
+#undef major
+#endif
+#ifdef minor
+#undef minor
+#endif
+
 namespace wilfred {
 
 // Semantic version parsed from a tag like "v1.2.3". Accepts 1-4 numeric
@@ -16,7 +28,16 @@ struct Version {
   int tweak{0};
 
   Version() = default;
-  Version(int maj, int min, int pat, int twk = 0) : major(maj), minor(min), patch(pat), tweak(twk) {}
+  // NOTE: intentionally assigns in the body instead of using a
+  // `: major(maj), minor(min), ...` mem-initializer: on FreeBSD
+  // `major`/`minor` are function-like macros from <sys/types.h> and
+  // `major(maj)` would expand to `__major(maj)` and fail to compile.
+  Version(int maj, int min, int pat, int twk = 0) {
+    major = maj;
+    minor = min;
+    patch = pat;
+    tweak = twk;
+  }
 
   bool valid() const { return major > 0 || minor > 0 || patch > 0 || tweak > 0; }
 
