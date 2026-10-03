@@ -184,4 +184,15 @@ jobs:
             { [ -n "${CC:-}" ] && [ -n "${CXX:-}" ]; } || { echo "no C compiler" >&2; exit 1; }
             echo "CC=$CC CXX=$CXX"
             "$CC" --version | head -n 1
-            bash ./scripts/build-bsd.sh --release --tests
+            if ninja --version >/dev/null 2>&1; then
+              bash ./scripts/build-bsd.sh --release --tests
+            else
+              echo "ninja unusable, falling back to GNU make" >&2
+              ldd /usr/pkg/bin/ninja || true
+              if command -v pkgin >/dev/null 2>&1; then
+                pkgin -y install gmake
+              else
+                pkg_add gmake
+              fi
+              bash ./scripts/build-bsd.sh --release --tests --generator "Unix Makefiles"
+            fi
