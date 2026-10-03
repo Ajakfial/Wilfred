@@ -1,6 +1,7 @@
 #include "wilfred/search/nettools.hpp"
 
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -93,7 +94,19 @@ std::string ping_summary(const std::string& host) {
   FILE* f = _popen(cmd.c_str(), "r");
   if (!f) return {};
 #else
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  // -W is milliseconds on FreeBSD/DragonFly (seconds on Linux): 2000ms.
+  std::string cmd = "ping -c 1 -W 2000 " + host + " 2>&1";
+#elif defined(__NetBSD__)
+  // -w deadline in seconds (verified in NetBSD ping(8)).
+  std::string cmd = "ping -c 1 -w 3 " + host + " 2>&1";
+#elif defined(WILFRED_BSD)
+  // OpenBSD ping has no wait-timeout flag; -c 1 bounds the probes while an
+  // unreachable host may take the full default wait to fail.
+  std::string cmd = "ping -c 1 " + host + " 2>&1";
+#else
   std::string cmd = "ping -c 1 -W 2 " + host + " 2>&1";
+#endif
   FILE* f = popen(cmd.c_str(), "r");
   if (!f) return {};
 #endif

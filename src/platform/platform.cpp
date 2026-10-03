@@ -19,6 +19,14 @@ std::string platform_name() {
   return "windows";
 #elif defined(__APPLE__)
   return "macos";
+#elif defined(__FreeBSD__)
+  return "freebsd";
+#elif defined(__OpenBSD__)
+  return "openbsd";
+#elif defined(__NetBSD__)
+  return "netbsd";
+#elif defined(__DragonFly__)
+  return "dragonfly";
 #else
   return "linux";
 #endif
@@ -38,7 +46,7 @@ bool is_macos() {
   return false;
 #endif
 }
-bool is_linux() { return !is_windows() && !is_macos() && !is_ios(); }
+bool is_linux() { return !is_windows() && !is_macos() && !is_ios() && !is_bsd(); }
 
 bool is_android() {
 #ifdef __ANDROID__
@@ -50,6 +58,14 @@ bool is_android() {
 
 bool is_ios() {
 #ifdef WILFRED_IOS
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool is_bsd() {
+#ifdef WILFRED_BSD
   return true;
 #else
   return false;

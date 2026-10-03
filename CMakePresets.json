@@ -85,6 +85,28 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "freebsd-release",
+      "displayName": "FreeBSD Release",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "FreeBSD"
+      }
+    },
+    {
+      "name": "freebsd-debug",
+      "displayName": "FreeBSD Debug",
+      "inherits": "freebsd-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [
@@ -113,6 +135,14 @@
     {
       "name": "macos-debug",
       "configurePreset": "macos-debug"
+    },
+    {
+      "name": "freebsd-release",
+      "configurePreset": "freebsd-release"
+    },
+    {
+      "name": "freebsd-debug",
+      "configurePreset": "freebsd-debug"
     }
   ],
   "testPresets": [
@@ -128,6 +158,10 @@
     {
       "name": "macos-release",
       "configurePreset": "macos-release"
+    },
+    {
+      "name": "freebsd-release",
+      "configurePreset": "freebsd-release"
     }
   ]
 }

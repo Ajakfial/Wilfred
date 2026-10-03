@@ -17,6 +17,6 @@ void test_apps() {
   CHECK(url.find("{query}") == std::string::npos);
 
   CHECK(!platform_name().empty());
-  CHECK(is_windows() || is_macos() || is_linux());
+  CHECK(is_windows() || is_macos() || is_linux() || is_bsd());
   CHECK(!(is_windows() && is_linux()));
 }

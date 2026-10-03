@@ -1,6 +1,7 @@
 #include "wilfred/platform/native.hpp"
 
 #include "wilfred/core/paths.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -256,9 +257,31 @@ bool native_open_url(const std::string& url) {
 }
 
 bool native_system_action(const std::string& id) {
+#ifdef WILFRED_BSD
+  // No systemd/logind on BSD: lock via screensavers, power via shutdown(8).
+  // Logout needs a session-manager hook and stays unsupported.
+  if (id == "lock") {
+    return sys("xdg-screensaver lock >/dev/null 2>&1") ||
+           sys("xscreensaver-command -lock >/dev/null 2>&1");
+  }
+  if (id == "sleep") {
+#if defined(__FreeBSD__)
+    return sys("acpiconf -s 3 >/dev/null 2>&1");
+#elif defined(__OpenBSD__)
+    return sys("zzz >/dev/null 2>&1");
+#else
+    return false;
+#endif
+  }
+  if (id == "shutdown") return sys("shutdown -p now >/dev/null 2>&1 &");
+  if (id == "restart") return sys("shutdown -r now >/dev/null 2>&1 &");
+  if (id == "logout") return false;
+  // empty_trash falls through to the shared gio/rm implementation below.
+#endif
   if (id == "lock") {
     return sys("loginctl lock-session >/dev/null 2>&1") ||
            sys("xdg-screensaver lock >/dev/null 2>&1") ||
+           sys("xscreensaver-command -lock >/dev/null 2>&1") ||
            sys("gnome-screensaver-command -l >/dev/null 2>&1") ||
            sys("dm-tool lock >/dev/null 2>&1");
   }

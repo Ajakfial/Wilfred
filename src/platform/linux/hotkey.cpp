@@ -7,9 +7,11 @@
 #include <thread>
 
 #if !defined(_WIN32) && !defined(__APPLE__)
+#if defined(WILFRED_HAS_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#endif
 #endif
 
 namespace wilfred {

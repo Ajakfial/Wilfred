@@ -119,6 +119,7 @@ User config is created on first run:
 | Windows | `%APPDATA%\Wilfred\wilfred.yml` | `%LOCALAPPDATA%\Wilfred\` |
 | macOS | `~/Library/Application Support/Wilfred/` | same |
 | Linux | `~/.config/wilfred/wilfred.yml` | `~/.local/share/wilfred/` |
+| BSD | `~/.config/wilfred/wilfred.yml` | `~/.local/share/wilfred/` |
 
 See `config/wilfred.default.yml` for the full schema (index roots, excludes,
 system directories, ranking weights, aliases, hotkey, history, browser).

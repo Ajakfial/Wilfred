@@ -24,6 +24,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#if defined(WILFRED_BSD)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 #endif
 
 namespace wilfred {
@@ -57,6 +61,17 @@ std::string current_executable_path() {
   return wide_to_utf8(std::wstring(buf, len));
 #else
   char buf[4096];
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  // No /proc by default: ask the kernel directly (cf. web_ui exe dir).
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return std::string(buf);
+    }
+  }
+#endif
   ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (len < 0) {
     // Fallback: try /proc/self/exe on macOS

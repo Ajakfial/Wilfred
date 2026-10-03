@@ -1,11 +1,19 @@
 #include "wilfred/platform/native.hpp"
 
 #if !defined(_WIN32) && !defined(__APPLE__)
+#include "wilfred/platform/platform.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
+
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#include <sys/user.h>
+#endif
 
 #if defined(WILFRED_HAS_X11)
 #include <X11/Xatom.h>
@@ -47,10 +55,19 @@ std::string x_window_utf8_name(Display* dpy, Window win) {
 
 std::string owner_from_pid(unsigned long pid) {
   if (!pid) return {};
+#if defined(__FreeBSD__)
+  // No /proc by default: single-process sysctl instead of /proc/<pid>/comm.
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast<int>(pid)};
+  kinfo_proc kp{};
+  std::size_t len = sizeof(kp);
+  if (sysctl(mib, 4, &kp, &len, nullptr, 0) != 0) return {};
+  return std::string(kp.ki_comm, strnlen(kp.ki_comm, sizeof(kp.ki_comm)));
+#else
   std::ifstream comm("/proc/" + std::to_string(pid) + "/comm");
   std::string name;
   std::getline(comm, name);
   return name;
+#endif
 }
 
 unsigned long x_window_pid(Display* dpy, Window win) {

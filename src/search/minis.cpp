@@ -37,6 +37,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -56,9 +57,21 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <fstream>
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(WILFRED_BSD)
 #include <sys/sysctl.h>
+#include <sys/time.h>
 #include <sys/types.h>
+#endif
+#if defined(__FreeBSD__)
+#include <sys/user.h>
+#endif
+#if defined(WILFRED_BSD)
+// Order matters: socket types precede interface and address headers.
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
 #endif
 #endif
 
@@ -664,6 +677,19 @@ static std::vector<DriveUse> drive_usage() {
   return out;
 }
 
+#if defined(WILFRED_BSD)
+// Seconds since boot via kern.boottime (no /proc on BSD). Returns 0 when
+// the sysctl is unavailable; callers fall back to omitting the value.
+static std::uint64_t bsd_uptime_sec() {
+  struct timeval boot{};
+  std::size_t sz = sizeof(boot);
+  if (sysctlbyname("kern.boottime", &boot, &sz, nullptr, 0) != 0) return 0;
+  std::time_t now = std::time(nullptr);
+  if (now < boot.tv_sec) return 0;
+  return static_cast<std::uint64_t>(now - boot.tv_sec);
+}
+#endif
+
 static void ram_stats(std::uint64_t& total, std::uint64_t& used) {
   total = 0;
   used = 0;
@@ -680,6 +706,23 @@ static void ram_stats(std::uint64_t& total, std::uint64_t& used) {
   sysctlbyname("hw.memsize", &mem, &sz, nullptr, 0);
   total = mem;
   used = 0;
+#elif defined(WILFRED_BSD)
+  // hw.physmem exists on every BSD; per-OS free-page counters differ, so
+  // only FreeBSD (vm.stats.vm.v_free_count) reports `used` — like macOS,
+  // other BSDs report the total with used left at 0.
+  unsigned long phys = 0;
+  std::size_t sz = sizeof(phys);
+  if (sysctlbyname("hw.physmem", &phys, &sz, nullptr, 0) == 0) total = phys;
+#if defined(__FreeBSD__)
+  unsigned free_pages = 0;
+  sz = sizeof(free_pages);
+  long page = sysconf(_SC_PAGESIZE);
+  if (total && page > 0 &&
+      sysctlbyname("vm.stats.vm.v_free_count", &free_pages, &sz, nullptr, 0) == 0) {
+    std::uint64_t freeb = static_cast<std::uint64_t>(free_pages) * static_cast<std::uint64_t>(page);
+    if (freeb < total) used = total - freeb;
+  }
+#endif
 #else
   std::ifstream in("/proc/meminfo");
   std::string k;
@@ -721,6 +764,39 @@ static double cpu_percent() {
   if (!tot) return 0;
   double busy = static_cast<double>(tot - didle) / static_cast<double>(tot);
   return std::clamp(busy * 100.0, 0.0, 100.0);
+#elif defined(WILFRED_BSD)
+  // kern.cp_time: cumulative ticks per CPU state, idle last on every
+  // supported BSD. Two samples 80ms apart, mirroring the /proc/stat path.
+  // Entry size is checked (not assumed) so a different state count can only
+  // refuse, never misread. Returns -1 when unavailable.
+  static unsigned long long prev_idle = 0, prev_total = 0;
+  auto read_times = []() -> std::pair<unsigned long long, unsigned long long> {
+    unsigned long long st[8]{};
+    std::size_t sz = sizeof(st);
+    if (sysctlbyname("kern.cp_time", st, &sz, nullptr, 0) != 0) return {0, 0};
+    if (sz % sizeof(st[0]) != 0) return {0, 0};
+    std::size_t n = sz / sizeof(st[0]);
+    if (n < 5) return {0, 0};
+    unsigned long long total = 0;
+    for (std::size_t i = 0; i < n; ++i) total += st[i];
+    return {st[n - 1], total};
+  };
+  auto [idle_all, total] = read_times();
+  if (!total) return -1;
+  if (!prev_total) {
+    prev_idle = idle_all;
+    prev_total = total;
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+    std::tie(idle_all, total) = read_times();
+    if (!total) return -1;
+  }
+  auto didle = idle_all - prev_idle;
+  auto dtot = total - prev_total;
+  prev_idle = idle_all;
+  prev_total = total;
+  if (!dtot) return 0;
+  return std::clamp(100.0 * (1.0 - static_cast<double>(didle) / static_cast<double>(dtot)), 0.0,
+                    100.0);
 #else
   static unsigned long long prev_idle = 0, prev_total = 0;
   std::ifstream in("/proc/stat");
@@ -803,6 +879,35 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
     } while (Process32NextW(snap, &pe));
   }
   CloseHandle(snap);
+#elif defined(__FreeBSD__)
+  // No /proc by default: enumerate via sysctl KERN_PROC_PROC. Other BSDs
+  // keep the /proc path below (empty without procfs); extending this branch
+  // needs per-OS kinfo layouts, deliberately not guessed here.
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PROC, 0};
+  std::size_t len = 0;
+  if (sysctl(mib, 4, nullptr, &len, nullptr, 0) == 0 && len > 0) {
+    std::vector<char> buf(len + 16);
+    if (sysctl(mib, 4, buf.data(), &len, nullptr, 0) == 0 && len >= sizeof(kinfo_proc)) {
+      long page = sysconf(_SC_PAGESIZE);
+      if (page <= 0) page = 4096;
+      std::size_t n = len / sizeof(kinfo_proc);
+      auto* kp = reinterpret_cast<kinfo_proc*>(buf.data());
+      for (std::size_t i = 0; i < n; ++i) {
+        if (kp[i].ki_pid <= 0) continue;
+        std::string name(kp[i].ki_comm, strnlen(kp[i].ki_comm, sizeof(kp[i].ki_comm)));
+        if (name.empty()) continue;
+        auto folded = to_lower_utf8(name);
+        if (!want.empty() && folded.find(want) == std::string::npos) continue;
+        ProcInfo p;
+        p.pid = static_cast<std::uint32_t>(kp[i].ki_pid);
+        p.name = name;
+        p.working_set =
+            static_cast<std::uint64_t>(kp[i].ki_rssize) * static_cast<std::uint64_t>(page);
+        p.threads = static_cast<std::uint32_t>(kp[i].ki_numthreads);
+        out.push_back(std::move(p));
+      }
+    }
+  }
 #else
   DIR* dir = opendir("/proc");
   if (!dir) return out;
@@ -857,9 +962,13 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
         long hz = sysconf(_SC_CLK_TCK);
         if (hz > 0) {
           double cpu_sec = static_cast<double>(utime + stime) / static_cast<double>(hz);
+#ifdef WILFRED_BSD
+          double uptime = static_cast<double>(bsd_uptime_sec());
+#else
           std::ifstream up("/proc/uptime");
           double uptime = 1;
           up >> uptime;
+#endif
           std::ifstream st2(base + "/stat");
           std::string dummy;
           long long start = 0;
@@ -909,6 +1018,22 @@ static std::string first_ipv4() {
 }
 #else
 static std::string first_ipv4() {
+#if defined(WILFRED_BSD)
+  // hostname(1) has no -I flag on BSD; enumerate interfaces directly.
+  ifaddrs* list = nullptr;
+  if (getifaddrs(&list) != 0) return {};
+  std::string ip;
+  for (auto* a = list; a; a = a->ifa_next) {
+    if (!a->ifa_addr || a->ifa_addr->sa_family != AF_INET) continue;
+    if (!(a->ifa_flags & IFF_UP) || (a->ifa_flags & IFF_LOOPBACK)) continue;
+    char buf[INET_ADDRSTRLEN]{};
+    auto* sin = reinterpret_cast<sockaddr_in*>(a->ifa_addr);
+    if (inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf))) ip = buf;
+    if (!ip.empty()) break;
+  }
+  freeifaddrs(list);
+  return ip;
+#else
   FILE* f = popen("hostname -I 2>/dev/null", "r");
   if (!f) return {};
   char buf[128]{};
@@ -923,6 +1048,7 @@ static std::string first_ipv4() {
   while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
     s.pop_back();
   return s;
+#endif
 }
 #endif
 
@@ -1551,6 +1677,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Uptime) {
 #ifdef _WIN32
     auto sec = GetTickCount64() / 1000;
+#elif defined(WILFRED_BSD)
+    auto sec = bsd_uptime_sec();
 #else
     std::uint64_t sec = 0;
     std::ifstream up("/proc/uptime");
@@ -1707,6 +1835,14 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     const char* os = "iOS";
 #elif defined(__APPLE__)
     const char* os = "macOS";
+#elif defined(__FreeBSD__)
+    const char* os = "FreeBSD";
+#elif defined(__OpenBSD__)
+    const char* os = "OpenBSD";
+#elif defined(__NetBSD__)
+    const char* os = "NetBSD";
+#elif defined(__DragonFly__)
+    const char* os = "DragonFly BSD";
 #else
     const char* os = "Linux";
 #endif
@@ -1798,6 +1934,42 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                     human_bytes(used).c_str(), human_bytes(total).c_str());
       out.push_back(card(title, "Commit charge", title, "swap", 10000, ResultAction::Copy, pct));
     }
+#elif defined(__FreeBSD__)
+    // swapinfo -k: "Device  1K-blocks  Used  Avail  Capacity" per device;
+    // totals are summed so multi-device swap is accounted.
+    std::uint64_t total = 0, used = 0;
+    if (FILE* f = popen("swapinfo -k 2>/dev/null", "r")) {
+      char line[256];
+      bool header = true;
+      while (fgets(line, sizeof(line), f)) {
+        if (header) {
+          header = false;
+          continue;
+        }
+        std::string dev;
+        unsigned long t = 0, u = 0;
+        std::istringstream is(line);
+        if (is >> dev >> t >> u) {
+          total += static_cast<std::uint64_t>(t) * 1024ull;
+          used += static_cast<std::uint64_t>(u) * 1024ull;
+        }
+      }
+      pclose(f);
+    }
+    if (total) {
+      int pct = static_cast<int>((used * 100) / total);
+      char title[128];
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
+                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
+    } else {
+      out.push_back(card("No swap", "Swap is unused or disabled", "No swap", "swap"));
+    }
+#elif defined(WILFRED_BSD)
+    // swapinfo(8) is FreeBSD-only; other BSDs get an honest card instead of
+    // a "No swap" claim (their /proc path below would always read empty).
+    out.push_back(card("Swap stats unavailable", "Swap reporting needs FreeBSD for now", "",
+                       "swap"));
 #else
     std::ifstream in("/proc/meminfo");
     std::string k, unit;

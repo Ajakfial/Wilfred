@@ -10,6 +10,14 @@ if(APPLE)
   enable_language(OBJCXX)
 endif()
 
+# FreeBSD / OpenBSD / NetBSD / DragonFly share the Unix desktop backend
+# (XDG apps, X11 hotkey/windows, WebKitGTK overlay) with BSD-native
+# replacements for inotify (/proc): kqueue watcher + getmntinfo volumes.
+# CMake defines no BSD variable itself, so derive one for the branches below.
+if(CMAKE_SYSTEM_NAME MATCHES "^(FreeBSD|OpenBSD|NetBSD|DragonFly)$")
+  set(BSD TRUE)
+endif()
+
 option(WILFRED_BUILD_TESTS "Build unit tests" ON)
 option(WILFRED_BUILD_BENCH "Build benchmarks" ON)
 option(WILFRED_ENABLE_SANITIZERS "Enable ASan/UBSan in Debug" OFF)
@@ -253,6 +261,21 @@ elseif(ANDROID)
     src/platform/android/hotkey.cpp
     src/platform/android/overlay.cpp
   )
+elseif(BSD)
+  # BSD desktops reuse the portable XDG/X11 Linux files (their guards are
+  # generic Unix, not Linux-only), swapping only the Linux-only pieces:
+  # kqueue watcher and getmntinfo volumes for inotify and /proc/mounts.
+  list(APPEND WILFRED_CORE_SOURCES
+    src/platform/linux/apps.cpp
+    src/platform/linux/browser.cpp
+    src/platform/linux/hotkey.cpp
+    src/platform/linux/launch.cpp
+    src/platform/linux/windows.cpp
+    src/platform/linux/screenshot.cpp
+    src/platform/bsd/fs_watch.cpp
+    src/platform/bsd/volumes.cpp
+    src/ui/x11_overlay.cpp
+  )
 else()
   list(APPEND WILFRED_CORE_SOURCES
     src/platform/linux/fs_watch.cpp
@@ -336,6 +359,7 @@ elseif(ANDROID)
   # char8_t/path helper is follow-up work, not release-blocking noise.
   target_compile_definitions(wilfred_core PRIVATE _LIBCPP_DISABLE_DEPRECATION_WARNINGS)
 else()
+  # Linux and BSD desktops share the X11/WebKitGTK overlay handling above.
   find_package(Threads REQUIRED)
   find_package(X11)
   target_link_libraries(wilfred_core PUBLIC Threads::Threads)
@@ -379,7 +403,11 @@ else()
       message(STATUS "Wilfred: gtk-layer-shell not found — WebKit overlay without layer-shell anchoring")
     endif()
   endif()
-  target_link_libraries(wilfred_core PUBLIC dl)
+  # dlopen lives in libc on BSD (and libdl may not exist there), so only
+  # Linux links it explicitly.
+  if(NOT BSD)
+    target_link_libraries(wilfred_core PUBLIC dl)
+  endif()
 endif()
 
 if(NOT ANDROID AND NOT IOS)
@@ -471,6 +499,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_android.cpp
   tests/test_ios.cpp
   tests/test_wayland.cpp
+  tests/test_bsd.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

@@ -106,3 +106,22 @@ jobs:
             dist/*.tar.gz
           retention-days: 14
           if-no-files-found: error
+
+  bsd:
+    name: Build freebsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # No hosted BSD runners: run the build inside a FreeBSD VM.
+      # Build + tests only (no packaging); release archives stay on the
+      # hosted runners until a BSD packager picks them up (see docs/bsd.md).
+      - name: Build + test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          copyback: false
+          run: |
+            pkg install -y cmake ninja pkgconf
+            ./scripts/build-bsd.sh --release --tests

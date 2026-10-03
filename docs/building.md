@@ -7,12 +7,15 @@ mmap wrapper, etc.) is implemented in-tree.
 ## Requirements
 
 * **CMake 3.16+**
-* **A C++20 compiler**: MSVC (Windows), Apple Clang (macOS), or GCC/Clang
-  (Linux)
+* **A C++20 compiler**: MSVC (Windows), Apple Clang (macOS), GCC/Clang
+  (Linux), or Clang/GCC in base on BSD
 * **Linux only**: X11 development headers for the overlay window
   (`libx11-dev` on Debian/Ubuntu, `libX11-devel` on Fedora); optional
   `libgtk-layer-shell-dev` for native Wayland anchoring (top layer,
   exclusive keyboard) on compositors with the layer-shell protocol
+* **BSD only**: nothing beyond base + CMake — see [bsd.md](bsd.md).
+  Optional `libX11`, `webkit2-gtk3`, `gtk-layer-shell` from ports/pkg for
+  the full desktop experience (overlay, hotkey, Wayland anchoring)
 * Optional: **Ninja**, used automatically by the build scripts if present
   (falls back to Makefiles on Linux, or the default Visual Studio/Xcode
   generator otherwise)
@@ -25,6 +28,9 @@ optionally tests in one step:
 ```bash
 # Linux
 ./scripts/build-linux.sh [options]
+
+# BSD (FreeBSD/OpenBSD/NetBSD/DragonFly)
+./scripts/build-bsd.sh [options]
 
 # macOS
 ./scripts/build-macos.sh [options]
@@ -44,7 +50,7 @@ optionally tests in one step:
 scripts\build-windows.cmd [options]
 ```
 
-Common options (Linux/macOS; Windows uses PowerShell parameter names shown
+Common options (Linux/macOS/BSD; Windows uses PowerShell parameter names shown
 in brackets):
 
 | Option | PowerShell equivalent | Effect |
@@ -53,14 +59,14 @@ in brackets):
 | `--build-dir DIR` | `-BuildDir DIR` | CMake binary directory (default `build/<platform>`) |
 | `--jobs N` | `-Jobs N` | Parallel compile jobs |
 | `--tests` | `-Tests` | Run `ctest` after building |
-| `--sanitizers` | *(Linux/macOS only)* | Enable ASan/UBSan (non-MSVC) |
+| `--sanitizers` | *(Linux/macOS/BSD only)* | Enable ASan/UBSan (non-MSVC) |
 | `--clean` | `-Clean` | Remove the build directory first |
 | `--generator NAME` | `-Generator NAME` | Override the CMake generator |
-| `--deps` | *(Linux/macOS only)* | Install system build dependencies (`apt-get` / `brew`) |
+| `--deps` | *(Linux/macOS/BSD only)* | Install system build dependencies (`apt-get`/`brew`/`pkg`) |
 | `--arch ARCH` | `-Arch ARCH` | macOS: `CMAKE_OSX_ARCHITECTURES` (`arm64`, `x86_64`, or both). Windows: `x86`/`x64`/`arm64` |
 | `-- <args>` | `<args>` (positional) | Anything after `--` (or extra positional args) is forwarded to CMake's configure step |
 
-Environment variable overrides (Linux/macOS scripts): `WILFRED_CONFIG`,
+Environment variable overrides (Linux/macOS/BSD scripts): `WILFRED_CONFIG`,
 `WILFRED_BUILD_DIR`, `WILFRED_JOBS`, and on macOS `WILFRED_ARCH`.
 
 Example — a debug build with tests and sanitizers on Linux:
@@ -108,6 +114,7 @@ presets are usable on a given machine:
 | `windows-release` / `windows-debug` | Ninja, x64 |
 | `linux-release` / `linux-debug` | Ninja (falls back to Makefiles) |
 | `macos-release` / `macos-debug` | Ninja/Xcode |
+| `freebsd-release` / `freebsd-debug` | Ninja (falls back to Makefiles) |
 
 ```bash
 cmake --preset linux-debug

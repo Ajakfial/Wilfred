@@ -8,6 +8,7 @@
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/doctext.hpp"
 #include "wilfred/search/ocr.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/ui/icon.hpp"
 
 #include <algorithm>
@@ -26,6 +27,10 @@
 #else
 #include <climits>
 #include <unistd.h>
+#if defined(WILFRED_BSD)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 #endif
 
 namespace wilfred {
@@ -229,6 +234,18 @@ static std::string exe_directory() {
   return path_parent(real);
 #else
   char buf[PATH_MAX];
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  // No /proc by default: ask the kernel directly. Other BSDs fall through
+  // to the /proc attempt below (present only with procfs mounted).
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return path_parent(buf);
+    }
+  }
+#endif
   ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (n <= 0) return ".";
   buf[n] = 0;

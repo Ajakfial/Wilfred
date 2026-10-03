@@ -126,6 +126,13 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     note: 'Hotkey defaults to Command+Option+W on macOS.',
   },
   {
+    os: 'BSD',
+    label: 'BSD',
+    commands: ['./scripts/build-bsd.sh --release --tests', './build/bsd/wilfred'],
+    note: 'FreeBSD primary (other BSDs best-effort). Base Clang plus cmake, ninja, ' +
+      'pkgconf; optional libX11 and WebKitGTK from ports/pkg — see docs/bsd.md.',
+  },
+  {
     os: 'Android',
     label: 'Android',
     commands: ['./scripts/build-android.sh --release', 'adb install android/app/build/outputs/apk/release/*.apk'],
