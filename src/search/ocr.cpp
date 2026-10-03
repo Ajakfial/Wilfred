@@ -3,6 +3,7 @@
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <array>
 #include <cstdio>
@@ -67,6 +68,8 @@ bool tesseract_available() {
   // `where tesseract` is quiet and fast.
   int rc = std::system("where tesseract >NUL 2>NUL");
   return rc == 0;
+#elif defined(WILFRED_IOS)
+  return false;  // no process spawning in the iOS sandbox
 #else
   int rc = std::system("command -v tesseract >/dev/null 2>&1");
   return rc == 0;

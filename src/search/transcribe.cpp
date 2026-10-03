@@ -5,6 +5,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/engine.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <cstddef>
 #include <cstdio>
@@ -34,6 +35,17 @@ std::string shell_quote(const std::string& s) {
   return o;
 }
 
+// system() is unavailable in the iOS SDK (no process spawning in the
+// sandbox); every caller already treats nonzero as "tool missing/failed".
+int run_shell(const std::string& cmd) {
+#if defined(WILFRED_IOS)
+  (void)cmd;
+  return 1;
+#else
+  return std::system(cmd.c_str());
+#endif
+}
+
 bool tool_available(const std::string& name) {
   if (name.empty()) return false;
 #ifdef _WIN32
@@ -41,7 +53,7 @@ bool tool_available(const std::string& name) {
 #else
   std::string cmd = "command -v " + name + " >/dev/null 2>&1";
 #endif
-  return std::system(cmd.c_str()) == 0;
+  return run_shell(cmd.c_str()) == 0;
 }
 
 #ifdef _WIN32
@@ -166,7 +178,7 @@ bool record_microphone(const std::string& wav_out, int seconds, const std::strin
   }
   create_directories(path_parent(wav_out));
   remove_file(wav_out);
-  if (std::system(build_mic_command(wav_out, seconds, mic).c_str()) != 0 ||
+  if (run_shell(build_mic_command(wav_out, seconds, mic).c_str()) != 0 ||
       !file_exists(wav_out)) {
 #ifdef _WIN32
     error = "Could not open the microphone. Set transcription.mic to your input device name "
@@ -248,7 +260,7 @@ bool transcribe_audio_file(const std::string& audio_path, const Config& cfg, std
     } else {
       create_directories(data_directory());
       tmp_wav = path_join(data_directory(), "transcribe-tmp.wav");
-      if (std::system(build_ffmpeg_command(tmp_wav, audio_path).c_str()) != 0 ||
+      if (run_shell(build_ffmpeg_command(tmp_wav, audio_path).c_str()) != 0 ||
           !file_exists(tmp_wav)) {
         error = "Could not extract audio with ffmpeg";
         remove_file(tmp_wav);
@@ -261,7 +273,7 @@ bool transcribe_audio_file(const std::string& audio_path, const Config& cfg, std
   create_directories(data_directory());
   auto out_base = path_join(data_directory(), "transcribe-out");
   remove_file(out_base + ".txt");
-  int rc = std::system(
+  int rc = run_shell(
       build_whisper_command(binary, model, wav, out_base, cfg.transcription.language).c_str());
   if (!tmp_wav.empty()) remove_file(tmp_wav);
   if (rc != 0) {

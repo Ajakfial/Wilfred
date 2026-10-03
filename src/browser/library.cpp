@@ -6,6 +6,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <atomic>
 #include <cstdio>
@@ -35,8 +36,13 @@ std::string shell_dquote(const std::string& s) {
 
 #ifndef _WIN32
 bool have_tool(const char* name) {
+#if defined(WILFRED_IOS)
+  (void)name;
+  return false;  // no process spawning in the iOS sandbox
+#else
   std::string cmd = std::string("command -v ") + name + " >/dev/null 2>&1";
   return std::system(cmd.c_str()) == 0;
+#endif
 }
 #endif
 

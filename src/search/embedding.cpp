@@ -4,6 +4,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -170,6 +171,11 @@ bool LocalEmbedder::probe_server(const std::string& endpoint, int timeout_ms) {
   WinHttpCloseHandle(con);
   WinHttpCloseHandle(ses);
   return ok;
+#elif defined(WILFRED_IOS)
+  // No curl binary in the sandbox; server embeddings stay unavailable while
+  // the built-in hash embedder keeps working.
+  (void)endpoint;
+  return false;
 #else
   // POSIX: use curl for the probe when available.
   std::string base = endpoint;
