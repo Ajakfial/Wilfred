@@ -12,14 +12,15 @@ same backend with a few documented gaps below.
 ```
 
 Base dependencies (a C++20 compiler is included in the base system on all
-four): `cmake`, `ninja`, `pkgconf`.
+four; only `sh` is guaranteed as a shell, so `bash` is needed for the
+build scripts): `cmake`, `ninja`, `pkgconf`, `bash`/`shells/bash`.
 
 | OS | Base packages |
 |---|---|
-| FreeBSD | `pkg install cmake ninja pkgconf` (`./scripts/build-bsd.sh --deps`) |
-| OpenBSD | `pkg_add cmake ninja pkgconf` (as root) |
-| NetBSD | `pkgin install cmake ninja pkgconf` |
-| DragonFly | `pkg install cmake ninja pkgconf` |
+| FreeBSD | `pkg install cmake ninja pkgconf shells/bash` (`./scripts/build-bsd.sh --deps`) |
+| OpenBSD | `pkg_add cmake ninja pkgconf bash` (as root) |
+| NetBSD | `pkgin install cmake ninja pkgconf shells/bash` |
+| DragonFly | `pkg install cmake ninja pkgconf shells/bash` |
 
 Optional GUI packages (same graceful degradation as Linux — the daemon
 builds and runs headless without them):

@@ -25,7 +25,7 @@ Usage: $(basename "$0") [options]
   --jobs N             Parallel compile jobs
   --tests              Run ctest after the build
   --sanitizers         ASan/UBSan (Debug-friendly)
-  --deps               Install base packages (cmake, ninja, pkgconf)
+  --deps               Install base packages (cmake, ninja, pkgconf, bash)
   --clean              Remove the build directory first
   --generator NAME     CMake generator (Ninja or Unix Makefiles)
   -h, --help           Show this help
@@ -65,17 +65,19 @@ if [[ "$INSTALL_DEPS" -eq 1 ]]; then
   # overlay, no global hotkey). Install them separately for the full
   # desktop experience, e.g. on FreeBSD:
   #   pkg install libX11 webkit2-gtk3 gtk-layer-shell
+  # shells/bash is required: only sh is guaranteed in the base system, and
+  # the build scripts use bash arrays.
   if command -v pkg >/dev/null 2>&1; then
-    sudo pkg install -y cmake ninja pkgconf 2>/dev/null || \
-      pkg install -y cmake ninja pkgconf
+    sudo pkg install -y cmake ninja pkgconf shells/bash 2>/dev/null || \
+      pkg install -y cmake ninja pkgconf shells/bash
   elif command -v pkg_add >/dev/null 2>&1; then
-    echo "Run as root: pkg_add cmake ninja pkgconf" >&2
+    echo "Run as root: pkg_add cmake ninja pkgconf bash" >&2
     exit 1
   elif command -v pkgin >/dev/null 2>&1; then
-    sudo pkgin -y install cmake ninja pkgconf 2>/dev/null || \
-      pkgin -y install cmake ninja pkgconf
+    sudo pkgin -y install cmake ninja pkgconf shells/bash 2>/dev/null || \
+      pkgin -y install cmake ninja pkgconf shells/bash
   else
-    echo "No supported package tool found (pkg, pkg_add, pkgin). Install cmake, a C++20 compiler, ninja, and pkgconf." >&2
+    echo "No supported package tool found (pkg, pkg_add, pkgin). Install cmake, bash, a C++20 compiler, ninja, and pkgconf." >&2
     exit 1
   fi
 fi

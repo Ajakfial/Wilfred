@@ -123,5 +123,5 @@ jobs:
           usesh: true
           copyback: false
           run: |
-            pkg install -y cmake ninja pkgconf
+            pkg install -y cmake ninja pkgconf shells/bash
             bash ./scripts/build-bsd.sh --release --tests

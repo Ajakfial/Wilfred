@@ -469,7 +469,7 @@ jobs:
           copyback: true
           run: |
             set -euo pipefail
-            pkg install -y cmake ninja pkgconf
+            pkg install -y cmake ninja pkgconf shells/bash
             bash ./scripts/build-bsd.sh --release --tests
             TAG="${GITHUB_REF_NAME}"
             STAGING="dist/wilfred-${TAG}-freebsd-x64"
