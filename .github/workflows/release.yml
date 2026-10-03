@@ -379,9 +379,82 @@ jobs:
             dist/*.aab
           if-no-files-found: error
 
+  ios:
+    name: Build ios
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | head -n 20 || true
+
+      - name: Derive version from tag
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          # v1.2.3 / v1.2.3-beta1 -> 1.2.3
+          VER="${TAG#v}"
+          VER="${VER%%-*}"
+          echo "WILFRED_VERSION_NAME=${VER}" >> "${GITHUB_ENV}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${VER}.0.0.0"
+          MAJOR="${MAJOR:-0}"; MINOR="${MINOR:-0}"; PATCH="${PATCH%%[^0-9]*}"
+          PATCH="${PATCH:-0}"
+          CODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
+          if [[ "${CODE}" -lt 1 ]]; then CODE=1; fi
+          echo "WILFRED_VERSION_CODE=${CODE}" >> "${GITHUB_ENV}"
+          echo "Tag ${TAG} -> MARKETING_VERSION=${VER} CURRENT_PROJECT_VERSION=${CODE}"
+
+      - name: Build app (simulator, unsigned)
+        run: |
+          set -euo pipefail
+          bash ./scripts/build-ios.sh --simulator 2>&1 | tee "${GITHUB_WORKSPACE}/ios-build.log"
+          echo "App:"
+          find ios/build/DerivedData/Build/Products -maxdepth 2 -name '*.app' || true
+
+      - name: Surface Swift errors
+        if: failure()
+        run: |
+          LOG="${GITHUB_WORKSPACE}/ios-build.log"
+          if [[ -f "${LOG}" ]]; then
+            echo "--- Swift compiler errors ---"
+            grep -E "error: " "${LOG}" | head -n 60 || true
+            echo "--- end ---"
+          else
+            echo "No ios-build.log captured."
+          fi
+
+      - name: Stage artifacts
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          APP="$(find ios/build/DerivedData/Build/Products -maxdepth 2 -name '*.app' | head -n 1 || true)"
+          if [[ -z "${APP}" || ! -d "${APP}" ]]; then
+            echo "No simulator .app found" >&2
+            find ios/build -name '*.app' || true
+            exit 1
+          fi
+          # Unsigned simulator build: clearly suffixed, like Android's
+          # -unsigned APK/AAB. Device/IPA distribution needs Apple signing
+          # (see docs/ios.md) and stays a manual follow-up.
+          ditto -c -k --sequesterRsrc --keepParent "${APP}" \
+            "dist/wilfred-${TAG}-ios-unsigned.zip"
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-${{ github.ref_name }}-ios
+          path: |
+            dist/*.zip
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: [build, android]
+    needs: [build, android, ios]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts

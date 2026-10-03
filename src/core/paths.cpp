@@ -2,6 +2,7 @@
 
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -209,6 +210,10 @@ std::vector<std::string> default_index_roots() {
     roots.push_back(wide_to_utf8(w));
     CoTaskMemFree(w);
   }
+#elif defined(WILFRED_IOS)
+  // Sandboxed: only the app container (pushed above) is visible. There is
+  // no /Applications, no shared storage and no app-enumeration API, so the
+  // Swift layer registers nothing and the index covers app files only.
 #elif defined(__APPLE__)
   roots.push_back("/Applications");
   roots.push_back(path_join(home_directory(), "Applications"));
@@ -232,6 +237,8 @@ std::vector<std::string> default_system_directories() {
 #ifdef _WIN32
   return {"C:\\Windows", "C:\\Windows\\System32", "C:\\Windows\\SysWOW64",
           "C:\\ProgramData\\Microsoft"};
+#elif defined(WILFRED_IOS)
+  return {};
 #elif defined(__APPLE__)
   return {"/System", "/private/var", "/Library/Apple"};
 #elif defined(__ANDROID__)

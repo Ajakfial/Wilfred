@@ -31,7 +31,7 @@ namespace fs = std::filesystem;
 
 namespace wilfred {
 
-struct AndroidCore::Impl {
+struct MobileCore::Impl {
   bool booted{false};
   std::string files_dir;
   std::string config_path;
@@ -56,10 +56,10 @@ struct AndroidCore::Impl {
   std::mutex mu;
 };
 
-AndroidCore::AndroidCore() : impl_(new Impl()) {}
-AndroidCore::~AndroidCore() { delete impl_; }
+MobileCore::MobileCore() : impl_(new Impl()) {}
+MobileCore::~MobileCore() { delete impl_; }
 
-bool AndroidCore::boot(const std::string& files_dir, std::string& error) {
+bool MobileCore::boot(const std::string& files_dir, std::string& error) {
   if (files_dir.empty()) {
     error = "files_dir is empty";
     return false;
@@ -122,7 +122,7 @@ bool AndroidCore::boot(const std::string& files_dir, std::string& error) {
   return true;
 }
 
-std::string AndroidCore::action_to_string(int action_value) {
+std::string MobileCore::action_to_string(int action_value) {
   auto a = static_cast<ResultAction>(action_value);
   switch (a) {
     case ResultAction::Open: return "open";
@@ -143,7 +143,7 @@ std::string AndroidCore::action_to_string(int action_value) {
   return "open";
 }
 
-std::string AndroidCore::results_to_json(const std::vector<SearchResult>& results,
+std::string MobileCore::results_to_json(const std::vector<SearchResult>& results,
                                          std::size_t limit) {
   std::string out = "[";
   bool first = true;
@@ -173,7 +173,7 @@ std::string AndroidCore::results_to_json(const std::vector<SearchResult>& result
   return out;
 }
 
-std::string AndroidCore::search_json(const std::string& query, int limit) {
+std::string MobileCore::search_json(const std::string& query, int limit) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) return "[]";
@@ -191,7 +191,7 @@ std::string AndroidCore::search_json(const std::string& query, int limit) {
   }
 }
 
-std::string AndroidCore::status_json() {
+std::string MobileCore::status_json() {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) return "{\"ok\":false}";
@@ -200,7 +200,7 @@ std::string AndroidCore::status_json() {
          std::to_string(s.dirs) + ",\"apps\":" + std::to_string(s.apps) + "}";
 }
 
-bool AndroidCore::index_now(std::string& error) {
+bool MobileCore::index_now(std::string& error) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) {
@@ -219,7 +219,7 @@ bool AndroidCore::index_now(std::string& error) {
   }
 }
 
-bool AndroidCore::register_app(const std::string& name, const std::string& package_id,
+bool MobileCore::register_app(const std::string& name, const std::string& package_id,
                                const std::string& label) {
   if (name.empty() || package_id.empty()) return false;
   Impl& st = *impl_;
@@ -250,7 +250,7 @@ bool AndroidCore::register_app(const std::string& name, const std::string& packa
   }
 }
 
-bool AndroidCore::record_choice(const std::string& query, const std::string& key) {
+bool MobileCore::record_choice(const std::string& query, const std::string& key) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted || key.empty()) return false;
@@ -260,7 +260,7 @@ bool AndroidCore::record_choice(const std::string& query, const std::string& key
   return true;
 }
 
-void AndroidCore::set_clipboard(const std::string& text) {
+void MobileCore::set_clipboard(const std::string& text) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   ClipboardSnapshot snap;
@@ -268,7 +268,7 @@ void AndroidCore::set_clipboard(const std::string& text) {
   set_clipboard_override(snap);
 }
 
-std::string AndroidCore::clipboard_text() {
+std::string MobileCore::clipboard_text() {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) return {};
@@ -279,7 +279,7 @@ std::string AndroidCore::clipboard_text() {
   }
 }
 
-std::string AndroidCore::assist_json(const std::string& query) {
+std::string MobileCore::assist_json(const std::string& query) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) return "{\"correction\":\"\",\"ghost\":\"\",\"candidates\":[]}";
@@ -300,7 +300,7 @@ std::string AndroidCore::assist_json(const std::string& query) {
   }
 }
 
-std::string AndroidCore::actions_json(std::size_t result_index) {
+std::string MobileCore::actions_json(std::size_t result_index) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted || result_index >= st.last_results.size()) return "[]";
@@ -321,7 +321,7 @@ std::string AndroidCore::actions_json(std::size_t result_index) {
   }
 }
 
-bool AndroidCore::execute_action(std::size_t result_index, const std::string& action_id,
+bool MobileCore::execute_action(std::size_t result_index, const std::string& action_id,
                                  std::string& error) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
@@ -349,7 +349,7 @@ bool AndroidCore::execute_action(std::size_t result_index, const std::string& ac
   }
 }
 
-std::string AndroidCore::preview_json(const std::string& path) {
+std::string MobileCore::preview_json(const std::string& path) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted || path.empty() || path.rfind("package:", 0) == 0 ||

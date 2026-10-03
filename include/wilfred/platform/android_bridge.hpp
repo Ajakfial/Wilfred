@@ -6,21 +6,24 @@
 
 namespace wilfred {
 
-// Portable Android core: no JNI types here so desktop tests can exercise it.
-// The JNI layer (android/app/src/main/cpp/wilfred_jni.cpp) is a thin
-// mutex-guarded wrapper around AndroidCore, and the Kotlin UI owns all
-// Intents (app launch, URL open, file open).
-// UI lives entirely in Kotlin (MainActivity + FloatingWService popup);
-// all search/index/rank/calc/snippets/notes/todos/timers/clips/macros
-// logic lives in C++ (wilfred_core) via this bridge.
-class AndroidCore {
+// Portable mobile core: no JNI/ObjC types here so desktop tests can exercise
+// it. The Android JNI layer (android/app/src/main/cpp/wilfred_jni.cpp) and
+// the iOS ObjC++ bridge (ios/Wilfred/WilfredCoreBridge.mm) are thin
+// mutex-guarded wrappers around MobileCore, and the Kotlin/Swift UI owns all
+// platform actions (app launch, URL open, file open).
+// UI lives entirely in Kotlin (Android: MainActivity + FloatingWService
+// popup) or Swift (iOS: ContentView); all search/index/rank/calc/snippets/
+// notes/todos/timers/clips/macros logic lives in C++ (wilfred_core) via
+// this bridge.
+class MobileCore {
  public:
-  AndroidCore();
-  ~AndroidCore();
+  MobileCore();
+  ~MobileCore();
 
   // files_dir must be the app-private files directory
-  // (Context.getFilesDir()). Config/index/history/snippets all live under it
-  // so no other permission is needed for the core to run.
+  // (Android Context.getFilesDir(), iOS app sandbox documents dir).
+  // Config/index/history/snippets all live under it so no other permission
+  // is needed for the core to run.
   bool boot(const std::string& files_dir, std::string& error);
 
   // JSON array of {title,subtitle,path,payload,score,action,category,kind,
@@ -33,13 +36,14 @@ class AndroidCore {
   bool index_now(std::string& error);
 
   // Installed packages enumerated in Kotlin (PackageManager). Stored as
-  // application records so they rank like desktop apps.
+  // application records so they rank like desktop apps. (iOS has no app
+  // enumeration API; the Swift layer never calls this.)
   bool register_app(const std::string& name, const std::string& package_id,
                     const std::string& label);
   bool record_choice(const std::string& query, const std::string& key);
 
   // ---- Full-functionality bridge (all served from C++) ----
-  // Push the current Android clipboard text into the C++ core so clipboard
+  // Push the current OS clipboard text into the C++ core so clipboard
   // minis, snippet `{clipboard}` expansion and path hints work.
   void set_clipboard(const std::string& text);
   // Current clipboard text known to the core (override or last copy).
@@ -56,7 +60,8 @@ class AndroidCore {
   // Run a C++ side-effect action (timer_stop, note_delete:*, todo_done:*,
   // clip_pin, transcribe_run, copy_*, etc.) on a stored last-search result.
   // Returns true on success. Copy-type actions also update the core
-  // clipboard; Kotlin should copy `payload`/`path` to the Android clipboard.
+  // clipboard; the Kotlin/Swift layer should copy `payload`/`path` to the
+  // OS clipboard.
   bool execute_action(std::size_t result_index, const std::string& action_id,
                       std::string& error);
 
@@ -72,5 +77,8 @@ class AndroidCore {
   struct Impl;
   Impl* impl_{nullptr};
 };
+
+// Pre-rename name kept for the JNI layer, tests and docs.
+using AndroidCore = MobileCore;
 
 }  // namespace wilfred

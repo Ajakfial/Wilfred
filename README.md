@@ -52,6 +52,7 @@ single summonable search bar.
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
 * Android app (Kotlin UI + C++ core via NDK → `.apk`): floating W button, search bar, same index/search/ranking — see `docs/android.md`
+* iOS app (SwiftUI + same C++ core → simulator `.app`): same search UI as Android (app-icon entry; iOS forbids overlay buttons), sandbox-only index — see `docs/ios.md`
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
 * Import from other launchers (`wilfred import --list/--detect/auto --dry-run/--overwrite`): Alfred, Raycast, PowerToys Run, Flow Launcher/Wox, Keypirinha, Listary, Ulauncher, Albert, KRunner, Rofi — see `docs/import.md`
 * YAML configuration with validation, `Did you mean` hints, and human-readable errors

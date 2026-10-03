@@ -3,6 +3,7 @@
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/clip_history.hpp"
@@ -103,10 +104,11 @@ static std::string popen_read(const char* cmd) {
 
 ClipboardSnapshot read_os_clipboard() {
   ClipboardSnapshot snap;
-#ifdef __ANDROID__
-  // Kotlin owns the Android clipboard and pushes it via
-  // AndroidCore::set_clipboard() (override). No popen here: spawning
-  // wl-paste/xclip per keystroke would fork on every search.
+#if defined(__ANDROID__) || defined(WILFRED_IOS)
+  // Kotlin (Android) / Swift (iOS) own the OS clipboard and push it via
+  // MobileCore::set_clipboard() (override). No popen here: spawning
+  // wl-paste/xclip/pbpaste per keystroke would fork on every search, and
+  // neither exists inside the iOS sandbox anyway.
   return snap;
 #elif defined(__APPLE__)
   snap.text = popen_read("pbpaste 2>/dev/null");
@@ -120,9 +122,9 @@ ClipboardSnapshot read_os_clipboard() {
 }
 
 bool write_os_clipboard(const std::string& text) {
-#ifdef __ANDROID__
-  // Kotlin performs the actual Android clipboard write from the result
-  // payload. Record to history so clips manager stays consistent.
+#if defined(__ANDROID__) || defined(WILFRED_IOS)
+  // The Kotlin/Swift layer performs the actual OS clipboard write from the
+  // result payload. Record to history so clips manager stays consistent.
   remember_text(text);
   return true;
 #elif defined(__APPLE__)
@@ -130,7 +132,7 @@ bool write_os_clipboard(const std::string& text) {
 #else
   FILE* f = popen("wl-copy 2>/dev/null || xclip -selection clipboard", "w");
 #endif
-#if !defined(__ANDROID__)
+#if !defined(__ANDROID__) && !defined(WILFRED_IOS)
   if (!f) return false;
   fwrite(text.data(), 1, text.size(), f);
   return pclose(f) == 0;

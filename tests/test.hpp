@@ -52,3 +52,4 @@ void test_assist();
 void test_powertools();
 void test_import();
 void test_android();
+void test_ios();

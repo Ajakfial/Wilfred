@@ -209,6 +209,23 @@ if(WIN32)
     src/platform/win/usn.cpp
     src/ui/win_overlay.cpp
   )
+elseif(IOS)
+  # iOS: SwiftUI owns the UI (ContentView); the C++ core runs headless in
+  # the app sandbox with a polling watcher and Swift-delegated launching.
+  # android_bridge.cpp is shared and portable (MobileCore) — see above.
+  # NOTE: this branch must stay before elseif(APPLE): iOS defines __APPLE__
+  # too, but must not pick up the macOS AppKit backend.
+  list(APPEND WILFRED_CORE_SOURCES
+    src/platform/ios/apps.cpp
+    src/platform/ios/browser.cpp
+    src/platform/ios/launch.cpp
+    src/platform/ios/volumes.cpp
+    src/platform/ios/screenshot.cpp
+    src/platform/ios/windows.cpp
+    src/platform/ios/fs_watch.cpp
+    src/platform/ios/hotkey.cpp
+    src/platform/ios/overlay.cpp
+  )
 elseif(APPLE)
   list(APPEND WILFRED_CORE_SOURCES
     src/platform/mac/fs_watch.mm
@@ -291,6 +308,12 @@ if(WIN32)
     ${microsoft_webview2_SOURCE_DIR}/build/native/include)
   target_link_libraries(wilfred_core PUBLIC
     ${microsoft_webview2_SOURCE_DIR}/build/native/${WILFRED_WV2_ARCH}/WebView2LoaderStatic.lib)
+elseif(IOS)
+  # iOS static lib needs only threads; the Swift/ObjC++ app links system
+  # frameworks itself. Same u8path note as Android (UTF-8 native on iOS).
+  find_package(Threads REQUIRED)
+  target_link_libraries(wilfred_core PUBLIC Threads::Threads)
+  target_compile_definitions(wilfred_core PRIVATE _LIBCPP_DISABLE_DEPRECATION_WARNINGS)
 elseif(APPLE)
   target_link_libraries(wilfred_core PUBLIC
     "-framework Foundation"
@@ -344,7 +367,7 @@ else()
   target_link_libraries(wilfred_core PUBLIC dl)
 endif()
 
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
   if(WIN32)
     add_executable(wilfred WIN32 src/main.cpp)
   else()
@@ -377,7 +400,7 @@ endif()
 # Ship only the runtime overlay files (index.html, style.css, vendor assets,
 # and the committed dist/ bundle) — never node_modules or TS sources.
 # Desktop only: Android packages no overlay (Kotlin UI instead).
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
 add_custom_command(TARGET wilfred POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:wilfred>/ui/overlay
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -400,7 +423,7 @@ install(DIRECTORY ui/overlay DESTINATION share/wilfred/ui
   PATTERN "build.mjs" EXCLUDE)
 endif()
 
-if(APPLE AND NOT ANDROID)
+if(APPLE AND NOT ANDROID AND NOT IOS)
   set_target_properties(wilfred PROPERTIES
     MACOSX_BUNDLE FALSE
   )
@@ -431,9 +454,10 @@ set(WILFRED_TEST_SOURCES
   tests/test_powertools.cpp
   tests/test_import.cpp
   tests/test_android.cpp
+  tests/test_ios.cpp
 )
 
-if(WILFRED_BUILD_TESTS AND NOT ANDROID)
+if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
   add_executable(wilfred_tests ${WILFRED_TEST_SOURCES})
   target_link_libraries(wilfred_tests PRIVATE wilfred_core)
   target_include_directories(wilfred_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
@@ -441,12 +465,12 @@ if(WILFRED_BUILD_TESTS AND NOT ANDROID)
   add_test(NAME wilfred_tests COMMAND wilfred_tests)
 endif()
 
-if(WILFRED_BUILD_BENCH AND NOT ANDROID)
+if(WILFRED_BUILD_BENCH AND NOT ANDROID AND NOT IOS)
   add_executable(wilfred_bench benches/bench_main.cpp)
   target_link_libraries(wilfred_bench PRIVATE wilfred_core)
 endif()
 
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
 install(TARGETS wilfred RUNTIME DESTINATION bin)
 install(FILES config/wilfred.default.yml DESTINATION share/wilfred)
 endif()

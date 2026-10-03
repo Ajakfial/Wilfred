@@ -8,6 +8,7 @@
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/record.hpp"
 #include "wilfred/platform/native.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
@@ -25,7 +26,9 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !defined(WILFRED_IOS)
+// ApplicationServices/Carbon exist on macOS only; iOS falls through to
+// the no-op paste below (the Swift layer owns the pasteboard).
 #include <ApplicationServices/ApplicationServices.h>
 #include <Carbon/Carbon.h>
 #endif
@@ -313,7 +316,7 @@ bool native_simulate_paste() {
   in[3].ki.wVk = VK_CONTROL;
   in[3].ki.dwFlags = KEYEVENTF_KEYUP;
   return SendInput(4, in, sizeof(INPUT)) == 4;
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !defined(WILFRED_IOS)
   CGEventSourceRef src = CGEventSourceCreate(kCGEventSourceStateCombinedSessionState);
   if (!src) return false;
   CGEventRef down = CGEventCreateKeyboardEvent(src, kVK_ANSI_V, true);

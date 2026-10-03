@@ -13,6 +13,8 @@ namespace wilfred {
 std::string platform_name() {
 #ifdef __ANDROID__
   return "android";
+#elif defined(WILFRED_IOS)
+  return "ios";
 #elif defined(_WIN32)
   return "windows";
 #elif defined(__APPLE__)
@@ -30,16 +32,24 @@ bool is_windows() {
 #endif
 }
 bool is_macos() {
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(WILFRED_IOS)
   return true;
 #else
   return false;
 #endif
 }
-bool is_linux() { return !is_windows() && !is_macos(); }
+bool is_linux() { return !is_windows() && !is_macos() && !is_ios(); }
 
 bool is_android() {
 #ifdef __ANDROID__
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool is_ios() {
+#ifdef WILFRED_IOS
   return true;
 #else
   return false;

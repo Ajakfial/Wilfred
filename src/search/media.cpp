@@ -1,5 +1,6 @@
 #include "wilfred/search/media.hpp"
 
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/search/mpris_dbus.hpp"
 
 #include <cstdio>
@@ -8,9 +9,10 @@
 
 #ifdef _WIN32
 // Implemented in src/platform/win/launch.cpp to keep Win32 includes in one place.
-#elif defined(__ANDROID__)
-// Implemented in src/platform/android/launch.cpp as explicit-error stubs:
-// process control and media keys are desktop-only on Android.
+#elif defined(__ANDROID__) || defined(WILFRED_IOS)
+// Implemented in src/platform/android/launch.cpp / src/platform/ios/launch.cpp
+// as explicit-error stubs: process control and media keys are desktop-only
+// on mobile.
 #else
 #include <signal.h>
 #include <sys/types.h>

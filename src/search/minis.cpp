@@ -1703,6 +1703,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Os) {
 #if defined(_WIN32)
     const char* os = "Windows";
+#elif defined(WILFRED_IOS)
+    const char* os = "iOS";
 #elif defined(__APPLE__)
     const char* os = "macOS";
 #else
