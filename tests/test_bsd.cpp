@@ -13,6 +13,10 @@
 #include <thread>
 #include <vector>
 
+#if defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 namespace fs = std::filesystem;
 
 void test_bsd() {
@@ -83,7 +87,14 @@ void test_bsd() {
               return true;
         }
         if (std::chrono::steady_clock::now() >= until) return false;
+#if defined(__APPLE__)
+        // FSEvents delivers on the main run loop, which a test binary never
+        // pumps otherwise — run it briefly each poll. Other backends push
+        // from their own threads and need no pumping.
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.05, false);
+#else
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+#endif
       }
     };
     auto count = [&] {

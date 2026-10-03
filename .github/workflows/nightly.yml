@@ -115,8 +115,8 @@ jobs:
         uses: actions/checkout@v4
 
       # No hosted BSD runners: run the build inside a FreeBSD VM.
-      # Build + tests only (no packaging); release archives stay on the
-      # hosted runners until a BSD packager picks them up (see docs/bsd.md).
+      # Build + tests only here; the release workflow packages the
+      # freebsd-x64 tarball separately (see docs/bsd.md).
       - name: Build + test on FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
@@ -124,4 +124,4 @@ jobs:
           copyback: false
           run: |
             pkg install -y cmake ninja pkgconf
-            ./scripts/build-bsd.sh --release --tests
+            bash ./scripts/build-bsd.sh --release --tests
