@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wilfred</string>
+    <string name="search_hint">Search files, apps, web…</string>
+    <string name="status_booting">Starting Wilfred core…</string>
+    <string name="status_boot_failed">Could not start Wilfred core.</string>
+    <string name="status_ready">%1$d files · %2$d apps — C++ core ready</string>
+    <string name="copied">Copied</string>
+    <string name="copy_path">Copy path</string>
+    <string name="close">Close</string>
+    <string name="floating_w_desc">Open Wilfred search</string>
+    <string name="did_you_mean">Did you mean: %1$s?</string>
+    <string name="no_results">No results</string>
+    <string name="indexing">Indexing…</string>
+    <string name="index_done">Index updated</string>
+    <string name="index_failed">Index failed</string>
+    <string name="action_done">Done</string>
+    <string name="action_failed">Action failed</string>
+    <string name="overlay_grant">Grant overlay permission to show the floating W</string>
+    <string name="not_supported_desktop">Not available on Android (desktop-only)</string>
+    <string name="not_supported_window">Window management is desktop-only</string>
+    <string name="not_supported_system">System power actions need device admin on Android</string>
+    <string name="not_supported_screenshot">Screenshots use the system gesture on Android</string>
+    <string name="preview_missing">File no longer exists.</string>
+    <string name="preview_empty">No preview available.</string>
+    <string name="preview_folder">Folder contents:</string>
+    <string name="preview_size">Size: %1$d bytes</string>
+</resources>

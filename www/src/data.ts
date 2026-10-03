@@ -124,6 +124,12 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     commands: ['tar -xzf wilfred-<version>-macos-arm64.tar.gz', 'cd wilfred-<version>-macos-arm64 && ./wilfred'],
     note: 'Hotkey defaults to Command+Option+W on macOS.',
   },
+  {
+    os: 'Android',
+    label: 'Android',
+    commands: ['./scripts/build-android.sh --release', 'adb install android/app/build/outputs/apk/release/*.apk'],
+    note: 'Kotlin UI (floating W + search bar) over the C++ core via the NDK. Needs JDK 17, Android SDK/NDK, Gradle.',
+  },
 ];
 
 export interface ImportSource {

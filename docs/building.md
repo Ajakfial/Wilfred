@@ -26,6 +26,9 @@ optionally tests in one step:
 
 # macOS
 ./scripts/build-macos.sh [options]
+
+# Android APK (Kotlin UI + C++ core via the NDK)
+./scripts/build-android.sh [--release|--debug] [--apk] [--bundle]
 ```
 
 ```powershell
@@ -143,6 +146,14 @@ cmake --build build --target wilfred_bench --config Release
 the minimal harness in `tests/test.hpp`. `benches/bench_main.cpp` measures
 intern/insert/query/fuzzy/ranking/filter/math/snapshot I/O throughput across
 1K–100K synthetic records.
+
+## Android
+
+See [android.md](android.md). The `android/` Gradle module builds
+`libwilfred_jni.so` from the repo-root `CMakeLists.txt` (`ANDROID` branch)
+for `arm64-v8a` + `x86_64`, then packages it with the Kotlin UI
+(`MainActivity` search bar, `FloatingWService` floating W button) into an
+APK. Requires JDK 17+, Android SDK (`ANDROID_HOME`), NDK r26+, Gradle.
 
 ## Packaging (what CI does)
 

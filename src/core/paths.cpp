@@ -214,6 +214,11 @@ std::vector<std::string> default_index_roots() {
   roots.push_back(path_join(home_directory(), "Applications"));
   roots.push_back("/usr/local");
   roots.push_back("/opt");
+#elif defined(__ANDROID__)
+  // App-private files are always present; shared storage needs
+  // READ_EXTERNAL_STORAGE / media permissions granted in the UI.
+  roots.push_back("/sdcard");
+  roots.push_back(path_join(home_directory(), "files"));
 #else
   roots.push_back("/usr/share/applications");
   roots.push_back("/usr/local");
@@ -229,6 +234,8 @@ std::vector<std::string> default_system_directories() {
           "C:\\ProgramData\\Microsoft"};
 #elif defined(__APPLE__)
   return {"/System", "/private/var", "/Library/Apple"};
+#elif defined(__ANDROID__)
+  return {"/proc", "/sys", "/dev", "/system", "/vendor"};
 #else
   return {"/proc", "/sys", "/dev", "/run", "/boot"};
 #endif

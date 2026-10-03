@@ -51,3 +51,4 @@ void test_new_features();
 void test_assist();
 void test_powertools();
 void test_import();
+void test_android();

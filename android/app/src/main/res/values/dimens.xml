@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="floating_w_size">56dp</dimen>
+    <dimen name="floating_w_margin">12dp</dimen>
+    <!-- Bottom offset keeps the W above the gesture/nav bar. -->
+    <dimen name="floating_w_bottom_margin">48dp</dimen>
+</resources>

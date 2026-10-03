@@ -101,6 +101,7 @@ set(WILFRED_CORE_SOURCES
   src/ipc/http.cpp
   src/hotkey/hotkey.cpp
   src/platform/platform.cpp
+  src/platform/android/android_bridge.cpp
   src/service/service.cpp
   src/ui/web_ui.cpp
   src/ui/icon.cpp
@@ -189,6 +190,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/ui/web_ui.hpp
   include/wilfred/ui/icon.hpp
   include/wilfred/platform/native.hpp
+  include/wilfred/platform/android_bridge.hpp
   include/wilfred/providers/provider.hpp
   include/wilfred/updater/updater.hpp
   include/wilfred/updater/inflate.hpp
@@ -218,6 +220,21 @@ elseif(APPLE)
     src/platform/mac/volumes.mm
     src/platform/mac/screenshot.mm
     src/ui/mac_overlay.mm
+  )
+elseif(ANDROID)
+  # Android NDK: Kotlin owns the UI (floating W + search bar); the C++ core
+  # runs headless with polling watcher and intent-delegated launching.
+  # android_bridge.cpp is shared (portable, unit-tested) — see above.
+  list(APPEND WILFRED_CORE_SOURCES
+    src/platform/android/apps.cpp
+    src/platform/android/browser.cpp
+    src/platform/android/launch.cpp
+    src/platform/android/volumes.cpp
+    src/platform/android/screenshot.cpp
+    src/platform/android/windows.cpp
+    src/platform/android/fs_watch.cpp
+    src/platform/android/hotkey.cpp
+    src/platform/android/overlay.cpp
   )
 else()
   list(APPEND WILFRED_CORE_SOURCES
@@ -285,6 +302,11 @@ elseif(APPLE)
     "-framework CoreFoundation"
     "-framework WebKit"
   )
+elseif(ANDROID)
+  # Android NDK: no X11/WebKit/desktop daemons. Kotlin owns the UI; the
+  # C++ core runs headless and links only against NDK system libs.
+  find_package(Threads REQUIRED)
+  target_link_libraries(wilfred_core PUBLIC Threads::Threads log android)
 else()
   find_package(Threads REQUIRED)
   find_package(X11)
@@ -317,12 +339,21 @@ else()
   target_link_libraries(wilfred_core PUBLIC dl)
 endif()
 
-if(WIN32)
-  add_executable(wilfred WIN32 src/main.cpp)
-else()
-  add_executable(wilfred src/main.cpp)
+if(NOT ANDROID)
+  if(WIN32)
+    add_executable(wilfred WIN32 src/main.cpp)
+  else()
+    add_executable(wilfred src/main.cpp)
+  endif()
+  target_link_libraries(wilfred PRIVATE wilfred_core)
 endif()
-target_link_libraries(wilfred PRIVATE wilfred_core)
+
+# Android NDK shared library loaded by the Kotlin UI (System.loadLibrary).
+if(ANDROID)
+  add_library(wilfred_jni SHARED android/app/src/main/cpp/wilfred_jni.cpp)
+  target_link_libraries(wilfred_jni PRIVATE wilfred_core log android)
+  set_target_properties(wilfred_jni PROPERTIES OUTPUT_NAME "wilfred_jni")
+endif()
 
 # Windows publisher identity: stamp every wilfred.exe (local or CI) with
 # CompanyName "Wilfred Open Contributors" via VERSIONINFO. This controls
@@ -340,6 +371,8 @@ endif()
 
 # Ship only the runtime overlay files (index.html, style.css, vendor assets,
 # and the committed dist/ bundle) — never node_modules or TS sources.
+# Desktop only: Android packages no overlay (Kotlin UI instead).
+if(NOT ANDROID)
 add_custom_command(TARGET wilfred POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:wilfred>/ui/overlay
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -360,8 +393,9 @@ install(DIRECTORY ui/overlay DESTINATION share/wilfred/ui
   PATTERN "package-lock.json" EXCLUDE
   PATTERN "tsconfig.json" EXCLUDE
   PATTERN "build.mjs" EXCLUDE)
+endif()
 
-if(APPLE)
+if(APPLE AND NOT ANDROID)
   set_target_properties(wilfred PROPERTIES
     MACOSX_BUNDLE FALSE
   )
@@ -391,9 +425,10 @@ set(WILFRED_TEST_SOURCES
   tests/test_assist.cpp
   tests/test_powertools.cpp
   tests/test_import.cpp
+  tests/test_android.cpp
 )
 
-if(WILFRED_BUILD_TESTS)
+if(WILFRED_BUILD_TESTS AND NOT ANDROID)
   add_executable(wilfred_tests ${WILFRED_TEST_SOURCES})
   target_link_libraries(wilfred_tests PRIVATE wilfred_core)
   target_include_directories(wilfred_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
@@ -401,10 +436,12 @@ if(WILFRED_BUILD_TESTS)
   add_test(NAME wilfred_tests COMMAND wilfred_tests)
 endif()
 
-if(WILFRED_BUILD_BENCH)
+if(WILFRED_BUILD_BENCH AND NOT ANDROID)
   add_executable(wilfred_bench benches/bench_main.cpp)
   target_link_libraries(wilfred_bench PRIVATE wilfred_core)
 endif()
 
+if(NOT ANDROID)
 install(TARGETS wilfred RUNTIME DESTINATION bin)
 install(FILES config/wilfred.default.yml DESTINATION share/wilfred)
+endif()

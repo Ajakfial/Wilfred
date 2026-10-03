@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_index"
+        android:title="@string/indexing"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/menu_floating"
+        android:title="Floating W"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/menu_status"
+        android:title="Status"
+        android:showAsAction="never" />
+</menu>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Floating "W" launcher icon (bottom-left). Rounded-square badge with a
+     "W" glyph stroke. 56x56dp, valid vector paths only. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="56dp"
+    android:height="56dp"
+    android:viewportWidth="56"
+    android:viewportHeight="56">
+    <path
+        android:fillColor="#6C8CFF"
+        android:pathData="M12,2h32c5.5,0 10,4.5 10,10v32c0,5.5 -4.5,10 -10,10H12C6.5,54 2,49.5 2,44V12C2,6.5 6.5,2 12,2z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#0D0E13"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M14,18L20,38L28,24L36,38L42,18" />
+</vector>

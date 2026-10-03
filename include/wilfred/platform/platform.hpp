@@ -8,6 +8,7 @@ std::string platform_name();
 bool is_windows();
 bool is_macos();
 bool is_linux();
+bool is_android();
 
 void platform_init();
 void pump_native_events();

@@ -28,6 +28,7 @@ int main() {
   test_assist();
   test_powertools();
   test_import();
+  test_android();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;
