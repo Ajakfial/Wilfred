@@ -25,20 +25,20 @@ struct SearchResult: Identifiable, Hashable {
     var id: Int { index }
 
     var displayTitle: String {
-        if (!title.isEmpty) return title
-        if (!path.isEmpty) return path
+        if (!title.isEmpty) { return title }
+        if (!path.isEmpty) { return path }
         return payload
     }
 
     var displaySubtitle: String {
-        if (!subtitle.isEmpty) return subtitle
-        if (!path.isEmpty) return path
+        if (!subtitle.isEmpty) { return subtitle }
+        if (!path.isEmpty) { return path }
         return payload
     }
 
     var badge: String {
-        if (!category.isEmpty) return category
-        if (!action.isEmpty) return action
+        if (!category.isEmpty) { return category }
+        if (!action.isEmpty) { return action }
         return kind
     }
 }
