@@ -114,6 +114,9 @@ void test_bsd() {
       std::lock_guard<std::mutex> lock(mu);
       hits.clear();
     }
+    // Sleep past the 50ms debounce window so the modify is observed as a
+    // fresh event even on fast CI runners.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     { std::FILE* f = std::fopen(file.c_str(), "a"); CHECK(f != nullptr); if (f) { std::fputs("two", f); std::fclose(f); } }
     CHECK(saw("note.txt"));
     CHECK(count() >= 1);
@@ -122,6 +125,9 @@ void test_bsd() {
       std::lock_guard<std::mutex> lock(mu);
       hits.clear();
     }
+    // Same guard before the delete: without it a Modified emitted just
+    // above can swallow the Deleted on path-keyed backends.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     fs::remove(file, ec);
     CHECK(saw("note.txt"));
 

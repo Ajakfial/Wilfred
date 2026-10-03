@@ -7,6 +7,7 @@
 #include <chrono>
 #include <filesystem>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <unordered_map>
 
@@ -100,7 +101,10 @@ class IosWatcher final : public WatcherBackend {
       if (cb_) {
         for (auto& ev : events) {
           auto now = std::chrono::steady_clock::now();
-          auto& last = last_emit_[ev.path];
+          // Key on kind as well as path: a Modified must not suppress an
+          // immediately following Deleted for the same file.
+          std::string key = ev.path + "|" + std::to_string(static_cast<int>(ev.kind));
+          auto& last = last_emit_[key];
           if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count() <
               debounce_ms_)
             continue;

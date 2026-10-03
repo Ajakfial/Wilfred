@@ -24,7 +24,7 @@ option(WILFRED_ENABLE_SANITIZERS "Enable ASan/UBSan in Debug" OFF)
 
 if(MSVC)
   add_compile_options(/W4 /permissive- /Zc:__cplusplus /utf-8)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING)
 else()
   add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
 endif()

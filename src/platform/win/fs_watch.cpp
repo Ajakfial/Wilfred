@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -144,7 +145,11 @@ private:
 
   void debounce(const FsEvent& ev) {
     auto now = std::chrono::steady_clock::now();
-    std::string key = ev.path + "|" + ev.new_path;
+    // Key on kind as well as path: a Modified must not suppress an
+    // immediately following Deleted for the same file (the test
+    // create → modify → delete sequence runs faster than the window).
+    std::string key =
+        ev.path + "|" + ev.new_path + "|" + std::to_string(static_cast<int>(ev.kind));
     auto& last = last_emit_[key];
     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count() < debounce_ms_)
       return;
