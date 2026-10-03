@@ -5,5 +5,5 @@ Comment=Fast keyboard launcher and automation hub
 Exec=wilfred
 Icon=wilfred
 Terminal=false
-Categories=Utility;Productivity;
+Categories=Utility;
 StartupWMClass=wilfred
