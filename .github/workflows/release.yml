@@ -452,9 +452,46 @@ jobs:
             dist/*.zip
           if-no-files-found: error
 
+  bsd:
+    name: Build freebsd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # No hosted BSD runners: build inside a FreeBSD VM, then stage the
+      # tarball exactly like the hosted Unix jobs so the release upload
+      # below picks it up via dist/*.tar.gz.
+      - name: Build + test + package on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          copyback: true
+          run: |
+            set -euo pipefail
+            pkg install -y cmake ninja pkgconf
+            ./scripts/build-bsd.sh --release --tests
+            TAG="${GITHUB_REF_NAME}"
+            STAGING="dist/wilfred-${TAG}-freebsd-x64"
+            mkdir -p "${STAGING}/ui"
+            cp build/bsd/wilfred "${STAGING}/"
+            cp -R ui/overlay "${STAGING}/ui/overlay"
+            cp README.md "${STAGING}/" || true
+            cp config/wilfred.default.yml "${STAGING}/" || true
+            tar -C dist -czf "dist/wilfred-${TAG}-freebsd-x64.tar.gz" "wilfred-${TAG}-freebsd-x64"
+            ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-${{ github.ref_name }}-freebsd-x64
+          path: |
+            dist/*.tar.gz
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: [build, android, ios]
+    needs: [build, android, ios, bsd]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts

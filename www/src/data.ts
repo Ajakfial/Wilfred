@@ -128,9 +128,8 @@ export const INSTALL_OPTIONS: InstallOption[] = [
   {
     os: 'BSD',
     label: 'BSD',
-    commands: ['./scripts/build-bsd.sh --release --tests', './build/bsd/wilfred'],
-    note: 'FreeBSD primary (other BSDs best-effort). Base Clang plus cmake, ninja, ' +
-      'pkgconf; optional libX11 and WebKitGTK from ports/pkg — see docs/bsd.md.',
+    commands: ['tar -xzf wilfred-<version>-freebsd-x64.tar.gz', 'cd wilfred-<version>-freebsd-x64 && ./wilfred'],
+    note: 'FreeBSD release tarball (other BSDs: build from source with scripts/build-bsd.sh). Optional libX11 and WebKitGTK from ports/pkg — see docs/bsd.md.',
   },
   {
     os: 'Android',

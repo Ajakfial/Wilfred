@@ -74,14 +74,15 @@ ports put `.desktop` files in `/usr/local/share/applications`.
   `acpiconf` (FreeBSD) / `zzz` (OpenBSD).
 * **MPRIS media control**: works over D-Bus where a session bus with
   players exists; the "Linux-only" fallback message is shown otherwise.
-* **Packages**: no ports/packages or CI-built BSD release archives yet —
-  build from source (or the nightly FreeBSD CI job). `pkg`/`ports`
-  submissions welcome; see `docs/installer.md` for how the other
-  artifacts are staged.
+* **Packages**: no ports/packages yet — build from source, grab a tagged
+  FreeBSD release tarball, or use the nightly FreeBSD CI job.
+  `pkg`/`ports` submissions welcome; see `docs/installer.md` for how the
+  other artifacts are staged.
 
 ## CI
 
 `.github/workflows/nightly.yml` has a `bsd` job that builds and runs the
-full test suite on FreeBSD (`vmactions/freebsd-vm`). Release archives stay
-limited to the hosted runners (Windows/Linux/macOS/Android/iOS) until a
-BSD packager picks them up.
+full test suite on FreeBSD (`vmactions/freebsd-vm`). Tagged releases also
+ship a `wilfred-<tag>-freebsd-x64.tar.gz`, built by the `bsd` job in
+`.github/workflows/release.yml` with the same staging as the Linux tarball
+(binary + `ui/overlay/` + README + default config).

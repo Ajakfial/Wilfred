@@ -167,7 +167,7 @@ APK. Requires JDK 17+, Android SDK (`ANDROID_HOME`), NDK r26+, Gradle.
 ## Packaging (what CI does)
 
 The `.github/workflows/release.yml` workflow builds `wilfred` for
-Windows/Linux/macOS whenever a `v*.*.*` tag is pushed, then packages each
+Windows/Linux/macOS/FreeBSD whenever a `v*.*.*` tag is pushed, then packages each
 platform's binary alongside `ui/overlay/`, `README.md`, and
 `config/wilfred.default.yml` into a zip/tar.gz and attaches it to a GitHub
 Release. Windows additionally produces a signed `.msi` installer from the

@@ -261,6 +261,7 @@ Release binaries and attaches one archive per platform to the GitHub Release
 |---|---|
 | `windows-x64` | Portable `.zip`, signed `.msi` (WiX v3, per-user, no UAC), Chocolatey `.nupkg` (embedded portable, no downloads at install) |
 | `linux-x64` | Portable `.tar.gz` |
+| `freebsd-x64` | Portable `.tar.gz` (FreeBSD release job; other BSDs build from source — see `docs/bsd.md`) |
 | `macos-arm64` | Portable `.tar.gz` |
 | `android` | `.apk` + `.aab` — signed when keystore secrets exist, otherwise `-unsigned` suffixed (see `docs/android.md`) |
 | `ios` | Unsigned simulator `.zip` (see `docs/ios.md`) |
