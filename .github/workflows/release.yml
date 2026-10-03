@@ -259,6 +259,9 @@ jobs:
           } >> "${GITHUB_ENV}"
           echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> "${GITHUB_PATH}"
           echo "${SDK_ROOT}/platform-tools" >> "${GITHUB_PATH}"
+          # GITHUB_PATH only takes effect in later steps; export inline
+          # for the version check below.
+          export PATH="${SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
           sdkmanager --version
 
       - name: Install Android packages
