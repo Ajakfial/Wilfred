@@ -127,7 +127,9 @@ def main() -> int:
 
     def group_path_block(d: str) -> str:
         if d == "src":
-            return 'path = ../../src; sourceTree = SOURCE_ROOT;'
+            # SOURCE_ROOT is the .xcodeproj dir (ios/), so ../src is the
+            # repo-root src/.
+            return 'path = ../src; sourceTree = SOURCE_ROOT;'
         if "/" not in d:
             return f'path = {d}; sourceTree = "<group>";'
         return f'name = {os.path.basename(d)}; path = {os.path.basename(d)}; ' \
@@ -271,7 +273,7 @@ def main() -> int:
         "CLANG_CXX_LANGUAGE_STANDARD": '"c++20"',
         "CLANG_CXX_LIBRARY": '"libc++"',
         "CODE_SIGN_STYLE": "Automatic",
-        "HEADER_SEARCH_PATHS": '"$(SRCROOT)/../../include"',
+        "HEADER_SEARCH_PATHS": '"$(SRCROOT)/../include"',
         "INFOPLIST_FILE": '"Wilfred/Info.plist"',
         "IPHONEOS_DEPLOYMENT_TARGET": "17.0",
         "LD_RUNPATH_SEARCH_PATHS": '"$(inherited) @executable_path/Frameworks"',
