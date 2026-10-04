@@ -7,7 +7,9 @@
 #include <dwmapi.h>
 #include <windows.h>
 
+#include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <vector>
 #endif
@@ -223,6 +225,57 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
   if (!SetWindowPos(hwnd, nullptr, x, y, use_w, use_h, flags)) {
     error = "could not move window";
     return false;
+  }
+  return true;
+}
+
+bool native_primary_work_area(NativeWorkArea& out, std::string& error) {
+  RECT rc{};
+  if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0)) {
+    error = "cannot read work area";
+    return false;
+  }
+  out.x = rc.left;
+  out.y = rc.top;
+  out.w = rc.right - rc.left;
+  out.h = rc.bottom - rc.top;
+  if (out.w <= 0 || out.h <= 0) {
+    error = "invalid work area";
+    return false;
+  }
+  return true;
+}
+
+namespace {
+
+struct MonSigCtx {
+  std::vector<std::string>* parts;
+};
+
+BOOL CALLBACK mon_sig_cb(HMONITOR, HDC, LPRECT rc, LPARAM lp) {
+  auto* ctx = reinterpret_cast<MonSigCtx*>(lp);
+  char buf[64];
+  std::snprintf(buf, sizeof(buf), "%dx%d@%d,%d", rc->right - rc->left, rc->bottom - rc->top,
+                rc->left, rc->top);
+  ctx->parts->push_back(buf);
+  return TRUE;
+}
+
+}  // namespace
+
+bool native_monitor_signature(std::string& sig, std::string& error) {
+  std::vector<std::string> parts;
+  MonSigCtx ctx{&parts};
+  if (!EnumDisplayMonitors(nullptr, nullptr, mon_sig_cb, reinterpret_cast<LPARAM>(&ctx)) ||
+      parts.empty()) {
+    error = "cannot enumerate monitors";
+    return false;
+  }
+  std::sort(parts.begin(), parts.end());
+  sig.clear();
+  for (std::size_t i = 0; i < parts.size(); ++i) {
+    if (i) sig.push_back('|');
+    sig += parts[i];
   }
   return true;
 }

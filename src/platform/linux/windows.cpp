@@ -3,7 +3,9 @@
 #if !defined(_WIN32) && !defined(__APPLE__)
 #include "wilfred/platform/platform.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -356,6 +358,68 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
   return true;
 }
 
+bool native_primary_work_area(NativeWorkArea& out, std::string& error) {
+  Display* dpy = XOpenDisplay(nullptr);
+  if (!dpy) {
+    error = "could not open display";
+    return false;
+  }
+  int scr = DefaultScreen(dpy);
+  out.x = 0;
+  out.y = 0;
+  out.w = DisplayWidth(dpy, scr);
+  out.h = DisplayHeight(dpy, scr);
+  XCloseDisplay(dpy);
+  if (out.w <= 0 || out.h <= 0) {
+    error = "invalid work area";
+    return false;
+  }
+  return true;
+}
+
+bool native_monitor_signature(std::string& sig, std::string& error) {
+  // Prefer xrandr (multi-monitor aware); fall back to the default screen size.
+  FILE* f = popen("xrandr --query 2>/dev/null", "r");
+  std::vector<std::string> parts;
+  if (f) {
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+      std::string s(line);
+      // e.g. "HDMI-1 connected primary 1920x1080+0+0 (...)".
+      auto con = s.find(" connected ");
+      if (con == std::string::npos) continue;
+      auto geom = s.find_first_of("0123456789", con);
+      if (geom == std::string::npos) continue;
+      auto end = s.find_first_of(" (", geom);
+      std::string g = s.substr(geom, end == std::string::npos ? std::string::npos : end - geom);
+      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r')) g.pop_back();
+      if (!g.empty()) parts.push_back(g);
+    }
+    pclose(f);
+  }
+  if (parts.empty()) {
+    Display* dpy = XOpenDisplay(nullptr);
+    if (!dpy) {
+      error = "cannot enumerate monitors";
+      return false;
+    }
+    int scr = DefaultScreen(dpy);
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%dx%d@0,0", DisplayWidth(dpy, scr),
+                  DisplayHeight(dpy, scr));
+    XCloseDisplay(dpy);
+    sig = buf;
+    return true;
+  }
+  std::sort(parts.begin(), parts.end());
+  sig.clear();
+  for (std::size_t i = 0; i < parts.size(); ++i) {
+    if (i) sig.push_back('|');
+    sig += parts[i];
+  }
+  return true;
+}
+
 #else
 
 std::vector<NativeWindowInfo> native_list_windows() { return {}; }
@@ -373,6 +437,16 @@ bool native_window_rect(std::uint64_t, NativeWindowRect&, std::string& error) {
 }
 
 bool native_window_move(std::uint64_t, int, int, int, int, std::string& error) {
+  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  return false;
+}
+
+bool native_primary_work_area(NativeWorkArea&, std::string& error) {
+  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  return false;
+}
+
+bool native_monitor_signature(std::string&, std::string& error) {
   error = "window management needs X11 (unsupported on Wayland-only builds)";
   return false;
 }

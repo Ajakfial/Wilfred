@@ -206,8 +206,13 @@ synthetic result card instead of searching the index
 | `volume [N\|mute\|up\|down]` | `vol` | Volume level + mute (enter applies; `volume 50`, `volume mute`) |
 | `brightness [N\|up\|down]` | `bright`, `backlight`, `dim` | Display brightness (enter applies; `brightness 70`) |
 | `settings [page]` | `setting`, `prefs` | Settings deep-links (`settings wifi`, `bluetooth`, `sound`, `display`, `battery`, `power`, `apps`, `privacy`, `update`, `about`; enter opens) |
+| `settings edit <key> <value>` | `settings set` | Update one setting in place, validated (`settings edit search.max_results 40`; `wilfred config-set`) |
+| `settings get <key>` | | Show one setting's value (enter copies; `wilfred config-get`) |
 | `setup [check]` | `wizard`, `onboard` | First-run status (roots, hotkey, browser; enter opens wilfred.yml; terminal: `wilfred setup`) |
 | `config [open\|validate]` | `configuration` | Edit/validate wilfred.yml (`config open`, `config validate`, `config reveal`) |
+| `config set <key> <value>` | `config edit` | Same editor as `settings edit` (`config:get:`, `config:reset` supported) |
+| `plugins [approve]` | `plugin`, `extensions` | Installed list + trust approvals (`plugins approve <id>`, `approve all`; `wilfred plugin …`) |
+| `layout tile <preset>` | `tile`, `tiling` | Tile open windows (`halves`, `thirds`, `grid`, `columns N`, `rows N`, `stack`; `wilfred tile …`) |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
 `clips code`, `clips ip` (plus an optional text query after the type).

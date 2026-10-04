@@ -99,6 +99,20 @@ bool native_brightness_set(int percent, std::string& error);
 // Empty page opens the main settings app.
 bool native_open_settings(const std::string& page, std::string& error);
 
+// --- Displays: tiling + monitor-change detection ---
+// Work area of the primary monitor (excludes taskbar/dock when known).
+struct NativeWorkArea {
+  int x{0};
+  int y{0};
+  int w{0};
+  int h{0};
+};
+bool native_primary_work_area(NativeWorkArea& out, std::string& error);
+// Stable signature of the current monitor set, e.g.
+// "1920x1080@0,0|2560x1440@1920,0". Empty with error when unknown.
+// The daemon polls this to auto-apply layouts; mobile returns unsupported.
+bool native_monitor_signature(std::string& sig, std::string& error);
+
 // Process control + media keys (search/media.hpp re-exports these so minis and
 // actions can share one implementation).
 bool native_kill_process(std::uint32_t pid, std::string& error);

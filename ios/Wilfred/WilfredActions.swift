@@ -32,6 +32,10 @@ enum WilfredActions {
                            refresh: @escaping () -> Void) {
         WilfredCore.shared.recordChoice(query: query,
                                         key: r.path.isEmpty ? r.payload : r.path)
+        // Toggles / settings / config / approvals: iOS owns Settings and the
+        // volume/brightness UI, so handle natively instead of the C++ desktop
+        // backends (stubs on iOS). Returns true when handled.
+        if (handleMobileSystem(r, index: index, notice: notice, refresh: refresh)) { return }
         // Calculator / converter / generic copy cards: copy payload.
         if (r.action == "calc" || r.action == "convert" || r.action == "copy" ||
             (r.action == "mini" && copyableMini(r))) {
@@ -82,6 +86,59 @@ enum WilfredActions {
         let text = !r.payload.isEmpty ? r.payload : (!r.path.isEmpty ? r.path : r.title)
         copyText(text, notice: notice)
         refresh()
+    }
+
+    /// Native iOS handling for toggle/settings/config/plugin/layout cards.
+    /// System radios, volume, and brightness are owned by iOS: toggles open
+    /// the Settings app (the only third-party entry point Apple allows),
+    /// config/setup/plugin payloads run through C++ (mobile wilfred.yml and
+    /// trust store), and window/tiling cards report desktop-only.
+    static func handleMobileSystem(_ r: SearchResult, index: Int,
+                                   notice: @escaping (String) -> Void,
+                                   refresh: @escaping () -> Void) -> Bool {
+        let payload = r.payload.isEmpty ? r.path : r.payload
+        if (r.category == "toggle" || payload.hasPrefix("toggle:")) {
+            if (payload.hasPrefix("toggle:volume:") || payload.hasPrefix("toggle:brightness:")) {
+                notice("Use the side buttons / Control Center on iOS")
+            } else {
+                openSettingsApp(notice: notice)
+            }
+            refresh()
+            return true
+        }
+        if (r.category == "settings" || payload.hasPrefix("settings:")) {
+            openSettingsApp(notice: notice)
+            refresh()
+            return true
+        }
+        if (r.category == "config" || r.category == "setup" ||
+            payload.hasPrefix("config:") || payload.hasPrefix("setup:")) {
+            let ok = WilfredCore.shared.execute(index: index, actionId: "open")
+            notice(ok ? "Done" : "Action failed")
+            refresh()
+            return true
+        }
+        if (r.category == "plugins" || payload.hasPrefix("plugin_approve")) {
+            let ok = WilfredCore.shared.execute(index: index, actionId: "open")
+            notice(ok ? "Done" : "Action failed")
+            refresh()
+            return true
+        }
+        if (r.category == "layout" || payload.hasPrefix("tile:") ||
+            payload.hasPrefix("layout_apply:")) {
+            notice("Window management is desktop-only")
+            return true
+        }
+        return false
+    }
+
+    static func openSettingsApp(notice: @escaping (String) -> Void) {
+        if let url = URL(string: UIApplication.openSettingsURLString),
+           UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        } else {
+            notice("Open the Settings app to change this")
+        }
     }
 
     static func copyableMini(_ r: SearchResult) -> Bool {
@@ -141,7 +198,8 @@ enum WilfredActions {
             return
         }
         if (actionId.hasPrefix("media:") || actionId == "kill_process" ||
-            actionId.hasPrefix("window_") || actionId == "transcribe_run" ||
+            actionId.hasPrefix("window_") || actionId.hasPrefix("tile:") ||
+            actionId.hasPrefix("layout_apply:") || actionId == "transcribe_run" ||
             actionId.hasPrefix("dictate_run") || actionId.hasPrefix("focus_window:")) {
             notice("Not available on iOS (desktop-only)")
             return

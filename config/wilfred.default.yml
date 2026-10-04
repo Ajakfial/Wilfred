@@ -161,6 +161,12 @@ plugins:
   enabled: true
   directories: []
   timeout_ms: 400
+  # Optional registry index (JSON) for `wilfred plugin list/install`.
+  # Empty = disabled; no network calls unless set.
+  registry: ""
+  # Trust-on-first-use: new/changed plugins show as `plugins` approval
+  # cards and are skipped until `wilfred plugin approve <id>`.
+  require_approval: true
 
 providers:
   semantic: false
@@ -223,6 +229,19 @@ remotes:
   # sources:
   #   - name: wiki
   #     url: "https://wiki.example.com/api/search?q={query_enc}"
+  #     max_results: 5
+  #     headers:
+  #       Authorization: "Bearer <token>"
+
+# Saved window layouts + tiling (desktop only).
+layouts:
+  # Auto-apply a layout when the monitor set changes (daemon polls).
+  auto_apply: false
+  # Fallback layout when no monitor_layouts entry matches.
+  auto_layout: ""
+  # Monitor-signature substring -> layout (`wilfred status` never prints
+  # signatures; enable debug logging to see them on change).
+  monitor_layouts: {}
 
 # On-demand speech-to-text for audio files (`transcribe ...`).
 # Needs the `whisper-cli` binary (whisper.cpp) on PATH; `ffmpeg` is only

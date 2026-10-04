@@ -2,6 +2,7 @@
 
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/platform/native.hpp"
+#include "wilfred/search/setup.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -331,8 +332,45 @@ std::vector<SearchResult> brightness_results(const std::string& remainder, const
   return out;
 }
 
-std::vector<SearchResult> settings_results(const std::string& remainder, const Config&) {
+std::vector<SearchResult> settings_results(const std::string& remainder, const Config& cfg) {
   std::vector<SearchResult> out;
+  auto t = trim(remainder);
+  auto tl = to_lower_utf8(t);
+  // `settings edit <key> <value>` / `settings get <key>` edit wilfred.yml
+  // in place (same payloads as the `config` mini; executed in actions.cpp).
+  if (tl.rfind("edit ", 0) == 0 || tl.rfind("set ", 0) == 0) {
+    auto rest = trim(t.substr(t.find(' ') + 1));
+    auto sp = rest.find(' ');
+    if (sp == std::string::npos) {
+      out.push_back(tcard("Usage: settings edit <section.key> <value>",
+                          "e.g. settings edit search.max_results 40", "", "settings", "settings"));
+      return out;
+    }
+    auto key = trim(rest.substr(0, sp));
+    auto val = trim(rest.substr(sp + 1));
+    std::string cur, err;
+    bool known = config_get_value(cfg, to_lower_utf8(key), cur, err);
+    out.push_back(tcard("Set " + key + " to " + val,
+                        known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
+                        "config:set:" + key + "=" + val, "settings", "settings"));
+    return out;
+  }
+  if (tl.rfind("get ", 0) == 0) {
+    auto key = to_lower_utf8(trim(t.substr(4)));
+    std::string cur, err;
+    if (config_get_value(cfg, key, cur, err))
+      out.push_back(tcard(key + " = " + cur, "enter copies the value", "config:get:" + key,
+                          "settings", "settings"));
+    else
+      out.push_back(tcard("Unknown setting: " + key, err, "", "settings", "settings"));
+    return out;
+  }
+  if (tl == "reset" || tl == "reset defaults" || tl == "restore defaults") {
+    out.push_back(tcard("Reset wilfred.yml to defaults",
+                        "backs up to .pre-reset.bak — enter resets", "config:reset", "settings",
+                        "settings"));
+    return out;
+  }
   auto page = normalize_settings_page(remainder);
   if (!remainder.empty() && trim(remainder).size() > 0 && !page.empty()) {
     std::string label = page;

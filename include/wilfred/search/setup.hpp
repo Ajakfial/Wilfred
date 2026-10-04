@@ -24,6 +24,15 @@ bool validate_config_text(const std::string& text, std::string& message);
 // One-line status used by `wilfred status` and the setup cards.
 std::string setup_summary(const Config& cfg);
 
+// Typed settings editor (overlay `settings edit/get` + CLI
+// `wilfred config-get/set`). Dotted keys are `section.key`, e.g.
+// `search.max_results`, `browser.search_template`, `hotkey.key`.
+// Lists use comma-separated values, e.g. `index.paths`.
+bool config_get_value(const Config& cfg, const std::string& dotted, std::string& out,
+                      std::string& error);
+bool config_set_value(const std::string& dotted, const std::string& value, std::string& error);
+bool config_reset_default(std::string& error);
+
 // Terminal wizard: prompts for index roots / hotkey / browser template,
 // writes missing keys back to wilfred.yml (never overwrites existing keys
 // unless `overwrite` is true). Returns exit code (0 = ok).
@@ -33,5 +42,8 @@ int run_setup_wizard(bool overwrite);
 int run_config_validate();
 int run_config_open();
 int run_config_path();
+int run_config_get(const std::string& dotted);
+int run_config_set(const std::string& dotted, const std::string& value);
+int run_config_reset();
 
 }  // namespace wilfred

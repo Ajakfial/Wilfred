@@ -6,7 +6,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import org.json.JSONObject
@@ -42,6 +44,10 @@ object WilfredActions {
     /** Tap (primary) action. [index] is the position in the last search results. */
     fun openResult(context: Context, r: SearchResult, query: String, index: Int, onRefresh: (() -> Unit)? = null) {
         WilfredBridge.recordChoice(query, if (r.path.isNotEmpty()) r.path else r.payload)
+        // Toggles / settings / config / approvals are handled natively
+        // (system intents, AudioManager, brightness) instead of the C++
+        // desktop backends, which are stubs on Android.
+        if (handleMobileSystem(context, r, index, onRefresh)) return
         try {
             // App packages enumerated from PackageManager.
             if (r.path.startsWith("package:")) {
@@ -128,8 +134,124 @@ object WilfredActions {
         }
     }
 
-    private fun copyableMini(r: SearchResult): Boolean {
-        // Timers/notes/todos/clips/process/media cards: primary tap copies the
+    /**
+     * Native Android handling for toggle/settings/config/setup/plugin cards.
+     * Returns true when the card was handled (caller returns immediately).
+     * Wi-Fi/Bluetooth open system settings (apps cannot toggle radios since
+     * Android 10); volume uses AudioManager for real; brightness writes
+     * SCREEN_BRIGHTNESS when WRITE_SETTINGS is granted, else opens display
+     * settings; config/setup/plugin payloads run through C++ (which edits the
+     * mobile wilfred.yml / trust store under the app files dir).
+     */
+    private fun handleMobileSystem(context: Context, r: SearchResult, index: Int, onRefresh: (() -> Unit)?): Boolean {
+        val payload = if (r.payload.isNotEmpty()) r.payload else r.path
+        if (r.category == "toggle" || payload.startsWith("toggle:")) {
+            when {
+                payload.startsWith("toggle:wifi:") -> openSettingsPage(context, "wifi")
+                payload.startsWith("toggle:bluetooth:") -> openSettingsPage(context, "bluetooth")
+                payload.startsWith("toggle:volume:") -> applyMobileVolume(context, payload)
+                payload.startsWith("toggle:brightness:") -> applyMobileBrightness(context, payload)
+                else -> openSettingsPage(context, "")
+            }
+            onRefresh?.invoke()
+            return true
+        }
+        if (r.category == "settings" || payload.startsWith("settings:")) {
+            openSettingsPage(context, payload.removePrefix("settings:"))
+            onRefresh?.invoke()
+            return true
+        }
+        if (r.category == "config" || r.category == "setup" ||
+            payload.startsWith("config:") || payload.startsWith("setup:")
+        ) {
+            // C++ edits/validates the mobile config; mirror any clipboard output.
+            WilfredBridge.execute(index, "open")
+            copyText(context, r.title)
+            onRefresh?.invoke()
+            return true
+        }
+        if (r.category == "plugins" || payload.startsWith("plugin_approve")) {
+            val ok = WilfredBridge.execute(index, "open")
+            Toast.makeText(
+                context,
+                if (ok) context.getString(R.string.action_done) else context.getString(R.string.action_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+            onRefresh?.invoke()
+            return true
+        }
+        if (r.category == "layout" || payload.startsWith("tile:") ||
+            payload.startsWith("layout_apply:")
+        ) {
+            Toast.makeText(context, context.getString(R.string.not_supported_desktop), Toast.LENGTH_SHORT).show()
+            return true
+        }
+        return false
+    }
+
+    fun openSettingsPage(context: Context, page: String) {
+        val action = when (page.lowercase()) {
+            "wifi" -> Settings.ACTION_WIFI_SETTINGS
+            "network" -> Settings.ACTION_WIRELESS_SETTINGS
+            "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
+            "sound" -> Settings.ACTION_SOUND_SETTINGS
+            "display" -> Settings.ACTION_DISPLAY_SETTINGS
+            "battery", "power" -> Settings.ACTION_BATTERY_SAVER_SETTINGS
+            "apps" -> Settings.ACTION_APPLICATION_SETTINGS
+            "privacy" -> Settings.ACTION_PRIVACY_SETTINGS
+            else -> Settings.ACTION_SETTINGS
+        }
+        try {
+            context.startActivity(Intent(action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+        } catch (_: Exception) {
+            try {
+                context.startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (_: Exception) { }
+        }
+    }
+
+    private fun applyMobileVolume(context: Context, payload: String) {
+        try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val op = payload.removePrefix("toggle:volume:")
+            when {
+                op.startsWith("set:") -> {
+                    val level = op.removePrefix("set:").toIntOrNull() ?: return
+                    val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, level * max / 100, 0)
+                }
+                op == "mute" -> am.adjustVolume(AudioManager.ADJUST_MUTE, 0)
+                op == "unmute" -> am.adjustVolume(AudioManager.ADJUST_UNMUTE, 0)
+                op == "mute_toggle" -> am.adjustVolume(AudioManager.ADJUST_TOGGLE_MUTE, 0)
+                op == "up" -> am.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                op == "down" -> am.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+            }
+        } catch (_: Exception) { }
+    }
+
+    private fun applyMobileBrightness(context: Context, payload: String) {
+        try {
+            if (!Settings.System.canWrite(context)) {
+                openSettingsPage(context, "display")
+                return
+            }
+            val cur = Settings.System.getInt(
+                context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 128
+            )
+            val op = payload.removePrefix("toggle:brightness:")
+            val next = when {
+                op.startsWith("set:") -> (op.removePrefix("set:").toIntOrNull() ?: return) * 255 / 100
+                op == "up" -> cur + 255 / 10
+                op == "down" -> cur - 255 / 10
+                else -> return
+            }.coerceIn(1, 255)
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, next)
+        } catch (_: Exception) { }
+    }
+
+    private fun copyableMini(r: SearchResult): Boolean {        // Timers/notes/todos/clips/process/media cards: primary tap copies the
         // display text; destructive ops live in the long-press menu.
         return r.category == "timer" || r.category == "stopwatch" || r.category == "note" ||
             r.category == "todo" || r.category == "clips" || r.category == "clipboard" ||
@@ -203,7 +325,7 @@ object WilfredActions {
                 actionId.startsWith("todo_done:") || actionId.startsWith("todo_undo:") ||
                 actionId.startsWith("todo_delete:") || actionId == "clip_pin" ||
                 actionId == "clip_unpin" || actionId == "clip_clear" ||
-                actionId.startsWith("layout_apply:") || actionId.startsWith("workflow:") -> {
+                actionId.startsWith("workflow:") -> {
                 val ok = WilfredBridge.execute(index, actionId)
                 Toast.makeText(
                     context,
@@ -213,7 +335,8 @@ object WilfredActions {
                 onRefresh?.invoke()
             }
             actionId.startsWith("media:") || actionId == "kill_process" ||
-                actionId.startsWith("window_") || actionId == "transcribe_run" ||
+                actionId.startsWith("window_") || actionId.startsWith("tile:") ||
+                actionId.startsWith("layout_apply:") || actionId == "transcribe_run" ||
                 actionId.startsWith("dictate_run") || actionId.startsWith("focus_window:") -> {
                 Toast.makeText(context, context.getString(R.string.not_supported_desktop), Toast.LENGTH_SHORT).show()
             }

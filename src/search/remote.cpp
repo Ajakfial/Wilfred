@@ -86,13 +86,14 @@ std::vector<SearchResult> remote_parse_response(const std::string& body,
   return out;
 }
 
-std::string remote_fetch(const std::string& url, int timeout_ms) {
+std::string remote_fetch(const std::string& url, int timeout_ms,
+                         const std::unordered_map<std::string, std::string>& headers) {
   if (url.empty() || url.size() > 2048) return {};
   if (url.rfind("http://", 0) != 0 && url.rfind("https://", 0) != 0) return {};
   if (timeout_ms < 1000) timeout_ms = 1000;
   if (timeout_ms > 30000) timeout_ms = 30000;
 #ifdef _WIN32
-  // Minimal WinHTTP GET. Only https/http, no auth.
+  // Minimal WinHTTP GET with optional headers (never logged by callers).
   std::string host, path;
   bool secure = url.rfind("https://", 0) == 0;
   std::string rest = url.substr(secure ? 8 : 7);
@@ -131,7 +132,26 @@ std::string remote_fetch(const std::string& url, int timeout_ms) {
     WinHttpCloseHandle(ses);
     return {};
   }
-  BOOL ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+  BOOL ok = FALSE;
+  if (!headers.empty()) {
+    std::string hdrs;
+    for (auto& [k, v] : headers) {
+      if (k.empty() || k.find_first_of("\r\n:") != std::string::npos) continue;
+      if (v.find_first_of("\r\n") != std::string::npos) continue;
+      hdrs += k + ": " + v + "\r\n";
+    }
+    if (!hdrs.empty()) {
+      auto wh = utf8_to_wide(hdrs);
+      ok = WinHttpSendRequest(req, wh.c_str(), static_cast<DWORD>(wh.size()),
+                              WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+    } else {
+      ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0,
+                              0, 0);
+    }
+  } else {
+    ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0,
+                            0, 0);
+  }
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
   if (ok) {
     DWORD avail = 0;
@@ -157,9 +177,22 @@ std::string remote_fetch(const std::string& url, int timeout_ms) {
     if (c == '\'') q += "'\\''";
     else q.push_back(c);
   }
-  char cmd[3072];
-  std::snprintf(cmd, sizeof(cmd),
-                "curl -fsS --max-time %d -A Wilfred/1.0 '%s' 2>/dev/null", secs, q.c_str());
+  std::string hopts;
+  for (auto& [k, v] : headers) {
+    if (k.empty() || k.find_first_of("\r\n:") != std::string::npos) continue;
+    if (v.find_first_of("\r\n") != std::string::npos) continue;
+    std::string h = k + ": " + v;
+    std::string hq;
+    for (char c : h) {
+      if (c == '\'') hq += "'\\''";
+      else hq.push_back(c);
+    }
+    hopts += " -H '" + hq + "'";
+    if (hopts.size() > 4096) break;
+  }
+  char cmd[8192];
+  std::snprintf(cmd, sizeof(cmd), "curl -fsS --max-time %d -A Wilfred/1.0%s '%s' 2>/dev/null",
+                secs, hopts.c_str(), q.c_str());
   FILE* f = popen(cmd, "r");
   if (!f) return {};
   std::string body;
@@ -183,22 +216,27 @@ std::vector<SearchResult> RemoteProvider::query(const std::string& text, const C
   int budget = cfg.remotes.max_results;
   if (budget < 1) budget = 1;
   if (budget > 50) budget = 50;
-  std::size_t per = static_cast<std::size_t>(budget);
   for (auto& s : cfg.remotes.sources) {
     if (out.size() >= static_cast<std::size_t>(budget)) break;
     if (s.url.empty()) continue;
+    // Per-source cap (<=0 falls back to the global budget).
+    int per = s.max_results > 0 ? s.max_results : budget;
+    if (per < 1) per = 1;
+    if (per > 50) per = 50;
     auto url = remote_url_for(s.url, text);
-    auto body = remote_fetch(url, cfg.remotes.timeout_ms);
+    auto body = remote_fetch(url, cfg.remotes.timeout_ms, s.headers);
     if (body.empty()) continue;
     auto part = remote_parse_response(body, s.name, text);
+    std::size_t added = 0;
     for (auto& r : part) {
       if (out.size() >= static_cast<std::size_t>(budget) || out.size() >= limit) break;
+      if (added >= static_cast<std::size_t>(per)) break;
       // Tag the source when the name is set.
       if (!s.name.empty() && r.subtitle.find(s.name) == std::string::npos)
         r.subtitle += (r.subtitle.empty() ? "" : " · ") + s.name;
       out.push_back(std::move(r));
+      ++added;
     }
-    (void)per;
   }
   return out;
 }

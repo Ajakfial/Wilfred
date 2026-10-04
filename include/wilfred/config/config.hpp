@@ -139,6 +139,13 @@ struct Config {
     bool enabled{true};
     std::vector<std::string> directories;
     int timeout_ms{400};
+    // Optional plugin registry index (JSON URL). Empty = disabled.
+    // `wilfred plugin list` fetches it; `install` verifies sha256.
+    std::string registry;
+    // Trust-on-first-use: plugins not in the trust store show as
+    // `plugins` approval cards and are skipped by query/execute until
+    // `wilfred plugin approve <id>` (or the overlay action).
+    bool require_approval{true};
   } plugins;
 
   struct Providers {
@@ -191,6 +198,11 @@ struct Config {
   struct RemoteSourceCfg {
     std::string name;
     std::string url;
+    // Optional per-source headers, e.g. Authorization: Bearer <token>.
+    // Never logged; only sent to that source's host.
+    std::unordered_map<std::string, std::string> headers;
+    // Per-source result cap. <=0 means use remotes.max_results.
+    int max_results{0};
   };
 
   struct Remotes {
@@ -247,6 +259,18 @@ struct Config {
     bool global_expansion{false};
     std::unordered_map<std::string, std::string> items;
   } snippets;
+
+  struct Layouts {
+    // Apply a layout when the monitor set changes (daemon polls the
+    // display signature; mobile never auto-applies).
+    bool auto_apply{false};
+    // Layout applied on any signature change when monitor_layouts has no
+    // entry for the new signature.
+    std::string auto_layout;
+    // Exact monitor-signature substring -> layout name. Signatures look
+    // like "1920x1080@0,0|2560x1440@1920,0" (see native_monitor_signature).
+    std::unordered_map<std::string, std::string> monitor_layouts;
+  } layouts;
 
   // Named multi-step workflows: workflow name -> ordered action ids.
   // Each step is an action id accepted by execute_result_action

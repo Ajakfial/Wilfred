@@ -48,6 +48,16 @@ class LayoutStore {
 
   static bool valid_name(const std::string& name);
 
+  // Tiling presets over the *current* open windows (no saved file needed):
+  // halves | thirds | grid | columns [N] | rows [N] | stack.
+  // Windows are sorted by title and tiled across the primary work area.
+  static std::vector<std::string> tiling_preset_names();
+  static bool apply_tiling_preset(const std::string& preset, std::string& error);
+
+  // Shared apply core used by the overlay action, `wilfred exec`, the tile
+  // CLI, and monitor-change auto-apply.
+  static bool apply_layout_by_name(const std::string& name, std::string& error);
+
  private:
   LayoutStore() = default;
   mutable std::mutex mu_;

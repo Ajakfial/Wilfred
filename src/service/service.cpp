@@ -590,8 +590,13 @@ int Service::run_status() {  if (!boot()) return 1;
             << "errors: " << st.errors << "\n"
             << "scanning: " << (st.scanning ? "yes" : "no") << "\n"
             << "last scan (s): " << st.last_scan_seconds << "\n";
-  std::cout << "plugins: " << plugins_.manifests().size() << "\n"
+  std::cout << "plugins: " << plugins_.manifests().size()
+            << " (registry=" << (cfg_.plugins.registry.empty() ? "off" : "on")
+            << " approval=" << (cfg_.plugins.require_approval ? "on" : "off") << ")\n"
             << "snippets: " << snippets_.all().size() << "\n"
+            << "layouts: auto_apply=" << (cfg_.layouts.auto_apply ? "on" : "off")
+            << " auto_layout=" << (cfg_.layouts.auto_layout.empty() ? "-" : cfg_.layouts.auto_layout)
+            << "\n"
             << "vectors: " << (index_.vectors().enabled() ? "on" : "off") << " ("
             << index_.vectors().size() << " backend=" << index_.vectors().backend() << ")\n"
             << "semantic: " << (cfg_.providers.semantic ? "on" : "off") << " ("
@@ -1331,10 +1336,38 @@ int Service::run_daemon() {
     }
     auto last_vol_check = std::chrono::steady_clock::now();
     auto last_sync = std::chrono::steady_clock::now();
+    auto last_mon_check = std::chrono::steady_clock::now() - std::chrono::seconds(30);
+    std::string last_mon_sig;
     auto volumes = list_volumes();
     while (running_) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       auto now = std::chrono::steady_clock::now();
+      if (cfg_.layouts.auto_apply &&
+          std::chrono::duration_cast<std::chrono::seconds>(now - last_mon_check).count() >= 5) {
+        last_mon_check = now;
+        std::string sig, serr;
+        if (native_monitor_signature(sig, serr) && !sig.empty() && sig != last_mon_sig) {
+          bool first = last_mon_sig.empty();
+          last_mon_sig = sig;
+          if (!first) {
+            std::string layout;
+            for (auto& [key, name] : cfg_.layouts.monitor_layouts) {
+              if (!key.empty() && sig.find(key) != std::string::npos) {
+                layout = name;
+                break;
+              }
+            }
+            if (layout.empty()) layout = cfg_.layouts.auto_layout;
+            if (!layout.empty()) {
+              std::string err;
+              if (LayoutStore::apply_layout_by_name(layout, err))
+                log_info("layouts", "auto-applied '" + layout + "' for monitors " + sig);
+              else
+                log_warn("layouts", err.empty() ? "auto-apply failed" : err);
+            }
+          }
+        }
+      }
       if (cfg_.sync.enabled && cfg_.sync.interval_seconds > 0 &&
           std::chrono::duration_cast<std::chrono::seconds>(now - last_sync).count() >=
               cfg_.sync.interval_seconds) {

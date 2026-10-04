@@ -27,6 +27,7 @@
 #include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/toggles.hpp"
+#include "wilfred/plugin/mini.hpp"
 #include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 
@@ -1474,6 +1475,11 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Dictate, false);
   else if (key == "layout" || key == "layouts")
     set(MiniKind::Layout, false);
+  else if (key == "tile" || key == "tiling" || key == "tiles") {
+    it.kind = MiniKind::Layout;
+    it.remainder = trim_sv("tile " + rest);
+    it.exact = false;
+  }
   else if (key == "convert" || key == "converts" || key == "conversion" || key == "transcode" ||
            key == "transcoding" || key == "wav2mp3" || key == "convertfile")
     set(MiniKind::Convert, false);
@@ -1506,6 +1512,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Setup, true);
   else if (key == "config" || key == "configuration" || key == "wilfredconfig")
     set(MiniKind::Config, true);
+  else if (key == "plugins" || key == "plugin" || key == "extensions" || key == "extension")
+    set(MiniKind::Plugins, true);
   return it;
 }
 
@@ -1523,6 +1531,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Settings) return settings_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Setup) return setup_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Config) return config_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Plugins) return plugin_results(intent.remainder, cfg);
 
   if (intent.kind == MiniKind::Time) {
     if (!intent.remainder.empty()) {
@@ -3268,9 +3277,29 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          "layout_apply:" + lay.name, "layout", 10000, ResultAction::Copy));
       return out;
     }
+    if (rl == "tile" || rl.rfind("tile ", 0) == 0) {
+      auto preset = trim_sv(rest.size() > 4 ? rest.substr(4) : "");
+      if (preset.empty()) {
+        for (auto& name : LayoutStore::tiling_preset_names()) {
+          SearchResult r = card("Tile " + name, "tile " + name + " · enter tiles open windows",
+                                "tile:" + name, "layout", 10000, ResultAction::Copy);
+          r.category = "layout";
+          r.actions.clear();
+          r.actions.push_back({"tile:" + name, "Tile"});
+          out.push_back(std::move(r));
+        }
+        return out;
+      }
+      SearchResult r = card("Tile " + preset, "enter tiles open windows (" + preset + ")",
+                            "tile:" + to_lower_utf8(preset), "layout", 10000, ResultAction::Copy);
+      r.category = "layout";
+      r.actions.clear();
+      r.actions.push_back({"tile:" + to_lower_utf8(preset), "Tile"});
+      out.push_back(std::move(r));
+      return out;
+    }
     if (rl == "delete" || rl.rfind("delete ", 0) == 0 || rl.rfind("rm ", 0) == 0 ||
-        rl.rfind("remove ", 0) == 0 || rl.rfind("del ", 0) == 0) {
-      auto sp = rest.find(' ');
+        rl.rfind("remove ", 0) == 0 || rl.rfind("del ", 0) == 0) {      auto sp = rest.find(' ');
       auto name = sp == std::string::npos ? std::string() : to_lower_utf8(trim_sv(rest.substr(sp + 1)));
       if (store.delete_layout(name))
         out.push_back(card("Layout " + name + " deleted", "", "", "layout", 10000,

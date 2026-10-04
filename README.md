@@ -53,7 +53,9 @@ single summonable search bar.
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
 * System toggles (`wifi on/off`, `bluetooth toggle`, `volume 50/mute`, `brightness 70`) + settings deep-links (`settings wifi/bluetooth/sound/display/...`) — real OS backends on Windows/macOS/Linux, honest unsupported errors on mobile/BSD gaps
-* Settings + setup (`settings config open/validate`, `setup`, `wilfred setup --overwrite`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` — your endpoints only, off by default)
+* Settings + setup (`settings config open/validate`, `settings edit <key> <value>`, `setup`, `wilfred setup --overwrite`, `wilfred config-get/set/reset`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` — your endpoints only, off by default; per-source `headers:` + `max_results:`)
+* Plugins with trust-on-first-use (`plugins` approval cards, `wilfred plugin list/install/approve/revoke`, optional `plugins.registry` index, sha256-verified installs)
+* Window tiling (`layout tile halves|thirds|grid|columns N|rows N|stack`, `wilfred tile …`) + monitor-change auto-apply (`layouts.auto_apply`, `auto_layout`, `monitor_layouts`)
 * Android app (Kotlin UI + C++ core via NDK → `.apk`): floating W button, search bar, same index/search/ranking — see `docs/android.md`
 * iOS app (SwiftUI + same C++ core → simulator `.app`): same search UI as Android (app-icon entry; iOS forbids overlay buttons), sandbox-only index — see `docs/ios.md`
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
@@ -188,6 +190,9 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `volume 50` / `volume mute` / `brightness 70` | Volume level/mute + display brightness (enter applies) |
 | `settings wifi` / `settings sound` / `settings` | Open OS settings pages (wifi/network/bluetooth/sound/display/...) |
 | `setup` / `config validate` / `config open` | First-run status + edit/validate wilfred.yml (`wilfred setup`, `config-validate`) |
+| `settings edit search.max_results 40` / `settings get hotkey.key` | Update/read one setting in place, validated (`wilfred config-set/get`) |
+| `plugins` / `plugins approve demo` | Plugin list + trust approvals (`wilfred plugin list/install/approve`) |
+| `layout tile grid` / `tile halves` / `layout work` | Tile open windows or apply a saved layout (`wilfred tile`, `layouts.auto_apply` on monitor change) |
 | `clip` / `clips` | Clipboard and recent clips |
 | `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |
 

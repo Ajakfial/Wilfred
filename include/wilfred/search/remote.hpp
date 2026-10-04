@@ -5,6 +5,7 @@
 #include "wilfred/search/engine.hpp"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace wilfred {
@@ -26,9 +27,10 @@ std::vector<SearchResult> remote_parse_response(const std::string& body,
                                                 const std::string& source_name,
                                                 const std::string& query);
 // Fetch one URL with a bounded timeout. Empty on failure. Uses WinHTTP on
-// Windows, `curl --max-time` elsewhere. No auth headers today; use a token
-// in the URL query when the server needs one.
-std::string remote_fetch(const std::string& url, int timeout_ms);
+// Windows, `curl --max-time` elsewhere. Headers are sent as-is (caller must
+// have validated them); they are never logged.
+std::string remote_fetch(const std::string& url, int timeout_ms,
+                         const std::unordered_map<std::string, std::string>& headers = {});
 
 class RemoteProvider : public SearchProvider {
  public:

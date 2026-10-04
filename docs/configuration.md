@@ -310,6 +310,9 @@ remotes:
   sources:
     - name: wiki
       url: "https://wiki.example.com/api/search?q={query_enc}"
+      max_results: 5
+      headers:
+        Authorization: "Bearer <token>"
 ```
 
 | Key | Default | Meaning |
@@ -318,6 +321,27 @@ remotes:
 | `timeout_ms` | `5000` | Per-source fetch timeout (1000–30000) |
 | `max_results` | `8` | Cap across all remote sources per query (1–50) |
 | `sources` | `[]` | List of `{name, url}` (or `name: url` map); `url` must start with `http(s)://` |
+| `max_results` per source | `0` | Per-source cap (0 = use global `max_results`); list form only |
+| `headers` per source | `{}` | Extra request headers, e.g. `Authorization: Bearer <token>` (list form only; never logged) |
+
+## `layouts:` — saved layouts, tiling, monitor auto-apply (desktop)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `auto_apply` | `false` | Daemon polls the monitor signature (~5s) and applies a layout on change |
+| `auto_layout` | `""` | Fallback layout when no `monitor_layouts` entry matches the new signature |
+| `monitor_layouts` | `{}` | Signature-substring → layout name (e.g. `docked: work`) |
+
+Tiling needs no config: `layout tile halves|thirds|grid|columns N|rows N|stack`
+(or `tile …`, `wilfred tile …`) tiles current windows across the primary work
+area immediately.
+
+## `plugins:` — registry + trust-on-first-use
+
+| Key | Default | Meaning |
+|---|---|---|
+| `registry` | `""` | Registry index URL for `wilfred plugin list/install` (empty = disabled) |
+| `require_approval` | `true` | New/changed plugins show as `plugins` approval cards and are skipped until `wilfred plugin approve <id>` |
 
 ## `transcription:` — speech-to-text for audio
 

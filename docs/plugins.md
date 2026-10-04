@@ -55,6 +55,10 @@ command: ./run.sh     # for kind: stdio — the executable to spawn
 args: ["--flag"]      # for kind: stdio — extra argv entries
 timeout_ms: 400        # per-query timeout; falls back to plugins.timeout_ms
 enabled: true
+version: 1.0.0        # registry/approval display; changing sha256/permissions re-pends
+sha256: <hex>         # pinned artifact hash (registry installs write this)
+permissions: [network] # free-form labels shown on the approval card
+origin: https://example.com/my-plugin  # where it came from
 ```
 
 JSON manifests use the same field names. A manifest file that fails to
@@ -189,10 +193,18 @@ window, printing something) as a side effect of handling this call.
   *its own* results take to appear, not the whole search (though the
   overlay does wait for all sources before rendering — see
   [architecture.md](architecture.md#the-life-of-a-query)).
+* Trust-on-first-use (default `plugins.require_approval: true`): a plugin id
+  unseen in `<data>/plugins/trust.json` — or seen with a different sha256 or
+  permission set — shows as a `plugins` approval card and contributes no
+  results until `wilfred plugin approve <id>` (or the overlay Approve action)
+  records its fingerprint. `wilfred plugin pending` lists them;
+  `wilfred plugin revoke <id>` un-approves. Set `require_approval: false` to
+  restore load-everything behavior.
 * Native plugins run **in-process** with full access to the same address
   space as Wilfred — there is no sandboxing. Only install native plugins you
   trust; see [SECURITY.md](../SECURITY.md) for how this is scoped in
-  Wilfred's security policy.
+  Wilfred's security policy. Prefer the registry (`plugins.registry` +
+  `wilfred plugin install`, sha256-verified) over hand-dropped binaries.
 * stdio plugins run as a separate OS process per call, which is a real (if
   modest) isolation boundary compared to native plugins, but still run with
   the same user privileges as Wilfred itself.

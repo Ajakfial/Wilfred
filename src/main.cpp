@@ -2,6 +2,8 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/history/history.hpp"
 #include "wilfred/platform/platform.hpp"
+#include "wilfred/plugin/registry.hpp"
+#include "wilfred/search/layouts.hpp"
 #include "wilfred/search/setup.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/updater/updater.hpp"
@@ -44,8 +46,13 @@ static void print_help() {
       << "  wilfred history-clear   Erase local search history\n"
       << "  wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)\n"
       << "  wilfred config-validate      Validate wilfred.yml schema\n"
+      << "  wilfred config-get <key>     Print one setting (section.key)\n"
+      << "  wilfred config-set <key> <value>  Update one setting (validated)\n"
+      << "  wilfred config-reset         Restore defaults (backs up first)\n"
       << "  wilfred config-open          Open wilfred.yml in the editor\n"
       << "  wilfred config-path          Print wilfred.yml path\n"
+      << "  wilfred plugin <list|pending|install|approve|revoke>  Plugin registry + trust\n"
+      << "  wilfred tile <halves|thirds|grid|columns N|rows N|stack>  Tile open windows\n"
       << "  wilfred update [--check] Check for and install updates\n"
       << "  wilfred help            Show this message\n\n"
       << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
@@ -179,6 +186,70 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "config-path" || cmd == "config_path" || cmd == "configpath") {
       return wilfred::run_config_path();
+    }
+    if (cmd == "config-get" || cmd == "config_get" || cmd == "get-config") {
+      if (argc < 3) {
+        std::cerr << "usage: wilfred config-get <section.key>\n";
+        return 2;
+      }
+      return wilfred::run_config_get(argv[2]);
+    }
+    if (cmd == "config-set" || cmd == "config_set" || cmd == "set-config") {
+      if (argc < 4) {
+        std::cerr << "usage: wilfred config-set <section.key> <value>\n";
+        return 2;
+      }
+      std::string value = argv[3];
+      for (int i = 4; i < argc; ++i) {
+        value.push_back(' ');
+        value += argv[i];
+      }
+      return wilfred::run_config_set(argv[2], value);
+    }
+    if (cmd == "config-reset" || cmd == "config_reset" || cmd == "reset-config") {
+      return wilfred::run_config_reset();
+    }
+    if (cmd == "plugin" || cmd == "plugins") {
+      std::string sub = argc >= 3 ? argv[2] : "list";
+      std::string arg = argc >= 4 ? argv[3] : "";
+      if (sub == "list" || sub == "ls") return wilfred::run_plugin_list();
+      if (sub == "pending") return wilfred::run_plugin_pending();
+      if (sub == "install") {
+        if (arg.empty()) {
+          std::cerr << "usage: wilfred plugin install <id>\n";
+          return 2;
+        }
+        return wilfred::run_plugin_install(arg);
+      }
+      if (sub == "approve") {
+        if (arg.empty() || arg == "--all" || arg == "all")
+          return wilfred::run_plugin_approve("", true);
+        return wilfred::run_plugin_approve(arg, false);
+      }
+      if (sub == "revoke") {
+        if (arg.empty()) {
+          std::cerr << "usage: wilfred plugin revoke <id>\n";
+          return 2;
+        }
+        return wilfred::run_plugin_revoke(arg);
+      }
+      std::cerr << "usage: wilfred plugin <list|pending|install <id>|approve [id|--all]|revoke <id>>\n";
+      return 2;
+    }
+    if (cmd == "tile" || cmd == "tiling") {
+      std::string preset;
+      for (int i = 2; i < argc; ++i) {
+        if (!preset.empty()) preset.push_back(' ');
+        preset += argv[i];
+      }
+      if (preset.empty()) preset = "grid";
+      std::string err;
+      if (!wilfred::LayoutStore::apply_tiling_preset(preset, err)) {
+        std::cerr << (err.empty() ? "tiling failed" : err) << "\n";
+        return 1;
+      }
+      std::cout << "tiled (" << preset << ")\n";
+      return 0;
     }
     if (cmd == "convert") {
       std::vector<std::string> args;

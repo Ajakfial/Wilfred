@@ -77,6 +77,7 @@ enum class MiniKind {
   Settings,
   Setup,
   Config,
+  Plugins,
 };
 
 struct MiniIntent {

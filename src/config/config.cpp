@@ -299,6 +299,7 @@ bool is_valid_action_step(const std::string& s) {
       low.rfind("media:", 0) == 0 || low.rfind("note_delete:", 0) == 0 ||
       low.rfind("todo_done:", 0) == 0 || low.rfind("todo_undo:", 0) == 0 ||
       low.rfind("todo_delete:", 0) == 0 || low.rfind("layout_apply:", 0) == 0 ||
+      low.rfind("tile:", 0) == 0 ||
       low.rfind("focus_window:", 0) == 0 || low.rfind("dictate_run:", 0) == 0)
     return true;
   for (auto** p = known; *p; ++p)
@@ -329,7 +330,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "macros",   "scopes",  "custom_metadata", "history",
                                           "clipboard", "hotkey", "browser", "logging",
                                           "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "remotes", "transcription", "api",
+                                          "ai",       "sources", "remotes", "layouts", "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
                                           "app_actions", "hotkeys"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
@@ -717,6 +718,13 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "plugins: must be a mapping";
       return false;
     }
+    std::vector<std::string> valid = {"enabled", "directories", "timeout_ms", "registry",
+                                      "require_approval"};
+    if (!check_unknown_keys(*pl, valid, "plugins", err)) return false;
+    if (!expect_bool(pl, "enabled", "plugins", err) ||
+        !expect_bool(pl, "require_approval", "plugins", err))
+      return false;
+    if (!expect_int(pl, "timeout_ms", "plugins", err)) return false;
     c.plugins.enabled = pl->boolean("enabled", true);
     c.plugins.directories = pl->string_list("directories");
     c.plugins.timeout_ms = static_cast<int>(pl->integer("timeout_ms", 400));
@@ -724,6 +732,14 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "plugins.timeout_ms must be between 50 and 30000";
       return false;
     }
+    c.plugins.registry = pl->str("registry", "");
+    if (!c.plugins.registry.empty() &&
+        c.plugins.registry.rfind("http://", 0) != 0 &&
+        c.plugins.registry.rfind("https://", 0) != 0) {
+      err.message = "plugins.registry must start with http:// or https://";
+      return false;
+    }
+    c.plugins.require_approval = pl->boolean("require_approval", true);
   }
 
   if (auto* pr = root.get("providers")) {
@@ -842,10 +858,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       return false;
     }
     if (auto* srcs = rm->get("sources")) {
-      auto push_source = [&](std::string name, std::string url) -> bool {
-        Config::RemoteSourceCfg s;
-        s.name = std::move(name);
-        s.url = std::move(url);
+      auto push_source = [&](Config::RemoteSourceCfg s) -> bool {
         if (s.url.empty()) {
           err.message = "remotes.sources entries need a non-empty url";
           return false;
@@ -858,6 +871,32 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         if (s.url.size() > 2048) {
           err.message = "remotes.sources url is too long (max 2048)";
           return false;
+        }
+        if (s.max_results < 0 || s.max_results > 50) {
+          err.message = "remotes.sources '" + s.name + "' max_results must be between 0 and 50";
+          return false;
+        }
+        if (s.headers.size() > 8) {
+          err.message = "remotes.sources '" + s.name + "' supports at most 8 headers";
+          return false;
+        }
+        for (auto& [hk, hv] : s.headers) {
+          if (hk.empty() || hk.size() > 64 || hv.size() > 1024) {
+            err.message = "remotes.sources '" + s.name + "' has an oversized header";
+            return false;
+          }
+          for (char c : hk) {
+            if (c == '\n' || c == '\r' || c == ':') {
+              err.message = "remotes.sources '" + s.name + "' has an invalid header name";
+              return false;
+            }
+          }
+          for (char c : hv) {
+            if (c == '\n' || c == '\r') {
+              err.message = "remotes.sources '" + s.name + "' has an invalid header value";
+              return false;
+            }
+          }
         }
         c.remotes.sources.push_back(std::move(s));
         if (c.remotes.sources.size() > 16) {
@@ -873,7 +912,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
             err.message = "remotes.sources '" + k + "' must be a non-empty URL string";
             return false;
           }
-          if (!push_source(k, v.as_string())) return false;
+          Config::RemoteSourceCfg s;
+          s.name = k;
+          s.url = v.as_string();
+          if (!push_source(std::move(s))) return false;
         }
       } else if (srcs->is_list()) {
         for (auto& item : srcs->as_list()) {
@@ -881,11 +923,67 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
             err.message = "remotes.sources entries must be {name, url} mappings";
             return false;
           }
-          if (!push_source(item.str("name", ""), item.str("url", ""))) return false;
+          Config::RemoteSourceCfg s;
+          s.name = item.str("name", "");
+          s.url = item.str("url", "");
+          s.max_results = static_cast<int>(item.integer("max_results", 0));
+          if (auto* hdrs = item.get("headers")) {
+            if (!hdrs->is_map()) {
+              err.message = "remotes.sources '" + s.name + "' headers must be a mapping";
+              return false;
+            }
+            for (auto& [hk, hv] : hdrs->as_map()) {
+              if (!hv.is_string()) {
+                err.message = "remotes.sources '" + s.name + "' header '" + hk +
+                              "' must be a string";
+                return false;
+              }
+              s.headers[hk] = hv.as_string();
+            }
+          }
+          if (!push_source(std::move(s))) return false;
         }
       } else {
         err.message = "remotes.sources must be a list of {name, url} mappings or a name->url map";
         return false;
+      }
+    }
+  }
+
+  if (auto* lo = root.get("layouts")) {
+    if (!lo->is_map()) {
+      err.message =
+          "layouts: must be a mapping, e.g.\nlayouts:\n  auto_apply: true\n  auto_layout: work\n  monitor_layouts:\n    docked: work";
+      return false;
+    }
+    std::vector<std::string> valid = {"auto_apply", "auto_layout", "monitor_layouts"};
+    if (!check_unknown_keys(*lo, valid, "layouts", err)) return false;
+    if (!expect_bool(lo, "auto_apply", "layouts", err)) return false;
+    c.layouts.auto_apply = lo->boolean("auto_apply", false);
+    c.layouts.auto_layout = lo->str("auto_layout", "");
+    if (c.layouts.auto_layout.size() > 64) {
+      err.message = "layouts.auto_layout name is too long";
+      return false;
+    }
+    if (auto* ml = lo->get("monitor_layouts")) {
+      if (!ml->is_map()) {
+        err.message = "layouts.monitor_layouts must be a mapping of signature -> layout name";
+        return false;
+      }
+      for (auto& [k, v] : ml->as_map()) {
+        if (!v.is_string() || v.as_string().empty()) {
+          err.message = "layouts.monitor_layouts '" + k + "' must be a layout name";
+          return false;
+        }
+        if (k.size() > 256 || v.as_string().size() > 64) {
+          err.message = "layouts.monitor_layouts entry is too long";
+          return false;
+        }
+        c.layouts.monitor_layouts[k] = v.as_string();
+        if (c.layouts.monitor_layouts.size() > 16) {
+          err.message = "layouts.monitor_layouts supports at most 16 entries";
+          return false;
+        }
       }
     }
   }

@@ -7,6 +7,7 @@
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/plugin/trust.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -106,6 +107,12 @@ static bool load_manifest_file(const std::string& path, PluginManifest& m) {
   m.timeout_ms = static_cast<int>(root.integer("timeout_ms", 400));
   m.enabled = root.boolean("enabled", true);
   m.args = root.string_list("args");
+  m.version = root.str("version", "");
+  m.description = root.str("description", "");
+  m.sha256 = to_lower_utf8(root.str("sha256", root.str("hash", "")));
+  m.permissions = root.string_list("permissions");
+  for (auto& p : m.permissions) p = to_lower_utf8(p);
+  m.origin = root.str("origin", root.str("url", ""));
   if (m.id.empty()) m.id = path_stem(path);
   if (m.kind.empty()) m.kind = m.command.empty() ? "native" : "stdio";
   return true;
@@ -484,12 +491,18 @@ void PluginHost::load(const Config& cfg) {
 }
 
 std::vector<SearchResult> PluginHost::query(const std::string& text, const Config& cfg, std::size_t limit) {
-  (void)cfg;
   std::lock_guard<std::mutex> lock(impl_->mu);
   std::vector<SearchResult> out;
   if (text.empty()) return out;
+  std::vector<TrustEntry> trust;
+  bool gate = cfg.plugins.enabled && cfg.plugins.require_approval;
+  if (gate) trust = plugin_trust_load();
   auto req = plugin_query_json(text, limit);
   for (auto& n : impl_->native) {
+    if (gate) {
+      auto fp = plugin_fingerprint(n.manifest.id, n.manifest.sha256, n.manifest.path);
+      if (!plugin_is_approved(trust, n.manifest.id, fp, n.manifest.permissions)) continue;
+    }
     try {
       const char* resp = n.query ? n.query(req.c_str()) : nullptr;
       if (!resp) continue;
@@ -502,6 +515,11 @@ std::vector<SearchResult> PluginHost::query(const std::string& text, const Confi
   for (auto& m : impl_->manifests) {
     if (!m.enabled) continue;
     if (to_lower_utf8(m.kind) != "stdio") continue;
+    if (gate) {
+      std::string resolved = m.command.empty() ? m.path : m.command;
+      auto fp = plugin_fingerprint(m.id, m.sha256, resolved);
+      if (!plugin_is_approved(trust, m.id, fp, m.permissions)) continue;
+    }
     try {
       auto resp = run_stdio_once(m, req, m.timeout_ms);
       if (resp.empty()) continue;

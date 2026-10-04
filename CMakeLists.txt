@@ -95,6 +95,9 @@ set(WILFRED_CORE_SOURCES
   src/ai/assistant.cpp
   src/ai/vision.cpp
   src/plugin/host.cpp
+  src/plugin/trust.cpp
+  src/plugin/registry.cpp
+  src/plugin/mini.cpp
   src/sync/backup.cpp
   src/import/import.cpp
   src/query/classify.cpp
@@ -187,6 +190,9 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/convert.hpp
   include/wilfred/plugin/abi.hpp
   include/wilfred/plugin/host.hpp
+  include/wilfred/plugin/trust.hpp
+  include/wilfred/plugin/registry.hpp
+  include/wilfred/plugin/mini.hpp
   include/wilfred/sync/backup.hpp
   include/wilfred/import/import.hpp
   include/wilfred/query/classify.hpp

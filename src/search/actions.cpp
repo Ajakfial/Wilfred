@@ -21,6 +21,8 @@
 #include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/toggles.hpp"
+#include "wilfred/plugin/host.hpp"
+#include "wilfred/plugin/trust.hpp"
 #include "wilfred/search/transcribe.hpp"
 
 #include <chrono>
@@ -108,6 +110,11 @@ void attach_impl(SearchResult& r, bool include_open_with) {
   }
   if (r.category == "config" || r.category == "setup") {
     add("open", "Open");
+    add("copy_text", "Copy");
+    return;
+  }
+  if (r.category == "plugins") {
+    add("open", "Approve");
     add("copy_text", "Copy");
     return;
   }
@@ -247,7 +254,8 @@ bool is_file_like(const SearchResult& r) {
       r.category == "dupe" || r.category == "large" || r.category == "transcribe" ||
       r.category == "dictate" || r.category == "layout" || r.category == "convert" ||
       r.category == "bgremove" || r.category == "toggle" || r.category == "settings" ||
-      r.category == "config" || r.category == "setup" || r.category == "remote")
+      r.category == "config" || r.category == "setup" || r.category == "remote" ||
+      r.category == "plugins")
     return false;
   return true;
 }
@@ -368,12 +376,13 @@ bool native_simulate_paste() {
 bool execute_result_action(const SearchResult& r, const Config& cfg, const std::string& action_id) {
   auto id = action_id;
   if (id.empty()) {
-    // Toggle/settings/config/setup/remote cards apply on Enter.
+    // Toggle/settings/config/setup/remote/plugin cards apply on Enter.
     if (r.category == "toggle" || r.category == "settings" || r.category == "config" ||
-        r.category == "setup" || r.category == "remote") {
+        r.category == "setup" || r.category == "remote" || r.category == "plugins") {
       id = "open";
     } else if (r.payload.rfind("toggle:", 0) == 0 || r.payload.rfind("settings:", 0) == 0 ||
-               r.payload.rfind("config:", 0) == 0 || r.payload.rfind("setup:", 0) == 0) {
+               r.payload.rfind("config:", 0) == 0 || r.payload.rfind("setup:", 0) == 0 ||
+               r.payload.rfind("plugin_approve", 0) == 0) {
       id = "open";
     } else if (r.category == "process" || r.category == "kill") {
       // `process` list cards: copy by default, `kill` cards: kill by default.
@@ -505,9 +514,124 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   }
   if (r.action == ResultAction::Habit || r.action == ResultAction::None) return false;
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return true;
+  // Plugin trust approvals (category "plugins").
+  {
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    if (r.category == "plugins" || raw.rfind("plugin_approve", 0) == 0) {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      // Approve one (or all) pending plugins and record hash+permissions.
+      ConfigError cerr;
+      Config live = cfg;
+      {
+        Config reloaded = load_or_create_user_config(cerr);
+        live = reloaded;
+      }
+      PluginHost host;
+      host.load(live);
+      auto trust = plugin_trust_load();
+      bool changed = false;
+      auto approve_one = [&](const std::string& pid) {
+        for (auto& m : host.manifests()) {
+          if (m.id != pid) continue;
+          std::string resolved =
+              m.kind == "native" ? m.path : (m.command.empty() ? m.path : m.command);
+          auto fp = plugin_fingerprint(m.id, m.sha256, resolved);
+          bool found = false;
+          for (auto& e : trust) {
+            if (e.id == m.id) {
+              e.sha256 = fp;
+              e.permissions = m.permissions;
+              e.approved = true;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            TrustEntry e;
+            e.id = m.id;
+            e.sha256 = fp;
+            e.permissions = m.permissions;
+            e.approved = true;
+            trust.push_back(std::move(e));
+          }
+          changed = true;
+          return true;
+        }
+        return false;
+      };
+      if (raw == "plugin_approve_all") {
+        for (auto& m : host.manifests()) approve_one(m.id);
+      } else if (raw.rfind("plugin_approve:", 0) == 0) {
+        if (!approve_one(raw.substr(15))) {
+          log_warn("plugin", "unknown plugin");
+          return false;
+        }
+      } else {
+        return false;
+      }
+      if (changed && !plugin_trust_save(trust)) {
+        log_warn("plugin", "cannot write trust store");
+        return false;
+      }
+      write_clipboard("plugin approved — queries include it now");
+      return true;
+    }
+  }
   // System toggles + settings deep-links (categories "toggle"/"settings").
   {
     auto raw = r.payload.empty() ? r.path : r.payload;
+    // Typed settings editor payloads (from `settings`/`config` minis).
+    if (raw.rfind("config:set:", 0) == 0) {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      auto kv = raw.substr(11);
+      auto eq = kv.find('=');
+      if (eq == std::string::npos) {
+        log_warn("config", "bad set payload");
+        return false;
+      }
+      std::string err;
+      if (!config_set_value(kv.substr(0, eq), kv.substr(eq + 1), err)) {
+        log_warn("config", err.empty() ? "cannot update setting" : err);
+        return false;
+      }
+      write_clipboard(kv.substr(0, eq) + " updated — restart the daemon");
+      return true;
+    }
+    if (raw.rfind("config:get:", 0) == 0) {
+      auto key = raw.substr(11);
+      Config fresh = cfg;
+      {
+        ConfigError cerr;
+        std::string p = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+        Config reloaded;
+        if (load_config_file(p, reloaded, cerr)) fresh = reloaded;
+      }
+      std::string val, err;
+      if (!config_get_value(fresh, key, val, err)) {
+        log_warn("config", err.empty() ? "unknown setting" : err);
+        return false;
+      }
+      return write_clipboard(key + " = " + val);
+    }
+    if (raw == "config:reset") {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      std::string err;
+      if (!config_reset_default(err)) {
+        log_warn("config", err.empty() ? "reset failed" : err);
+        return false;
+      }
+      write_clipboard("reset to defaults — restart the daemon");
+      return true;
+    }
     if (r.category == "toggle" || raw.rfind("toggle:", 0) == 0) {
       if (id == "copy_text" || id == "copy") {
         auto t = raw.empty() ? r.title : raw;
@@ -825,6 +949,18 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     return true;
   }
   // Window layouts + focus-by-name (automation-friendly window steps).
+  // Tiling presets (`tile:<preset>`) tile current windows; layout steps
+  // apply saved files. Both are shared with the daemon auto-apply.
+  if (id.rfind("tile:", 0) == 0 || (r.category == "layout" && r.payload.rfind("tile:", 0) == 0 && id == "open")) {
+    auto preset = id.rfind("tile:", 0) == 0 ? id.substr(5) : r.payload.substr(5);
+    if (preset.empty()) preset = "grid";
+    std::string err;
+    if (!LayoutStore::apply_tiling_preset(preset, err)) {
+      log_warn("tile", err.empty() ? "tiling failed" : err);
+      return false;
+    }
+    return true;
+  }
   if (id.rfind("layout_apply:", 0) == 0 || id.rfind("focus_window:", 0) == 0) {
     bool focus_only = id.rfind("focus_window:", 0) == 0;
     auto name = to_lower_utf8(id.substr(id.find(':') + 1));

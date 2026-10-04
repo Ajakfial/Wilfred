@@ -80,5 +80,15 @@ bool native_open_settings(const std::string&, std::string& error) {
   return false;
 }
 
+bool native_primary_work_area(NativeWorkArea&, std::string& error) {
+  error = "window management is not available on iOS";
+  return false;
+}
+
+bool native_monitor_signature(std::string&, std::string& error) {
+  error = "monitor detection is not available on iOS";
+  return false;
+}
+
 #endif
 }  // namespace wilfred

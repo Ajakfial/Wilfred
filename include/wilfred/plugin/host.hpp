@@ -18,6 +18,12 @@ struct PluginManifest {
   std::string directory;
   int timeout_ms{400};
   bool enabled{true};
+  // Trust/registry metadata (all optional; empty = local install).
+  std::string version;
+  std::string description;
+  std::string sha256;
+  std::vector<std::string> permissions;
+  std::string origin;
 };
 
 std::vector<SearchResult> parse_plugin_results_json(const std::string& json,

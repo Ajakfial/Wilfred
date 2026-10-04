@@ -321,5 +321,55 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
   }
 }
 
+bool native_primary_work_area(NativeWorkArea& out, std::string& error) {
+  @autoreleasepool {
+    NSScreen* screen = [NSScreen mainScreen];
+    if (!screen) {
+      error = "no main screen";
+      return false;
+    }
+    NSRect frame = screen.visibleFrame;
+    out.x = static_cast<int>(frame.origin.x);
+    out.y = static_cast<int>(frame.origin.y);
+    out.w = static_cast<int>(frame.size.width);
+    out.h = static_cast<int>(frame.size.height);
+    if (out.w <= 0 || out.h <= 0) {
+      error = "invalid work area";
+      return false;
+    }
+    return true;
+  }
+}
+
+bool native_monitor_signature(std::string& sig, std::string& error) {
+  @autoreleasepool {
+    NSArray<NSScreen*>* screens = [NSScreen screens];
+    if (!screens || screens.count == 0) {
+      error = "no screens found";
+      return false;
+    }
+    NSMutableArray<NSString*>* parts = [NSMutableArray array];
+    for (NSScreen* s in screens) {
+      NSRect f = s.frame;
+      [parts addObject:[NSString stringWithFormat:@"%dx%d@%d,%d", static_cast<int>(f.size.width),
+                                                  static_cast<int>(f.size.height),
+                                                  static_cast<int>(f.origin.x),
+                                                  static_cast<int>(f.origin.y)]];
+    }
+    NSArray<NSString*>* sorted = [parts sortedArrayUsingSelector:@selector(compare:)];
+    NSMutableString* m = [NSMutableString string];
+    for (NSUInteger i = 0; i < sorted.count; ++i) {
+      if (i) [m appendString:@"|"];
+      [m appendString:sorted[i]];
+    }
+    sig = m.UTF8String ? m.UTF8String : "";
+    if (sig.empty()) {
+      error = "cannot build monitor signature";
+      return false;
+    }
+    return true;
+  }
+}
+
 #endif
 }  // namespace wilfred
