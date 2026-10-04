@@ -23,6 +23,7 @@
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
 #include "wilfred/search/semantic.hpp"
@@ -157,6 +158,8 @@ bool Service::boot() {
     interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (cfg_.remotes.enabled && !cfg_.remotes.sources.empty())
     interpreter_.providers().add(std::make_unique<RemoteProvider>());
+  if (cfg_.packages.enabled)
+    interpreter_.providers().add(std::make_unique<PkgProvider>());
   return true;
 }
 
@@ -609,6 +612,16 @@ int Service::run_status() {  if (!boot()) return 1;
             << " ocr=" << (cfg_.sources.ocr ? "on" : "off") << "\n"
             << "remotes: " << (cfg_.remotes.enabled ? "on" : "off") << " ("
             << cfg_.remotes.sources.size() << " sources)\n"
+            << "packages: " << (cfg_.packages.enabled ? "on" : "off") << " (";
+  {
+    auto mgrs = pkg_detected_managers(cfg_);
+    for (std::size_t i = 0; i < mgrs.size(); ++i) {
+      if (i) std::cout << ",";
+      std::cout << mgrs[i];
+    }
+    if (mgrs.empty()) std::cout << "none on PATH";
+  }
+  std::cout << ")\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
   return 0;
 }

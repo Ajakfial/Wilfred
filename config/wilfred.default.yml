@@ -233,6 +233,16 @@ remotes:
   #     headers:
   #       Authorization: "Bearer <token>"
 
+# System package-manager search (desktop only: winget, brew, apt, ...).
+# Fires only on explicit `<manager> <query>` (e.g. `winget firefox`),
+# never on plain file searches. Empty managers = per-OS defaults
+# (Windows: winget/choco, macOS: brew, Linux: apt/flatpak/pacman/brew).
+packages:
+  enabled: true
+  max_results: 8
+  timeout_ms: 8000
+  managers: []
+
 # Saved window layouts + tiling (desktop only).
 layouts:
   # Auto-apply a layout when the monitor set changes (daemon polls).

@@ -21,6 +21,7 @@
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/nettools.hpp"
+#include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
 #include "wilfred/search/screenshot.hpp"
@@ -1514,6 +1515,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Config, true);
   else if (key == "plugins" || key == "plugin" || key == "extensions" || key == "extension")
     set(MiniKind::Plugins, true);
+  else if (key == "packages" || key == "package" || key == "pkg")
+    set(MiniKind::Packages, true);
   return it;
 }
 
@@ -1532,6 +1535,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Setup) return setup_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Config) return config_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Plugins) return plugin_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Packages) return pkg_managers_results(intent.remainder, cfg);
 
   if (intent.kind == MiniKind::Time) {
     if (!intent.remainder.empty()) {

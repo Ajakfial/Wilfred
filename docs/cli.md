@@ -98,8 +98,8 @@ Unknown workflow names list the configured ones on stderr. See
 
 Runs any result action id directly (`copy_path+reveal`, `workflow:review`,
 `media:play`, `focus_window:code`, `layout_apply:work`, `tile:grid`,
-`config:set:search.max_results=40`, ...), mirroring the `exec`/`action` IPC
-command and the `POST /exec` HTTP API:
+`config:set:search.max_results=40`, `pkg-install:winget:Mozilla.Firefox`, ...),
+mirroring the `exec`/`action` IPC command and the `POST /exec` HTTP API:
 
 ```
 wilfred exec copy_path C:/tmp/notes.md

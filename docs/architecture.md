@@ -201,8 +201,10 @@ Two different extension points exist:
   (opt-in trigram soft-match over the index, `providers.semantic`),
   `browser/library.hpp` (bookmarks, history, open tabs,
   `browser.library`), `sources/sources.hpp` (calendar, contacts, notes
-  files) and `search/remote.hpp` (opt-in `remotes:` HTTP endpoints with
-  per-source headers and caps). Providers are compile-time except
+  files), `search/remote.hpp` (opt-in `remotes:` HTTP endpoints with
+  per-source headers and caps) and `search/pkg.hpp` (system package
+  managers — `winget`/`brew`/`apt`/`choco`/`flatpak`/`pacman`, explicit
+  `<manager> <query>` only, `packages:`). Providers are compile-time except
   `remotes:`, which end users configure without recompiling.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native

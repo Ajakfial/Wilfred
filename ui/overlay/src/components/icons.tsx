@@ -45,6 +45,7 @@ export type IconName =
   | "user"
   | "note"
   | "puzzle"
+  | "package"
   | "help"
   | "gauge"
   | "camera"
@@ -360,6 +361,14 @@ const PATHS: Record<string, JSX.Element> = {
       <path d="M19 11V8a2 2 0 0 0-2-2h-2V5a2 2 0 0 0-4 0v1H9a2 2 0 0 0-2 2v1H5a2 2 0 0 0 0 4h1v2a2 2 0 0 0 2 2h1v1a2 2 0 0 0 4 0v-1h2a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 0-4Z" />
     </>,
   ),
+  package: P(
+    <>
+      <path d="M16.5 9.4 7.55 4.24" />
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </>,
+  ),
   help: P(
     <>
       <circle cx="12" cy="12" r="10" />
@@ -646,6 +655,7 @@ export function iconForKind(kind: string, action?: string, category?: string): I
   if (action === "web") return "globe";
   if (action === "habit") return "history";
   if (action === "plugin" || category === "plugin") return "puzzle";
+  if (category === "pkg" || kind === "pkg") return "package";
   if (category === "clipboard" || kind === "clipboard") return "clipboardList";
   if (category === "macro" || kind === "macro") return "zap";
   if (category === "mini" && (kind === "mini" || kind === "semantic")) return "sparkles";
@@ -738,6 +748,8 @@ export function iconForKind(kind: string, action?: string, category?: string): I
       return "note";
     case "plugin":
       return "puzzle";
+    case "pkg":
+      return "package";
     case "help":
       return "help";
     case "speedtest":

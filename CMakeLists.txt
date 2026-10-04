@@ -91,6 +91,7 @@ set(WILFRED_CORE_SOURCES
   src/search/toggles.cpp
   src/search/remote.cpp
   src/search/setup.cpp
+  src/search/pkg.cpp
   src/sources/sources.cpp
   src/ai/assistant.cpp
   src/ai/vision.cpp
@@ -181,6 +182,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/toggles.hpp
   include/wilfred/search/remote.hpp
   include/wilfred/search/setup.hpp
+  include/wilfred/search/pkg.hpp
   include/wilfred/sources/sources.hpp
   include/wilfred/ai/assistant.hpp
   include/wilfred/ai/vision.hpp
@@ -523,6 +525,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_wayland.cpp
   tests/test_bsd.cpp
   tests/test_toggles_remote_setup.cpp
+  tests/test_packages.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

@@ -150,11 +150,13 @@ export const badges: Record<string, string> = {
   setup: "wand",
   toggle: "power",
   remote: "globe",
+  pkg: "package",
 };
 
 export const groups: Record<string, string> = {
   application: "app",
   executable: "app",
+  pkg: "app",
   directory: "folder",
   document: "doc",
   content: "doc",
@@ -251,6 +253,7 @@ const kindLabels: Record<string, string> = {
   setup: "Setup",
   toggle: "Toggle",
   remote: "Remote",
+  pkg: "Package",
 };
 
 export function kindLabel(k: string): string {
@@ -278,6 +281,7 @@ export function kindOf(item: ResultItem): string {
   if (item.category === "setup") return item.kind || "setup";
   if (item.category === "config") return item.kind || "config";
   if (item.category === "remote") return item.kind || "remote";
+  if (item.category === "pkg") return item.kind || "pkg";
   if (item.action === "habit") return "habit";
   if (item.category === "clipboard" || item.kind === "clipboard") return "clipboard";
   if (item.category === "macro" || item.kind === "macro") return "macro";
@@ -490,6 +494,7 @@ export function primaryLabel(item: ResultItem | undefined): string {
   if (item.category === "settings") return first || "Open settings";
   if (item.category === "setup" || item.category === "config") return first || "Open";
   if (item.category === "remote") return "Open in browser";
+  if (item.category === "pkg") return first || "Install";
   if (k === "application") return "Open application";
   if (k === "directory") return "Open folder";
   if (first && first !== "Open") return first;

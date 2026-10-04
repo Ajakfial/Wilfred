@@ -330,7 +330,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "macros",   "scopes",  "custom_metadata", "history",
                                           "clipboard", "hotkey", "browser", "logging",
                                           "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "remotes", "layouts", "transcription", "api",
+                                          "ai",       "sources", "remotes", "packages", "layouts",
+                                          "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
                                           "app_actions", "hotkeys"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
@@ -947,6 +948,48 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         err.message = "remotes.sources must be a list of {name, url} mappings or a name->url map";
         return false;
       }
+    }
+  }
+
+  if (auto* pk = root.get("packages")) {
+    if (!pk->is_map()) {
+      err.message =
+          "packages: must be a mapping, e.g.\npackages:\n  enabled: true\n  managers: [winget]";
+      return false;
+    }
+    std::vector<std::string> valid = {"enabled", "max_results", "timeout_ms", "managers"};
+    if (!check_unknown_keys(*pk, valid, "packages", err)) return false;
+    if (!expect_bool(pk, "enabled", "packages", err)) return false;
+    for (auto* k : {"max_results", "timeout_ms"})
+      if (!expect_int(pk, k, "packages", err)) return false;
+    c.packages.enabled = pk->boolean("enabled", true);
+    c.packages.max_results = static_cast<int>(pk->integer("max_results", 8));
+    c.packages.timeout_ms = static_cast<int>(pk->integer("timeout_ms", 8000));
+    if (c.packages.max_results < 1 || c.packages.max_results > 20) {
+      err.message = "packages.max_results must be between 1 and 20";
+      return false;
+    }
+    if (c.packages.timeout_ms < 2000 || c.packages.timeout_ms > 30000) {
+      err.message = "packages.timeout_ms must be between 2000 and 30000";
+      return false;
+    }
+    // Must match pkg_known_managers() in search/pkg.hpp.
+    static const char* known[] = {"winget", "brew", "apt", "choco", "flatpak", "pacman",
+                                  nullptr};
+    auto managers = pk->string_list("managers");
+    if (managers.size() == 1 && !managers[0].empty() && managers[0].front() == '[')
+      managers = split_flow_or_plus(managers[0]);  // inline [brew, apt] form
+    for (auto& m : managers) {
+      auto l = to_lower_utf8(m);
+      bool ok = false;
+      for (auto** p = known; *p; ++p)
+        if (l == *p) ok = true;
+      if (!ok) {
+        err.message = "packages.managers has unknown manager '" + m +
+                      "' (try: winget, brew, apt, choco, flatpak, pacman)";
+        return false;
+      }
+      c.packages.managers.push_back(l);
     }
   }
 

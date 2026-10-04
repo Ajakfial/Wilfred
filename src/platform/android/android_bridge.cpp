@@ -17,6 +17,7 @@
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/engine.hpp"
 #include "wilfred/search/layouts.hpp"
+#include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
 #include "wilfred/search/semantic.hpp"
@@ -121,6 +122,8 @@ bool MobileCore::boot(const std::string& files_dir, std::string& error) {
     st.interpreter.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (st.cfg.remotes.enabled && !st.cfg.remotes.sources.empty())
     st.interpreter.providers().add(std::make_unique<RemoteProvider>());
+  if (st.cfg.packages.enabled)
+    st.interpreter.providers().add(std::make_unique<PkgProvider>());
   st.booted = true;
   return true;
 }

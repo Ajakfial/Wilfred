@@ -16,6 +16,7 @@
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/media.hpp"
+#include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
 #include "wilfred/search/setup.hpp"
@@ -121,6 +122,15 @@ void attach_impl(SearchResult& r, bool include_open_with) {
   if (r.category == "remote") {
     add("open", "Open");
     add("copy_text", "Copy");
+    return;
+  }
+  if (r.category == "pkg") {
+    if (r.path.rfind("pkg-install:", 0) == 0) {
+      add("open", "Install");
+      add("copy_text", "Copy install command");
+    } else {
+      add("copy_text", "Copy example");
+    }
     return;
   }
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert ||
@@ -255,7 +265,7 @@ bool is_file_like(const SearchResult& r) {
       r.category == "dictate" || r.category == "layout" || r.category == "convert" ||
       r.category == "bgremove" || r.category == "toggle" || r.category == "settings" ||
       r.category == "config" || r.category == "setup" || r.category == "remote" ||
-      r.category == "plugins")
+      r.category == "plugins" || r.category == "pkg")
     return false;
   return true;
 }
@@ -329,6 +339,7 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id.rfind("open_with:", 0) == 0) return true;
   if (action_id.rfind("workflow:", 0) == 0) return true;
   if (action_id == "kill_process" || action_id.rfind("media:", 0) == 0) return true;
+  if (action_id.rfind("pkg-install:", 0) == 0) return true;
   if (action_id.rfind("window_", 0) == 0) return true;
   if (action_id == "transcribe_run") return true;
   if (action_id == "convert_run") return true;
@@ -384,6 +395,9 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
                r.payload.rfind("config:", 0) == 0 || r.payload.rfind("setup:", 0) == 0 ||
                r.payload.rfind("plugin_approve", 0) == 0) {
       id = "open";
+    } else if (r.category == "pkg") {
+      // Install cards install on Enter; manager list cards copy the example.
+      id = r.path.rfind("pkg-install:", 0) == 0 ? "open" : "copy_text";
     } else if (r.category == "process" || r.category == "kill") {
       // `process` list cards: copy by default, `kill` cards: kill by default.
       if (r.category == "kill") id = "kill_process";
@@ -1031,6 +1045,31 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     if (raw.rfind("media:", 0) == 0) {
       if (id == "open") return execute_result_action(r, cfg, raw);
       // copy_text falls through to generic copy below.
+    }
+  }
+  // Package installs: `pkg-install:<manager>:<id>` (flatpak encodes the
+  // remote as `<remote>:<app-id>`). Installs block — they take minutes —
+  // and report success only when the tool exits 0.
+  if (id.rfind("pkg-install:", 0) == 0) {
+    auto rest = id.substr(12);
+    auto colon = rest.find(':');
+    if (colon == std::string::npos || colon == 0 || colon + 1 >= rest.size()) {
+      log_warn("pkg", "bad install payload");
+      return false;
+    }
+    std::string err;
+    if (!pkg_install(rest.substr(0, colon), rest.substr(colon + 1), err)) {
+      log_warn("pkg", err.empty() ? "install failed" : err);
+      return false;
+    }
+    return true;
+  }
+  if (r.category == "pkg" && (id == "open" || id == "copy_text")) {
+    // Install cards carry path "pkg-install:..."; running beats copying.
+    auto raw = r.path.empty() ? r.payload : r.path;
+    if (raw.rfind("pkg-install:", 0) == 0) {
+      if (id == "open") return execute_result_action(r, cfg, raw);
+      // copy_text falls through to generic copy below (payload is the command).
     }
   }
   // Timers / notes / todos maintenance actions.

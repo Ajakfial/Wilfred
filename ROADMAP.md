@@ -45,19 +45,21 @@ first-run wizard (`wilfred setup`), opt-in remote search backends
 (`layouts.auto_apply`), plugin trust-on-first-use approvals plus an
 optional registry index (`wilfred plugin list/install/approve`), and
 native Android/iOS handling for the toggle/settings cards (system
-settings intents, `AudioManager` volume). See
+settings intents, `AudioManager` volume). Package-manager search
+(`winget`/`brew`/`apt`/`choco`/`flatpak`/`pacman` with install on Enter)
+and PR-gated tests (`.github/workflows/tests.yml`, desktop + overlay
+bundle check) also shipped. See
 [docs/query-language.md](docs/query-language.md),
 [docs/configuration.md](docs/configuration.md), and
 [docs/plugins.md](docs/plugins.md).
 
 ## Near-term
 
-* **Run tests in CI on every PR.** The current workflows are
-  `.github/workflows/lint.yml` (formatting/lint) and
-  `.github/workflows/release.yml` (tagged release builds plus Windows
-  sign/MSI/Choco steps); neither runs `ctest` on pull requests yet
-  (contributors run it locally per CONTRIBUTING.md). Adding a CI job for
-  this is the highest-priority infra gap.
+* ~~**Run tests in CI on every PR.**~~ Done —
+  `.github/workflows/tests.yml` builds + runs `ctest` on Windows, Linux
+  and macOS for every PR and `main` push (BSD stays on nightly — VM
+  runners are slow), plus an overlay job (`typecheck`, bundle build, and
+  a stale-`dist/` check so TS changes always ship their bundle).
 * ~~**Enforce formatting/linting in CI.**~~ Done —
   `.github/workflows/lint.yml` runs `clang-format` and `clang-tidy` on
   changed C/C++ files for every PR (scoped to the diff, not a full-tree

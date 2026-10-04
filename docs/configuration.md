@@ -339,6 +339,32 @@ remotes:
 | `max_results` per source | `0` | Per-source cap (0 = use global `max_results`); list form only |
 | `headers` per source | `{}` | Extra request headers, e.g. `Authorization: Bearer <token>` (list form only; never logged) |
 
+## `packages:` — system package-manager search (desktop)
+
+On by default, but fires only on explicit `<manager> <query>`
+invocations (`winget firefox`, `brew switch`, `apt vlc`) — plain file
+searches never touch a package manager, so there is no per-keystroke
+cost and no surprise network traffic. Each hit installs on Enter
+(`winget`/`brew`/`choco`/`flatpak` run headless; `apt`/`pacman` use
+`polkit`, falling back to a copy-pasteable `sudo` command); `Tab` copies
+the shell install command instead. Type `packages` for the detected
+manager list.
+
+```yaml
+packages:
+  enabled: true
+  max_results: 8
+  timeout_ms: 8000
+  managers: []  # empty = per-OS defaults (Windows: winget/choco, macOS: brew)
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master switch |
+| `max_results` | `8` | Cap per query (1–20) |
+| `timeout_ms` | `8000` | Per-tool search timeout, hard kill past it (2000–30000) |
+| `managers` | `[]` | Allowed ids from `winget, brew, apt, choco, flatpak, pacman`; empty = per-OS defaults |
+
 ## `layouts:` — saved layouts, tiling, monitor auto-apply (desktop)
 
 | Key | Default | Meaning |

@@ -34,6 +34,7 @@ int main() {
   test_wayland();
   test_bsd();
   test_toggles_remote_setup();
+  test_packages();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

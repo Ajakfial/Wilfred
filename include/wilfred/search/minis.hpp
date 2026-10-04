@@ -78,6 +78,7 @@ enum class MiniKind {
   Setup,
   Config,
   Plugins,
+  Packages,
 };
 
 struct MiniIntent {

@@ -213,6 +213,8 @@ synthetic result card instead of searching the index
 | `config set <key> <value>` | `config edit` | Same editor as `settings edit` (`config:get:`, `config:reset` supported) |
 | `plugins [approve]` | `plugin`, `extensions` | Installed list + trust approvals (`plugins approve <id>`, `approve all`; `wilfred plugin …`) |
 | `layout tile <preset>` | `tile`, `tiling` | Tile open windows (`halves`, `thirds`, `grid`, `columns N`, `rows N`, `stack`; `wilfred tile …`) |
+| `<manager> <query>` | `pkg <manager> <query>` | Package search (`winget firefox`, `brew switch`, `apt vlc`; Enter installs, `Tab` copies the command) |
+| `packages [filter]` | `package`, `pkg` | Detected manager list with usage examples |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
 `clips code`, `clips ip` (plus an optional text query after the type).

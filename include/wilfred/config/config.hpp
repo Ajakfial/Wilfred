@@ -214,6 +214,19 @@ struct Config {
     int max_results{8};
   } remotes;
 
+  struct Packages {
+    // System package-manager search (winget, brew, apt, ...). Fires only
+    // on explicit `<manager> <query>` invocations, never on plain file
+    // searches, so enabled-by-default is safe: no work happens unless the
+    // query names a manager.
+    bool enabled{true};
+    int max_results{8};
+    int timeout_ms{8000};
+    // Allowed manager ids; empty means per-OS defaults
+    // (Windows: winget/choco, macOS: brew, Linux: apt/flatpak/pacman/brew).
+    std::vector<std::string> managers;
+  } packages;
+
   struct Transcription {
     // On-demand speech-to-text for audio files (`transcribe ...`).
     // Optional CLIs like OCR: whisper.cpp (`whisper-cli`) for recognition,

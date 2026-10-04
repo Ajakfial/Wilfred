@@ -415,6 +415,41 @@ export function demoQuery(q: string): ResultItem[] {
       ],
     },
   ];
+  const pkgsDemo: ResultItem[] = [
+    {
+      title: "Mozilla Firefox",
+      subtitle: "Mozilla.Firefox · 131.0 · via winget — Enter installs",
+      kind: "pkg",
+      category: "pkg",
+      path: "pkg-install:winget:Mozilla.Firefox",
+      payload: "winget install --exact --id Mozilla.Firefox",
+      action: "mini",
+      actions: [
+        { id: "open", label: "Install" },
+        { id: "copy_text", label: "Copy install command" },
+      ],
+    },
+  ];
+  const pkgManagersDemo: ResultItem[] = [
+    {
+      title: "winget — available",
+      subtitle: "e.g. `winget firefox` — Enter copies an example",
+      kind: "pkg",
+      category: "pkg",
+      payload: "winget firefox",
+      action: "mini",
+      actions: [{ id: "copy_text", label: "Copy example" }],
+    },
+    {
+      title: "brew — available",
+      subtitle: "e.g. `brew firefox` — Enter copies an example",
+      kind: "pkg",
+      category: "pkg",
+      payload: "brew firefox",
+      action: "mini",
+      actions: [{ id: "copy_text", label: "Copy example" }],
+    },
+  ];
   const macros: ResultItem[] = [
     { title: "!yt cats", subtitle: "https://www.youtube.com/results?search_query=cats", kind: "macro", category: "macro", action: "web" },
   ];
@@ -487,6 +522,14 @@ export function demoQuery(q: string): ResultItem[] {
                       ? remotesDemo
                       : needle === "toggle" || needle.startsWith("toggle ")
                         ? toggles
+                        : needle === "winget" || needle.startsWith("winget ") ||
+                            needle === "brew" || needle.startsWith("brew ") ||
+                            needle === "apt" || needle.startsWith("apt ") ||
+                            needle.startsWith("pkg ")
+                          ? pkgsDemo
+                          : needle === "packages" || needle === "package" || needle === "pkg" ||
+                              needle.startsWith("packages ") || needle.startsWith("package ")
+                            ? pkgManagersDemo
                         : needle === "yt cats" || needle.startsWith("!yt")
                           ? macros
                           : needle === "clip" || needle === "clipboard"
@@ -526,6 +569,7 @@ const demoVocab = [
   "lorem", "json", "lock", "sleep", "shutdown", "restart", "logout", "empty trash",
   "wifi", "bluetooth", "volume", "brightness", "settings", "setup", "config",
   "remote", "toggle",
+  "winget", "brew", "apt", "packages", "choco", "flatpak", "pacman",
   "firefox", "notes", "finder", "files", "visual studio code",
 ];
 

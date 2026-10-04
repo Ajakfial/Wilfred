@@ -53,6 +53,7 @@ single summonable search bar.
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
 * System toggles (`wifi on/off`, `bluetooth toggle`, `volume 50/mute`, `brightness 70`) + settings deep-links (`settings wifi/bluetooth/sound/display/...`) — real OS backends on Windows/macOS/Linux, honest unsupported errors on mobile/BSD gaps
+* Package-manager search (`winget firefox`, `brew switch`, `apt vlc` — Enter installs, `Tab` copies the command; `packages` lists detected managers)
 * Settings + setup (`settings config open/validate`, `settings edit <key> <value>`, `setup`, `wilfred setup --overwrite`, `wilfred config-get/set/reset`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` — your endpoints only, off by default; per-source `headers:` + `max_results:`)
 * Plugins with trust-on-first-use (`plugins` approval cards, `wilfred plugin list/install/approve/revoke`, optional `plugins.registry` index, sha256-verified installs)
 * Window tiling (`layout tile halves|thirds|grid|columns N|rows N|stack`, `wilfred tile …`) + monitor-change auto-apply (`layouts.auto_apply`, `auto_layout`, `monitor_layouts`)
@@ -193,6 +194,7 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `settings edit search.max_results 40` / `settings get hotkey.key` | Update/read one setting in place, validated (`wilfred config-set/get`) |
 | `plugins` / `plugins approve demo` | Plugin list + trust approvals (`wilfred plugin list/install/approve`) |
 | `layout tile grid` / `tile halves` / `layout work` | Tile open windows or apply a saved layout (`wilfred tile`, `layouts.auto_apply` on monitor change) |
+| `winget firefox` / `brew switch` / `apt vlc` | Package search — Enter installs, `Tab` copies the command (`packages` lists managers) |
 | `clip` / `clips` | Clipboard and recent clips |
 | `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |
 
@@ -210,7 +212,7 @@ Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 * `plugin` — native `.dll`/`.so`/`.dylib` ABI and stdio plugins, trust store, registry index
 * `sync` — local backup archives and optional remote push/pull
 * `import` — cross-OS launcher settings importer (hotkeys, searches, snippets)
-* `providers` — registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes)
+* `providers` — registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes, packages)
 
 ## Tests and benchmarks
 
