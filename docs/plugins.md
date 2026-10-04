@@ -209,6 +209,24 @@ window, printing something) as a side effect of handling this call.
   modest) isolation boundary compared to native plugins, but still run with
   the same user privileges as Wilfred itself.
 
+## Registry and trust CLI
+
+With `plugins.registry` set to a JSON index (`{"plugins": [{id, version,
+kind, url, sha256, description, permissions}]}`):
+
+```
+wilfred plugin list              # registry entries (or installed plugins)
+wilfred plugin pending           # ids awaiting trust approval
+wilfred plugin install <id>      # download, sha256-verify, write plugin.yml
+wilfred plugin approve <id>      # trust this fingerprint (--all for all)
+wilfred plugin revoke <id>       # un-trust; the plugin is skipped again
+```
+
+Installs support single-file artifacts and `.zip` archives (extracted
+with the updater's extractor). The overlay `plugins` mini mirrors all of
+this: pending approvals appear as Approve cards, and `plugins approve
+<id>` approves one id. See [cli.md](cli.md) for exit codes.
+
 ## Example: a minimal stdio plugin (Python)
 
 ```python

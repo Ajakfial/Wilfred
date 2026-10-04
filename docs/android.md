@@ -77,8 +77,16 @@ files dir.
   side-effect actions via `execute_action` (timer stop, note/todo delete,
   clip pin/clear, copy flavors, hash, workflows/layouts).
 - File peek uses `preview_json` (exists/is_dir/size/text head).
-- Window management, global hotkeys, screenshots, and process/media control
-  are desktop-only and report explicit errors on Android.
+- `wifi` / `bluetooth` cards open the system Wi-Fi/Bluetooth settings
+  (apps cannot toggle radios since Android 10); `volume` cards drive
+  `AudioManager` for real (set/mute/up/down on `STREAM_MUSIC`);
+  `brightness` writes `SCREEN_BRIGHTNESS` when `WRITE_SETTINGS` is
+  granted, otherwise opens display settings. `settings <page>` cards open
+  the matching `Settings.ACTION_*` page.
+- `config` / `setup` / `plugins` cards run through C++ against the
+  app-private `wilfred.yml` and trust store (edit/validate/approve all
+  work); `tile:` / `layout_apply:` cards report desktop-only, like window
+  management, global hotkeys, screenshots, and process/media control.
 
 ## Release builds (CI)
 

@@ -207,10 +207,10 @@ Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 * `query` — classification + interpreter
 * `math` — recursive-descent calculator
 * `apps` / `browser` / `history` / `hotkey` / `ipc` / `ui` / `service`
-* `plugin` — native `.dll`/`.so`/`.dylib` ABI and stdio plugins
+* `plugin` — native `.dll`/`.so`/`.dylib` ABI and stdio plugins, trust store, registry index
 * `sync` — local backup archives and optional remote push/pull
 * `import` — cross-OS launcher settings importer (hotkeys, searches, snippets)
-* `providers` — registry for additional search backends
+* `providers` — registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes)
 
 ## Tests and benchmarks
 

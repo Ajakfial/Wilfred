@@ -68,8 +68,13 @@ WILFRED_VERSION_NAME=1.2.3 WILFRED_VERSION_CODE=1002003 \
   (timer stop, note/todo delete, clip pin/clear, copy flavors, hash,
   workflows/layouts).
 - File peek uses `preview_json` (exists/is_dir/size/text head).
-- Window management, global hotkeys, screenshots, app launching, and
-  process/media control are desktop-only (or Android-only) and report
+- `wifi` / `bluetooth` / `settings` cards open the Settings app (the only
+  settings entry point Apple allows third-party apps); `volume` /
+  `brightness` cards explain that the side buttons / Control Center own
+  them on iOS. `config` / `setup` / `plugins` cards run through C++
+  against the sandbox `wilfred.yml` and trust store.
+- Window management, tiling, global hotkeys, screenshots, app launching,
+  and process/media control are desktop-only (or Android-only) and report
   explicit messages on iOS. iOS exposes no installed-app list, so
   `register_app` is never called and there are no `package:` results.
 

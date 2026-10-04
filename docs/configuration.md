@@ -19,6 +19,21 @@ the path above and edit, or just edit the file Wilfred creates on first run.
 There is no live-reload: restart the daemon (or re-run the CLI) after
 editing.
 
+## Editing without hand-editing YAML
+
+Scalar and list keys can be read and written in place, validated against
+the same schema the daemon uses:
+
+- Overlay: `settings get <section.key>`, `settings edit <section.key>
+  <value>` (also `config set/get`), `settings reset` for defaults.
+- CLI: `wilfred config-get <key>`, `wilfred config-set <key> <value>`
+  (lists take comma-separated values), `wilfred config-reset` (backs up
+  to `.pre-reset.bak` first), `wilfred setup` for the first-run wizard.
+
+`config-set` refuses to write when the result fails validation, and
+workflows/quicklinks/macros/aliases (nested maps) stay file-edited —
+the editor covers the ~70 scalar/list keys, not the whole schema.
+
 ## `search:` — query-time behavior
 
 | Key | Default | Meaning |

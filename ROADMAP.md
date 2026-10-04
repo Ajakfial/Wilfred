@@ -35,6 +35,21 @@ stamp (VERSIONINFO), Authenticode signing when secrets are configured
 (see [docs/signing.md](docs/signing.md)), a per-user `.msi` installer,
 and a Chocolatey package (see [docs/installer.md](docs/installer.md)).
 
+Also shipped since: system toggles (`wifi`, `bluetooth`, `volume`,
+`brightness` with real per-OS backends) plus settings deep-links
+(`settings wifi/bluetooth/sound/...`), a `settings` config editor
+(`settings edit <key> <value>`, `wilfred config-set/get`), the `setup`
+first-run wizard (`wilfred setup`), opt-in remote search backends
+(`remotes:` with per-source headers and caps), window tiling presets
+(`layout tile …`, `wilfred tile`) with monitor-change auto-apply
+(`layouts.auto_apply`), plugin trust-on-first-use approvals plus an
+optional registry index (`wilfred plugin list/install/approve`), and
+native Android/iOS handling for the toggle/settings cards (system
+settings intents, `AudioManager` volume). See
+[docs/query-language.md](docs/query-language.md),
+[docs/configuration.md](docs/configuration.md), and
+[docs/plugins.md](docs/plugins.md).
+
 ## Near-term
 
 * **Run tests in CI on every PR.** The current workflows are
@@ -59,10 +74,11 @@ and a Chocolatey package (see [docs/installer.md](docs/installer.md)).
 
 ## Mid-term
 
-* **Plugin discovery/registry.** Plugins ([docs/plugins.md](docs/plugins.md))
-  are currently found only via local directories; a lightweight registry
-  or index of known third-party plugins would make them easier to find
-  and trust.
+* ~~**Plugin discovery/registry.**~~ Done — `plugins.registry` points at a
+  JSON index for `wilfred plugin list/install` (sha256-verified), and
+  trust-on-first-use approvals (`wilfred plugin approve`, `plugins`
+  overlay cards) gate new/changed plugins (see
+  [docs/plugins.md](docs/plugins.md)).
 * ~~**Config validation UX.**~~ Done — unknown keys suggest the closest
   valid key, type errors show what was got versus expected with an
   example, and `workflows:`/`quicklinks:`/`app_actions:` validate action
@@ -80,9 +96,12 @@ and a Chocolatey package (see [docs/installer.md](docs/installer.md)).
 
 * **Additional platform backends** beyond Windows/macOS/Linux (e.g. BSD),
   behind the existing `platform/native.hpp` abstraction.
-* **Remote/cloud index sources** as a `SearchProvider`
+* ~~**Remote/cloud index sources** as a `SearchProvider`
   ([docs/architecture.md](docs/architecture.md#extensibility-plugins-and-providers))
-  for teams wanting to search shared drives or wikis.
+  for teams wanting to search shared drives or wikis.~~ Done — the opt-in
+  `remotes:` backends (`include/wilfred/search/remote.hpp`) query
+  team-owned HTTP endpoints with per-source headers and caps (see
+  [docs/configuration.md](docs/configuration.md)).
 * **Alternative on-disk index formats** for very large indexes (millions
   of files) — this changes the WAL/snapshot format described in
   [docs/indexing.md](docs/indexing.md) and needs a design issue first,

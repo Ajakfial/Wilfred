@@ -197,18 +197,22 @@ Two different extension points exist:
 * **`providers::SearchProvider`** — an in-process C++ interface
   (`providers/provider.hpp`) for embedding another search backend directly
   into the binary. `ProviderRegistry::query_all()` fans a query out to every
-  registered provider and merges the results. Two ship built-in:
-  `search/semantic.hpp` (opt-in trigram soft-match over the index,
-  `providers.semantic`) and `browser/library.hpp` (bookmarks, history,
-  open tabs, `browser.library`). This is a compile-time
-  extension point (you add a provider by writing C++ and registering it),
-  not something end users configure.
+  registered provider and merges the results. Built-in: `search/semantic.hpp`
+  (opt-in trigram soft-match over the index, `providers.semantic`),
+  `browser/library.hpp` (bookmarks, history, open tabs,
+  `browser.library`), `sources/sources.hpp` (calendar, contacts, notes
+  files) and `search/remote.hpp` (opt-in `remotes:` HTTP endpoints with
+  per-source headers and caps). Providers are compile-time except
+  `remotes:`, which end users configure without recompiling.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native
   `.dll`/`.so`/`.dylib` implementing the small C ABI in `plugin/abi.hpp`, or
   an external executable spoken to over a one-shot JSON request/response on
   stdio. See [plugins.md](plugins.md) for the manifest format and both
-  protocols in full.
+  protocols in full. Unapproved plugins (trust-on-first-use,
+  `plugins.require_approval`) are skipped by `query()` until approved;
+  the optional `plugins.registry` index feeds `wilfred plugin install`
+  with sha256 verification.
 
 ## IPC and the local API
 

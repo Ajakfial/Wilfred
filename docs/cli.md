@@ -26,6 +26,16 @@ wilfred import --detect   Scan default locations for other launchers
 wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]
                          Import hotkey, web searches, snippets, ...
 wilfred history-clear    Erase local search history
+wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)
+wilfred config-validate  Validate wilfred.yml against the schema
+wilfred config-open      Open wilfred.yml in the editor
+wilfred config-path      Print the wilfred.yml path
+wilfred config-get <key> Print one setting (section.key)
+wilfred config-set <key> <value>  Update one setting (validated)
+wilfred config-reset     Restore defaults (backs up first)
+wilfred plugin <list|pending|install|approve|revoke>  Registry + trust
+wilfred tile <preset>    Tile open windows (halves|thirds|grid|columns|rows|stack)
+wilfred update [--check] Check for and install updates
 wilfred help             Show the built-in help text
 ```
 
@@ -87,8 +97,9 @@ Unknown workflow names list the configured ones on stderr. See
 ## `wilfred exec <action> [target]`
 
 Runs any result action id directly (`copy_path+reveal`, `workflow:review`,
-`media:play`, `focus_window:code`, `layout_apply:work`, ...), mirroring the
-`exec`/`action` IPC command and the `POST /exec` HTTP API:
+`media:play`, `focus_window:code`, `layout_apply:work`, `tile:grid`,
+`config:set:search.max_results=40`, ...), mirroring the `exec`/`action` IPC
+command and the `POST /exec` HTTP API:
 
 ```
 wilfred exec copy_path C:/tmp/notes.md
@@ -211,6 +222,55 @@ before every real import.
 Loads, clears, and saves the local search/selection history file, removing
 all recency/frequency/learned-choice data used by the ranker. Does not
 affect the file index itself.
+
+## `wilfred setup [--overwrite]`
+
+First-run wizard: prompts for index roots, the global hotkey key, and the
+browser search template, then writes only the missing keys back to
+`wilfred.yml` (existing keys are kept unless `--overwrite`). Refuses to
+write when the result fails schema validation. The overlay `setup` mini
+reports the same three items as cards for users who prefer the GUI.
+
+## `wilfred config-validate` / `config-open` / `config-path`
+
+`config-validate` loads `wilfred.yml` with the same loader the daemon
+uses and prints `valid:` or the human-readable error (exit `1`).
+`config-open` opens the file in the editor, `config-path` prints its path.
+
+## `wilfred config-get <key>` / `config-set <key> <value>` / `config-reset`
+
+Typed single-setting access without hand-editing YAML (`section.key`,
+e.g. `search.max_results`, `browser.search_template`; lists take
+comma-separated values). `config-set` validates before writing and
+refuses on schema errors; the daemon still needs a restart to pick the
+change up. Same engine as the overlay `settings edit <key> <value>` /
+`settings get <key>` cards. `config-reset` restores the shipped defaults,
+saving the current file as `.pre-reset.bak` first.
+
+## `wilfred plugin <list|pending|install|approve|revoke>`
+
+Registry and trust management (see [plugins.md](plugins.md)):
+
+```
+wilfred plugin list              # registry index, or installed plugins
+wilfred plugin pending           # plugins awaiting trust approval
+wilfred plugin install <id>      # download + sha256-verify into plugins/<id>/
+wilfred plugin approve <id>      # record hash + permissions (or --all)
+wilfred plugin revoke <id>       # un-approve; queries skip it again
+```
+
+## `wilfred tile <preset>`
+
+Tiles all open windows across the primary work area without the overlay:
+`halves`, `thirds`, `grid`, `columns [N]`, `rows [N]`, `stack` (bare
+`wilfred tile` defaults to `grid`). Same engine as `layout tile …` in the
+overlay and the `tile:<preset>` workflow step. Fails with a clear error on
+Wayland-only Linux and on mobile, where window management is unsupported.
+
+## `wilfred update [--check]`
+
+Checks the release feed and installs a newer build (`--check` only
+reports, `--yes` skips the prompt).
 
 ## `wilfred help` / `wilfred -h` / `wilfred --help`
 
