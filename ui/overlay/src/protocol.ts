@@ -142,6 +142,14 @@ export const badges: Record<string, string> = {
   restart: "restart",
   logout: "logout",
   empty_trash: "trash",
+  wifi: "network",
+  bluetooth: "command",
+  volume: "music",
+  brightness: "cloudSun",
+  settings: "settings",
+  setup: "wand",
+  toggle: "power",
+  remote: "globe",
 };
 
 export const groups: Record<string, string> = {
@@ -168,6 +176,7 @@ export const groups: Record<string, string> = {
   bookmark: "web",
   history: "web",
   tab: "web",
+  remote: "web",
   speedtest: "speed",
   screenshot: "media",
   semantic: "mini",
@@ -187,6 +196,13 @@ export const groups: Record<string, string> = {
   restart: "sys",
   logout: "sys",
   empty_trash: "sys",
+  wifi: "sys",
+  bluetooth: "sys",
+  volume: "sys",
+  brightness: "sys",
+  toggle: "sys",
+  settings: "sys",
+  setup: "sys",
 };
 
 export const groupLabels: Record<string, string> = {
@@ -227,6 +243,14 @@ const kindLabels: Record<string, string> = {
   cpu: "Processor",
   tz: "Time zone",
   fx: "Currency",
+  wifi: "Wi-Fi",
+  bluetooth: "Bluetooth",
+  volume: "Volume",
+  brightness: "Brightness",
+  settings: "Settings",
+  setup: "Setup",
+  toggle: "Toggle",
+  remote: "Remote",
 };
 
 export function kindLabel(k: string): string {
@@ -236,7 +260,7 @@ export function kindLabel(k: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-export const tips = ["25 * 42", "weather", "speedtest", "type:image", "!yt cats", "clip"];
+export const tips = ["25 * 42", "weather", "wifi", "volume 50", "settings wifi", "clip"];
 
 export function kindOf(item: ResultItem): string {
   if (item.action === "expand" || item.category === "snippet")
@@ -249,6 +273,11 @@ export function kindOf(item: ResultItem): string {
   }
   if (item.action === "web") return "web";
   if (item.category === "system") return item.kind || "system";
+  if (item.category === "toggle") return item.kind || "toggle";
+  if (item.category === "settings") return item.kind || "settings";
+  if (item.category === "setup") return item.kind || "setup";
+  if (item.category === "config") return item.kind || "config";
+  if (item.category === "remote") return item.kind || "remote";
   if (item.action === "habit") return "habit";
   if (item.category === "clipboard" || item.kind === "clipboard") return "clipboard";
   if (item.category === "macro" || item.kind === "macro") return "macro";
@@ -457,6 +486,10 @@ export function primaryLabel(item: ResultItem | undefined): string {
   if (item.action === "web") return "Open in browser";
   if (item.action === "copy") return first || "Copy";
   if (item.category === "system") return first || "Run";
+  if (item.category === "toggle") return first || "Apply";
+  if (item.category === "settings") return first || "Open settings";
+  if (item.category === "setup" || item.category === "config") return first || "Open";
+  if (item.category === "remote") return "Open in browser";
   if (k === "application") return "Open application";
   if (k === "directory") return "Open folder";
   if (first && first !== "Open") return first;

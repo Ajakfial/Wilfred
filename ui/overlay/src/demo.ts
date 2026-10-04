@@ -290,6 +290,131 @@ export function demoQuery(q: string): ResultItem[] {
     { title: "CPU  18%", subtitle: "Processor load", kind: "cpu", category: "mini", meter: 18, action: "copy" },
     { title: `${env.procName}  ·  CPU 4.2%  ·  RAM 612 MB`, subtitle: "PID 4412  ·  42 threads", kind: "process", category: "mini", meter: 4, action: "copy" },
   ];
+  const toggles: ResultItem[] = [
+    {
+      title: "Wi-Fi: On · DemoNet",
+      subtitle: "wifi on | wifi off | wifi toggle — enter toggles",
+      kind: "wifi",
+      category: "toggle",
+      payload: "toggle:wifi:toggle",
+      action: "mini",
+      actions: [
+        { id: "open", label: "Apply" },
+        { id: "copy_text", label: "Copy status" },
+      ],
+    },
+    {
+      title: "Bluetooth: On",
+      subtitle: "bluetooth on | bluetooth off — enter toggles",
+      kind: "bluetooth",
+      category: "toggle",
+      payload: "toggle:bluetooth:toggle",
+      action: "mini",
+      actions: [
+        { id: "open", label: "Apply" },
+        { id: "copy_text", label: "Copy status" },
+      ],
+    },
+    {
+      title: "Volume: 50%",
+      subtitle: "volume 50 | volume mute | volume up — enter toggles mute",
+      kind: "volume",
+      category: "toggle",
+      payload: "toggle:volume:mute_toggle",
+      meter: 50,
+      action: "mini",
+      actions: [
+        { id: "open", label: "Apply" },
+        { id: "copy_text", label: "Copy status" },
+      ],
+    },
+    {
+      title: "Brightness: 75%",
+      subtitle: "brightness 70 | brightness up — enter applies",
+      kind: "brightness",
+      category: "toggle",
+      payload: "toggle:brightness:set:75",
+      meter: 75,
+      action: "mini",
+      actions: [
+        { id: "open", label: "Apply" },
+        { id: "copy_text", label: "Copy status" },
+      ],
+    },
+  ];
+  const settingsDemo: ResultItem[] = [
+    {
+      title: "Wi-Fi settings",
+      subtitle: "settings wifi — enter opens",
+      kind: "settings",
+      category: "settings",
+      payload: "settings:wifi",
+      action: "mini",
+      actions: [{ id: "open", label: "Open settings" }],
+    },
+    {
+      title: "Sound settings",
+      subtitle: "settings sound — enter opens",
+      kind: "settings",
+      category: "settings",
+      payload: "settings:sound",
+      action: "mini",
+      actions: [{ id: "open", label: "Open settings" }],
+    },
+    {
+      title: "Settings",
+      subtitle: "Main settings — enter opens",
+      kind: "settings",
+      category: "settings",
+      payload: "settings:",
+      action: "mini",
+      actions: [{ id: "open", label: "Open settings" }],
+    },
+  ];
+  const setupDemo: ResultItem[] = [
+    {
+      title: "Setup: ready (roots, hotkey, browser ok)",
+      subtitle: "setup status — enter opens wilfred.yml",
+      kind: "setup",
+      category: "setup",
+      payload: "config:open",
+      action: "mini",
+      actions: [{ id: "open", label: "Open" }],
+    },
+    {
+      title: "Validate wilfred.yml",
+      subtitle: "setup validate — enter checks now",
+      kind: "setup",
+      category: "setup",
+      payload: "config:validate",
+      action: "mini",
+      actions: [{ id: "open", label: "Open" }],
+    },
+    {
+      title: "Edit wilfred.yml",
+      subtitle: "config open — enter opens in editor",
+      kind: "config",
+      category: "config",
+      payload: "config:open",
+      action: "mini",
+      actions: [{ id: "open", label: "Open" }],
+    },
+  ];
+  const remotesDemo: ResultItem[] = [
+    {
+      title: "Demo wiki hit",
+      subtitle: "Demo result · wiki",
+      kind: "remote",
+      category: "remote",
+      path: "https://example.com/wiki/demo",
+      payload: "https://example.com/wiki/demo",
+      action: "web",
+      actions: [
+        { id: "open", label: "Open" },
+        { id: "copy_text", label: "Copy" },
+      ],
+    },
+  ];
   const macros: ResultItem[] = [
     { title: "!yt cats", subtitle: "https://www.youtube.com/results?search_query=cats", kind: "macro", category: "macro", action: "web" },
   ];
@@ -340,15 +465,37 @@ export function demoQuery(q: string): ResultItem[] {
     needle === "cpu" ||
     needle.startsWith("process")
       ? minis.filter((m) => (m.kind || "").includes(needle.split(" ")[0]) || needle.startsWith("process"))
-      : needle === "yt cats" || needle.startsWith("!yt")
-        ? macros
-        : needle === "clip" || needle === "clipboard"
-          ? [clip]
-          : needle.startsWith(";") || needle.startsWith("snip")
-            ? snippets
-            : needle === "plugin" || needle === "ping"
-              ? plugins
-              : [];
+      : needle === "wifi" || needle === "wlan" || needle === "wireless" || needle.startsWith("wifi ") || needle.startsWith("wlan ")
+        ? toggles.filter((m) => m.kind === "wifi")
+        : needle === "bluetooth" || needle === "bt" || needle.startsWith("bluetooth ") || needle.startsWith("bt ")
+          ? toggles.filter((m) => m.kind === "bluetooth")
+          : needle === "volume" || needle === "vol" || needle.startsWith("volume ") || needle.startsWith("vol ")
+            ? toggles.filter((m) => m.kind === "volume")
+            : needle === "brightness" || needle === "bright" || needle === "backlight" || needle === "dim" || needle.startsWith("brightness ")
+              ? toggles.filter((m) => m.kind === "brightness")
+              : needle === "settings" || needle === "setting" || needle === "prefs" || needle.startsWith("settings ")
+                ? settingsDemo.filter((m) =>
+                    needle === "settings" || needle === "setting" || needle === "prefs"
+                      ? true
+                      : (m.title || "").toLowerCase().includes(needle.split(" ").slice(1).join(" ")),
+                  )
+                : needle === "setup" || needle === "wizard" || needle === "onboard" || needle.startsWith("setup ")
+                  ? setupDemo.filter((m) => m.category === "setup")
+                  : needle === "config" || needle === "configuration" || needle.startsWith("config ")
+                    ? setupDemo.filter((m) => m.category === "config" || m.category === "setup")
+                    : needle === "remote" || needle.startsWith("remote ")
+                      ? remotesDemo
+                      : needle === "toggle" || needle.startsWith("toggle ")
+                        ? toggles
+                        : needle === "yt cats" || needle.startsWith("!yt")
+                          ? macros
+                          : needle === "clip" || needle === "clipboard"
+                            ? [clip]
+                            : needle.startsWith(";") || needle.startsWith("snip")
+                              ? snippets
+                              : needle === "plugin" || needle === "ping"
+                                ? plugins
+                                : [];
   const typed = needle
     ? habits.filter((h) => (h.title || "").includes(needle) && h.title !== needle)
     : habits;
@@ -377,6 +524,8 @@ const demoVocab = [
   "weather", "time", "disk", "ram", "cpu", "process", "battery", "clip", "clips",
   "speedtest", "screenshot", "emoji", "symbol", "color", "uuid", "base64", "sha256",
   "lorem", "json", "lock", "sleep", "shutdown", "restart", "logout", "empty trash",
+  "wifi", "bluetooth", "volume", "brightness", "settings", "setup", "config",
+  "remote", "toggle",
   "firefox", "notes", "finder", "files", "visual studio code",
 ];
 

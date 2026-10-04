@@ -145,7 +145,8 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     if (it.category != "mini" && it.category != "macro" && it.category != "clipboard" &&
         it.category != "window" && it.category != "system" && it.category != "screenshot" &&
         it.category != "ai" && it.category != "calendar" && it.category != "contact" &&
-        it.category != "note" &&
+        it.category != "note" && it.category != "toggle" && it.category != "settings" &&
+        it.category != "setup" && it.category != "config" && it.category != "remote" &&
         it.action != ResultAction::Copy && it.action != ResultAction::Calculate &&
         it.action != ResultAction::Convert && it.action != ResultAction::WebSearch &&
         it.action != ResultAction::Habit && it.action != ResultAction::SwitchWindow &&

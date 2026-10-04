@@ -773,6 +773,22 @@ export function iconForKind(kind: string, action?: string, category?: string): I
       return "logout";
     case "empty_trash":
       return "trash";
+    case "wifi":
+      return "network";
+    case "bluetooth":
+      return "command";
+    case "volume":
+      return "music";
+    case "brightness":
+      return "cloudSun";
+    case "settings":
+      return "settings";
+    case "setup":
+      return "wand";
+    case "toggle":
+      return "power";
+    case "remote":
+      return "globe";
     case "swap":
       return "clipboardList";
     default:
