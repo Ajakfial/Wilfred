@@ -88,6 +88,9 @@ set(WILFRED_CORE_SOURCES
   src/search/screenshot.cpp
   src/search/file_ops.cpp
   src/search/convert.cpp
+  src/search/toggles.cpp
+  src/search/remote.cpp
+  src/search/setup.cpp
   src/sources/sources.cpp
   src/ai/assistant.cpp
   src/ai/vision.cpp
@@ -172,6 +175,9 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
   include/wilfred/search/expander.hpp
+  include/wilfred/search/toggles.hpp
+  include/wilfred/search/remote.hpp
+  include/wilfred/search/setup.hpp
   include/wilfred/sources/sources.hpp
   include/wilfred/ai/assistant.hpp
   include/wilfred/ai/vision.hpp
@@ -349,6 +355,7 @@ elseif(APPLE)
     "-framework Carbon"
     "-framework CoreFoundation"
     "-framework WebKit"
+    "-framework IOKit"
   )
 elseif(ANDROID)
   # Android NDK: no X11/WebKit/desktop daemons. Kotlin owns the UI; the
@@ -509,6 +516,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_ios.cpp
   tests/test_wayland.cpp
   tests/test_bsd.cpp
+  tests/test_toggles_remote_setup.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

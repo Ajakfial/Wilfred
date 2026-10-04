@@ -77,6 +77,28 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
 // lock | sleep | shutdown | restart | logout | empty_trash
 bool native_system_action(const std::string& id);
 
+// --- System toggles: wifi / bluetooth / volume / brightness ---
+// All return true on success, false with error set when unsupported or the
+// OS tool failed. Mobile stubs return false ("not supported on mobile").
+bool native_wifi_status(bool& enabled, std::string& detail, std::string& error);
+bool native_wifi_set(bool enabled, std::string& error);
+std::vector<std::string> native_wifi_list(std::string& error);
+bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& error);
+bool native_bluetooth_set(bool enabled, std::string& error);
+// level 0..100. muted is the OS mute flag (independent of level).
+bool native_volume_status(int& level, bool& muted, std::string& error);
+bool native_volume_set(int level, std::string& error);
+bool native_volume_mute(bool mute, std::string& error);
+// percent 0..100.
+bool native_brightness_status(int& percent, std::string& error);
+bool native_brightness_set(int percent, std::string& error);
+
+// --- Settings deep-links ---
+// page is lowercased, e.g. "", "wifi", "network", "bluetooth", "sound",
+// "display", "battery", "power", "apps", "privacy", "update".
+// Empty page opens the main settings app.
+bool native_open_settings(const std::string& page, std::string& error);
+
 // Process control + media keys (search/media.hpp re-exports these so minis and
 // actions can share one implementation).
 bool native_kill_process(std::uint32_t pid, std::string& error);

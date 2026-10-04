@@ -2,6 +2,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/history/history.hpp"
 #include "wilfred/platform/platform.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/updater/updater.hpp"
 
@@ -41,6 +42,10 @@ static void print_help() {
       << "  wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]\n"
       << "                          Import hotkey, web searches, snippets, ...\n"
       << "  wilfred history-clear   Erase local search history\n"
+      << "  wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)\n"
+      << "  wilfred config-validate      Validate wilfred.yml schema\n"
+      << "  wilfred config-open          Open wilfred.yml in the editor\n"
+      << "  wilfred config-path          Print wilfred.yml path\n"
       << "  wilfred update [--check] Check for and install updates\n"
       << "  wilfred help            Show this message\n\n"
       << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
@@ -156,6 +161,25 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "index") return svc.run_index_now();
     if (cmd == "status") return svc.run_status();
+    if (cmd == "setup" || cmd == "wizard" || cmd == "onboard") {
+      bool overwrite = false;
+      for (int i = 2; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--overwrite" || a == "-f" || a == "--force") overwrite = true;
+      }
+      return wilfred::run_setup_wizard(overwrite);
+    }
+    if (cmd == "config-validate" || cmd == "config_check" || cmd == "validate-config" ||
+        cmd == "configcheck") {
+      return wilfred::run_config_validate();
+    }
+    if (cmd == "config-open" || cmd == "config_open" || cmd == "open-config" ||
+        cmd == "config-edit") {
+      return wilfred::run_config_open();
+    }
+    if (cmd == "config-path" || cmd == "config_path" || cmd == "configpath") {
+      return wilfred::run_config_path();
+    }
     if (cmd == "convert") {
       std::vector<std::string> args;
       for (int i = 2; i < argc; ++i) args.push_back(argv[i]);

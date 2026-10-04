@@ -18,6 +18,7 @@
 #include "wilfred/search/engine.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/quicknotes.hpp"
+#include "wilfred/search/remote.hpp"
 #include "wilfred/search/semantic.hpp"
 #include "wilfred/search/snippets.hpp"
 #include "wilfred/search/suggest.hpp"
@@ -118,6 +119,8 @@ bool MobileCore::boot(const std::string& files_dir, std::string& error) {
   if (st.cfg.sources.notes) st.interpreter.providers().add(std::make_unique<NotesProvider>());
   if (st.cfg.browser.library)
     st.interpreter.providers().add(std::make_unique<BrowserLibraryProvider>());
+  if (st.cfg.remotes.enabled && !st.cfg.remotes.sources.empty())
+    st.interpreter.providers().add(std::make_unique<RemoteProvider>());
   st.booted = true;
   return true;
 }

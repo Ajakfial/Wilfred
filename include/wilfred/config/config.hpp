@@ -188,6 +188,20 @@ struct Config {
     int max_results{8};
   } sources;
 
+  struct RemoteSourceCfg {
+    std::string name;
+    std::string url;
+  };
+
+  struct Remotes {
+    // Opt-in only. Disabled by default: no network calls unless the user
+    // adds at least one source and sets enabled: true.
+    bool enabled{false};
+    std::vector<RemoteSourceCfg> sources;
+    int timeout_ms{5000};
+    int max_results{8};
+  } remotes;
+
   struct Transcription {
     // On-demand speech-to-text for audio files (`transcribe ...`).
     // Optional CLIs like OCR: whisper.cpp (`whisper-cli`) for recognition,

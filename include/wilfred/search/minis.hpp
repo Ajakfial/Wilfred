@@ -70,6 +70,13 @@ enum class MiniKind {
   Layout,
   Convert,
   BgRemove,
+  Wifi,
+  Bluetooth,
+  Volume,
+  Brightness,
+  Settings,
+  Setup,
+  Config,
 };
 
 struct MiniIntent {

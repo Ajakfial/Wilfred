@@ -22,8 +22,11 @@
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/nettools.hpp"
 #include "wilfred/search/quicknotes.hpp"
+#include "wilfred/search/remote.hpp"
 #include "wilfred/search/screenshot.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
+#include "wilfred/search/toggles.hpp"
 #include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 
@@ -1411,8 +1414,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "media" || key == "player" || key == "music" || key == "mediakeys")
     set(MiniKind::Media, false);
   else if (key == "play" || key == "pause" || key == "next" || key == "previous" ||
-           key == "prev" || key == "mute" || key == "volume" || key == "vol") {
+           key == "prev" || key == "mute") {
     // Bare media verbs double as media controls (non-exact so file hits still show).
+    // `volume`/`vol` are owned by the Volume mini (exact levels + mute); see below.
     if (rest.empty() ||
         to_lower_utf8(rest) == "track" || to_lower_utf8(rest) == "song" ||
         to_lower_utf8(rest) == "music" || to_lower_utf8(rest) == "media" ||
@@ -1487,7 +1491,21 @@ MiniIntent parse_mini_intent(std::string_view query) {
     auto sp = rl.find(' ');
     it.remainder = sp == std::string::npos ? std::string() : trim_sv(rl.substr(sp + 1));
     it.exact = false;
-  }
+  } else if (key == "wifi" || key == "wi-fi" || key == "wlan" || key == "wireless")
+    set(MiniKind::Wifi, true);
+  else if (key == "bluetooth" || key == "bt")
+    set(MiniKind::Bluetooth, true);
+  else if (key == "volume" || key == "vol")
+    set(MiniKind::Volume, true);
+  else if (key == "brightness" || key == "bright" || key == "backlight" || key == "dim")
+    set(MiniKind::Brightness, true);
+  else if (key == "settings" || key == "setting" || key == "prefs" || key == "preferences")
+    set(MiniKind::Settings, true);
+  else if (key == "setup" || key == "wizard" || key == "onboard" || key == "onboarding" ||
+           key == "first-run" || key == "firstrun")
+    set(MiniKind::Setup, true);
+  else if (key == "config" || key == "configuration" || key == "wilfredconfig")
+    set(MiniKind::Config, true);
   return it;
 }
 
@@ -1497,6 +1515,14 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (!cfg.search.minis) return out;
   auto intent = parse_mini_intent(query);
   if (intent.kind == MiniKind::None) return out;
+
+  if (intent.kind == MiniKind::Wifi) return wifi_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Bluetooth) return bluetooth_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Volume) return volume_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Brightness) return brightness_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Settings) return settings_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Setup) return setup_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Config) return config_results(intent.remainder, cfg);
 
   if (intent.kind == MiniKind::Time) {
     if (!intent.remainder.empty()) {

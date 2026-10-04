@@ -24,6 +24,7 @@
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/quicknotes.hpp"
+#include "wilfred/search/remote.hpp"
 #include "wilfred/search/semantic.hpp"
 #include "wilfred/search/suggest.hpp"
 #include "wilfred/search/workflows.hpp"
@@ -154,6 +155,8 @@ bool Service::boot() {
     interpreter_.providers().add(std::make_unique<NotesProvider>());
   if (cfg_.browser.library)
     interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
+  if (cfg_.remotes.enabled && !cfg_.remotes.sources.empty())
+    interpreter_.providers().add(std::make_unique<RemoteProvider>());
   return true;
 }
 
@@ -599,6 +602,8 @@ int Service::run_status() {  if (!boot()) return 1;
             << " contacts=" << (cfg_.sources.contacts ? "on" : "off")
             << " notes=" << (cfg_.sources.notes ? "on" : "off")
             << " ocr=" << (cfg_.sources.ocr ? "on" : "off") << "\n"
+            << "remotes: " << (cfg_.remotes.enabled ? "on" : "off") << " ("
+            << cfg_.remotes.sources.size() << " sources)\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
   return 0;
 }

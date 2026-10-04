@@ -52,6 +52,8 @@ single summonable search bar.
 * Native and stdio plugins, plus extra search backends via providers
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
+* System toggles (`wifi on/off`, `bluetooth toggle`, `volume 50/mute`, `brightness 70`) + settings deep-links (`settings wifi/bluetooth/sound/display/...`) — real OS backends on Windows/macOS/Linux, honest unsupported errors on mobile/BSD gaps
+* Settings + setup (`settings config open/validate`, `setup`, `wilfred setup --overwrite`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` — your endpoints only, off by default)
 * Android app (Kotlin UI + C++ core via NDK → `.apk`): floating W button, search bar, same index/search/ranking — see `docs/android.md`
 * iOS app (SwiftUI + same C++ core → simulator `.app`): same search UI as Android (app-icon entry; iOS forbids overlay buttons), sandbox-only index — see `docs/ios.md`
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
@@ -182,6 +184,10 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `workflow review` / `run review` | Named multi-step workflows (`workflows` lists) |
 | `ql docs hello` / `ticket:ABC-123` | Parameterized quicklinks (`{1}` `{*}` `{query}`) |
 | `lock` / `sleep` / `shutdown` / `restart` / `logout` / `empty trash` | System commands |
+| `wifi` / `wifi off` / `bluetooth toggle` | Wi-Fi + Bluetooth status and on/off (enter applies) |
+| `volume 50` / `volume mute` / `brightness 70` | Volume level/mute + display brightness (enter applies) |
+| `settings wifi` / `settings sound` / `settings` | Open OS settings pages (wifi/network/bluetooth/sound/display/...) |
+| `setup` / `config validate` / `config open` | First-run status + edit/validate wilfred.yml (`wilfred setup`, `config-validate`) |
 | `clip` / `clips` | Clipboard and recent clips |
 | `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |
 

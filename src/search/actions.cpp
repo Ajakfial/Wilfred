@@ -18,7 +18,9 @@
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
+#include "wilfred/search/toggles.hpp"
 #include "wilfred/search/transcribe.hpp"
 
 #include <chrono>
@@ -92,6 +94,26 @@ void attach_impl(SearchResult& r, bool include_open_with) {
   if (r.category == "snippet" || r.action == ResultAction::Expand) {
     add("paste", "Paste");
     add("copy_text", "Copy text");
+    return;
+  }
+  if (r.category == "toggle") {
+    add("open", "Apply");
+    add("copy_text", "Copy status");
+    return;
+  }
+  if (r.category == "settings") {
+    add("open", "Open settings");
+    add("copy_text", "Copy");
+    return;
+  }
+  if (r.category == "config" || r.category == "setup") {
+    add("open", "Open");
+    add("copy_text", "Copy");
+    return;
+  }
+  if (r.category == "remote") {
+    add("open", "Open");
+    add("copy_text", "Copy");
     return;
   }
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert ||
@@ -224,7 +246,8 @@ bool is_file_like(const SearchResult& r) {
       r.category == "ping" || r.category == "dns" || r.category == "myip" ||
       r.category == "dupe" || r.category == "large" || r.category == "transcribe" ||
       r.category == "dictate" || r.category == "layout" || r.category == "convert" ||
-      r.category == "bgremove")
+      r.category == "bgremove" || r.category == "toggle" || r.category == "settings" ||
+      r.category == "config" || r.category == "setup" || r.category == "remote")
     return false;
   return true;
 }
@@ -345,8 +368,14 @@ bool native_simulate_paste() {
 bool execute_result_action(const SearchResult& r, const Config& cfg, const std::string& action_id) {
   auto id = action_id;
   if (id.empty()) {
-    // Process kill cards default to killing; media cards run their action.
-    if (r.category == "process" || r.category == "kill") {
+    // Toggle/settings/config/setup/remote cards apply on Enter.
+    if (r.category == "toggle" || r.category == "settings" || r.category == "config" ||
+        r.category == "setup" || r.category == "remote") {
+      id = "open";
+    } else if (r.payload.rfind("toggle:", 0) == 0 || r.payload.rfind("settings:", 0) == 0 ||
+               r.payload.rfind("config:", 0) == 0 || r.payload.rfind("setup:", 0) == 0) {
+      id = "open";
+    } else if (r.category == "process" || r.category == "kill") {
       // `process` list cards: copy by default, `kill` cards: kill by default.
       if (r.category == "kill") id = "kill_process";
       else if (r.action == ResultAction::Copy || r.action == ResultAction::Mini)
@@ -476,6 +505,86 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   }
   if (r.action == ResultAction::Habit || r.action == ResultAction::None) return false;
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert) return true;
+  // System toggles + settings deep-links (categories "toggle"/"settings").
+  {
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    if (r.category == "toggle" || raw.rfind("toggle:", 0) == 0) {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      std::string err;
+      if (!execute_toggle_payload(raw, cfg, err)) {
+        log_warn("toggle", err.empty() ? "toggle failed" : err);
+        return false;
+      }
+      return true;
+    }
+    if (r.category == "settings" || raw.rfind("settings:", 0) == 0) {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      std::string err;
+      if (!execute_toggle_payload(raw, cfg, err)) {
+        log_warn("settings", err.empty() ? "cannot open settings" : err);
+        return false;
+      }
+      return true;
+    }
+    if (r.category == "config" || raw.rfind("config:", 0) == 0) {
+      if (id == "copy_text" || id == "copy" || raw == "config:copy") {
+        std::string p = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+        // config:copy copies the path; other copy actions copy the card text.
+        if (raw == "config:copy") return write_clipboard(p);
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      if (raw == "config:validate") {
+        std::string path = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+        std::string text;
+        if (!read_file_all(path, text)) {
+          log_warn("config", "cannot read " + path);
+          return false;
+        }
+        std::string msg;
+        if (!validate_config_text(text, msg)) {
+          log_warn("config", msg.empty() ? "invalid config" : msg);
+          return false;
+        }
+        return write_clipboard("valid: " + path);
+      }
+      if (raw == "config:reveal") {
+        std::string p = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+        return reveal_path(p);
+      }
+      // config:open + setup cards: open wilfred.yml in the editor.
+      std::string p = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+      if (!native_open_editor(p)) return launch_path(p);
+      return true;
+    }
+    if (r.category == "setup" || raw.rfind("setup:", 0) == 0) {
+      if (id == "copy_text" || id == "copy") {
+        auto t = raw.empty() ? r.title : raw;
+        return write_clipboard(t);
+      }
+      if (raw == "config:validate") {
+        std::string path = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+        std::string text;
+        if (!read_file_all(path, text)) return false;
+        std::string msg;
+        if (!validate_config_text(text, msg)) {
+          log_warn("setup", msg.empty() ? "invalid config" : msg);
+          return false;
+        }
+        return write_clipboard("valid: " + path);
+      }
+      // setup:run is terminal-only; in the overlay open the config instead.
+      std::string p = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
+      if (!native_open_editor(p)) return launch_path(p);
+      return true;
+    }
+  }
   {
     auto p = r.path.empty() ? r.payload : r.path;
     if (id == "copy_posix") return !p.empty() && write_clipboard(path_to_posix(p));

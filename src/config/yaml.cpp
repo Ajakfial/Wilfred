@@ -236,7 +236,10 @@ struct Parser {
         if (peek() == '\n') get();
         l.push_back(parse_value(indent + 2));
       } else if (peek() != '#' && looks_like_inline_map()) {
-        // compact map in list item: key: value
+        // compact map in list item: key: value, plus any continuation
+        // `key: value` lines indented under the same `-` item:
+        //   - name: wiki
+        //     url: https://...
         YamlValue item;
         item.data = YamlMap{};
         auto& im = std::get<YamlMap>(item.data);
@@ -251,6 +254,72 @@ struct Parser {
         } else {
           im[key] = parse_scalar();
           if (peek() == '\n') get();
+        }
+        // Merge continuation keys belonging to this list item.
+        for (;;) {
+          std::size_t csave = i;
+          int cline = line, ccol = col;
+          int cind = skip_blank_and_comments();
+          if (!peek() || cind <= indent || peek() == '-') {
+            i = csave;
+            line = cline;
+            col = ccol;
+            break;
+          }
+          // Must look like `key:` on this line; otherwise it belongs to the parent.
+          std::size_t j = i;
+          bool is_kv = false;
+          bool in_q = false;
+          char qq = 0;
+          while (j < t.size() && t[j] != '\n' && t[j] != '\r') {
+            char c = t[j];
+            if (!in_q && c == '#') break;
+            if (!in_q && (c == '"' || c == '\'')) {
+              in_q = true;
+              qq = c;
+            } else if (in_q && c == qq) {
+              in_q = false;
+            } else if (!in_q && c == ':') {
+              is_kv = true;
+              break;
+            }
+            ++j;
+          }
+          if (!is_kv) {
+            i = csave;
+            line = cline;
+            col = ccol;
+            break;
+          }
+          skip_ws_inline();
+          std::string ckey;
+          if (peek() == '"' || peek() == '\'') {
+            ckey = parse_quoted(peek());
+          } else {
+            while (peek() && peek() != ':' && peek() != '\n') ckey.push_back(get());
+            while (!ckey.empty() && (ckey.back() == ' ' || ckey.back() == '\t')) ckey.pop_back();
+          }
+          skip_ws_inline();
+          if (peek() != ':') {
+            i = csave;
+            line = cline;
+            col = ccol;
+            break;
+          }
+          get();
+          skip_ws_inline();
+          skip_comment();
+          if (peek() == '\r') get();
+          if (peek() == '\n' || peek() == '\0') {
+            if (peek() == '\n') get();
+            im[ckey] = parse_value(cind + 2);
+          } else {
+            im[ckey] = parse_scalar();
+            skip_ws_inline();
+            skip_comment();
+            if (peek() == '\r') get();
+            if (peek() == '\n') get();
+          }
         }
         l.push_back(std::move(item));
       } else {

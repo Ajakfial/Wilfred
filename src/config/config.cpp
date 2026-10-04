@@ -329,7 +329,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "macros",   "scopes",  "custom_metadata", "history",
                                           "clipboard", "hotkey", "browser", "logging",
                                           "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "transcription", "api",
+                                          "ai",       "sources", "remotes", "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
                                           "app_actions", "hotkeys"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
@@ -816,6 +816,77 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     if (c.sources.max_results < 1 || c.sources.max_results > 50) {
       err.message = "sources.max_results must be between 1 and 50";
       return false;
+    }
+  }
+
+  if (auto* rm = root.get("remotes")) {
+    if (!rm->is_map()) {
+      err.message =
+          "remotes: must be a mapping, e.g.\nremotes:\n  enabled: true\n  sources:\n    - name: wiki\n      url: \"https://example.com/search?q={query_enc}\"";
+      return false;
+    }
+    std::vector<std::string> valid = {"enabled", "timeout_ms", "max_results", "sources"};
+    if (!check_unknown_keys(*rm, valid, "remotes", err)) return false;
+    if (!expect_bool(rm, "enabled", "remotes", err)) return false;
+    for (auto* k : {"timeout_ms", "max_results"})
+      if (!expect_int(rm, k, "remotes", err)) return false;
+    c.remotes.enabled = rm->boolean("enabled", false);
+    c.remotes.timeout_ms = static_cast<int>(rm->integer("timeout_ms", 5000));
+    c.remotes.max_results = static_cast<int>(rm->integer("max_results", 8));
+    if (c.remotes.timeout_ms < 1000 || c.remotes.timeout_ms > 30000) {
+      err.message = "remotes.timeout_ms must be between 1000 and 30000";
+      return false;
+    }
+    if (c.remotes.max_results < 1 || c.remotes.max_results > 50) {
+      err.message = "remotes.max_results must be between 1 and 50";
+      return false;
+    }
+    if (auto* srcs = rm->get("sources")) {
+      auto push_source = [&](std::string name, std::string url) -> bool {
+        Config::RemoteSourceCfg s;
+        s.name = std::move(name);
+        s.url = std::move(url);
+        if (s.url.empty()) {
+          err.message = "remotes.sources entries need a non-empty url";
+          return false;
+        }
+        if (s.url.rfind("http://", 0) != 0 && s.url.rfind("https://", 0) != 0) {
+          err.message = "remotes.sources url must start with http:// or https:// (got '" + s.url +
+                        "')";
+          return false;
+        }
+        if (s.url.size() > 2048) {
+          err.message = "remotes.sources url is too long (max 2048)";
+          return false;
+        }
+        c.remotes.sources.push_back(std::move(s));
+        if (c.remotes.sources.size() > 16) {
+          err.message = "remotes.sources supports at most 16 sources";
+          return false;
+        }
+        return true;
+      };
+      if (srcs->is_map()) {
+        // Shorthand: sources: {wiki: "https://..."}.
+        for (auto& [k, v] : srcs->as_map()) {
+          if (!v.is_string() || v.as_string().empty()) {
+            err.message = "remotes.sources '" + k + "' must be a non-empty URL string";
+            return false;
+          }
+          if (!push_source(k, v.as_string())) return false;
+        }
+      } else if (srcs->is_list()) {
+        for (auto& item : srcs->as_list()) {
+          if (!item.is_map()) {
+            err.message = "remotes.sources entries must be {name, url} mappings";
+            return false;
+          }
+          if (!push_source(item.str("name", ""), item.str("url", ""))) return false;
+        }
+      } else {
+        err.message = "remotes.sources must be a list of {name, url} mappings or a name->url map";
+        return false;
+      }
     }
   }
 

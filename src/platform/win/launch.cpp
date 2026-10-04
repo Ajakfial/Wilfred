@@ -9,8 +9,13 @@
 #include <shlobj.h>
 #include <powrprof.h>
 #include <winver.h>
+#include <mmdeviceapi.h>
+#include <endpointvolume.h>
 
+#include <cctype>
+#include <cstdio>
 #include <cwchar>
+#include <string>
 #include <vector>
 #endif
 
@@ -367,6 +372,428 @@ bool native_media_action(const std::string& id, std::string& error) {
   if (id == "voldn") return key(VK_VOLUME_DOWN);
   error = "unknown media action '" + id + "'";
   return false;
+}
+
+namespace {
+
+std::string win_exec(const std::string& cmd) {
+  std::string out;
+  FILE* f = _popen(cmd.c_str(), "r");
+  if (!f) return out;
+  char buf[512];
+  while (fgets(buf, sizeof(buf), f)) {
+    out += buf;
+    if (out.size() > 16384) break;
+  }
+  _pclose(f);
+  return out;
+}
+
+std::string win_lower(std::string s) {
+  for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  return s;
+}
+
+// Find the Wi-Fi interface name from `netsh interface show interface`.
+// Returns e.g. "Wi-Fi"; empty when no wireless row found.
+std::string win_wifi_iface() {
+  auto out = win_exec("netsh interface show interface 2>&1");
+  std::string cur;
+  for (char c : out + "\n") {
+    if (c == '\n') {
+      auto low = win_lower(cur);
+      if (low.find("wi-fi") != std::string::npos || low.find("wifi") != std::string::npos ||
+          low.find("wireless") != std::string::npos) {
+        // Interface name is the last column; netsh columns are space-padded.
+        // Heuristic: take the trailing token run after the state column.
+        // Fall back to "Wi-Fi" when parsing fails.
+        auto t = cur;
+        while (!t.empty() && (t.back() == ' ' || t.back() == '\r')) t.pop_back();
+        auto pos = t.find_last_of("  \t");
+        if (pos != std::string::npos) {
+          auto name = t.substr(pos + 1);
+          while (!name.empty() && (name.front() == ' ' || name.front() == '\t'))
+            name.erase(name.begin());
+          if (!name.empty()) return name;
+        }
+        return "Wi-Fi";
+      }
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  return {};
+}
+
+}  // namespace
+
+bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) {
+  auto iface = win_wifi_iface();
+  if (iface.empty()) {
+    error = "no Wi-Fi interface found";
+    return false;
+  }
+  auto show = win_exec("netsh interface show interface 2>&1");
+  auto low = win_lower(show);
+  // Row for this iface: look for "enabled ... <iface>" vs "disabled".
+  enabled = low.find("disabled") == std::string::npos;
+  // Refine: check the specific row when possible.
+  {
+    std::string cur;
+    for (char c : show + "\n") {
+      if (c == '\n') {
+        if (win_lower(cur).find(win_lower(iface)) != std::string::npos) {
+          auto l = win_lower(cur);
+          if (l.find("disabled") != std::string::npos) enabled = false;
+          if (l.find("enabled") != std::string::npos) enabled = true;
+        }
+        cur.clear();
+      } else {
+        cur.push_back(c);
+      }
+    }
+  }
+  auto wlan = win_exec("netsh wlan show interfaces 2>&1");
+  std::string ssid;
+  {
+    std::string cur;
+    for (char c : wlan + "\n") {
+      if (c == '\n') {
+        auto t = cur;
+        auto p = t.find(':');
+        if (p != std::string::npos) {
+          auto k = win_lower(t.substr(0, p));
+          auto v = t.substr(p + 1);
+          while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+          while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
+            v.pop_back();
+          if (k.find("ssid") != std::string::npos && k.find("bssid") == std::string::npos &&
+              !v.empty()) {
+            ssid = v;
+            break;
+          }
+        }
+        cur.clear();
+      } else {
+        cur.push_back(c);
+      }
+    }
+  }
+  detail = iface;
+  if (!ssid.empty()) detail += " · " + ssid;
+  if (!enabled) detail += " (disabled)";
+  return true;
+}
+
+bool native_wifi_set(bool enabled, std::string& error) {
+  auto iface = win_wifi_iface();
+  if (iface.empty()) iface = "Wi-Fi";
+  std::string cmd = "netsh interface set interface name=\"" + iface + "\" admin=" +
+                    (enabled ? "enabled" : "disabled") + " 2>&1";
+  auto out = win_exec(cmd);
+  auto low = win_lower(out);
+  if (low.find("ok") != std::string::npos || low.empty()) return true;
+  if (low.find("denied") != std::string::npos || low.find("elevation") != std::string::npos ||
+      low.find("access") != std::string::npos) {
+    error = "needs elevation (run as administrator): " + iface;
+    return false;
+  }
+  // netsh prints nothing on success in some locales; treat empty as ok.
+  if (out.empty()) return true;
+  error = "netsh failed: " + iface;
+  return false;
+}
+
+std::vector<std::string> native_wifi_list(std::string& error) {
+  std::vector<std::string> out;
+  auto txt = win_exec("netsh wlan show networks 2>&1");
+  if (txt.empty()) {
+    error = "no scan output";
+    return out;
+  }
+  std::string cur;
+  for (char c : txt + "\n") {
+    if (c == '\n') {
+      auto p = cur.find(':');
+      if (p != std::string::npos) {
+        auto k = win_lower(cur.substr(0, p));
+        auto v = cur.substr(p + 1);
+        while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+        while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
+          v.pop_back();
+        if (k.find("ssid") != std::string::npos && k.find("bssid") == std::string::npos &&
+            !v.empty())
+          out.push_back(v);
+      }
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  if (out.empty()) error = "no networks found";
+  return out;
+}
+
+bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& error) {
+  // Radio state via PowerShell PnpDevice (needs no extra deps).
+  auto out = win_exec(
+      "powershell -NoProfile -Command \"Get-PnpDevice -Class Bluetooth 2>$null | "
+      "Where-Object {$_.FriendlyName -like '*Radio*' -or $_.FriendlyName -like '*Bluetooth*'} | "
+      "Select-Object -First 1 -ExpandProperty Status 2>$null\" 2>&1");
+  auto t = win_lower(out);
+  while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ')) t.pop_back();
+  if (t.empty()) {
+    // Fall back to the Bluetooth service state.
+    auto svc = win_exec(
+        "powershell -NoProfile -Command \"(Get-Service bthserv -ErrorAction SilentlyContinue).Status\" 2>&1");
+    auto s = win_lower(svc);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    if (s.find("running") != std::string::npos) {
+      enabled = true;
+      detail = "bthserv running";
+      return true;
+    }
+    error = "no Bluetooth radio found";
+    return false;
+  }
+  enabled = t.find("ok") != std::string::npos;
+  detail = out;
+  while (!detail.empty() && (detail.back() == '\n' || detail.back() == '\r' || detail.back() == ' '))
+    detail.pop_back();
+  return true;
+}
+
+bool native_bluetooth_set(bool enabled, std::string& error) {
+  std::string verb = enabled ? "Enable-PnpDevice" : "Disable-PnpDevice";
+  std::string cmd =
+      "powershell -NoProfile -Command \"$d = Get-PnpDevice -Class Bluetooth 2>$null | "
+      "Where-Object {$_.FriendlyName -like '*Radio*'} | Select-Object -First 1; if (!$d) { exit 2 }; "
+      "$d | " +
+      verb +
+      " -Confirm:$false; exit $LASTEXITCODE\" 2>&1";
+  auto out = win_exec(cmd);
+  (void)out;
+  // Verify by re-reading status.
+  bool cur = false;
+  std::string detail;
+  if (!native_bluetooth_status(cur, detail, error)) return false;
+  if (cur == enabled) return true;
+  error = enabled ? "could not enable Bluetooth (try elevated)"
+                  : "could not disable Bluetooth (try elevated)";
+  return false;
+}
+
+bool native_volume_status(int& level, bool& muted, std::string& error) {
+#ifdef __MINGW32__
+  error = "volume status unsupported on MinGW build";
+  return false;
+#else
+  level = -1;
+  muted = false;
+  HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  bool uninit = SUCCEEDED(hr);
+  IMMDeviceEnumerator* en = nullptr;
+  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  if (FAILED(hr) || !en) {
+    error = "no audio endpoint";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IMMDevice* dev = nullptr;
+  hr = en->GetDefaultAudioEndpoint(eRender, eConsole, &dev);
+  en->Release();
+  if (FAILED(hr) || !dev) {
+    error = "no default audio device";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IAudioEndpointVolume* vol = nullptr;
+  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                     reinterpret_cast<void**>(&vol));
+  dev->Release();
+  if (FAILED(hr) || !vol) {
+    error = "cannot open volume control";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  float scalar = 0;
+  BOOL m = FALSE;
+  hr = vol->GetMasterVolumeLevelScalar(&scalar);
+  if (SUCCEEDED(hr)) vol->GetMute(&m);
+  vol->Release();
+  if (uninit) CoUninitialize();
+  if (FAILED(hr)) {
+    error = "cannot read volume";
+    return false;
+  }
+  level = static_cast<int>(scalar * 100 + 0.5f);
+  muted = m != FALSE;
+  return true;
+#endif
+}
+
+bool native_volume_set(int level, std::string& error) {
+#ifdef __MINGW32__
+  error = "volume set unsupported on MinGW build";
+  return false;
+#else
+  if (level < 0) level = 0;
+  if (level > 100) level = 100;
+  HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  bool uninit = SUCCEEDED(hr);
+  IMMDeviceEnumerator* en = nullptr;
+  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  if (FAILED(hr) || !en) {
+    error = "no audio endpoint";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IMMDevice* dev = nullptr;
+  hr = en->GetDefaultAudioEndpoint(eRender, eConsole, &dev);
+  en->Release();
+  if (FAILED(hr) || !dev) {
+    error = "no default audio device";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IAudioEndpointVolume* vol = nullptr;
+  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                     reinterpret_cast<void**>(&vol));
+  dev->Release();
+  if (FAILED(hr) || !vol) {
+    error = "cannot open volume control";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  hr = vol->SetMasterVolumeLevelScalar(static_cast<float>(level) / 100.0f, nullptr);
+  if (SUCCEEDED(hr) && level > 0) vol->SetMute(FALSE, nullptr);
+  vol->Release();
+  if (uninit) CoUninitialize();
+  if (FAILED(hr)) {
+    error = "cannot set volume";
+    return false;
+  }
+  return true;
+#endif
+}
+
+bool native_volume_mute(bool mute, std::string& error) {
+#ifdef __MINGW32__
+  error = "mute unsupported on MinGW build";
+  return false;
+#else
+  HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  bool uninit = SUCCEEDED(hr);
+  IMMDeviceEnumerator* en = nullptr;
+  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  if (FAILED(hr) || !en) {
+    error = "no audio endpoint";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IMMDevice* dev = nullptr;
+  hr = en->GetDefaultAudioEndpoint(eRender, eConsole, &dev);
+  en->Release();
+  if (FAILED(hr) || !dev) {
+    error = "no default audio device";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  IAudioEndpointVolume* vol = nullptr;
+  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+                     reinterpret_cast<void**>(&vol));
+  dev->Release();
+  if (FAILED(hr) || !vol) {
+    error = "cannot open volume control";
+    if (uninit) CoUninitialize();
+    return false;
+  }
+  hr = vol->SetMute(mute ? TRUE : FALSE, nullptr);
+  vol->Release();
+  if (uninit) CoUninitialize();
+  if (FAILED(hr)) {
+    error = "cannot change mute";
+    return false;
+  }
+  return true;
+#endif
+}
+
+bool native_brightness_status(int& percent, std::string& error) {
+  auto out = win_exec(
+      "powershell -NoProfile -Command \"(Get-WmiObject -Namespace root/wmi -Class "
+      "WmiMonitorBrightness -ErrorAction SilentlyContinue | Select-Object -First 1 "
+      "-ExpandProperty CurrentBrightness)\" 2>&1");
+  std::string digits;
+  for (char c : out)
+    if (c >= '0' && c <= '9') digits.push_back(c);
+  if (digits.empty()) {
+    error = "no brightness monitor found";
+    return false;
+  }
+  try {
+    percent = std::stoi(digits);
+  } catch (...) {
+    error = "cannot parse brightness";
+    return false;
+  }
+  return true;
+}
+
+bool native_brightness_set(int percent, std::string& error) {
+  if (percent < 0) percent = 0;
+  if (percent > 100) percent = 100;
+  std::string cmd =
+      "powershell -NoProfile -Command \"(Get-WmiObject -Namespace root/wmi -Class "
+      "WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Select-Object -First 1).WmiSetBrightness(1, " +
+      std::to_string(percent) + ")\" 2>&1";
+  win_exec(cmd);
+  int cur = -1;
+  if (!native_brightness_status(cur, error)) return false;
+  (void)cur;
+  return true;
+}
+
+bool native_open_settings(const std::string& page, std::string& error) {
+  std::string uri = "ms-settings:";
+  if (page == "wifi")
+    uri = "ms-settings:network-wifi";
+  else if (page == "network")
+    uri = "ms-settings:network";
+  else if (page == "bluetooth")
+    uri = "ms-settings:bluetooth";
+  else if (page == "sound")
+    uri = "ms-settings:sound";
+  else if (page == "display")
+    uri = "ms-settings:display";
+  else if (page == "battery")
+    uri = "ms-settings:batterysaver";
+  else if (page == "power")
+    uri = "ms-settings:powersleep";
+  else if (page == "apps")
+    uri = "ms-settings:appsfeatures";
+  else if (page == "privacy")
+    uri = "ms-settings:privacy";
+  else if (page == "update")
+    uri = "ms-settings:windowsupdate";
+  else if (page == "about")
+    uri = "ms-settings:about";
+  else if (!page.empty()) {
+    error = "unknown settings page '" + page + "'";
+    return false;
+  }
+  auto w = utf8_to_wide(uri);
+  auto rc = reinterpret_cast<INT_PTR>(
+      ShellExecuteW(nullptr, L"open", w.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+  if (rc <= 32) {
+    error = "cannot open settings";
+    return false;
+  }
+  return true;
 }
 
 #else

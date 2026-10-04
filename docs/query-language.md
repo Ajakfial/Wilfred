@@ -201,6 +201,13 @@ synthetic result card instead of searching the index
 | `restart` | `reboot` | Reboot |
 | `logout` | `logoff`, `signout`, `log out` | Sign out of this session |
 | `empty trash` | `emptyrecycle`, `empty bin` | Empty the recycle bin / trash |
+| `wifi [on\|off\|toggle]` | `wlan`, `wireless` | Wi-Fi status + on/off (enter applies; `wifi` lists nearby networks) |
+| `bluetooth [on\|off\|toggle]` | `bt` | Bluetooth status + on/off (enter applies) |
+| `volume [N\|mute\|up\|down]` | `vol` | Volume level + mute (enter applies; `volume 50`, `volume mute`) |
+| `brightness [N\|up\|down]` | `bright`, `backlight`, `dim` | Display brightness (enter applies; `brightness 70`) |
+| `settings [page]` | `setting`, `prefs` | Settings deep-links (`settings wifi`, `bluetooth`, `sound`, `display`, `battery`, `power`, `apps`, `privacy`, `update`, `about`; enter opens) |
+| `setup [check]` | `wizard`, `onboard` | First-run status (roots, hotkey, browser; enter opens wilfred.yml; terminal: `wilfred setup`) |
+| `config [open\|validate]` | `configuration` | Edit/validate wilfred.yml (`config open`, `config validate`, `config reveal`) |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
 `clips code`, `clips ip` (plus an optional text query after the type).

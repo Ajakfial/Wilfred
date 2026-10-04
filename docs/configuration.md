@@ -292,6 +292,33 @@ Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
 | `ocr_languages` | `eng` | Tesseract `-l` value |
 | `max_results` | `8` | Cap per source per query |
 
+## `remotes:` — opt-in remote search backends
+
+Off by default. No network calls unless `enabled: true` **and** at least one
+`source` is listed. Each source is a GET template with `{query}` /
+`{query_enc}` placeholders; the endpoint returns
+`{"results":[{"title":"..","subtitle":"..","url":"..","score":500}]}` (a bare
+array works too). Results appear as `remote` cards after file search; failures
+are silent per-source (no blocking). Use a token in the URL query when the
+server needs auth.
+
+```yaml
+remotes:
+  enabled: true
+  timeout_ms: 5000
+  max_results: 8
+  sources:
+    - name: wiki
+      url: "https://wiki.example.com/api/search?q={query_enc}"
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `false` | Master switch; `false` disables all remote calls |
+| `timeout_ms` | `5000` | Per-source fetch timeout (1000–30000) |
+| `max_results` | `8` | Cap across all remote sources per query (1–50) |
+| `sources` | `[]` | List of `{name, url}` (or `name: url` map); `url` must start with `http(s)://` |
+
 ## `transcription:` — speech-to-text for audio
 
 On-demand transcription of MP3s and MP4 audio (`transcribe <file>` in the

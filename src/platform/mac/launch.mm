@@ -3,11 +3,15 @@
 #include "wilfred/core/utf8.hpp"
 
 #include <cstdlib>
+#include <cctype>
+#include <cstdio>
 #include <string>
+#include <vector>
 
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreServices/CoreServices.h>
+#import <IOKit/graphics/IOGraphicsLib.h>
 
 namespace wilfred {
 #ifdef __APPLE__
@@ -181,6 +185,53 @@ static bool mac_osascript_ok(const std::string& script) {
   return std::system(cmd.c_str()) == 0;
 }
 
+static std::string mac_exec(const std::string& cmd) {
+  std::string full = cmd + " 2>/dev/null";
+  FILE* f = popen(full.c_str(), "r");
+  if (!f) return {};
+  std::string out;
+  char buf[512];
+  while (fgets(buf, sizeof(buf), f)) {
+    out += buf;
+    if (out.size() > 16384) break;
+  }
+  pclose(f);
+  return out;
+}
+
+static std::string mac_lower(std::string s) {
+  for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  return s;
+}
+
+static std::string mac_wifi_dev() {
+  auto out = mac_exec("networksetup -listallhardwareports");
+  std::string cur;
+  bool want = false;
+  for (char c : out + "\n") {
+    if (c == '\n') {
+      auto t = cur;
+      while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+      auto low = mac_lower(t);
+      if (low.rfind("hardware port:", 0) == 0) {
+        want = low.find("wi-fi") != std::string::npos || low.find("wifi") != std::string::npos ||
+               low.find("airport") != std::string::npos;
+      } else if (want && low.rfind("device:", 0) == 0) {
+        auto v = t.substr(7);
+        while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+        while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
+          v.pop_back();
+        if (!v.empty()) return v;
+        want = false;
+      }
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  return "en0";
+}
+
 bool native_media_action(const std::string& id, std::string& error) {
   // System-wide HID first — works with any player (Music, Spotify, VLC,
   // IINA, Chrome, Safari, …) with nothing to install.
@@ -235,6 +286,292 @@ bool native_media_action(const std::string& id, std::string& error) {
     return false;
   }
   error = "unknown media action '" + id + "'";
+  return false;
+}
+
+bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) {
+  auto dev = mac_wifi_dev();
+  auto out = mac_exec("networksetup -getairportpower " + dev);
+  auto low = mac_lower(out);
+  if (low.find("on") != std::string::npos && low.find("off") == std::string::npos) {
+    enabled = true;
+  } else if (low.find("off") != std::string::npos) {
+    enabled = false;
+  } else {
+    error = "cannot read Wi-Fi power (" + dev + ")";
+    return false;
+  }
+  auto ssid = mac_exec("networksetup -getairportnetwork " + dev);
+  // "Current Wi-Fi Network: MyNet" or "You are not associated...".
+  std::string s = ssid;
+  while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+  auto p = s.find(':');
+  std::string net;
+  if (p != std::string::npos) {
+    net = s.substr(p + 1);
+    while (!net.empty() && (net.front() == ' ' || net.front() == '\t')) net.erase(net.begin());
+  }
+  detail = dev;
+  if (!net.empty() && mac_lower(net).find("not associated") == std::string::npos)
+    detail += " · " + net;
+  return true;
+}
+
+bool native_wifi_set(bool enabled, std::string& error) {
+  auto dev = mac_wifi_dev();
+  std::string cmd =
+      std::string("networksetup -setairportpower ") + dev + (enabled ? " on" : " off");
+  if (std::system((cmd + " >/dev/null 2>&1").c_str()) != 0) {
+    error = "networksetup failed (may need admin)";
+    return false;
+  }
+  bool cur = false;
+  std::string detail;
+  if (!native_wifi_status(cur, detail, error)) return false;
+  if (cur != enabled) {
+    error = "Wi-Fi change did not apply";
+    return false;
+  }
+  return true;
+}
+
+std::vector<std::string> native_wifi_list(std::string& error) {
+  std::vector<std::string> out;
+  auto dev = mac_wifi_dev();
+  auto txt = mac_exec("networksetup -listpreferredwirelessnetworks " + dev);
+  std::string cur;
+  for (char c : txt + "\n") {
+    if (c == '\n') {
+      auto t = cur;
+      while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+      while (!t.empty() && (t.back() == ' ' || t.back() == '\r' || t.back() == '\t'))
+        t.pop_back();
+      if (!t.empty() && t[0] != '-' && mac_lower(t).find("preferred") == std::string::npos)
+        out.push_back(t);
+      if (out.size() >= 8) break;
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  if (out.empty()) error = "no preferred networks listed";
+  return out;
+}
+
+bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& error) {
+  if (std::system("command -v blueutil >/dev/null 2>&1") == 0) {
+    auto out = mac_exec("blueutil --power");
+    auto low = mac_lower(out);
+    while (!low.empty() && (low.back() == '\n' || low.back() == '\r' || low.back() == ' '))
+      low.pop_back();
+    if (low == "1" || low.find("on") != std::string::npos) {
+      enabled = true;
+      detail = "blueutil";
+      return true;
+    }
+    if (low == "0" || low.find("off") != std::string::npos) {
+      enabled = false;
+      detail = "blueutil";
+      return true;
+    }
+  }
+  auto out = mac_exec("defaults read /Library/Preferences/com.apple.Bluetooth ControllerPowerState");
+  auto t = mac_lower(out);
+  while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ' || t.back() == ';'))
+    t.pop_back();
+  if (t == "1") {
+    enabled = true;
+    detail = "ControllerPowerState";
+    return true;
+  }
+  if (t == "0") {
+    enabled = false;
+    detail = "ControllerPowerState";
+    return true;
+  }
+  error = "cannot read Bluetooth state (install blueutil: brew install blueutil)";
+  return false;
+}
+
+bool native_bluetooth_set(bool enabled, std::string& error) {
+  if (std::system("command -v blueutil >/dev/null 2>&1") == 0) {
+    std::string cmd = std::string("blueutil --power ") + (enabled ? "1" : "0");
+    if (std::system((cmd + " >/dev/null 2>&1").c_str()) == 0) {
+      bool cur = false;
+      std::string detail;
+      if (native_bluetooth_status(cur, detail, error) && cur == enabled) return true;
+    }
+    error = "blueutil failed to change Bluetooth power";
+    return false;
+  }
+  error = "install blueutil to toggle Bluetooth (brew install blueutil)";
+  return false;
+}
+
+static bool mac_parse_volume(const std::string& txt, int& level, bool& muted) {
+  auto low = mac_lower(txt);
+  auto pv = low.find("output volume:");
+  if (pv == std::string::npos) return false;
+  int v = -1;
+  try {
+    v = std::stoi(low.substr(pv + 14));
+  } catch (...) {
+    return false;
+  }
+  level = v;
+  auto pm = low.find("output muted:");
+  muted = pm != std::string::npos && low.substr(pm).find("true") != std::string::npos;
+  return true;
+}
+
+bool native_volume_status(int& level, bool& muted, std::string& error) {
+  auto out = mac_exec("osascript -e 'get volume settings'");
+  if (!mac_parse_volume(out, level, muted)) {
+    error = "cannot read volume";
+    return false;
+  }
+  return true;
+}
+
+bool native_volume_set(int level, std::string& error) {
+  if (level < 0) level = 0;
+  if (level > 100) level = 100;
+  if (!mac_osascript_ok("set volume output volume " + std::to_string(level))) {
+    error = "cannot set volume";
+    return false;
+  }
+  return true;
+}
+
+bool native_volume_mute(bool mute, std::string& error) {
+  if (!mac_osascript_ok(std::string("set volume output muted ") + (mute ? "true" : "false"))) {
+    error = "cannot change mute";
+    return false;
+  }
+  return true;
+}
+
+bool native_brightness_status(int& percent, std::string& error) {
+#if defined(__APPLE__)
+  // IOKit display brightness (built-in panels). External monitors report
+  // unsupported and fall through to the error below.
+  io_iterator_t it = 0;
+  if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IODisplayConnect"),
+                                   &it) == KERN_SUCCESS) {
+    io_object_t svc = IOIteratorNext(it);
+    if (svc) {
+      float b = -1;
+      if (IODisplayGetFloatParameter(svc, kNilOptions, CFSTR(kIODisplayBrightnessKey), &b) ==
+              KERN_SUCCESS &&
+          b >= 0) {
+        percent = static_cast<int>(b * 100 + 0.5f);
+        IOObjectRelease(svc);
+        IOObjectRelease(it);
+        return true;
+      }
+      IOObjectRelease(svc);
+    }
+    IOObjectRelease(it);
+  }
+#endif
+  if (std::system("command -v brightness >/dev/null 2>&1") == 0) {
+    auto out = mac_exec("brightness -l");
+    // `brightness -l` prints "display 0: brightness 0.75".
+    auto low = mac_lower(out);
+    auto p = low.find("brightness");
+    if (p != std::string::npos) {
+      try {
+        float f = std::stof(low.substr(p + 10));
+        percent = static_cast<int>(f * 100 + 0.5f);
+        return true;
+      } catch (...) {
+      }
+    }
+  }
+  error = "brightness not supported on this display";
+  return false;
+}
+
+bool native_brightness_set(int percent, std::string& error) {
+  if (percent < 0) percent = 0;
+  if (percent > 100) percent = 100;
+#if defined(__APPLE__)
+  io_iterator_t it = 0;
+  if (IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IODisplayConnect"),
+                                   &it) == KERN_SUCCESS) {
+    bool any = false;
+    for (io_object_t svc = IOIteratorNext(it); svc; svc = IOIteratorNext(it)) {
+      if (IODisplaySetFloatParameter(svc, kNilOptions, CFSTR(kIODisplayBrightnessKey),
+                                     static_cast<float>(percent) / 100.0f) == KERN_SUCCESS)
+        any = true;
+      IOObjectRelease(svc);
+    }
+    IOObjectRelease(it);
+    if (any) return true;
+  }
+#endif
+  if (std::system("command -v brightness >/dev/null 2>&1") == 0) {
+    if (std::system(("brightness " + std::to_string(static_cast<float>(percent) / 100.0f) +
+                     " >/dev/null 2>&1")
+                        .c_str()) == 0)
+      return true;
+  }
+  error = "brightness not supported on this display";
+  return false;
+}
+
+bool native_open_settings(const std::string& page, std::string& error) {
+  auto open_url = [](const std::string& u) {
+    return std::system(("open " + mac_shell_quote(u) + " >/dev/null 2>&1").c_str() == 0;
+  };
+  auto open_app = [] {
+    return std::system("open -a 'System Settings' >/dev/null 2>&1") == 0 ||
+           std::system("open -a 'System Preferences' >/dev/null 2>&1") == 0;
+  };
+  if (page.empty()) {
+    if (open_app()) return true;
+    error = "cannot open System Settings";
+    return false;
+  }
+  // Ventura+ ids with legacy fallbacks.
+  const char* cands[3] = {nullptr, nullptr, nullptr};
+  if (page == "wifi") {
+    cands[0] = "x-apple.systempreferences:com.apple.wifi-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.network";
+  } else if (page == "network") {
+    cands[0] = "x-apple.systempreferences:com.apple.Network-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.network";
+  } else if (page == "bluetooth") {
+    cands[0] = "x-apple.systempreferences:com.apple.Bluetooth-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.bluetooth";
+  } else if (page == "sound") {
+    cands[0] = "x-apple.systempreferences:com.apple.Sound-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.sound";
+  } else if (page == "display") {
+    cands[0] = "x-apple.systempreferences:com.apple.Display-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.displays";
+  } else if (page == "battery" || page == "power") {
+    cands[0] = "x-apple.systempreferences:com.apple.Battery-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.energysaver";
+  } else if (page == "apps") {
+    cands[0] = "x-apple.systempreferences:com.apple.Applications-settings";
+  } else if (page == "privacy") {
+    cands[0] = "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension";
+    cands[1] = "x-apple.systempreferences:com.apple.preference.security";
+  } else if (page == "update") {
+    cands[0] = "x-apple.systempreferences:com.apple.Software-Update-settings";
+    cands[1] = "x-apple.systempreferences:com.apple.preferences.softwareupdate";
+  } else if (page == "about") {
+    cands[0] = "x-apple.systempreferences:com.apple.About-settings";
+  } else {
+    error = "unknown settings page '" + page + "'";
+    return false;
+  }
+  for (auto* u : cands) {
+    if (u && open_url(u)) return true;
+  }
+  if (open_app()) return true;
+  error = "cannot open settings page '" + page + "'";
   return false;
 }
 

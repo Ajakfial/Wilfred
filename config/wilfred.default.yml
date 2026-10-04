@@ -210,6 +210,20 @@ sources:
   ocr_languages: "eng"
   max_results: 8
 
+# Optional remote search backends (opt-in only, off by default).
+# Each source is a GET template; {query} / {query_enc} are substituted.
+# The endpoint returns {"results":[{"title":"..","subtitle":"..","url":".."}]}.
+# No calls are made unless enabled: true AND at least one source is listed.
+remotes:
+  enabled: false
+  timeout_ms: 5000
+  max_results: 8
+  sources: []
+  # Example:
+  # sources:
+  #   - name: wiki
+  #     url: "https://wiki.example.com/api/search?q={query_enc}"
+
 # On-demand speech-to-text for audio files (`transcribe ...`).
 # Needs the `whisper-cli` binary (whisper.cpp) on PATH; `ffmpeg` is only
 # needed to extract audio from containers (mp4/m4a/...). WAV files need
