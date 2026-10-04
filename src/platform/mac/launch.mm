@@ -522,7 +522,7 @@ bool native_brightness_set(int percent, std::string& error) {
 
 bool native_open_settings(const std::string& page, std::string& error) {
   auto open_url = [](const std::string& u) {
-    return std::system(("open " + mac_shell_quote(u) + " >/dev/null 2>&1").c_str() == 0;
+    return std::system(("open " + mac_shell_quote(u) + " >/dev/null 2>&1").c_str()) == 0;
   };
   auto open_app = [] {
     return std::system("open -a 'System Settings' >/dev/null 2>&1") == 0 ||
