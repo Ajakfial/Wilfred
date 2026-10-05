@@ -1,6 +1,7 @@
 #include "wilfred/search/pkg.hpp"
 
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/search/engine.hpp"
 
 #include <algorithm>
@@ -51,6 +52,8 @@ std::string trim_copy(const std::string& s) {
 bool have_tool(const std::string& exe) {
 #ifdef _WIN32
   return std::system(("where " + exe + " >NUL 2>&1").c_str()) == 0;
+#elif defined(WILFRED_IOS)
+  return false;  // no subprocesses and no package managers on iOS
 #else
   return std::system(("command -v " + exe + " >/dev/null 2>&1").c_str()) == 0;
 #endif
