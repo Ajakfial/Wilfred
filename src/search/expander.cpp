@@ -414,10 +414,12 @@ bool GlobalExpander::start(const Config& cfg, SnippetStore* snippets) {
   log_info("snippets", "global expansion enabled (X11)");
   return true;
 #else
-  // No X11 (Wayland-native, BSD console, mobile): keep overlay paste path.
-  running_ = true;
-  log_info("snippets", "global expansion: overlay paste only on this display server");
-  return true;
+  // No X11 (Wayland-native, BSD console, mobile): there is no cross-desktop
+  // key hook. Report unsupported so callers show overlay paste instead of
+  // pretending the global hook is live.
+  log_warn("snippets",
+           "global expansion needs X11 (Wayland-native: use overlay paste)");
+  return false;
 #endif
 }
 

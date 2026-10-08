@@ -194,9 +194,15 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
         return false;
       }
     } else {
-      log_warn("updater", "unsupported ZIP compression method " + std::to_string(method) + " for " + name);
-      offset += 46 + name_len + extra_len + comment_len;
-      continue;
+      // Fail loudly: silently skipping would stage a partial update that
+      // looks successful but is missing files. Our archives only ever use
+      // store/deflate, so anything else means a foreign/corrupt zip.
+      if (error)
+        *error = "unsupported ZIP compression method " + std::to_string(method) + " for " +
+                 name + " (need store/deflate)";
+      log_warn("updater", "unsupported ZIP compression method " + std::to_string(method) +
+                              " for " + name);
+      return false;
     }
 
     // Build output path

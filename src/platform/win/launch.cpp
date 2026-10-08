@@ -22,6 +22,23 @@
 namespace wilfred {
 #ifdef _WIN32
 
+// Portable COM IDs for the audio endpoint API. __uuidof() is MSVC-only, so
+// MinGW builds use explicit GUIDs — same objects, all compilers.
+namespace {
+const GUID kClsidMMDeviceEnumerator = {0xBCDE0395,
+                                       0xE52F,
+                                       0x467C,
+                                       {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
+const GUID kIidMMDeviceEnumerator = {0xA95664D2,
+                                     0x9614,
+                                     0x4F35,
+                                     {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};
+const GUID kIidAudioEndpointVolume = {0x5CDF2C82,
+                                      0x841E,
+                                      0x4546,
+                                      {0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A}};
+}  // namespace
+
 bool native_launch(const std::string& path) {
   auto w = utf8_to_wide(path);
   auto rc = reinterpret_cast<INT_PTR>(
@@ -585,17 +602,13 @@ bool native_bluetooth_set(bool enabled, std::string& error) {
 }
 
 bool native_volume_status(int& level, bool& muted, std::string& error) {
-#ifdef __MINGW32__
-  error = "volume status unsupported on MinGW build";
-  return false;
-#else
   level = -1;
   muted = false;
   HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   bool uninit = SUCCEEDED(hr);
   IMMDeviceEnumerator* en = nullptr;
-  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  hr = CoCreateInstance(kClsidMMDeviceEnumerator, nullptr, CLSCTX_ALL, kIidMMDeviceEnumerator,
+                        reinterpret_cast<void**>(&en));
   if (FAILED(hr) || !en) {
     error = "no audio endpoint";
     if (uninit) CoUninitialize();
@@ -610,7 +623,7 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
                      reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
@@ -631,21 +644,16 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
   level = static_cast<int>(scalar * 100 + 0.5f);
   muted = m != FALSE;
   return true;
-#endif
 }
 
 bool native_volume_set(int level, std::string& error) {
-#ifdef __MINGW32__
-  error = "volume set unsupported on MinGW build";
-  return false;
-#else
   if (level < 0) level = 0;
   if (level > 100) level = 100;
   HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   bool uninit = SUCCEEDED(hr);
   IMMDeviceEnumerator* en = nullptr;
-  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  hr = CoCreateInstance(kClsidMMDeviceEnumerator, nullptr, CLSCTX_ALL, kIidMMDeviceEnumerator,
+                        reinterpret_cast<void**>(&en));
   if (FAILED(hr) || !en) {
     error = "no audio endpoint";
     if (uninit) CoUninitialize();
@@ -660,7 +668,7 @@ bool native_volume_set(int level, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
                      reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
@@ -677,19 +685,14 @@ bool native_volume_set(int level, std::string& error) {
     return false;
   }
   return true;
-#endif
 }
 
 bool native_volume_mute(bool mute, std::string& error) {
-#ifdef __MINGW32__
-  error = "mute unsupported on MinGW build";
-  return false;
-#else
   HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   bool uninit = SUCCEEDED(hr);
   IMMDeviceEnumerator* en = nullptr;
-  hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                        __uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&en));
+  hr = CoCreateInstance(kClsidMMDeviceEnumerator, nullptr, CLSCTX_ALL, kIidMMDeviceEnumerator,
+                        reinterpret_cast<void**>(&en));
   if (FAILED(hr) || !en) {
     error = "no audio endpoint";
     if (uninit) CoUninitialize();
@@ -704,7 +707,7 @@ bool native_volume_mute(bool mute, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
                      reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
@@ -720,7 +723,6 @@ bool native_volume_mute(bool mute, std::string& error) {
     return false;
   }
   return true;
-#endif
 }
 
 bool native_brightness_status(int& percent, std::string& error) {

@@ -61,7 +61,7 @@ image and path clips (`clips image`, `clips path`), calendar/contact
 creation (`event add`, `contact add`), global snippet expansion on macOS
 (CGEventTap) and X11 Linux/BSD, bulk file operations (`rename`, `move_to`,
 `new_from_template`), UI localization (`ui.language` with `lang/*.yml`
-catalogs: en, de, fr, es, pt, it, nl), snapshot format v3 with persisted
+catalogs: en, de, fr, es, pt, it, nl, ja, ko, zh, ru, pl, tr, uk), snapshot format v3 with persisted
 postings (`index.format`), hybrid semantic fusion weights, and the official
 plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
 `dice`, `morse`, `password`, `cheatsheets`).
@@ -98,11 +98,10 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   valid key, type errors show what was got versus expected with an
   example, and `workflows:`/`quicklinks:`/`app_actions:` validate action
   ids and placeholders instead of failing silently.
-* **Optional encrypted sync.** The backup/sync format
-  ([docs/sync-and-backup.md](docs/sync-and-backup.md)) is a plain
-  dependency-free binary container; encryption-at-rest for the archive
-  would need discussion first, per the project's no-new-dependencies
-  policy in CONTRIBUTING.md.
+* ~~**Optional encrypted sync.**~~ Done — `sync.encrypt` with `password` /
+  `key_file` (dependency-free SHA-256 KDF + keystream, `WILFEK1`) encrypts
+  `sync-push` archives; `sync-pull`/`restore` auto-detect plain vs encrypted
+  (see [docs/sync-and-backup.md](docs/sync-and-backup.md)).
 * **`.clang-format` rollout to existing files.** Land in small,
   reviewable chunks per module rather than one large reformat, to keep
   diffs reviewable (see CONTRIBUTING.md's guidance on focused PRs).

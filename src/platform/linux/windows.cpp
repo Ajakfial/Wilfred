@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -422,32 +423,118 @@ bool native_monitor_signature(std::string& sig, std::string& error) {
 
 #else
 
+namespace {
+// Wayland has no universal window API; compositors expose their own
+// (swaymsg, wlrctl, KWin scripts). Without X11/XWayland we cannot list or
+// drive windows, so these report an actionable error instead of silently
+// doing nothing. Monitor detection below still tries compositor CLIs.
+const char* kWaylandWindowErr =
+    "window management needs X11 (Wayland-native: run under XWayland with DISPLAY set, "
+    "or manage via compositor tools like swaymsg/wlrctl)";
+
+bool have_tool(const char* name) {
+  std::string cmd = std::string("command -v ") + name + " >/dev/null 2>&1";
+  return std::system(cmd.c_str()) == 0;
+}
+
+bool swaymsg_signature(std::string& sig) {
+  if (!have_tool("swaymsg")) return false;
+  FILE* f = popen("swaymsg -t get_outputs 2>/dev/null", "r");
+  if (!f) return false;
+  std::string out;
+  char buf[1024];
+  while (fgets(buf, sizeof(buf), f)) out += buf;
+  pclose(f);
+  // Minimal scan for {"name":"..","rect":{"x":..,"y":..,"width":..,"height":..},...,"active":true}
+  // without a full JSON parse: collect WxH@X,Y for entries marked active.
+  std::vector<std::string> parts;
+  std::size_t pos = 0;
+  while ((pos = out.find("\"rect\"", pos)) != std::string::npos) {
+    auto num = [&](const char* key, std::size_t from) -> long {
+      auto k = out.find(key, from);
+      if (k == std::string::npos) return -1;
+      k = out.find(':', k);
+      if (k == std::string::npos) return -1;
+      return std::atol(out.c_str() + k + 1);
+    };
+    long x = num("\"x\"", pos), y = num("\"y\"", pos);
+    long w = num("\"width\"", pos), h = num("\"height\"", pos);
+    if (w > 0 && h > 0 && x >= 0 && y >= 0) {
+      char tmp[64];
+      std::snprintf(tmp, sizeof(tmp), "%ldx%ld@%ld,%ld", w, h, x, y);
+      parts.push_back(tmp);
+    }
+    pos += 6;
+    if (parts.size() >= 16) break;
+  }
+  if (parts.empty()) return false;
+  std::sort(parts.begin(), parts.end());
+  sig.clear();
+  for (std::size_t i = 0; i < parts.size(); ++i) {
+    if (i) sig.push_back('|');
+    sig += parts[i];
+  }
+  return true;
+}
+}  // namespace
+
 std::vector<NativeWindowInfo> native_list_windows() { return {}; }
 
 bool native_focus_window(std::uint64_t) { return false; }
 
 bool native_window_action(std::uint64_t, NativeWindowOp, std::string& error) {
-  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  error = kWaylandWindowErr;
   return false;
 }
 
 bool native_window_rect(std::uint64_t, NativeWindowRect&, std::string& error) {
-  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  error = kWaylandWindowErr;
   return false;
 }
 
 bool native_window_move(std::uint64_t, int, int, int, int, std::string& error) {
-  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  error = kWaylandWindowErr;
   return false;
 }
 
 bool native_primary_work_area(NativeWorkArea&, std::string& error) {
-  error = "window management needs X11 (unsupported on Wayland-only builds)";
+  error = kWaylandWindowErr;
   return false;
 }
 
-bool native_monitor_signature(std::string&, std::string& error) {
-  error = "window management needs X11 (unsupported on Wayland-only builds)";
+bool native_monitor_signature(std::string& sig, std::string& error) {
+  // xrandr works under XWayland when DISPLAY is set; swaymsg covers native
+  // Sway/wlroots without XWayland. Anything else stays honestly unsupported.
+  FILE* f = popen("xrandr --query 2>/dev/null", "r");
+  if (f) {
+    std::vector<std::string> parts;
+    char line[512];
+    while (fgets(line, sizeof(line), f)) {
+      std::string s(line);
+      auto con = s.find(" connected ");
+      if (con == std::string::npos) continue;
+      auto geom = s.find_first_of("0123456789", con);
+      if (geom == std::string::npos) continue;
+      auto end = s.find_first_of(" (", geom);
+      std::string g = s.substr(geom, end == std::string::npos ? std::string::npos : end - geom);
+      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r')) g.pop_back();
+      if (!g.empty()) parts.push_back(g);
+    }
+    pclose(f);
+    if (!parts.empty()) {
+      std::sort(parts.begin(), parts.end());
+      sig.clear();
+      for (std::size_t i = 0; i < parts.size(); ++i) {
+        if (i) sig.push_back('|');
+        sig += parts[i];
+      }
+      return true;
+    }
+  }
+  if (swaymsg_signature(sig)) return true;
+  error =
+      "cannot enumerate monitors (Wayland-native without XWayland: install "
+      "xrandr for XWayland or use a Sway/wlroots compositor with swaymsg)";
   return false;
 }
 

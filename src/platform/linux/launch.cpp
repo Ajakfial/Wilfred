@@ -260,9 +260,10 @@ bool native_open_url(const std::string& url) {
 bool native_system_action(const std::string& id) {
 #ifdef WILFRED_BSD
   // No systemd/logind on BSD: lock via screensavers, power via shutdown(8).
-  // Logout needs a session-manager hook and stays unsupported. Sleep is
-  // per-OS below (acpiconf on FreeBSD/DragonFly, zzz on OpenBSD, ACPI
-  // sleep state on NetBSD).
+  // Logout goes through the desktop session manager when one is running
+  // (GNOME/Xfce/MATE/KDE all exist on BSD); bare consoles stay unsupported.
+  // Sleep is per-OS below (acpiconf on FreeBSD/DragonFly, zzz on OpenBSD,
+  // ACPI sleep state on NetBSD).
   if (id == "lock") {
     return sys("xdg-screensaver lock >/dev/null 2>&1") ||
            sys("xscreensaver-command -lock >/dev/null 2>&1");
@@ -283,7 +284,12 @@ bool native_system_action(const std::string& id) {
   }
   if (id == "shutdown") return sys("shutdown -p now >/dev/null 2>&1 &");
   if (id == "restart") return sys("shutdown -r now >/dev/null 2>&1 &");
-  if (id == "logout") return false;
+  if (id == "logout")
+    return sys("gnome-session-quit --logout --no-prompt >/dev/null 2>&1 &") ||
+           sys("xfce4-session-logout --logout >/dev/null 2>&1 &") ||
+           sys("mate-session-save --logout >/dev/null 2>&1 &") ||
+           sys("qdbus org.kde.ksmserver /KSMServer logout 0 0 0 >/dev/null 2>&1 &") ||
+           sys("loginctl terminate-session \"$XDG_SESSION_ID\" >/dev/null 2>&1 &");
   // empty_trash falls through to the shared gio/rm implementation below.
 #endif
   if (id == "lock") {
