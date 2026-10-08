@@ -1,4 +1,5 @@
 import { Icon, Mark } from "./icons";
+import { uiStr } from "../protocol";
 
 interface Props {
   status: string;
@@ -37,11 +38,11 @@ export function ActionBar({
       <div className="bar-actions">
         {hasCorrection ? (
           <span className="bar-hint">
-            Fix <kbd>tab</kbd>
+            {uiStr("overlay.bar_fix", "Fix")} <kbd>tab</kbd>
           </span>
         ) : canComplete ? (
           <span className="bar-hint">
-            Complete <kbd>→</kbd>
+            {uiStr("overlay.bar_complete", "Complete")} <kbd>→</kbd>
           </span>
         ) : null}
         <button
@@ -52,7 +53,7 @@ export function ActionBar({
           onMouseDown={(e) => { e.preventDefault(); onPreview(); }}
         >
           <Icon name="panelRight" size={14} strokeWidth={2} />
-          Details
+          {uiStr("overlay.bar_details", "Details")}
           <kbd>F3</kbd>
         </button>
         <span className="bar-sep" aria-hidden="true" />
@@ -69,7 +70,7 @@ export function ActionBar({
             aria-expanded={menuOpen}
             onMouseDown={(e) => { e.preventDefault(); onActions(); }}
           >
-            Actions
+            {uiStr("overlay.bar_actions", "Actions")}
             <kbd>{modLabel}</kbd>
             <kbd>K</kbd>
           </button>

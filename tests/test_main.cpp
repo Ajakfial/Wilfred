@@ -36,6 +36,7 @@ int main() {
   test_toggles_remote_setup();
   test_packages();
   test_new_batch();
+  test_locale();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

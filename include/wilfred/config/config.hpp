@@ -138,6 +138,9 @@ struct Config {
     std::string accent;
     // Base font size in px for the overlay (10-24, 0 = default 14).
     int font_size{0};
+    // UI language: "auto" (OS locale), "en", "de", "fr", "es", ... Unknown
+    // languages fall back to English; see docs/localization.md.
+    std::string language{"auto"};
   } ui;
 
   struct Plugins {

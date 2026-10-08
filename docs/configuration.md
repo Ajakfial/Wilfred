@@ -241,6 +241,7 @@ hotkeys:
 | `theme` | `dark` | Overlay color theme |
 | `accent` | `""` | Custom accent (`#RRGGBB`, `#RGB`, or `indigo/blue/green/teal/pink/orange/red/purple`); empty = default |
 | `font_size` | `0` | Base overlay font size in px (`0` = default 14, clamped 10–24) |
+| `language` | `auto` | UI language: `auto` (OS locale), `en`, `de`, `fr`, `es`, or any two-letter code with optional region (`pt-BR`). Unknown languages fall back to English — see [localization.md](localization.md) |
 | `max_visible` | `9` | Max results shown in the overlay list at once (scrollable beyond that; independent of `search.max_results`, which caps what the engine computes) |
 | `width` | `720` | Overlay window width in pixels |
 

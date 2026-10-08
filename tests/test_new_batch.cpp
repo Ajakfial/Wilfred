@@ -178,7 +178,7 @@ void test_new_batch() {
     CHECK(!pins.empty());
   }
 
-  // --- Overlay appearance JSON carries accent/fontSize ---
+  // --- Overlay appearance JSON carries accent/fontSize + strings ---
   {
     Config cfg;
     cfg.ui.accent = "#ff5500";
@@ -187,8 +187,12 @@ void test_new_batch() {
     auto js = overlay_show_json();
     CHECK(js.find("ff5500") != std::string::npos);
     CHECK(js.find("18") != std::string::npos);
+    CHECK(js.find("strings") != std::string::npos);
+    CHECK(js.find("Search files, apps, and more") != std::string::npos);
     Config def;
     set_overlay_appearance(def);
-    CHECK_EQ(overlay_show_json(), "{\"type\":\"show\"}");
+    auto bare = overlay_show_json();
+    CHECK(bare.find("{\"type\":\"show\"") != std::string::npos);
+    CHECK(bare.find("strings") != std::string::npos);
   }
 }

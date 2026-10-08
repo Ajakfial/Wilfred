@@ -14,11 +14,18 @@
 #include <shlobj.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <climits>
+#include <cstdlib>
 #include <pwd.h>
 #include <unistd.h>
 #else
+#include <climits>
 #include <pwd.h>
 #include <unistd.h>
+#if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 #endif
 
 namespace wilfred {
@@ -185,6 +192,48 @@ std::string default_index_path() { return path_join(data_directory(), "index"); 
 std::string default_history_path() { return path_join(data_directory(), "history.bin"); }
 std::string default_clips_path() { return path_join(data_directory(), "clips.bin"); }
 std::string default_log_path() { return path_join(data_directory(), "wilfred.log"); }
+
+std::string exe_directory() {
+#ifdef _WIN32
+  wchar_t buf[MAX_PATH];
+  DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+  if (!n) return ".";
+  return path_parent(wide_to_utf8(std::wstring(buf, n)));
+#elif defined(__APPLE__)
+  char buf[1024];
+  uint32_t sz = sizeof(buf);
+  if (_NSGetExecutablePath(buf, &sz) != 0) return ".";
+  char real[PATH_MAX];
+  if (!realpath(buf, real)) return path_parent(buf);
+  return path_parent(real);
+#else
+  char buf[PATH_MAX];
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return path_parent(buf);
+    }
+  }
+#elif defined(__NetBSD__)
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(getpid()), KERN_PROC_PATHNAME};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return path_parent(buf);
+    }
+  }
+#endif
+  ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+  if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
+  if (n <= 0) return ".";
+  buf[n] = 0;
+  return path_parent(buf);
+#endif
+}
 
 std::string ipc_endpoint() {
 #ifdef _WIN32

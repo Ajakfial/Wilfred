@@ -19,6 +19,7 @@ char path_separator();
 std::string home_directory();
 std::string config_directory();
 std::string data_directory();
+std::string exe_directory();
 std::string default_config_path();
 std::string default_index_path();
 std::string default_history_path();

@@ -14,7 +14,9 @@ import {
   enterFitMode,
   rowsOf,
   sectionsOf,
+  setUiStrings,
   tips,
+  uiStr,
 } from "./protocol";
 import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
 import { ActionBar } from "./components/ActionBar";
@@ -342,6 +344,7 @@ export function App() {
     const onNative = (msg: NativeInMsg) => {
       if (!msg || typeof msg !== "object") return;
       if (msg.type === "show") {
+        setUiStrings((msg as unknown as { strings?: unknown }).strings);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
         window.clearTimeout(hideTimer.current);
         dispatch({ type: "SHOW" });
@@ -351,6 +354,7 @@ export function App() {
           sendQuery("");
         });
       } else if (msg.type === "config") {
+        setUiStrings((msg as unknown as { strings?: unknown }).strings);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
       } else if (msg.type === "fit") {
         enterFitMode();
@@ -715,7 +719,10 @@ export function App() {
   const plat = platformId();
   const modLabel = plat === "mac" ? "⌘" : "Ctrl";
   const activeId = rows[s.sel] ? `row-${rows[s.sel].index}` : undefined;
-  const status = `${rows.length} result${rows.length === 1 ? "" : "s"}`;
+  const status =
+    rows.length === 1
+      ? uiStr("overlay.bar_results_one", "{n} result", { n: rows.length })
+      : uiStr("overlay.bar_results_other", "{n} results", { n: rows.length });
   const selPath = selItem && selItem.action !== "habit" ? selItem.path || "" : "";
 
   return (
@@ -740,7 +747,7 @@ export function App() {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
-              placeholder="Search files, apps, and more"
+              placeholder={uiStr("overlay.search_placeholder", "Search files, apps, and more")}
               aria-label="Search"
               aria-autocomplete="both"
               aria-expanded={showAssistBar}
@@ -789,7 +796,7 @@ export function App() {
               <Icon name="wand" size={13} strokeWidth={2.2} />
             </span>
             <span className="correct-text">
-              Did you mean <strong>{s.correction}</strong>?
+              {uiStr("overlay.correct_prefix", "Did you mean")} <strong>{s.correction}</strong>?
             </span>
             <kbd>tab</kbd>
             <span
@@ -845,13 +852,25 @@ export function App() {
                 <span className="empty-icon" aria-hidden="true">
                   <Icon name={s.query.trim() ? "fileSearch" : "search"} size={22} strokeWidth={1.8} />
                 </span>
-                <strong>{s.query.trim() ? `No results for “${s.query.trim()}”` : "Search, calculate, or run a command"}</strong>
+                <strong>
+                  {s.query.trim()
+                    ? uiStr("overlay.empty_title_none", "No results for “{q}”", { q: s.query.trim() })
+                    : uiStr("overlay.empty_title_idle", "Search, calculate, or run a command")}
+                </strong>
                 <span>
                   {s.query.trim()
                     ? s.correction
-                      ? "Press Tab to use the suggestion above, or start with ? to search the web."
-                      : "Check the spelling, or start with ? to search the web."
-                    : `Press ${hotkeyHint()} anywhere to open Wilfred. Try one of these:`}
+                      ? uiStr(
+                          "overlay.empty_sub_none_correction",
+                          "Press Tab to use the suggestion above, or start with ? to search the web.",
+                        )
+                      : uiStr(
+                          "overlay.empty_sub_none",
+                          "Check the spelling, or start with ? to search the web.",
+                        )
+                    : uiStr("overlay.empty_sub_idle", "Press {hotkey} anywhere to open Wilfred. Try one of these:", {
+                        hotkey: hotkeyHint(),
+                      })}
                 </span>
                 {!s.query.trim() && (
                   <div className="chips chips--center">

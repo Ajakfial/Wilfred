@@ -103,6 +103,7 @@ set(WILFRED_CORE_SOURCES
   src/plugin/mini.cpp
   src/sync/backup.cpp
   src/import/import.cpp
+  src/locale/locale.cpp
   src/query/classify.cpp
   src/query/interpreter.cpp
   src/math/expr.cpp
@@ -201,6 +202,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/plugin/mini.hpp
   include/wilfred/sync/backup.hpp
   include/wilfred/import/import.hpp
+  include/wilfred/locale/locale.hpp
   include/wilfred/query/classify.hpp
   include/wilfred/query/interpreter.hpp
   include/wilfred/math/expr.hpp
@@ -531,12 +533,16 @@ set(WILFRED_TEST_SOURCES
   tests/test_toggles_remote_setup.cpp
   tests/test_packages.cpp
   tests/test_new_batch.cpp
+  tests/test_locale.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)
   add_executable(wilfred_tests ${WILFRED_TEST_SOURCES})
   target_link_libraries(wilfred_tests PRIVATE wilfred_core)
   target_include_directories(wilfred_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+  # Lets catalog tests locate the shipped lang/*.yml files.
+  file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" WILFRED_SRC_POSIX)
+  target_compile_definitions(wilfred_tests PRIVATE WILFRED_SOURCE_DIR="${WILFRED_SRC_POSIX}")
   enable_testing()
   add_test(NAME wilfred_tests COMMAND wilfred_tests)
 endif()
@@ -549,4 +555,5 @@ endif()
 if(NOT ANDROID AND NOT IOS)
 install(TARGETS wilfred RUNTIME DESTINATION bin)
 install(FILES config/wilfred.default.yml DESTINATION share/wilfred)
+install(DIRECTORY lang/ DESTINATION share/wilfred/lang)
 endif()

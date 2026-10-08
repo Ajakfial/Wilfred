@@ -5,6 +5,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/locale/locale.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -714,7 +715,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     }
     std::vector<std::string> ui_valid = {"theme",       "max_visible", "width",
                                          "accent",      "font_size",   "fontSize",
-                                         "transparent", "opacity",     "blur"};
+                                         "language",    "transparent", "opacity",
+                                         "blur"};
     if (!check_unknown_keys(*ui, ui_valid, "ui", err)) return false;
     c.ui.theme = ui->str("theme", "dark");
     c.ui.max_visible = static_cast<int>(ui->integer("max_visible", 9));
@@ -722,6 +724,14 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.ui.accent = ui->str("accent", "");
     if (c.ui.accent.size() > 32) {
       err.message = "ui.accent must be a short color like #7f8cff or indigo";
+      return false;
+    }
+    c.ui.language = ui->str("language", "auto");
+    if (!LocaleStore::valid_code_syntax(c.ui.language)) {
+      err.message =
+          "ui.language must be auto, en, or a two-letter code like de (optionally with "
+          "region, e.g. pt-BR); got '" +
+          c.ui.language + "'. Shipped: en, de, fr, es (see docs/localization.md)";
       return false;
     }
     c.ui.font_size = static_cast<int>(ui->integer("font_size", ui->integer("fontSize", 0)));

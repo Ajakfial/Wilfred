@@ -59,3 +59,4 @@ void test_bsd();
 void test_toggles_remote_setup();
 void test_packages();
 void test_new_batch();
+void test_locale();

@@ -66,6 +66,33 @@ export function platformId(): "win" | "mac" | "linux" {
   return "linux";
 }
 
+/**
+ * Localized chrome strings from the native `show` message (`strings` map,
+ * see overlay_show_json). Missing keys fall back to the English literals
+ * below, so old hosts and the browser demo keep working unchanged.
+ */
+let gStrings: Record<string, string> = {};
+
+export function setUiStrings(s: unknown): void {
+  if (s && typeof s === "object" && !Array.isArray(s)) {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(s as Record<string, unknown>)) {
+      if (typeof v === "string" && v) out[k] = v;
+    }
+    gStrings = out;
+  }
+}
+
+export function uiStr(key: string, fallback: string, args?: Record<string, string | number>): string {
+  let s = gStrings[key] ?? fallback;
+  if (args) {
+    for (const [k, v] of Object.entries(args)) {
+      s = s.split(`{${k}}`).join(String(v));
+    }
+  }
+  return s;
+}
+
 export function hotkeyHint(): string {
   return platformId() === "mac" ? "⌘⌥W" : "Ctrl Alt W";
 }
@@ -482,21 +509,24 @@ export function parseSpeed(item: ResultItem): Speed | null {
 
 /** Footer label for the Enter action on the selected row (sentence case). */
 export function primaryLabel(item: ResultItem | undefined): string {
-  if (!item) return "Open";
+  if (!item) return uiStr("overlay.primary_open", "Open");
   const k = kindOf(item);
   const first = actionsOf(item)[0]?.label;
-  if (item.action === "calc" || item.action === "convert" || k === "speedtest") return "Copy result";
-  if (item.action === "expand") return first || "Paste";
-  if (item.action === "web") return "Open in browser";
-  if (item.action === "copy") return first || "Copy";
-  if (item.category === "system") return first || "Run";
-  if (item.category === "toggle") return first || "Apply";
-  if (item.category === "settings") return first || "Open settings";
-  if (item.category === "setup" || item.category === "config") return first || "Open";
-  if (item.category === "remote") return "Open in browser";
-  if (item.category === "pkg") return first || "Install";
-  if (k === "application") return "Open application";
-  if (k === "directory") return "Open folder";
+  if (item.action === "calc" || item.action === "convert" || k === "speedtest")
+    return uiStr("overlay.primary_copy_result", "Copy result");
+  if (item.action === "expand") return first || uiStr("overlay.primary_paste", "Paste");
+  if (item.action === "web") return uiStr("overlay.primary_open_browser", "Open in browser");
+  if (item.action === "copy") return first || uiStr("overlay.primary_copy", "Copy");
+  if (item.category === "system") return first || uiStr("overlay.primary_run", "Run");
+  if (item.category === "toggle") return first || uiStr("overlay.primary_apply", "Apply");
+  if (item.category === "settings")
+    return first || uiStr("overlay.primary_open_settings", "Open settings");
+  if (item.category === "setup" || item.category === "config")
+    return first || uiStr("overlay.primary_open", "Open");
+  if (item.category === "remote") return uiStr("overlay.primary_open_browser", "Open in browser");
+  if (item.category === "pkg") return first || uiStr("overlay.primary_install", "Install");
+  if (k === "application") return uiStr("overlay.primary_open_app", "Open application");
+  if (k === "directory") return uiStr("overlay.primary_open_folder", "Open folder");
   if (first && first !== "Open") return first;
-  return "Open";
+  return uiStr("overlay.primary_open", "Open");
 }

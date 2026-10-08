@@ -8,6 +8,7 @@
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/doctext.hpp"
 #include "wilfred/search/ocr.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/ui/icon.hpp"
 
@@ -218,52 +219,6 @@ bool overlay_json_field(const std::string& json, const char* key, std::string& o
   while (pos < json.size() && json[pos] != ',' && json[pos] != '}' && json[pos] != ' ')
     out.push_back(json[pos++]);
   return !out.empty();
-}
-
-static std::string exe_directory() {
-#ifdef _WIN32
-  wchar_t buf[MAX_PATH];
-  DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
-  if (!n) return ".";
-  return path_parent(wide_to_utf8(std::wstring(buf, n)));
-#elif defined(__APPLE__)
-  char buf[1024];
-  uint32_t sz = sizeof(buf);
-  if (_NSGetExecutablePath(buf, &sz) != 0) return ".";
-  char real[PATH_MAX];
-  if (!realpath(buf, real)) return path_parent(buf);
-  return path_parent(real);
-#else
-  char buf[PATH_MAX];
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-  // No /proc by default: ask the kernel directly. Other BSDs fall through
-  // to the /proc attempts below (present only with procfs mounted).
-  {
-    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
-    std::size_t len = sizeof(buf);
-    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
-      buf[sizeof(buf) - 1] = '\0';
-      return path_parent(buf);
-    }
-  }
-#elif defined(__NetBSD__)
-  // Executable pathname lives under KERN_PROC_ARGS on NetBSD (sysctl(7)).
-  {
-    int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(getpid()), KERN_PROC_PATHNAME};
-    std::size_t len = sizeof(buf);
-    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
-      buf[sizeof(buf) - 1] = '\0';
-      return path_parent(buf);
-    }
-  }
-#endif
-  // OpenBSD has no sysctl for this; NetBSD also covers its procfs layout.
-  ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-  if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
-  if (n <= 0) return ".";
-  buf[n] = 0;
-  return path_parent(buf);
-#endif
 }
 
 std::string overlay_ui_dir() {
@@ -533,6 +488,22 @@ std::string overlay_show_json() {
     o += ",\"fontSize\":";
     o += std::to_string(g_font_size);
   }
+  // Localized chrome: the web UI falls back to English for any key the
+  // catalog does not provide, so old and new hosts stay compatible.
+  o += ",\"lang\":\"";
+  o += overlay_json_escape(LocaleStore::instance().code());
+  o += "\",\"strings\":{";
+  bool first = true;
+  for (auto& [k, v] : LocaleStore::instance().overlay_strings()) {
+    if (!first) o += ",";
+    first = false;
+    o += "\"";
+    o += overlay_json_escape(k);
+    o += "\":\"";
+    o += overlay_json_escape(v);
+    o += "\"";
+  }
+  o += "}";
   o += "}";
   return o;
 }

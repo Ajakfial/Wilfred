@@ -18,6 +18,7 @@
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/search/pins.hpp"
 #include "wilfred/ui/web_ui.hpp"
 #include "wilfred/search/convert.hpp"
@@ -141,6 +142,8 @@ bool Service::boot() {
   if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
   PinStore::instance().configure(default_pins_path(), cfg_.pins);
   PinStore::instance().load();
+  LocaleStore::instance().configure(cfg_.ui.language);
+  LocaleStore::instance().load();
   set_overlay_appearance(cfg_);
   snippets_.load(default_snippets_path(), cfg_);
   QuickNoteStore::instance().configure(path_join(data_directory(), "notes"));

@@ -16,6 +16,7 @@
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/pins.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
@@ -59,34 +60,34 @@ void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
     r.actions.push_back(std::move(it));
   };
   auto p = r.path.empty() ? r.payload : r.path;
-  add("open", "Open");
-  add("reveal", "Show in folder");
-  add("copy_path", "Copy path");
-  add("copy_name", "Copy name");
-  if (path_to_posix(p) != p) add("copy_posix", "Copy POSIX path");
-  add("copy_file_uri", "Copy file URL");
+  add("open", tr("action.open"));
+  add("reveal", tr("action.reveal"));
+  add("copy_path", tr("action.copy_path"));
+  add("copy_name", tr("action.copy_name"));
+  if (path_to_posix(p) != p) add("copy_posix", tr("action.copy_posix"));
+  add("copy_file_uri", tr("action.copy_file_uri"));
 #ifdef _WIN32
-  if (!path_to_wsl(p).empty()) add("copy_wsl", "Copy WSL path");
+  if (!path_to_wsl(p).empty()) add("copy_wsl", tr("action.copy_wsl"));
 #endif
-  if (!is_dir) add("hash_file", "Copy SHA-256 hash");
-  add("compress_zip", "Compress to .zip");
-  add("move_to", "Move to … (uses clipboard path)");
+  if (!is_dir) add("hash_file", tr("action.hash_file"));
+  add("compress_zip", tr("action.compress_zip"));
+  add("move_to", tr("action.move_to"));
   if (is_dir) {
-    add("bulk_rename", "Bulk rename… (uses clipboard pattern)");
-    add("new_from_template", "New from template…");
+    add("bulk_rename", tr("action.bulk_rename"));
+    add("new_from_template", tr("action.new_from_template"));
   }
-  add("pin_add", "Pin as favorite");
-  add("open_terminal", "Open terminal here");
-  add("open_editor", "Open in editor");
+  add("pin_add", tr("action.pin_add"));
+  add("open_terminal", tr("action.open_terminal"));
+  add("open_editor", tr("action.open_editor"));
   if (is_dir) {
-    add("new_file", "New file here");
-    add("new_folder", "New folder here");
+    add("new_file", tr("action.new_file"));
+    add("new_folder", tr("action.new_folder"));
   }
   if (include_open_with && !is_dir) {
     for (auto& app : native_apps_for_file(p, kMaxOpenWithApps)) {
       ResultActionItem it;
       it.id = "open_with:" + app.target;
-      it.label = "Open with " + app.name;
+      it.label = tr("action.open_with_prefix") + app.name;
       r.actions.push_back(std::move(it));
     }
   }
@@ -95,101 +96,101 @@ void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
 void attach_impl(SearchResult& r, bool include_open_with) {
   if (!r.actions.empty()) return;
   if (r.action == ResultAction::Habit) return;
-  auto add = [&](const char* id, const char* label) {
+  auto add = [&](const char* id, const std::string& label) {
     ResultActionItem it;
     it.id = id;
     it.label = label;
     r.actions.push_back(std::move(it));
   };
   if (r.category == "snippet" || r.action == ResultAction::Expand) {
-    add("paste", "Paste");
-    add("copy_text", "Copy text");
+    add("paste", tr("action.paste"));
+    add("copy_text", tr("action.copy_text_alt"));
     return;
   }
   if (r.category == "toggle") {
-    add("open", "Apply");
-    add("copy_text", "Copy status");
+    add("open", tr("action.apply"));
+    add("copy_text", tr("action.copy_status"));
     return;
   }
   if (r.category == "settings") {
-    add("open", "Open settings");
-    add("copy_text", "Copy");
+    add("open", tr("action.open_settings"));
+    add("copy_text", tr("action.copy_text"));
     return;
   }
   if (r.category == "config" || r.category == "setup") {
-    add("open", "Open");
-    add("copy_text", "Copy");
+    add("open", tr("action.open"));
+    add("copy_text", tr("action.copy_text"));
     return;
   }
   if (r.category == "plugins") {
-    add("open", "Approve");
-    add("copy_text", "Copy");
+    add("open", tr("action.approve"));
+    add("copy_text", tr("action.copy_text"));
     return;
   }
   if (r.category == "remote") {
-    add("open", "Open");
-    add("copy_text", "Copy");
+    add("open", tr("action.open"));
+    add("copy_text", tr("action.copy_text"));
     return;
   }
   if (r.category == "pkg") {
     if (r.path.rfind("pkg-install:", 0) == 0) {
-      add("open", "Install");
-      add("copy_text", "Copy install command");
+      add("open", tr("action.install"));
+      add("copy_text", tr("action.copy_install_cmd"));
     } else {
-      add("copy_text", "Copy example");
+      add("copy_text", tr("action.copy_example"));
     }
     return;
   }
   if (r.action == ResultAction::Calculate || r.action == ResultAction::Convert ||
       r.action == ResultAction::Copy || r.action == ResultAction::Mini) {
-    add("copy_text", "Copy");
+    add("copy_text", tr("action.copy_text"));
     return;
   }
   if (r.action == ResultAction::System || r.category == "system") {
     auto sid = r.payload.empty() ? r.path : r.payload;
-    const char* lab = "Run";
-    if (sid == "lock") lab = "Lock";
-    else if (sid == "sleep") lab = "Sleep";
-    else if (sid == "shutdown") lab = "Shut down";
-    else if (sid == "restart") lab = "Restart";
-    else if (sid == "logout") lab = "Log out";
-    else if (sid == "empty_trash") lab = "Empty";
+    std::string lab = tr("action.run");
+    if (sid == "lock") lab = tr("action.lock");
+    else if (sid == "sleep") lab = tr("action.sleep");
+    else if (sid == "shutdown") lab = tr("action.shutdown");
+    else if (sid == "restart") lab = tr("action.restart");
+    else if (sid == "logout") lab = tr("action.logout");
+    else if (sid == "empty_trash") lab = tr("action.empty_trash");
     add("open", lab);
     return;
   }
   if (r.action == ResultAction::WebSearch || r.path.rfind("http://", 0) == 0 ||
       r.path.rfind("https://", 0) == 0) {
-    add("open", "Open");
-    add("copy_path", "Copy URL");
+    add("open", tr("action.open"));
+    add("copy_path", tr("action.copy_url"));
     return;
   }
   if (r.action == ResultAction::Plugin || r.category == "plugin") {
-    add("open", "Run");
-    add("copy_path", "Copy path");
+    add("open", tr("action.run"));
+    add("copy_path", tr("action.copy_path"));
     return;
   }
   if (r.action == ResultAction::SwitchWindow || r.category == "window") {
-    add("open", "Switch");
-    add("window_minimize", "Minimize");
-    add("window_maximize", "Maximize");
-    add("window_restore", "Restore");
-    add("window_close", "Close");
-    add("window_snap_left", "Snap left");
-    add("window_snap_right", "Snap right");
-    add("copy_name", "Copy title");
+    add("open", tr("action.switch"));
+    add("window_minimize", tr("action.window_minimize"));
+    add("window_maximize", tr("action.window_maximize"));
+    add("window_restore", tr("action.window_restore"));
+    add("window_close", tr("action.window_close"));
+    add("window_snap_left", tr("action.window_snap_left"));
+    add("window_snap_right", tr("action.window_snap_right"));
+    add("copy_name", tr("action.copy_title"));
     return;
   }
   if (r.action == ResultAction::Screenshot || r.category == "screenshot") {
-    add("open", "Capture");
-    add("reveal", "Capture + show in folder");
-    add("copy_path", "Capture + copy path");
+    add("open", tr("action.capture"));
+    add("reveal", tr("action.capture_reveal"));
+    add("copy_path", tr("action.capture_copy"));
     return;
   }
   if (r.kind == FileKind::Application) {
-    add("open", "Open");
-    add("reveal", "Show in folder");
-    add("copy_path", "Copy path");
-    add("copy_name", "Copy name");
+    add("open", tr("action.open"));
+    add("reveal", tr("action.reveal"));
+    add("copy_path", tr("action.copy_path"));
+    add("copy_name", tr("action.copy_name"));
     return;
   }
   add_file_actions(r, r.kind == FileKind::Directory, include_open_with);
@@ -227,41 +228,41 @@ std::string lower_copy(const std::string& s) {
 }
 
 std::string action_label_for(const std::string& id) {
-  if (id == "open") return "Open";
-  if (id == "reveal") return "Show in folder";
-  if (id == "copy_path") return "Copy path";
-  if (id == "copy_name") return "Copy name";
-  if (id == "copy_posix") return "Copy POSIX path";
-  if (id == "copy_file_uri") return "Copy file URL";
-  if (id == "copy_wsl") return "Copy WSL path";
-  if (id == "copy_text") return "Copy";
-  if (id == "hash_file") return "Copy SHA-256 hash";
-  if (id == "compress_zip") return "Compress to .zip";
-  if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0) return "Bulk rename…";
-  if (id == "move_to" || id.rfind("move_to:", 0) == 0) return "Move to…";
+  if (id == "open") return tr("action.open");
+  if (id == "reveal") return tr("action.reveal");
+  if (id == "copy_path") return tr("action.copy_path");
+  if (id == "copy_name") return tr("action.copy_name");
+  if (id == "copy_posix") return tr("action.copy_posix");
+  if (id == "copy_file_uri") return tr("action.copy_file_uri");
+  if (id == "copy_wsl") return tr("action.copy_wsl");
+  if (id == "copy_text") return tr("action.copy_text");
+  if (id == "hash_file") return tr("action.hash_file");
+  if (id == "compress_zip") return tr("action.compress_zip");
+  if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0) return tr("action.bulk_rename_short");
+  if (id == "move_to" || id.rfind("move_to:", 0) == 0) return tr("action.move_to_short");
   if (id == "new_from_template" || id.rfind("new_from_template:", 0) == 0)
-    return "New from template…";
-  if (id == "pin_add") return "Pin as favorite";
-  if (id == "pin_remove") return "Unpin favorite";
-  if (id == "open_terminal") return "Open terminal here";
-  if (id == "open_editor") return "Open in editor";
-  if (id == "new_file") return "New file here";
-  if (id == "new_folder") return "New folder here";
-  if (id == "kill_process") return "Kill process";
-  if (id == "timer_stop") return "Stop timer";
-  if (id == "transcribe_run") return "Transcribe";
-  if (id == "convert_run") return "Convert";
-  if (id == "bgremove_run") return "Remove background";
-  if (id.rfind("dictate_run", 0) == 0) return "Dictate";
-  if (id.rfind("layout_apply:", 0) == 0) return "Apply layout";
-  if (id.rfind("focus_window:", 0) == 0) return "Focus window";
-  if (id == "window_minimize") return "Minimize";
-  if (id == "window_maximize") return "Maximize";
-  if (id == "window_restore") return "Restore";
-  if (id == "window_close") return "Close";
-  if (id == "window_snap_left") return "Snap left";
-  if (id == "window_snap_right") return "Snap right";
-  if (id == "layout_apply") return "Apply layout";
+    return tr("action.new_from_template_short");
+  if (id == "pin_add") return tr("action.pin_add");
+  if (id == "pin_remove") return tr("action.pin_remove");
+  if (id == "open_terminal") return tr("action.open_terminal");
+  if (id == "open_editor") return tr("action.open_editor");
+  if (id == "new_file") return tr("action.new_file");
+  if (id == "new_folder") return tr("action.new_folder");
+  if (id == "kill_process") return tr("action.kill_process");
+  if (id == "timer_stop") return tr("action.timer_stop");
+  if (id == "transcribe_run") return tr("action.transcribe_run");
+  if (id == "convert_run") return tr("action.convert_run");
+  if (id == "bgremove_run") return tr("action.bgremove_run");
+  if (id.rfind("dictate_run", 0) == 0) return tr("action.dictate_run");
+  if (id.rfind("layout_apply:", 0) == 0) return tr("action.apply_layout");
+  if (id.rfind("focus_window:", 0) == 0) return tr("action.focus_window");
+  if (id == "window_minimize") return tr("action.window_minimize");
+  if (id == "window_maximize") return tr("action.window_maximize");
+  if (id == "window_restore") return tr("action.window_restore");
+  if (id == "window_close") return tr("action.window_close");
+  if (id == "window_snap_left") return tr("action.window_snap_left");
+  if (id == "window_snap_right") return tr("action.window_snap_right");
+  if (id == "layout_apply") return tr("action.apply_layout");
   return id;
 }
 
@@ -323,7 +324,7 @@ void append_context_actions(SearchResult& r, const Config& cfg) {
       if (dup) continue;
       ResultActionItem it;
       it.id = wid;
-      it.label = "Run " + name;
+      it.label = tr("action.run_prefix") + name;
       r.actions.push_back(std::move(it));
     }
   }
