@@ -2,6 +2,7 @@
 
 #include "wilfred/config/config.hpp"
 #include "wilfred/core/log.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/snippets.hpp"

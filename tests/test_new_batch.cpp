@@ -13,6 +13,7 @@
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/web_ui.hpp"
 
+#include <cstdio>
 #include <filesystem>
 
 void test_new_batch() {

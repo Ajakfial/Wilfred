@@ -3,6 +3,7 @@
 #include "wilfred/core/crc32.hpp"
 #include "wilfred/core/paths.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
