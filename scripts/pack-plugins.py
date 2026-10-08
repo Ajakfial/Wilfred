@@ -16,6 +16,7 @@ commits the result, so contributors only ever submit source.
 Official download base: https://ajakfial.github.io/Wilfred/plugins/
 """
 import ctypes
+import gc
 import hashlib
 import json
 import os
@@ -25,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -145,37 +147,63 @@ def check_response(raw, queries):
 
 
 def smoke_test(lib, pid):
+    dll = None
+    q = None
     try:
-        dll = ctypes.CDLL(lib)
-    except Exception as e:
-        return fail(f"{pid}: cannot load {lib}: {e}")
-    try:
-        dll.wilfred_plugin_abi.restype = ctypes.c_int
-        if dll.wilfred_plugin_abi() != 1:
-            return fail(f"{pid}: bad ABI version")
-        q = dll.wilfred_plugin_query
-        q.argtypes = [ctypes.c_char_p]
-        q.restype = ctypes.c_char_p
-    except Exception as e:
-        return fail(f"{pid}: missing ABI exports: {e}")
-    for query in SMOKE.get(pid, ["test"]):
-        req = json.dumps({"op": "query", "q": query, "limit": 5}).encode()
         try:
-            raw = q(req)
+            dll = ctypes.CDLL(lib)
         except Exception as e:
-            return fail(f"{pid}: query {query!r} crashed: {e}")
-        if not raw:
-            return fail(f"{pid}: query {query!r} returned NULL")
-        ok, err = check_response(raw.decode("utf-8", "replace"), query)
-        if not ok:
-            return fail(f"{pid}: query {query!r}: {err}")
-        if pid in SMOKE:
-            # Known flagships must answer their trigger queries (usage cards
-            # count — every SMOKE entry above returns at least one result).
-            doc = json.loads(raw.decode("utf-8", "replace"))
-            if not doc["results"]:
-                return fail(f"{pid}: query {query!r} returned no results")
-    return True
+            return fail(f"{pid}: cannot load {lib}: {e}")
+        try:
+            dll.wilfred_plugin_abi.restype = ctypes.c_int
+            if dll.wilfred_plugin_abi() != 1:
+                return fail(f"{pid}: bad ABI version")
+            q = dll.wilfred_plugin_query
+            q.argtypes = [ctypes.c_char_p]
+            q.restype = ctypes.c_char_p
+        except Exception as e:
+            return fail(f"{pid}: missing ABI exports: {e}")
+        for query in SMOKE.get(pid, ["test"]):
+            req = json.dumps({"op": "query", "q": query, "limit": 5}).encode()
+            try:
+                raw = q(req)
+            except Exception as e:
+                return fail(f"{pid}: query {query!r} crashed: {e}")
+            if not raw:
+                return fail(f"{pid}: query {query!r} returned NULL")
+            ok, err = check_response(raw.decode("utf-8", "replace"), query)
+            if not ok:
+                return fail(f"{pid}: query {query!r}: {err}")
+            if pid in SMOKE:
+                # Known flagships must answer their trigger queries (usage cards
+                # count — every SMOKE entry above returns at least one result).
+                doc = json.loads(raw.decode("utf-8", "replace"))
+                if not doc["results"]:
+                    return fail(f"{pid}: query {query!r} returned no results")
+        return True
+    finally:
+        # ctypes never unloads libraries itself (CDLL has no __del__), and
+        # Windows refuses to delete a mapped DLL. Free explicitly by handle
+        # (exactly once: this is the only loader), then drop all references.
+        # POSIX systems delete mapped files fine, so this is Windows-only.
+        handle = 0
+        if dll is not None:
+            try:
+                handle = dll._handle
+            except Exception:
+                handle = 0
+        q = None
+        dll = None
+        gc.collect()
+        if handle and os.name == "nt":
+            try:
+                from ctypes import wintypes
+                free = ctypes.windll.kernel32.FreeLibrary
+                free.argtypes = [wintypes.HMODULE]
+                free.restype = ctypes.c_bool
+                free(wintypes.HMODULE(handle))
+            except Exception:
+                pass
 
 
 def write_zip(lib_path, manifest_text, dest):
@@ -199,6 +227,21 @@ def sha256_file(p):
     return h.hexdigest()
 
 
+def cleanup_tree(path):
+    # Windows: a just-unloaded DLL, the AV scanner, or the indexer can hold
+    # a file briefly after use. Retry instead of failing the whole pack.
+    for attempt in range(20):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(0.5)
+        except FileNotFoundError:
+            return
+
+
 def pack_one(d, write_registry=True):
     pid = d.name
     m, err = read_manifest(d)
@@ -209,8 +252,9 @@ def pack_one(d, write_registry=True):
     if kind != "native":
         print(f"{pid}: stdio plugins ship as source (nothing to compile)")
         return True
-    with tempfile.TemporaryDirectory(prefix="wilf-pack-") as work:
-        lib, err = compile_native(d, m, Path(work))
+    work = Path(tempfile.mkdtemp(prefix="wilf-pack-"))
+    try:
+        lib, err = compile_native(d, m, work)
         if lib is None:
             return fail(f"{pid}: {err}")
         if not smoke_test(lib, pid):
@@ -224,6 +268,8 @@ def pack_one(d, write_registry=True):
         dest = DIST / f"{pid}-{version}-{OS_TAG}.zip"
         write_zip(lib, manifest, str(dest))
         digest = sha256_file(str(dest))
+    finally:
+        cleanup_tree(work)
     if not write_registry:
         print(f"{pid}: built+smoked {dest.name} (registry untouched)")
         return True
