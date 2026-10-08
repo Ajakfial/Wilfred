@@ -32,6 +32,14 @@ export const QUERY_EXAMPLES: QueryExample[] = [
   { query: 'large 10', meaning: 'Biggest files in the index', kind: 'mini' },
   { query: 'dupes', meaning: 'Duplicate file candidates', kind: 'mini' },
   { query: 'clips url', meaning: 'Clipboard history filtered by type', kind: 'mini' },
+  { query: 'clips image', meaning: 'Copied images and file paths as clips', kind: 'mini' },
+  { query: 'define resilient', meaning: 'Offline dictionary and thesaurus', kind: 'mini' },
+  { query: 'pin firefox', meaning: 'Pin a path or title as a favorite', kind: 'mini' },
+  { query: 'pins', meaning: 'List pinned favorites', kind: 'mini' },
+  { query: 'event add Team sync | tomorrow 10am', meaning: 'Create a calendar event', kind: 'mini' },
+  { query: 'contact add Jane Doe jane@x.com', meaning: 'Create a contact', kind: 'mini' },
+  { query: 'rename ./photos photo-{n}.jpg', meaning: 'Bulk rename with a pattern', kind: 'mini' },
+  { query: 'template python foo', meaning: 'New file from a built-in template', kind: 'mini' },
   { query: 'transcribe talk.mp3', meaning: 'Speech-to-text for audio files', kind: 'mini' },
   { query: 'ai see what is on my screen', meaning: 'Ask the AI about your screen', kind: 'ai' },
   { query: 'minimize spotify', meaning: 'Window management verbs', kind: 'mini' },
@@ -73,8 +81,38 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Clipboard manager',
-    body: 'Persistent searchable history with pinning and type filters: urls, emails, paths, code, IPs.',
+    body: 'Persistent searchable history with pinning and type filters: text, urls, emails, paths, code, IPs — plus copied images and file paths as first-class clips.',
     icon: '⧉',
+  },
+  {
+    title: 'Custom themes',
+    body: 'Set your own accent color and base font size in wilfred.yml; the glass overlay applies them live on every platform.',
+    icon: '◑',
+  },
+  {
+    title: 'Pinned favorites',
+    body: 'Pin paths and titles with pin, unpin, or one click. Favorites outrank every other signal via ranking.pinned.',
+    icon: '★',
+  },
+  {
+    title: 'Offline dictionary',
+    body: 'Define and thesaurus cards with zero network calls — definitions plus synonyms, enter copies.',
+    icon: '❝',
+  },
+  {
+    title: 'Events and contacts, created',
+    body: 'Calendar and contacts are no longer read-only: event add writes .ics, contact add writes .vcf under your configured roots.',
+    icon: '✚',
+  },
+  {
+    title: 'Bulk file ops',
+    body: 'Bulk rename with {n}/{name}/{ext} patterns, move-to via the clipboard, and new-from-template for code, docs, and configs.',
+    icon: '▤',
+  },
+  {
+    title: 'Snippets everywhere',
+    body: 'Global abbreviation expansion in any app: Windows hook, macOS event tap, X11 listener — overlay paste everywhere else.',
+    icon: '✎',
   },
   {
     title: 'System control',
@@ -93,7 +131,7 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Private by design',
-    body: 'Local-first, dependency-free core. History optional, sync opt-in to infrastructure you control.',
+    body: 'Local-first, dependency-free core. History optional, sync opt-in to infrastructure you control — with optional password-encrypted archives.',
     icon: '◈',
   },
 ];

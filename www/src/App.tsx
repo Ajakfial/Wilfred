@@ -180,7 +180,8 @@ function Docs() {
   const links = [
     { title: 'Import', href: `${REPO_URL}/blob/main/docs/import.md`, body: 'Bring settings from Alfred, Raycast, PowerToys, Flow Launcher, Ulauncher and more.' },
     { title: 'Query language', href: `${REPO_URL}/blob/main/docs/query-language.md`, body: 'Every query form, in classification order.' },
-    { title: 'Configuration', href: `${REPO_URL}/blob/main/docs/configuration.md`, body: 'All wilfred.yml keys plus workflows, quicklinks, app actions.' },
+    { title: 'Configuration', href: `${REPO_URL}/blob/main/docs/configuration.md`, body: 'All wilfred.yml keys plus pins, themes, workflows, quicklinks, app actions.' },
+    { title: 'Sync and backup', href: `${REPO_URL}/blob/main/docs/sync-and-backup.md`, body: 'Portable archives, remote sync, and optional password encryption.' },
     { title: 'Installer', href: `${REPO_URL}/blob/main/docs/installer.md`, body: 'MSI and Chocolatey packaging details.' },
     { title: 'Signing', href: `${REPO_URL}/blob/main/docs/signing.md`, body: 'Publisher identity and Authenticode trust.' },
     { title: 'Building', href: `${REPO_URL}/blob/main/docs/building.md`, body: 'CMake, scripts, and packaging pipeline.' },
