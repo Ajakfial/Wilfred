@@ -9,7 +9,8 @@ Password generator for Wilfred. Enter copies; nothing is stored.
 | `password words` | 4 memorable words (`words 6` = 2–12) |
 | `password pin`   | 6-digit PIN (`pin 8` = 4–12 digits)  |
 
-Entropy comes from the OS (`rand_s` on Windows, `getentropy` elsewhere).
+Entropy comes from the OS (BCryptGenRandom via runtime linking on Windows,
+`getentropy` elsewhere — no link-time dependencies either way).
 If OS entropy is unavailable the card says "weak RNG" — treat those
 outputs as placeholders, not secrets. Shell-safe alphabet (no quotes or
 backslashes).

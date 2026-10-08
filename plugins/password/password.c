@@ -1,6 +1,6 @@
 // Wilfred plugin: password generator (`password`, `password 24`,
 // `password words`, `password pin`). Convenience passwords with OS entropy
-// (rand_s on Windows, getentropy elsewhere); falls back to a time-seeded
+// (BCryptGenRandom on Windows, getentropy elsewhere); falls back to a time-seeded
 // stream and says so. Single-file native plugin (ABI v1).
 // Build: cc -shared -fPIC -o password.so password.c
 #include <ctype.h>
@@ -10,7 +10,7 @@
 #include <time.h>
 
 #if defined(_WIN32)
-#include <stdlib.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #if defined(__has_include)
@@ -50,8 +50,23 @@ static unsigned long long xstate = 0;
 static unsigned rng_next(unsigned bound) {
   if (bound == 0) return 0;
 #if defined(_WIN32)
-  unsigned v = 0;
-  if (rand_s(&v) == 0) return v % bound;
+  // System RNG via runtime linking: bcrypt.dll ships with Windows and
+  // LoadLibrary needs no import library, so this builds with MSVC and
+  // MinGW alike (whose headers lack rand_s).
+  {
+    HMODULE h = LoadLibraryW(L"bcrypt.dll");
+    if (h) {
+      typedef LONG(WINAPI *GenFn)(void*, unsigned char*, unsigned long, unsigned long);
+      GenFn f = (GenFn)GetProcAddress(h, "BCryptGenRandom");
+      unsigned v = 0;
+      /* BCRYPT_USE_SYSTEM_PREFERRED_RNG = 0x00000002; NTSTATUS >= 0 is success. */
+      if (f && f(NULL, (unsigned char*)&v, (unsigned long)sizeof(v), 0x00000002) >= 0) {
+        FreeLibrary(h);
+        return v % bound;
+      }
+      FreeLibrary(h);
+    }
+  }
 #else
 #if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || \
     defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
