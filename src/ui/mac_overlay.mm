@@ -130,6 +130,17 @@ static WilfredCtl* g_ctl = nil;
     }
     return;
   }
+  if (type == "settings-get") {
+    [self sendJson:wilfred::overlay_settings_json()];
+    return;
+  }
+  if (type == "setting-set") {
+    std::string key, value;
+    wilfred::overlay_json_field(json, "key", key);
+    wilfred::overlay_json_field(json, "value", value);
+    [self sendJson:wilfred::overlay_setting_set_result(key, value)];
+    return;
+  }
   if (type == "hidden") {
     [self.window orderOut:nil];
     g_visible = false;

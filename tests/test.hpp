@@ -61,3 +61,4 @@ void test_packages();
 void test_new_batch();
 void test_locale();
 void test_plugins();
+void test_settings();

@@ -46,7 +46,7 @@ void test_locale() {
     // Unknown placeholders are left untouched.
     CHECK_EQ(loc.tr("pins.pinned", {{"other", "X"}}), "Pinned {target}");
     auto ov = loc.overlay_strings();
-    CHECK_EQ(ov.size(), 24u);
+    CHECK_EQ(ov.size(), 31u);
     CHECK_EQ(ov["overlay.search_placeholder"], "Search files, apps, and more");
   }
 

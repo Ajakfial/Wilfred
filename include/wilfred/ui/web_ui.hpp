@@ -47,4 +47,13 @@ std::string overlay_preview_json(const std::string& path);
 void set_overlay_appearance(const Config& cfg);
 std::string overlay_show_json();
 
+// Settings GUI channel (overlay SettingsPanel). Schema comes from
+// config/settings.hpp; values are read from a fresh config load so the GUI
+// never shows stale daemon state. Writes go through config_set_value
+// (validated, atomic file update); ui.* keys additionally refresh the live
+// appearance/locale globals so they apply on next summon.
+std::string overlay_settings_json();
+std::string overlay_settings_json_from(const Config& cfg);
+std::string overlay_setting_set_result(const std::string& key, const std::string& value);
+
 }  // namespace wilfred

@@ -23,7 +23,21 @@ import { ActionBar } from "./components/ActionBar";
 import { ActionMenu } from "./components/ActionMenu";
 import { PreviewPane } from "./components/PreviewPane";
 import { ResultRow } from "./components/ResultRow";
+import { SettingsPanel } from "./components/SettingsPanel";
+import type { SettingResult, SettingSchema } from "./components/SettingsPanel";
 import { Icon } from "./components/icons";
+
+interface SettingsMsg {
+  schema?: SettingSchema[];
+  values?: Record<string, string>;
+}
+
+interface SettingResultMsg {
+  key?: string;
+  ok?: boolean;
+  error?: string;
+  value?: string;
+}
 
 interface State {
   items: ResultItem[];
@@ -39,6 +53,11 @@ interface State {
   ghost: string;
   candidates: string[];
   loading: boolean;
+  settingsOpen: boolean;
+  settingsSchema: SettingSchema[];
+  settingsValues: Record<string, string>;
+  settingResults: Record<string, SettingResult>;
+  settingPending: Record<string, boolean>;
 }
 
 const initialState: State = {
@@ -55,6 +74,11 @@ const initialState: State = {
   ghost: "",
   candidates: [],
   loading: false,
+  settingsOpen: false,
+  settingsSchema: [],
+  settingsValues: {},
+  settingResults: {},
+  settingPending: {},
 };
 
 type Action =
@@ -70,7 +94,12 @@ type Action =
   | { type: "MENU_TOGGLE" }
   | { type: "MENU_CYCLE"; delta: number; count: number }
   | { type: "MENU_SET"; index: number }
-  | { type: "PREVIEW_TOGGLE" };
+  | { type: "PREVIEW_TOGGLE" }
+  | { type: "SETTINGS_OPEN" }
+  | { type: "SETTINGS_CLOSE" }
+  | { type: "SETTINGS_DATA"; schema: SettingSchema[]; values: Record<string, string> }
+  | { type: "SETTING_SEND"; key: string }
+  | { type: "SETTING_RESULT"; key: string; ok: boolean; error: string; value?: string };
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
@@ -119,6 +148,26 @@ function reducer(s: State, a: Action): State {
       return a.index === s.menuSel ? s : { ...s, menuSel: a.index };
     case "PREVIEW_TOGGLE":
       return { ...s, previewOpen: !s.previewOpen, preview: null, menuOpen: false, menuSel: 0 };
+    case "SETTINGS_OPEN":
+      return { ...s, settingsOpen: true, menuOpen: false };
+    case "SETTINGS_CLOSE":
+      return { ...s, settingsOpen: false };
+    case "SETTINGS_DATA":
+      return { ...s, settingsSchema: a.schema, settingsValues: a.values };
+    case "SETTING_SEND": {
+      const pending = { ...s.settingPending, [a.key]: true };
+      const results = { ...s.settingResults };
+      delete results[a.key];
+      return { ...s, settingPending: pending, settingResults: results };
+    }
+    case "SETTING_RESULT": {
+      const pending = { ...s.settingPending };
+      delete pending[a.key];
+      const results = { ...s.settingResults, [a.key]: { ok: a.ok, error: a.error } };
+      const values = { ...s.settingsValues };
+      if (a.ok && a.value !== undefined) values[a.key] = a.value;
+      return { ...s, settingPending: pending, settingResults: results, settingsValues: values };
+    }
   }
 }
 
@@ -363,6 +412,24 @@ export function App() {
         dispatch({ type: "HIDE" });
       } else if (msg.type === "preview") {
         dispatch({ type: "PREVIEW", preview: msg as PreviewMsg });
+      } else if (msg.type === "settings") {
+        const m = msg as unknown as SettingsMsg;
+        dispatch({
+          type: "SETTINGS_DATA",
+          schema: Array.isArray(m.schema) ? m.schema : [],
+          values: m.values && typeof m.values === "object" ? m.values : {},
+        });
+      } else if (msg.type === "setting-result") {
+        const m = msg as unknown as SettingResultMsg;
+        if (typeof m.key === "string") {
+          dispatch({
+            type: "SETTING_RESULT",
+            key: m.key,
+            ok: m.ok === true,
+            error: typeof m.error === "string" ? m.error : "",
+            value: typeof m.value === "string" ? m.value : undefined,
+          });
+        }
       } else if (msg.type === "results") {
         const m = msg as unknown as {
           items?: ResultItem[];
@@ -551,13 +618,37 @@ export function App() {
   // included so the native window expands to fit the docked action bar.
   useEffect(() => {
     reportSize();
-  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel, s.loading]);
+  }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel, s.loading, s.settingsOpen, s.settingsSchema]);
 
   const dismiss = () => {
     setModHeld(false);
     dispatch({ type: "HIDE" });
     window.clearTimeout(hideTimer.current);
     hideTimer.current = window.setTimeout(() => nativeSend({ type: "hidden" }), 200);
+  };
+
+  const toggleSettings = () => {
+    if (s.settingsOpen) {
+      dispatch({ type: "SETTINGS_CLOSE" });
+      return;
+    }
+    dispatch({ type: "SETTINGS_OPEN" });
+    nativeSend({ type: "settings-get" });
+    if (!hasNativeHost()) {
+      window.setTimeout(() => {
+        dispatch({ type: "SETTINGS_DATA", schema: [], values: {} });
+      }, 40);
+    }
+  };
+
+  const sendSetting = (key: string, value: string) => {
+    dispatch({ type: "SETTING_SEND", key });
+    nativeSend({ type: "setting-set", key, value });
+    if (!hasNativeHost()) {
+      window.setTimeout(() => {
+        dispatch({ type: "SETTING_RESULT", key, ok: true, error: "", value });
+      }, 40);
+    }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -567,6 +658,10 @@ export function App() {
     if (e.key === "Control" || e.key === "Meta") setModHeld(true);
     if (e.key === "Escape") {
       e.preventDefault();
+      if (s.settingsOpen) {
+        dispatch({ type: "SETTINGS_CLOSE" });
+        return;
+      }
       if (s.menuOpen) {
         dispatch({ type: "MENU_TOGGLE" });
         return;
@@ -836,7 +931,20 @@ export function App() {
           </div>
         )}
         <div className="body">
-          <div className="results" id="results" hidden={showEmpty && !s.visible}>
+          {s.settingsOpen ? (
+            <div className="results" id="results">
+              <SettingsPanel
+                schema={s.settingsSchema}
+                values={s.settingsValues}
+                results={s.settingResults}
+                pending={s.settingPending}
+                onSet={sendSetting}
+                onClose={() => dispatch({ type: "SETTINGS_CLOSE" })}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="results" id="results" hidden={showEmpty && !s.visible}>
             {showSkeleton ? (
               <div className="rows" aria-hidden="true">
                 {[0, 1, 2, 3].map((i) => (
@@ -929,13 +1037,15 @@ export function App() {
               </>
             )}
           </div>
+            </>
+          )}
           <aside className="detail" id="preview" hidden={!s.previewOpen} aria-label="Details">
             <PreviewPane preview={s.preview} path={selPath} />
           </aside>
         </div>
-        {rows.length > 0 && (
+        {(rows.length > 0 || s.settingsOpen) && (
           <ActionBar
-            status={status}
+            status={s.settingsOpen ? uiStr("overlay.settings_title", "Settings") : status}
             primary={primaryLabel(selItem)}
             hasActions={selActions.length > 0}
             menuOpen={menuVisible}
@@ -943,9 +1053,11 @@ export function App() {
             canComplete={Boolean(suffix)}
             hasCorrection={Boolean(s.correction)}
             modLabel={modLabel}
+            settingsOpen={s.settingsOpen}
             onPrimary={() => submit()}
             onActions={() => toggleMenu()}
             onPreview={() => dispatch({ type: "PREVIEW_TOGGLE" })}
+            onSettings={toggleSettings}
           />
         )}
         {menuVisible && (

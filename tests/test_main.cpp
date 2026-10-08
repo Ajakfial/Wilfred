@@ -38,6 +38,7 @@ int main() {
   test_new_batch();
   test_locale();
   test_plugins();
+  test_settings();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

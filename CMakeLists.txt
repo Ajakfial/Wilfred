@@ -45,6 +45,7 @@ set(WILFRED_CORE_SOURCES
   src/core/json.cpp
   src/config/yaml.cpp
   src/config/config.cpp
+  src/config/settings.cpp
   src/index/string_pool.cpp
   src/index/record.cpp
   src/index/wal.cpp
@@ -143,6 +144,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/core/span.hpp
   include/wilfred/config/yaml.hpp
   include/wilfred/config/config.hpp
+  include/wilfred/config/settings.hpp
   include/wilfred/index/string_pool.hpp
   include/wilfred/index/record.hpp
   include/wilfred/index/wal.hpp
@@ -535,6 +537,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_new_batch.cpp
   tests/test_locale.cpp
   tests/test_plugins.cpp
+  tests/test_settings.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

@@ -8,6 +8,8 @@
 #include "wilfred/index/tokenizer.hpp"
 #include "wilfred/search/doctext.hpp"
 #include "wilfred/search/ocr.hpp"
+#include "wilfred/config/settings.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/ui/icon.hpp"
@@ -504,6 +506,105 @@ std::string overlay_show_json() {
     o += "\"";
   }
   o += "}";
+  o += "}";
+  return o;
+}
+
+namespace {
+
+std::string setting_type_name(SettingType t) {
+  switch (t) {
+    case SettingType::Bool:
+      return "bool";
+    case SettingType::Int:
+      return "int";
+    case SettingType::Double:
+      return "double";
+    case SettingType::List:
+      return "list";
+    default:
+      return "string";
+  }
+}
+
+}  // namespace
+
+std::string overlay_settings_json_from(const Config& cfg) {
+  std::string o = "{\"type\":\"settings\",\"schema\":[";
+  bool first = true;
+  for (auto& m : all_settings()) {
+    if (!first) o += ",";
+    first = false;
+    o += "{\"key\":\"";
+    o += overlay_json_escape(m.key);
+    o += "\",\"type\":\"";
+    o += setting_type_name(m.type);
+    o += "\",\"secret\":";
+    o += m.secret ? "true" : "false";
+    o += ",\"live\":";
+    o += m.live ? "true" : "false";
+    o += ",\"options\":[";
+    for (std::size_t i = 0; i < m.options.size(); ++i) {
+      if (i) o += ",";
+      o += "\"";
+      o += overlay_json_escape(m.options[i]);
+      o += "\"";
+    }
+    o += "]}";
+  }
+  o += "],\"values\":{";
+  first = true;
+  for (auto& m : all_settings()) {
+    std::string val, err;
+    if (!config_get_value(cfg, m.key, val, err)) continue;  // write-only or exotic
+    if (!first) o += ",";
+    first = false;
+    o += "\"";
+    o += overlay_json_escape(m.key);
+    o += "\":\"";
+    o += overlay_json_escape(val);
+    o += "\"";
+  }
+  o += "}}";
+  return o;
+}
+
+std::string overlay_settings_json() {
+  ConfigError cerr;
+  Config cfg = load_or_create_user_config(cerr);
+  return overlay_settings_json_from(cfg);
+}
+
+std::string overlay_setting_set_result(const std::string& key, const std::string& value) {
+  std::string err;
+  bool ok = config_set_value(key, value, err);
+  std::string o = "{\"type\":\"setting-result\",\"key\":\"";
+  o += overlay_json_escape(key);
+  o += "\",\"ok\":";
+  o += ok ? "true" : "false";
+  if (!ok) {
+    o += ",\"error\":\"";
+    o += overlay_json_escape(err);
+    o += "\"";
+  } else {
+    // ui.* applies live: refresh appearance + locale so the next summon
+    // shows it with no daemon restart. Everything else needs a restart.
+    if (key.rfind("ui.", 0) == 0) {
+      ConfigError cerr;
+      Config fresh = load_or_create_user_config(cerr);
+      set_overlay_appearance(fresh);
+      LocaleStore::instance().configure(fresh.ui.language);
+      LocaleStore::instance().load();
+    }
+    ConfigError cerr;
+    Config fresh = load_or_create_user_config(cerr);
+    std::string val, verr;
+    if (config_get_value(fresh, key, val, verr)) {
+      o += ",\"value\":\"";
+      o += overlay_json_escape(val);
+      o += "\"";
+    }
+  }
   o += "}";
   return o;
 }

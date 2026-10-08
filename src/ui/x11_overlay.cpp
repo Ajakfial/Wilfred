@@ -250,6 +250,17 @@ static void wk_handle_json(const std::string& json) {
     }
     return;
   }
+  if (type == "settings-get") {
+    wk_send_json(overlay_settings_json());
+    return;
+  }
+  if (type == "setting-set") {
+    std::string key, value;
+    overlay_json_field(json, "key", key);
+    overlay_json_field(json, "value", value);
+    wk_send_json(overlay_setting_set_result(key, value));
+    return;
+  }
   if (type == "hidden") {
     if (g_wk.window) gtk_widget_hide(g_wk.window);
     g_wk.visible = false;

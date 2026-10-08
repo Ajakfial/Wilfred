@@ -52,6 +52,14 @@ constexpr Entry kEnglish[] = {
     {"overlay.primary_install", "Install"},
     {"overlay.primary_open_app", "Open application"},
     {"overlay.primary_open_folder", "Open folder"},
+    {"overlay.settings_title", "Settings"},
+    {"overlay.settings_search", "Filter settings"},
+    {"overlay.settings_saved", "Saved"},
+    {"overlay.settings_restart", "Needs daemon restart"},
+    {"overlay.settings_live", "Applies instantly"},
+    {"overlay.settings_back", "Back to search"},
+    {"overlay.settings_note",
+     "Keys marked \u201c{live}\u201d apply on next summon; the rest {restart}."},
     // --- Result action labels ---
     {"action.open", "Open"},
     {"action.reveal", "Show in folder"},
@@ -253,6 +261,13 @@ const char* kOverlayKeys[] = {
     "overlay.primary_install",
     "overlay.primary_open_app",
     "overlay.primary_open_folder",
+    "overlay.settings_title",
+    "overlay.settings_search",
+    "overlay.settings_saved",
+    "overlay.settings_restart",
+    "overlay.settings_live",
+    "overlay.settings_back",
+    "overlay.settings_note",
 };
 
 std::string substitute(std::string text,

@@ -1,5 +1,6 @@
 #include "wilfred/search/setup.hpp"
 
+#include "wilfred/config/settings.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
@@ -32,6 +33,216 @@ std::string trim_ws(const std::string& s) {
   while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r')) o.pop_back();
   return o;
 }
+
+// Compact double formatting for settings display ("1.000000" -> "1").
+std::string fmt_num(double v) {
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "%.6f", v);
+  std::string o = buf;
+  while (o.size() > 1 && o.back() == '0' && o.find('.') != std::string::npos) o.pop_back();
+  if (!o.empty() && o.back() == '.') o.pop_back();
+  return o.empty() ? "0" : o;
+}
+
+std::string join_csv_out(const std::vector<std::string>& items) {
+  std::string o;
+  for (std::size_t i = 0; i < items.size(); ++i) {
+    if (i) o += ", ";
+    o += items[i];
+  }
+  return o;
+}
+
+bool ranking_get(const RankingWeights& w, const std::string& name, std::string& out) {
+  static const struct {
+    const char* n;
+    int RankingWeights::*m;
+  } k[] = {
+      {"exact_name", &RankingWeights::exact_name},
+      {"prefix_name", &RankingWeights::prefix_name},
+      {"substring_name", &RankingWeights::substring_name},
+      {"fuzzy_name", &RankingWeights::fuzzy_name},
+      {"acronym", &RankingWeights::acronym},
+      {"path_component", &RankingWeights::path_component},
+      {"extension", &RankingWeights::extension},
+      {"application", &RankingWeights::application},
+      {"recency", &RankingWeights::recency},
+      {"frequency", &RankingWeights::frequency},
+      {"previous_selection", &RankingWeights::previous_selection},
+      {"word_boundary", &RankingWeights::word_boundary},
+      {"token_proximity", &RankingWeights::token_proximity},
+      {"directory_bonus", &RankingWeights::directory_bonus},
+      {"alias", &RankingWeights::alias},
+      {"learned_choice", &RankingWeights::learned_choice},
+      {"context_parent", &RankingWeights::context_parent},
+      {"context_extension", &RankingWeights::context_extension},
+      {"access_recency", &RankingWeights::access_recency},
+      {"clipboard_overlap", &RankingWeights::clipboard_overlap},
+      {"content_hit", &RankingWeights::content_hit},
+      {"hour_affinity", &RankingWeights::hour_affinity},
+      {"pinned", &RankingWeights::pinned},
+      {nullptr, nullptr},
+  };
+  for (auto* p = k; p->n; ++p)
+    if (name == p->n) {
+      out = std::to_string(w.*(p->m));
+      return true;
+    }
+  return false;
+}
+
+// Flat getter table for config_get_value (a ~150-branch if/else chain hits
+// MSVC's C1061 nesting limit — keep this table-driven).
+using CfgGet = std::string (*)(const Config&);
+static std::string g_bool(bool b) { return b ? "true" : "false"; }
+#define GB(m) \
+  [](const Config& c) -> std::string { return g_bool(c.m); }
+#define GI(m) \
+  [](const Config& c) -> std::string { return std::to_string(c.m); }
+#define GD(m) \
+  [](const Config& c) -> std::string { return fmt_num(c.m); }
+#define GS(m) \
+  [](const Config& c) -> std::string { return c.m; }
+#define GL(m) \
+  [](const Config& c) -> std::string { return join_csv_out(c.m); }
+#define G0 \
+  [](const Config&) -> std::string { return std::string(); }
+
+static const struct {
+  const char* key;
+  CfgGet get;
+} kGet[] = {
+    {"search.max_results", GI(search.max_results)},
+    {"search.debounce_ms", GI(search.debounce_ms)},
+    {"search.min_query_length", GI(search.min_query_length)},
+    {"search.include_system_files", GB(search.include_system_files)},
+    {"search.include_hidden_files", GB(search.include_hidden_files)},
+    {"search.show_system_in_results", GB(search.show_system_in_results)},
+    {"search.web_search_fallback", GB(search.web_search_fallback)},
+    {"search.treat_urls_as_open", GB(search.treat_urls_as_open)},
+    {"search.fuzzy", GB(search.fuzzy)},
+    {"search.acronyms", GB(search.acronyms)},
+    {"search.context_aware", GB(search.context_aware)},
+    {"search.clipboard", GB(search.clipboard)},
+    {"search.minis", GB(search.minis)},
+    {"search.macros", GB(search.macros)},
+    {"search.snippets", GB(search.snippets)},
+    {"search.plugins", GB(search.plugins)},
+    {"browser.provider", GS(browser.provider)},
+    {"browser.search_template", GS(browser.search_template)},
+    {"browser.library", GB(browser.library)},
+    {"hotkey.key", GS(hotkey.key)},
+    {"hotkey.enabled", GB(hotkey.enabled)},
+    {"hotkey.use_command_on_macos", GB(hotkey.use_command_on_macos)},
+    {"hotkey.modifiers", GL(hotkey.modifiers)},
+    {"ui.theme", GS(ui.theme)},
+    {"ui.max_visible", GI(ui.max_visible)},
+    {"ui.width", GI(ui.width)},
+    {"ui.accent", GS(ui.accent)},
+    {"ui.font_size", GI(ui.font_size)},
+    {"ui.language", GS(ui.language)},
+    {"logging.level", GS(logging.level)},
+    {"logging.max_file_bytes", GI(logging.max_file_bytes)},
+    {"logging.file", GS(logging.file)},
+    {"plugins.enabled", GB(plugins.enabled)},
+    {"plugins.directories", GL(plugins.directories)},
+    {"plugins.require_approval", GB(plugins.require_approval)},
+    {"plugins.timeout_ms", GI(plugins.timeout_ms)},
+    {"plugins.registry", GS(plugins.registry)},
+    {"providers.semantic", GB(providers.semantic)},
+    {"providers.semantic_min_score", GD(providers.semantic_min_score)},
+    {"providers.semantic_vector_weight", GD(providers.semantic_vector_weight)},
+    {"providers.semantic_trigram_weight", GD(providers.semantic_trigram_weight)},
+    {"providers.semantic_backend", GS(providers.semantic_backend)},
+    {"providers.semantic_max_results", GI(providers.semantic_max_results)},
+    {"embedding.enabled", GB(embedding.enabled)},
+    {"embedding.min_score", GD(embedding.min_score)},
+    {"embedding.backend", GS(embedding.backend)},
+    {"embedding.model", GS(embedding.model)},
+    {"embedding.endpoint", GS(embedding.endpoint)},
+    {"embedding.dim", GI(embedding.dim)},
+    {"embedding.max_results", GI(embedding.max_results)},
+    {"ai.enabled", GB(ai.enabled)},
+    {"ai.temperature", GD(ai.temperature)},
+    {"ai.api_key", G0},
+    {"ai.provider", GS(ai.provider)},
+    {"ai.model", GS(ai.model)},
+    {"ai.endpoint", GS(ai.endpoint)},
+    {"ai.max_tokens", GI(ai.max_tokens)},
+    {"ai.timeout_ms", GI(ai.timeout_ms)},
+    {"sources.calendar", GB(sources.calendar)},
+    {"sources.contacts", GB(sources.contacts)},
+    {"sources.notes", GB(sources.notes)},
+    {"sources.ocr", GB(sources.ocr)},
+    {"sources.calendar_paths", GL(sources.calendar_paths)},
+    {"sources.contacts_paths", GL(sources.contacts_paths)},
+    {"sources.notes_paths", GL(sources.notes_paths)},
+    {"sources.max_results", GI(sources.max_results)},
+    {"sources.ocr_languages", GS(sources.ocr_languages)},
+    {"transcription.enabled", GB(transcription.enabled)},
+    {"transcription.binary", GS(transcription.binary)},
+    {"transcription.model", GS(transcription.model)},
+    {"transcription.save_txt", GB(transcription.save_txt)},
+    {"transcription.mic", GS(transcription.mic)},
+    {"transcription.language", GS(transcription.language)},
+    {"api.enabled", GB(api.enabled)},
+    {"api.port", GI(api.port)},
+    {"api.token", G0},
+    {"api.bind", GS(api.bind)},
+    {"sync.enabled", GB(sync.enabled)},
+    {"sync.encrypt", GB(sync.encrypt)},
+    {"sync.key_file", GS(sync.key_file)},
+    {"sync.password", G0},
+    {"sync.token", G0},
+    {"sync.interval_seconds", GI(sync.interval_seconds)},
+    {"sync.include_index", GB(sync.include_index)},
+    {"sync.url", GS(sync.url)},
+    {"snippets.expansion", GB(snippets.expansion)},
+    {"snippets.auto_paste", GB(snippets.auto_paste)},
+    {"snippets.global_expansion", GB(snippets.global_expansion)},
+    {"snippets.prefix", GS(snippets.prefix)},
+    {"layouts.auto_apply", GB(layouts.auto_apply)},
+    {"layouts.auto_layout", GS(layouts.auto_layout)},
+    {"remotes.enabled", GB(remotes.enabled)},
+    {"remotes.timeout_ms", GI(remotes.timeout_ms)},
+    {"remotes.max_results", GI(remotes.max_results)},
+    {"packages.enabled", GB(packages.enabled)},
+    {"packages.max_results", GI(packages.max_results)},
+    {"packages.timeout_ms", GI(packages.timeout_ms)},
+    {"history.enabled", GB(history.enabled)},
+    {"history.max_entries", GI(history.max_entries)},
+    {"history.persist", GB(history.persist)},
+    {"clipboard.manager", GB(clipboard.manager)},
+    {"clipboard.max_entries", GI(clipboard.max_entries)},
+    {"clipboard.persist", GB(clipboard.persist)},
+    {"index.follow_symlinks", GB(index.follow_symlinks)},
+    {"index.format", GS(index.format)},
+    {"index.index_hidden", GB(index.index_hidden)},
+    {"index.index_system", GB(index.index_system)},
+    {"index.usn_scan", GB(index.usn_scan)},
+    {"index.content_indexing", GB(index.content_indexing)},
+    {"index.batch_size", GI(index.batch_size)},
+    {"index.debounce_fs_ms", GI(index.debounce_fs_ms)},
+    {"index.rescan_interval_seconds", GI(index.rescan_interval_seconds)},
+    {"index.persist_every_records", GI(index.persist_every_records)},
+    {"index.content_max_tokens", GI(index.content_max_tokens)},
+    {"index.exclude", GL(index.exclude)},
+    {"index.exclude_globs", GL(index.exclude_globs)},
+    {"index.system_directories", GL(index.system_directories)},
+    {"index.paths", GL(index.paths)},
+    {"index.workers", GI(index.workers)},
+    {"index.cpu_percent_limit", GI(index.cpu_percent_limit)},
+    {"index.memory_limit_mb", GI(index.memory_limit_mb)},
+    {"pins", GL(pins)},
+    {nullptr, nullptr},
+};
+
+#undef GB
+#undef GI
+#undef GD
+#undef GS
+#undef GL
+#undef G0
 
 }  // namespace
 
@@ -344,71 +555,26 @@ struct SetSpec {
 };
 
 bool setting_spec(const std::string& dotted, SetSpec& spec) {
-  static const char* bools[] = {
-      "search.include_system_files", "search.include_hidden_files",
-      "search.show_system_in_results", "search.web_search_fallback",
-      "search.treat_urls_as_open", "search.fuzzy", "search.acronyms",
-      "search.context_aware", "search.clipboard", "search.minis",
-      "search.macros", "search.snippets", "search.plugins",
-      "index.follow_symlinks", "index.index_hidden", "index.index_system",
-      "index.usn_scan", "index.content_indexing", "hotkey.enabled",
-      "hotkey.use_command_on_macos", "browser.library", "plugins.enabled",
-      "plugins.require_approval", "providers.semantic", "embedding.enabled",
-      "ai.enabled", "sources.calendar", "sources.contacts", "sources.notes",
-      "sources.ocr", "transcription.enabled", "transcription.save_txt",
-      "api.enabled", "sync.enabled", "sync.include_index",
-      "snippets.expansion", "snippets.auto_paste", "snippets.global_expansion",
-      "layouts.auto_apply", "remotes.enabled", "history.enabled",
-      "history.persist", "clipboard.manager", "clipboard.persist", nullptr};
-  static const char* ints[] = {
-      "search.max_results", "search.debounce_ms", "search.min_query_length",
-      "index.workers", "index.cpu_percent_limit", "index.memory_limit_mb",
-      "index.batch_size", "index.debounce_fs_ms", "index.rescan_interval_seconds",
-      "index.persist_every_records", "ui.max_visible", "ui.width",
-      "plugins.timeout_ms", "providers.semantic_max_results", "embedding.dim",
-      "embedding.max_results", "ai.max_tokens", "ai.timeout_ms", "sources.max_results",
-      "remotes.timeout_ms", "remotes.max_results", "api.port",
-      "sync.interval_seconds", "history.max_entries", "clipboard.max_entries",
-      "logging.max_file_bytes", "index.content_max_tokens", nullptr};
-  static const char* doubles[] = {"providers.semantic_min_score", "embedding.min_score",
-                                  "ai.temperature", nullptr};
-  static const char* strs[] = {
-      "browser.provider", "browser.search_template", "logging.level", "logging.file",
-      "ui.theme", "hotkey.key", "embedding.backend", "embedding.model", "embedding.endpoint",
-      "ai.provider", "ai.model", "ai.api_key", "ai.endpoint", "sources.ocr_languages",
-      "transcription.binary", "transcription.model", "transcription.language",
-      "transcription.mic", "api.bind", "api.token", "sync.url", "sync.token",
-      "snippets.prefix", "layouts.auto_layout", "plugins.registry", nullptr};
-  static const char* lists[] = {
-      "index.paths", "index.exclude", "index.exclude_globs", "index.system_directories",
-      "hotkey.modifiers", "plugins.directories", "sources.calendar_paths",
-      "sources.contacts_paths", "sources.notes_paths", nullptr};
-  for (auto** p = bools; *p; ++p)
-    if (dotted == *p) {
+  SettingMeta meta{"", SettingType::Str, false, false, {}};
+  if (!setting_meta(dotted, meta)) return false;
+  switch (meta.type) {
+    case SettingType::Bool:
       spec.type = SetType::Bool;
-      return true;
-    }
-  for (auto** p = ints; *p; ++p)
-    if (dotted == *p) {
+      break;
+    case SettingType::Int:
       spec.type = SetType::Int;
-      return true;
-    }
-  for (auto** p = doubles; *p; ++p)
-    if (dotted == *p) {
+      break;
+    case SettingType::Double:
       spec.type = SetType::Double;
-      return true;
-    }
-  for (auto** p = strs; *p; ++p)
-    if (dotted == *p) {
-      spec.type = SetType::Str;
-      return true;
-    }
-  for (auto** p = lists; *p; ++p)
-    if (dotted == *p) {
+      break;
+    case SettingType::List:
       spec.type = SetType::List;
-      return true;
-    }
-  return false;
+      break;
+    default:
+      spec.type = SetType::Str;
+      break;
+  }
+  return true;
 }
 
 std::string split_section(const std::string& dotted, std::string& key) {
@@ -523,85 +689,21 @@ bool config_get_value(const Config& cfg, const std::string& dotted, std::string&
     error = "unknown setting '" + dotted + "' (try: search.max_results, browser.search_template)";
     return false;
   }
-  Config c = cfg;
   // Format from the loaded struct so output always reflects reality.
-  if (dotted == "search.max_results") out = std::to_string(c.search.max_results);
-  else if (dotted == "search.debounce_ms") out = std::to_string(c.search.debounce_ms);
-  else if (dotted == "search.min_query_length") out = std::to_string(c.search.min_query_length);
-  else if (dotted == "search.include_system_files") out = c.search.include_system_files ? "true" : "false";
-  else if (dotted == "search.include_hidden_files") out = c.search.include_hidden_files ? "true" : "false";
-  else if (dotted == "search.show_system_in_results") out = c.search.show_system_in_results ? "true" : "false";
-  else if (dotted == "search.web_search_fallback") out = c.search.web_search_fallback ? "true" : "false";
-  else if (dotted == "search.treat_urls_as_open") out = c.search.treat_urls_as_open ? "true" : "false";
-  else if (dotted == "search.fuzzy") out = c.search.fuzzy ? "true" : "false";
-  else if (dotted == "search.acronyms") out = c.search.acronyms ? "true" : "false";
-  else if (dotted == "search.context_aware") out = c.search.context_aware ? "true" : "false";
-  else if (dotted == "search.clipboard") out = c.search.clipboard ? "true" : "false";
-  else if (dotted == "search.minis") out = c.search.minis ? "true" : "false";
-  else if (dotted == "search.macros") out = c.search.macros ? "true" : "false";
-  else if (dotted == "search.snippets") out = c.search.snippets ? "true" : "false";
-  else if (dotted == "search.plugins") out = c.search.plugins ? "true" : "false";
-  else if (dotted == "browser.provider") out = c.browser.provider;
-  else if (dotted == "browser.search_template") out = c.browser.search_template;
-  else if (dotted == "browser.library") out = c.browser.library ? "true" : "false";
-  else if (dotted == "hotkey.key") out = c.hotkey.key;
-  else if (dotted == "hotkey.enabled") out = c.hotkey.enabled ? "true" : "false";
-  else if (dotted == "hotkey.use_command_on_macos") out = c.hotkey.use_command_on_macos ? "true" : "false";
-  else if (dotted == "ui.theme") out = c.ui.theme;
-  else if (dotted == "ui.max_visible") out = std::to_string(c.ui.max_visible);
-  else if (dotted == "ui.width") out = std::to_string(c.ui.width);
-  else if (dotted == "logging.level") out = c.logging.level;
-  else if (dotted == "logging.file") out = c.logging.file;
-  else if (dotted == "plugins.enabled") out = c.plugins.enabled ? "true" : "false";
-  else if (dotted == "plugins.require_approval") out = c.plugins.require_approval ? "true" : "false";
-  else if (dotted == "plugins.timeout_ms") out = std::to_string(c.plugins.timeout_ms);
-  else if (dotted == "plugins.registry") out = c.plugins.registry;
-  else if (dotted == "providers.semantic") out = c.providers.semantic ? "true" : "false";
-  else if (dotted == "embedding.enabled") out = c.embedding.enabled ? "true" : "false";
-  else if (dotted == "ai.enabled") out = c.ai.enabled ? "true" : "false";
-  else if (dotted == "sources.calendar") out = c.sources.calendar ? "true" : "false";
-  else if (dotted == "sources.contacts") out = c.sources.contacts ? "true" : "false";
-  else if (dotted == "sources.notes") out = c.sources.notes ? "true" : "false";
-  else if (dotted == "sources.ocr") out = c.sources.ocr ? "true" : "false";
-  else if (dotted == "transcription.enabled") out = c.transcription.enabled ? "true" : "false";
-  else if (dotted == "api.enabled") out = c.api.enabled ? "true" : "false";
-  else if (dotted == "api.port") out = std::to_string(c.api.port);
-  else if (dotted == "sync.enabled") out = c.sync.enabled ? "true" : "false";
-  else if (dotted == "snippets.expansion") out = c.snippets.expansion ? "true" : "false";
-  else if (dotted == "layouts.auto_apply") out = c.layouts.auto_apply ? "true" : "false";
-  else if (dotted == "layouts.auto_layout") out = c.layouts.auto_layout;
-  else if (dotted == "remotes.enabled") out = c.remotes.enabled ? "true" : "false";
-  else if (dotted == "remotes.timeout_ms") out = std::to_string(c.remotes.timeout_ms);
-  else if (dotted == "remotes.max_results") out = std::to_string(c.remotes.max_results);
-  else if (dotted == "history.enabled") out = c.history.enabled ? "true" : "false";
-  else if (dotted == "clipboard.manager") out = c.clipboard.manager ? "true" : "false";
-  else if (dotted == "index.follow_symlinks") out = c.index.follow_symlinks ? "true" : "false";
-  else if (dotted == "index.workers") out = std::to_string(c.index.workers);
-  else if (dotted == "index.cpu_percent_limit") out = std::to_string(c.index.cpu_percent_limit);
-  else if (dotted == "index.memory_limit_mb") out = std::to_string(c.index.memory_limit_mb);
-  else {
-    // Generic fallback for remaining scalars/lists.
-    if (dotted == "index.paths") {
-      for (std::size_t i = 0; i < c.index.paths.size(); ++i) {
-        if (i) out += ", ";
-        out += c.index.paths[i];
-      }
-    } else if (dotted == "hotkey.modifiers") {
-      for (std::size_t i = 0; i < c.hotkey.modifiers.size(); ++i) {
-        if (i) out += ", ";
-        out += c.hotkey.modifiers[i];
-      }
-    } else if (dotted == "sources.ocr_languages") out = c.sources.ocr_languages;
-    else if (dotted == "snippets.prefix") out = c.snippets.prefix;
-    else if (dotted == "transcription.language") out = c.transcription.language;
-    else if (dotted == "api.bind") out = c.api.bind;
-    else if (dotted == "sync.url") out = c.sync.url;
-    else {
+  if (dotted.rfind("ranking.", 0) == 0) {
+    if (!ranking_get(cfg.ranking, dotted.substr(8), out)) {
       error = "setting '" + dotted + "' is readable via wilfred.yml only";
       return false;
     }
+    return true;
   }
-  return true;
+  for (auto* g = kGet; g->key; ++g)
+    if (dotted == g->key) {
+      out = g->get(cfg);
+      return true;
+    }
+  error = "setting '" + dotted + "' is readable via wilfred.yml only";
+  return false;
 }
 
 bool config_set_value(const std::string& dotted, const std::string& value, std::string& error) {

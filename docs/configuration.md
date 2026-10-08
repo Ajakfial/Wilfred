@@ -24,7 +24,13 @@ editing.
 Scalar and list keys can be read and written in place, validated against
 the same schema the daemon uses:
 
-- Overlay: `settings get <section.key>`, `settings edit <section.key>
+- Overlay: the gear button in the action bar opens a settings
+  panel with toggles, numbers, dropdowns, and text fields for every key in
+  the schema (`include/wilfred/config/settings.hpp`), saving straight to
+  `wilfred.yml`. `ui.*` keys apply on next summon; the rest need a daemon
+  restart. Secrets (`sync.password`, `sync.token`, `api.token`, `ai.api_key`)
+  are write-only and never echoed back.
+- Overlay queries: `settings get <section.key>`, `settings edit <section.key>
   <value>` (also `config set/get`), `settings reset` for defaults.
 - CLI: `wilfred config-get <key>`, `wilfred config-set <key> <value>`
   (lists take comma-separated values), `wilfred config-reset` (backs up

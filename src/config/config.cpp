@@ -1341,7 +1341,21 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* pins = root.get("pins")) {
     auto collect = [&](const YamlValue* v) -> bool {
       if (v->is_string()) {
-        if (!v->as_string().empty()) c.pins.push_back(to_lower_utf8(v->as_string()));
+        auto raw = trim_flow(v->as_string());
+        if (!raw.empty() && raw.front() == '[') {
+          // Flow collections (`[a, b]`) arrive as plain strings from the
+          // minimal parser — and from the settings editor's list rendering.
+          for (auto& item : split_flow_or_plus(raw)) {
+            if (item.empty()) continue;
+            c.pins.push_back(to_lower_utf8(item));
+            if (c.pins.size() > 256) {
+              err.message = "pins: supports at most 256 entries";
+              return false;
+            }
+          }
+          return true;
+        }
+        if (!raw.empty()) c.pins.push_back(to_lower_utf8(raw));
         return true;
       }
       if (v->is_list()) {

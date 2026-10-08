@@ -230,6 +230,17 @@ static void handle_web_message(const std::string& json) {
     accept_index(idx, action);
     return;
   }
+  if (type == "settings-get") {
+    post_json(overlay_settings_json());
+    return;
+  }
+  if (type == "setting-set") {
+    std::string key, value;
+    overlay_json_field(json, "key", key);
+    overlay_json_field(json, "value", value);
+    post_json(overlay_setting_set_result(key, value));
+    return;
+  }
   if (type == "preview") {
     std::string idxs;
     overlay_json_field(json, "index", idxs);
