@@ -6,7 +6,20 @@
       "kind": "native",
       "description": "Offline cheat sheets for git, vim, and tmux",
       "permissions": [],
-      "artifacts": {}
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-linux.zip",
+          "sha256": "bb108af577e71971ac0861eea96d4a6301067c55142d3ea278297e315393661a"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-macos.zip",
+          "sha256": "db73e6ca314f30e1bbe5f293dab7932418142a1639ee46770670782bed67f2cd"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-windows.zip",
+          "sha256": "17551a4bad5924263dd75311f377699c9d78f2a0c6ccfd27f2aebb4323d47541"
+        }
+      }
     },
     {
       "id": "dice",
@@ -14,7 +27,20 @@
       "kind": "native",
       "description": "Dice roller (3d6, d20, 4d6+2)",
       "permissions": [],
-      "artifacts": {}
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-linux.zip",
+          "sha256": "f4b762cdcab1b0508259d26fa8fe8d04ea8c6762e02c5a79d6b00bd55433a74a"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-macos.zip",
+          "sha256": "f3f47332f6ad588f2d0577e99357ba890cbe26aff677d8a5bbf86fd792e9ca79"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-windows.zip",
+          "sha256": "2e71b8fdddb627c33b9d1706d13b0c0e633b16fc13d14f445b94cce4e4e0f326"
+        }
+      }
     },
     {
       "id": "morse",
@@ -22,7 +48,20 @@
       "kind": "native",
       "description": "Morse code encoder/decoder",
       "permissions": [],
-      "artifacts": {}
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-linux.zip",
+          "sha256": "028ac9fb07b935cff6f299ad67562556a93aa44a0a1120cbffed04480adde906"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-macos.zip",
+          "sha256": "47410fc5f6f0253f66558c588bea16873a9a017a4be15e3fd3c13e8da95a6bc7"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-windows.zip",
+          "sha256": "a30e930b8158e3cd079571b63ea6b9d84c9a4e6f89b5070619310382bd4f8a57"
+        }
+      }
     },
     {
       "id": "password",
@@ -30,7 +69,20 @@
       "kind": "native",
       "description": "Password, passphrase, and PIN generator (OS entropy)",
       "permissions": [],
-      "artifacts": {}
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-linux.zip",
+          "sha256": "b7bdd6706ace42f9a5006d66a708b837f74eb60fa9912195d79c5058a8d0807e"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-macos.zip",
+          "sha256": "893c6436ec74ca3c6693d1c2426974b23953855ddba334e5dce8bc6063cc14d1"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-windows.zip",
+          "sha256": "68d0e2ce177c17ea7e62b5747ffd01bac9eddd489f36f141506a865e721aa993"
+        }
+      }
     }
   ]
 }
