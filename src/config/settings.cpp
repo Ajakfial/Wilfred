@@ -94,7 +94,8 @@ void apply_options(SettingMeta& m) {
   if (k == "ui.theme")
     m.options = {"dark", "light"};
   else if (k == "ui.language")
-    m.options = {"auto", "en", "de", "fr", "es", "pt", "it", "nl"};
+    m.options = {"auto", "en", "de", "fr", "es", "pt", "it", "nl",
+                 "ja", "ko", "zh", "ru", "pl", "tr", "uk"};
   else if (k == "logging.level")
     m.options = {"error", "warn", "info", "debug"};
   else if (k == "embedding.backend")

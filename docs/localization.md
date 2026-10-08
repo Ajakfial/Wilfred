@@ -11,7 +11,9 @@ ui:
 ```
 
 Shipped languages: English (`en`, always available), German (`de`), French
-(`fr`), Spanish (`es`), Portuguese (`pt`), Italian (`it`), Dutch (`nl`).
+(`fr`), Spanish (`es`), Portuguese (`pt`), Italian (`it`), Dutch (`nl`),
+Japanese (`ja`), Korean (`ko`), Chinese Simplified (`zh`), Russian (`ru`),
+Polish (`pl`), Turkish (`tr`), Ukrainian (`uk`).
 Unknown languages fall back to English per key, so a partial catalog stays
 usable — untranslated strings simply remain English.
 

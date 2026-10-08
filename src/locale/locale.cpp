@@ -304,7 +304,7 @@ bool LocaleStore::valid_code_syntax(const std::string& code) {
 }
 
 std::vector<std::string> LocaleStore::shipped_codes() {
-  return {"en", "de", "fr", "es", "pt", "it", "nl"};
+  return {"en", "de", "fr", "es", "pt", "it", "nl", "ja", "ko", "zh", "ru", "pl", "tr", "uk"};
 }
 
 std::vector<std::string> LocaleStore::english_keys() {
@@ -329,6 +329,10 @@ std::string normalize_lang_code(const std::string& raw) {
   if (s == "por") return "pt";
   if (s == "nld" || s == "dut") return "nl";
   if (s == "rus") return "ru";
+  if (s == "pol") return "pl";
+  if (s == "tur") return "tr";
+  if (s == "ukr") return "uk";
+  if (s == "kor") return "ko";
   if (s == "zho" || s == "chi") return "zh";
   if (s == "jpn") return "ja";
   if (s.size() == 2) return s;
