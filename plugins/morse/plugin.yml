@@ -1,0 +1,5 @@
+id: morse
+kind: native
+version: 1.0.0
+description: Morse code encoder/decoder
+permissions: []

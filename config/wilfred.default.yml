@@ -23,6 +23,9 @@ search:
 index:
   # Empty paths means platform defaults (home, applications, common data).
   paths: []
+  # Snapshot format: auto (read v1/v2/v3, write v3 with persisted postings),
+  # v2 (records-only, readable by older Wilfred builds), v3 (fast loads).
+  format: auto
   exclude:
     - node_modules
     - .git
@@ -181,6 +184,9 @@ providers:
   # trigram | vector | hybrid. `hybrid` merges HNSW vectors + trigram fallback.
   semantic_backend: hybrid
   semantic_max_results: 10
+  # Hybrid fusion weights (similarity multipliers, 0-4). 0 mutes a backend.
+  semantic_vector_weight: 1.0
+  semantic_trigram_weight: 1.0
 
 # Local embedding for semantic search. Works offline via the built-in hash
 # embedder; point at llama.cpp for higher quality:

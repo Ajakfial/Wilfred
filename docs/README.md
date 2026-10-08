@@ -21,6 +21,7 @@ developers extending it.
 | [signing.md](signing.md) | Publisher identity and Authenticode trust |
 | [ipc-and-api.md](ipc-and-api.md) | The local IPC protocol and the optional local HTTP API |
 | [sync-and-backup.md](sync-and-backup.md) | Backup archive format and remote sync |
+| [localization.md](localization.md) | UI languages, catalog files, and adding a translation |
 
 If something you need isn't covered, the header files under
 `include/wilfred/<module>/` are the source of truth — each doc below points

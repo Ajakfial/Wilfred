@@ -94,6 +94,41 @@ std::string json_extract_array(const std::string& s, const char* key) {
   return {};
 }
 
+std::string json_extract_object(const std::string& s, const char* key) {
+  std::string k = std::string("\"") + key + "\"";
+  auto pos = s.find(k);
+  if (pos == std::string::npos) return {};
+  pos = s.find('{', pos + k.size());
+  if (pos == std::string::npos) return {};
+  int depth = 0;
+  bool in_str = false;
+  bool esc = false;
+  std::size_t start = pos;
+  for (; pos < s.size(); ++pos) {
+    char c = s[pos];
+    if (in_str) {
+      if (esc)
+        esc = false;
+      else if (c == '\\')
+        esc = true;
+      else if (c == '"')
+        in_str = false;
+      continue;
+    }
+    if (c == '"') {
+      in_str = true;
+      continue;
+    }
+    if (c == '{')
+      ++depth;
+    else if (c == '}') {
+      --depth;
+      if (depth == 0) return s.substr(start, pos - start + 1);
+    }
+  }
+  return {};
+}
+
 std::vector<std::string> json_object_array(const std::string& array_json) {
   std::vector<std::string> out;
   int depth = 0;

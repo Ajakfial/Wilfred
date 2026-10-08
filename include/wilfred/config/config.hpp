@@ -62,6 +62,10 @@ struct Config {
     bool index_hidden{true};
     bool index_system{false};
     bool usn_scan{true};
+    // Snapshot format: "auto" (read v1/v2/v3, write v3), "v2" (records-only,
+    // readable by older binaries), "v3" (also persists postings for fast
+    // loads of very large indexes).
+    std::string format{"auto"};
     std::uint64_t max_file_size_bytes{0};
     bool content_indexing{true};
     std::uint64_t content_max_bytes{131072};
@@ -162,6 +166,10 @@ struct Config {
     // vector | trigram | hybrid — which semantic backend to use when enabled.
     std::string semantic_backend{"hybrid"};
     int semantic_max_results{10};
+    // Hybrid fusion weights (multipliers on each backend's 0..1 similarity
+    // before the +500 base). 0 disables that backend's contribution.
+    double semantic_vector_weight{1.0};
+    double semantic_trigram_weight{1.0};
   } providers;
 
   struct Embedding {

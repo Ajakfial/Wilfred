@@ -174,4 +174,93 @@ void test_index() {
     eng.upsert_file(link.string());
   }
 #endif
+
+  // ---- Snapshot format v2 vs v3 ----
+  {
+    IndexStore s;
+    const char* exts[] = {".cpp", ".hpp", ".md", ".txt", ".png"};
+    for (int i = 0; i < 300; ++i) {
+      IndexRecord r;
+      r.kind = (i % 7 == 0) ? FileKind::Directory : FileKind::Source;
+      r.size = static_cast<std::uint64_t>(i * 13);
+      r.mtime = 1700000000 + i;
+      s.upsert(r, "/data/proj/module" + std::to_string(i % 17) + "/file" + std::to_string(i) +
+                      exts[i % 5]);
+    }
+    CHECK(s.remove_path("/data/proj/module3/file20.cpp"));
+    CHECK(s.rename_path("/data/proj/module1/file18.txt", "/data/proj/renamed ARTICLE.md"));
+    auto v2snap = (fs::temp_directory_path() / "wilfred_store_v2.wilf").string();
+    auto v3snap = (fs::temp_directory_path() / "wilfred_store_v3.wilf").string();
+    s.set_write_version(2);
+    CHECK_EQ(s.write_version(), 2);
+    CHECK(s.save(v2snap));
+    s.set_write_version(3);
+    CHECK_EQ(s.write_version(), 3);
+    CHECK(s.save(v3snap));
+    s.set_write_version(99);  // clamps to latest
+    CHECK_EQ(s.write_version(), 3);
+    auto version_of = [](const std::string& p) {
+      std::string blob;
+      if (!read_file_all(p, blob) || blob.size() < 8) return 0u;
+      return static_cast<unsigned>(static_cast<std::uint8_t>(blob[4])) |
+             (static_cast<unsigned>(static_cast<std::uint8_t>(blob[5])) << 8) |
+             (static_cast<unsigned>(static_cast<std::uint8_t>(blob[6])) << 16) |
+             (static_cast<unsigned>(static_cast<std::uint8_t>(blob[7])) << 24);
+    };
+    CHECK_EQ(version_of(v2snap), 2u);
+    CHECK_EQ(version_of(v3snap), 3u);
+
+    IndexStore a, b;
+    CHECK(a.load(v2snap));
+    CHECK(b.load(v3snap));
+    CHECK_EQ(a.live_count(), b.live_count());
+    CHECK_EQ(a.live_count(), s.live_count());
+    // Records identical.
+    for (auto& r : s.records()) {
+      if (r.id == 0) continue;
+      auto* ar = a.get(r.id);
+      auto* br = b.get(r.id);
+      if (!s.get(r.id)) {
+        CHECK(ar == nullptr && br == nullptr);
+        continue;
+      }
+      CHECK(ar != nullptr && br != nullptr);
+      CHECK_EQ(ar->size, r.size);
+      CHECK_EQ(br->mtime, r.mtime);
+      CHECK_EQ((int)br->kind, (int)r.kind);
+    }
+    // Secondary indexes identical (postings adopted, not rebuilt).
+    CHECK_EQ(a.prefix_index().size(), b.prefix_index().size());
+    for (std::size_t i = 0; i < a.prefix_index().size(); ++i)
+      CHECK_EQ(a.prefix_index()[i], b.prefix_index()[i]);
+    for (auto tok : {"proj", "data", "renamed", "article", "md", "png", "cpp"}) {
+      auto ta = a.pool().find(tok);
+      auto tb = b.pool().find(tok);
+      CHECK(ta != StringPool::kInvalid && tb != StringPool::kInvalid);
+      const auto& pa = a.posting(ta);
+      const auto& pb = b.posting(tb);
+      CHECK_EQ(pa.size(), pb.size());
+      for (std::size_t i = 0; i < pa.size(); ++i) CHECK_EQ(pa[i], pb[i]);
+    }
+    {
+      auto ta = a.pool().find("ile");
+      auto tb = b.pool().find("ile");
+      if (ta != StringPool::kInvalid && tb != StringPool::kInvalid)
+        CHECK_EQ(a.trigram(ta).size(), b.trigram(tb).size());
+    }
+    CHECK_EQ(a.ext_index().size(), b.ext_index().size());
+    CHECK(b.by_path("/data/proj/renamed ARTICLE.md") != nullptr);
+    CHECK(b.by_path("/data/proj/module3/file20.cpp") == nullptr);
+    // Incremental updates keep working on adopted postings.
+    IndexRecord extra;
+    extra.kind = FileKind::Document;
+    b.upsert(extra, "/data/proj/new/notes EXTRA.md");
+    CHECK_EQ(b.posting(b.pool().find("extra")).size(), 1u);
+    auto v3b = (fs::temp_directory_path() / "wilfred_store_v3b.wilf").string();
+    CHECK(b.save(v3b));
+    IndexStore c;
+    CHECK(c.load(v3b));
+    CHECK(c.by_path("/data/proj/new/notes EXTRA.md") != nullptr);
+    CHECK_EQ(c.posting(c.pool().find("extra")).size(), 1u);
+  }
 }

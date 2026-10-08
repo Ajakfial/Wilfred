@@ -288,7 +288,9 @@ bool LocaleStore::valid_code_syntax(const std::string& code) {
   return j > i + 1 && j == code.size();
 }
 
-std::vector<std::string> LocaleStore::shipped_codes() { return {"en", "de", "fr", "es"}; }
+std::vector<std::string> LocaleStore::shipped_codes() {
+  return {"en", "de", "fr", "es", "pt", "it", "nl"};
+}
 
 std::vector<std::string> LocaleStore::english_keys() {
   std::vector<std::string> out;

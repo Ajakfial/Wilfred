@@ -222,6 +222,45 @@ wilfred plugin approve <id>      # trust this fingerprint (--all for all)
 wilfred plugin revoke <id>       # un-trust; the plugin is skipped again
 ```
 
+### Per-platform artifacts (native plugins)
+
+A single `url` can't serve three OSes, so entries may carry an `artifacts`
+map instead (or in addition, as a fallback):
+
+```json
+{"plugins": [{
+  "id": "dice", "version": "1.0.0", "kind": "native",
+  "description": "Dice roller",
+  "permissions": [],
+  "artifacts": {
+    "windows": {"url": "https://…/dice-1.0.0-windows.zip", "sha256": "<hex>"},
+    "macos":   {"url": "https://…/dice-1.0.0-macos.zip", "sha256": "<hex>"},
+    "linux":   {"url": "https://…/dice-1.0.0-linux.zip", "sha256": "<hex>"}
+  }
+}]}
+```
+
+`wilfred plugin install` picks the current OS (`windows`/`macos`/`linux`)
+and falls back to the plain `url`/`sha256` when no artifact matches;
+`wilfred plugin list` marks available platforms (`*` = this machine).
+
+### Official gallery
+
+The `plugins/` directory in the repo is the official index source:
+flagship sources plus community submissions via PR (one `plugins/<id>/`
+directory per PR — see [plugins/README.md](../plugins/README.md) for the
+exact format). Merging to `main` runs `.github/workflows/plugins.yml`,
+which compiles, smoke-tests, and publishes per-platform zips +
+`plugins/registry.json` automatically; the website's Plugins page serves
+that index at `https://ajakfial.github.io/Wilfred/plugins/registry.json`.
+Set it once and install by id:
+
+```
+wilfred config-set plugins.registry https://ajakfial.github.io/Wilfred/plugins/registry.json
+wilfred plugin install dice
+wilfred plugin approve dice
+```
+
 Installs support single-file artifacts and `.zip` archives (extracted
 with the updater's extractor). The overlay `plugins` mini mirrors all of
 this: pending approvals appear as Approve cards, and `plugins approve

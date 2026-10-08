@@ -5,11 +5,22 @@
 #include "wilfred/index/tokenizer.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 
 namespace wilfred {
 
 const std::vector<std::uint32_t> IndexStore::kEmpty{};
+
+void IndexStore::set_write_version(int v) {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  write_version_ = (v == 2) ? 2 : 3;
+}
+
+int IndexStore::write_version() const {
+  std::lock_guard<std::recursive_mutex> lock(mu_);
+  return write_version_;
+}
 
 static void write_u32(std::vector<std::uint8_t>& o, std::uint32_t v) {
   o.push_back(static_cast<std::uint8_t>(v));
@@ -27,6 +38,52 @@ static std::uint32_t rd32(const std::uint8_t* p) {
 }
 static std::uint64_t rd64(const std::uint8_t* p) {
   return rd32(p) | (static_cast<std::uint64_t>(rd32(p + 4)) << 32);
+}
+
+// Unsigned LEB128 + zigzag-signed deltas for v3 posting lists. Sorted id
+// runs compress to ~1 byte per id; out-of-order re-adds stay correct.
+static void write_varint(std::vector<std::uint8_t>& o, std::uint64_t v) {
+  while (v >= 0x80) {
+    o.push_back(static_cast<std::uint8_t>((v & 0x7f) | 0x80));
+    v >>= 7;
+  }
+  o.push_back(static_cast<std::uint8_t>(v));
+}
+static bool read_varint(const std::uint8_t*& p, const std::uint8_t* end, std::uint64_t& v) {
+  v = 0;
+  int shift = 0;
+  while (p < end) {
+    std::uint8_t b = *p++;
+    if (shift >= 64) return false;
+    v |= static_cast<std::uint64_t>(b & 0x7f) << shift;
+    if (!(b & 0x80)) return true;
+    shift += 7;
+  }
+  return false;
+}
+static void write_svarint(std::vector<std::uint8_t>& o, std::int64_t n) {
+  write_varint(o, (static_cast<std::uint64_t>(n) << 1) ^
+                      static_cast<std::uint64_t>(n >> 63));
+}
+static bool read_svarint(const std::uint8_t*& p, const std::uint8_t* end, std::int64_t& v) {
+  std::uint64_t u = 0;
+  if (!read_varint(p, end, u)) return false;
+  v = static_cast<std::int64_t>(u >> 1) ^ -static_cast<std::int64_t>(u & 1);
+  return true;
+}
+
+static void write_postings(std::vector<std::uint8_t>& buf,
+                           const std::unordered_map<std::uint32_t, std::vector<std::uint32_t>>& m) {
+  write_u32(buf, static_cast<std::uint32_t>(m.size()));
+  for (auto& [key, ids] : m) {
+    write_u32(buf, key);
+    write_u32(buf, static_cast<std::uint32_t>(ids.size()));
+    std::int64_t prev = 0;
+    for (auto id : ids) {
+      write_svarint(buf, static_cast<std::int64_t>(id) - prev);
+      prev = id;
+    }
+  }
 }
 
 void IndexStore::add_posting(std::unordered_map<std::uint32_t, std::vector<std::uint32_t>>& m,
@@ -337,7 +394,7 @@ bool IndexStore::save(const std::string& snapshot_path) const {
   std::vector<std::uint8_t> buf;
   buf.reserve(64 + pool_.bytes() + records_.size() * 80);
   buf.insert(buf.end(), {'W', 'I', 'L', 'F'});
-  write_u32(buf, 2);  // version: extras persisted
+  write_u32(buf, static_cast<std::uint32_t>(write_version_));  // 2: records; 3: + postings
   write_u32(buf, next_id_);
   write_u32(buf, static_cast<std::uint32_t>(records_.size()));
 
@@ -371,6 +428,15 @@ bool IndexStore::save(const std::string& snapshot_path) const {
     write_u32(buf, static_cast<std::uint32_t>(toks.size()));
     for (auto t : toks) write_u32(buf, t);
   }
+  if (write_version_ >= 3) {
+    // v3: persist the secondary indexes so huge stores skip the re-tokenize
+    // + sort pass on load. Postings are delta/zigzag-varint encoded.
+    write_postings(buf, token_postings_);
+    write_postings(buf, tri_postings_);
+    write_postings(buf, ext_postings_);
+    write_u32(buf, static_cast<std::uint32_t>(sorted_by_name_.size()));
+    for (auto id : sorted_by_name_) write_u32(buf, id);
+  }
   auto c = crc32(buf.data(), buf.size());
   write_u32(buf, c);
   return write_file_atomic(snapshot_path, buf.data(), buf.size());
@@ -385,7 +451,7 @@ bool IndexStore::load(const std::string& snapshot_path) {
   auto crc_calc = crc32(p, mf.size() - 4);
   if (crc_stored != crc_calc) return false;
   std::uint32_t ver = rd32(p + 4);
-  if (ver != 1 && ver != 2) return false;
+  if (ver < 1 || ver > 3) return false;
   std::lock_guard<std::recursive_mutex> lock(mu_);
   clear_unlocked();
   next_id_ = rd32(p + 8);
@@ -442,6 +508,109 @@ bool IndexStore::load(const std::string& snapshot_path) {
       }
       extra_tokens_[id] = std::move(toks);
     }
+  }
+  if (ver >= 3) {
+    // v3: adopt persisted postings after strict validation; any inconsistency
+    // falls back to a full rebuild (slower, always correct). path_to_id_ is
+    // derived from records either way.
+    const std::uint8_t* q = p + off;
+    const std::uint8_t* end = p + mf.size() - 4;
+    bool ok = true;
+    auto read_map = [&](std::unordered_map<std::uint32_t, std::vector<std::uint32_t>>& m) {
+      if (!ok) return;
+      if (end - q < 4) {
+        ok = false;
+        return;
+      }
+      std::uint32_t nkeys = rd32(q);
+      q += 4;
+      if (nkeys > 8 * 1024 * 1024) {
+        ok = false;
+        return;
+      }
+      for (std::uint32_t k = 0; k < nkeys; ++k) {
+        if (end - q < 8) {
+          ok = false;
+          return;
+        }
+        std::uint32_t key = rd32(q);
+        std::uint32_t count = rd32(q + 4);
+        q += 8;
+        if (count > records_.size()) {
+          ok = false;
+          return;
+        }
+        std::vector<std::uint32_t> ids;
+        ids.reserve(count);
+        std::int64_t prev = 0;
+        for (std::uint32_t j = 0; j < count; ++j) {
+          std::int64_t d = 0;
+          if (!read_svarint(q, end, d)) {
+            ok = false;
+            return;
+          }
+          prev += d;
+          if (prev < 1 || prev >= static_cast<std::int64_t>(records_.size())) {
+            ok = false;
+            return;
+          }
+          auto id = static_cast<std::uint32_t>(prev);
+          if (id >= live_.size() || !live_[id]) {
+            ok = false;
+            return;
+          }
+          ids.push_back(id);
+        }
+        m[key] = std::move(ids);
+      }
+    };
+    read_map(token_postings_);
+    read_map(tri_postings_);
+    read_map(ext_postings_);
+    std::size_t live_hint = 0;
+    for (auto b : live_) live_hint += b ? 1 : 0;
+    if (ok) {
+      if (end - q < 4) {
+        ok = false;
+      } else {
+        std::uint32_t nsorted = rd32(q);
+        q += 4;
+        if (nsorted != live_hint ||
+            end - q < static_cast<std::ptrdiff_t>(nsorted) * 4) {
+          ok = false;
+        } else {
+          sorted_by_name_.reserve(nsorted);
+          for (std::uint32_t i = 0; i < nsorted; ++i) {
+            std::uint32_t id = rd32(q);
+            q += 4;
+            if (id < 1 || id >= records_.size() || id >= live_.size() || !live_[id]) {
+              ok = false;
+              break;
+            }
+            sorted_by_name_.push_back(id);
+          }
+        }
+      }
+    }
+    if (ok) {
+      // Adopted: rebuild only the path map + live count from records.
+      path_to_id_.clear();
+      live_count_ = 0;
+      for (std::uint32_t id = 1; id < records_.size(); ++id) {
+        if (id >= live_.size() || !live_[id]) continue;
+        ++live_count_;
+        path_to_id_[records_[id].path_id] = id;
+      }
+      if (live_count_ != sorted_by_name_.size()) ok = false;
+    }
+    if (!ok) {
+      token_postings_.clear();
+      tri_postings_.clear();
+      ext_postings_.clear();
+      sorted_by_name_.clear();
+      rebuild_secondary_unlocked();
+    }
+    return true;
   }
   rebuild_secondary_unlocked();
   return true;

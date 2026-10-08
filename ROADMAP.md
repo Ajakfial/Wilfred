@@ -53,6 +53,19 @@ bundle check) also shipped. See
 [docs/configuration.md](docs/configuration.md), and
 [docs/plugins.md](docs/plugins.md).
 
+Also shipped since: encrypted sync (`sync.encrypt` with `password` /
+`key_file`, dependency-free SHA-256 KDF + keystream), custom overlay themes
+(`ui.accent`, `ui.font_size`), pinned favorites (`pin`/`pins` plus
+`ranking.pinned`), an offline dictionary/thesaurus (`define`), clipboard
+image and path clips (`clips image`, `clips path`), calendar/contact
+creation (`event add`, `contact add`), global snippet expansion on macOS
+(CGEventTap) and X11 Linux/BSD, bulk file operations (`rename`, `move_to`,
+`new_from_template`), UI localization (`ui.language` with `lang/*.yml`
+catalogs: en, de, fr, es, pt, it, nl), snapshot format v3 with persisted
+postings (`index.format`), hybrid semantic fusion weights, and the official
+plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
+`dice`, `morse`, `password`, `cheatsheets`).
+
 ## Near-term
 
 * ~~**Run tests in CI on every PR.**~~ Done —

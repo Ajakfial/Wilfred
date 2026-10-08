@@ -1,0 +1,117 @@
+name: Plugins
+
+# Gallery plugins (plugins/<id>/): validate manifests, compile native
+# plugins per OS, smoke-test the query protocol, and — on push to main —
+# publish per-platform zips + updated registry.json back to the branch.
+#
+# Contributors only submit source: PRs get validation + build + smoke tests.
+# The publish job (main branch only) assembles dist/ + registry.json and
+# pushes them, which then flows to the website via the Website workflow
+# (plugins/** is a trigger path there).
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - 'scripts/pack-plugins.py'
+      - '.github/workflows/plugins.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/**'
+      - 'scripts/pack-plugins.py'
+      - '.github/workflows/plugins.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugins-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate only
+        run: python3 scripts/pack-plugins.py --validate-only
+
+      - name: Registry parses
+        run: python3 -c "import json; d=json.load(open('plugins/registry.json')); assert set(d)=={'plugins'}; print(len(d['plugins']),'entries')"
+
+  build:
+    name: Build+smoke ${{ matrix.id }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            id: windows
+          - os: ubuntu-latest
+            id: linux
+          - os: macos-latest
+            id: macos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: MSVC prompt (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build + smoke test (no registry write)
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/pack-plugins.py --no-write
+
+      - name: Pack and stage zips
+        if: github.event_name != 'pull_request'
+        run: python3 scripts/pack-plugins.py
+
+      - name: Upload zips
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-${{ matrix.id }}
+          path: plugins/dist/*.zip
+          if-no-files-found: error
+
+  publish:
+    name: Publish gallery
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Download staged zips
+        uses: actions/download-artifact@v4
+        with:
+          pattern: plugins-*
+          merge-multiple: true
+          path: staged-zips
+
+      - name: Assemble dist + registry
+        run: python3 scripts/pack-plugins.py --assemble staged-zips
+
+      - name: Commit published gallery
+        run: |
+          git config user.name "wilfred-ci"
+          git config user.email "wilfred-ci@users.noreply.github.com"
+          git add -f plugins/dist plugins/registry.json
+          if git diff --cached --quiet; then
+            echo "gallery already up to date"
+          else
+            git commit -m "chore: publish plugin gallery artifacts"
+            git push origin HEAD:${{ github.ref_name }}
+          fi

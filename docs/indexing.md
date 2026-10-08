@@ -20,6 +20,32 @@ This is a classic snapshot + WAL design: mutations are cheap (append one
 small record to the WAL) and durable immediately, while the expensive full
 serialization only happens periodically.
 
+### Snapshot versions (`index.format`)
+
+`snapshot.wilf` starts with magic `WILF` + a `uint32` version and ends with a
+CRC32. Loading accepts v1/v2/v3; what gets written is controlled by
+`index.format` (`auto` default):
+
+| `index.format` | Writes | Notes |
+|---|---|---|
+| `auto` | v3 | Read v1/v2/v3. Default: fastest loads. |
+| `v3` | v3 | Same as `auto` today (explicit pin for forward-compat). |
+| `v2` | v2 | Records only. Use when an older Wilfred binary must still read the snapshot (it rejects v3 and falls back to WAL recovery). |
+
+v1/v2 store records + string pool + live bitmap + content tokens; the
+token/trigram/extension postings and the name sort are **rebuilt** on load
+(re-tokenize every name, `O(N log N)` string sort) — the dominant startup
+cost past ~1M records. v3 additionally persists those structures:
+postings as sorted id lists in delta + zigzag-varint encoding (~1–2 bytes
+per id), `sorted_by_name_` verbatim. On load each list is strictly
+validated (ids in range and live); any inconsistency falls back to a full
+rebuild, so a corrupt v3 section can never poison results — worst case is a
+slower start.
+
+Downgrading across a v3 snapshot is safe but slow: the old binary sees an
+unknown version, discards the snapshot, and replays the WAL (or rescans).
+Set `index.format: v2` before downgrading to skip even that.
+
 ### `IndexRecord` — what's stored per entry
 
 (`include/wilfred/index/record.hpp`)

@@ -1,0 +1,36 @@
+{
+  "plugins": [
+    {
+      "id": "cheatsheets",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "Offline cheat sheets for git, vim, and tmux",
+      "permissions": [],
+      "artifacts": {}
+    },
+    {
+      "id": "dice",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "Dice roller (3d6, d20, 4d6+2)",
+      "permissions": [],
+      "artifacts": {}
+    },
+    {
+      "id": "morse",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "Morse code encoder/decoder",
+      "permissions": [],
+      "artifacts": {}
+    },
+    {
+      "id": "password",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "Password, passphrase, and PIN generator (OS entropy)",
+      "permissions": [],
+      "artifacts": {}
+    }
+  ]
+}

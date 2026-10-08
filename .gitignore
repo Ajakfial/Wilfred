@@ -21,3 +21,5 @@ bench_*.snapshot
 ui/overlay/node_modules/
 www/node_modules/
 www/dist/
+www/public/plugins/
+plugins/dist/

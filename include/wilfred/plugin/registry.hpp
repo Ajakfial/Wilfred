@@ -15,6 +15,7 @@
 // up on the next load. No auto-install, no auto-update.
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace wilfred {
@@ -27,7 +28,18 @@ struct RegistryEntry {
   std::string sha256;
   std::string description;
   std::vector<std::string> permissions;
+  // Optional per-platform artifacts for native plugins:
+  // artifacts: {windows: {url, sha256}, macos: {...}, linux: {...}}.
+  // Install picks this OS and falls back to url/sha256.
+  struct Artifact {
+    std::string url;
+    std::string sha256;
+  };
+  std::unordered_map<std::string, Artifact> artifacts;
 };
+
+std::string plugin_registry_artifact_os();  // "windows" | "macos" | "linux"
+bool plugin_registry_resolve(const RegistryEntry& e, std::string& url, std::string& sha256);
 
 std::vector<RegistryEntry> plugin_registry_parse(const std::string& body);
 std::vector<RegistryEntry> plugin_registry_fetch(const std::string& url, int timeout_ms,

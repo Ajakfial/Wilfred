@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FEATURES, IMPORT_COMMANDS, IMPORT_SOURCES, INSTALL_OPTIONS, QUERY_EXAMPLES, RELEASES_URL, REPO_URL } from './data';
+
+export const PLUGIN_REGISTRY_URL = 'https://ajakfial.github.io/Wilfred/plugins/registry.json';
 
 function Logo() {
   return (
@@ -134,6 +136,134 @@ function Import() {
   );
 }
 
+interface GalleryArtifact {
+  url: string;
+  sha256: string;
+}
+
+interface GalleryEntry {
+  id: string;
+  version?: string;
+  kind?: string;
+  description?: string;
+  permissions?: string[];
+  artifacts?: Record<string, GalleryArtifact>;
+}
+
+function Plugins() {
+  const [q, setQ] = useState('');
+  const [entries, setEntries] = useState<GalleryEntry[] | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(`${import.meta.env.BASE_URL}plugins/registry.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d) => {
+        if (live) setEntries(Array.isArray(d?.plugins) ? d.plugins : []);
+      })
+      .catch(() => {
+        if (live) setEntries([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const hits = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = entries ?? [];
+    if (!needle) return list;
+    return list.filter((e) =>
+      [e.id, e.description ?? '', e.kind ?? ''].some((s) => s.toLowerCase().includes(needle)),
+    );
+  }, [q, entries]);
+  const copyInstall = async (id: string) => {
+    const cmd = `wilfred plugin install ${id}`;
+    try {
+      await navigator.clipboard.writeText(cmd);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = cmd;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    setCopied(id);
+    window.setTimeout(() => setCopied((c) => (c === id ? null : c)), 1600);
+  };
+  return (
+    <section id="plugins" className="section">
+      <h2>Plugins</h2>
+      <p className="muted">
+        Flagship and community plugins, built per platform by CI and published
+        with sha256 fingerprints. Point Wilfred at the gallery once, then
+        install by id:
+      </p>
+      <div className="install-panel">
+        <pre>
+          <code>wilfred config-set plugins.registry {PLUGIN_REGISTRY_URL}</code>
+        </pre>
+        <pre>
+          <code>wilfred plugin install dice</code>
+        </pre>
+        <p className="muted">
+          New installs need trust approval (<code>wilfred plugin approve &lt;id&gt;</code>).
+          Submit yours with a <code>plugins/&lt;id&gt;/</code> pull request — see the gallery readme.
+        </p>
+      </div>
+      <div className="demo-bar">
+        <span className="demo-prompt" aria-hidden="true">
+          ⌕
+        </span>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="cheat"
+          aria-label="Filter plugins"
+        />
+      </div>
+      {entries === null ? (
+        <p className="muted">Loading the gallery…</p>
+      ) : hits.length === 0 ? (
+        <p className="muted">
+          {entries.length === 0
+            ? 'The gallery index is not published yet — check back after the next plugins workflow run.'
+            : 'No plugins match.'}
+        </p>
+      ) : (
+        <div className="grid">
+          {hits.map((e) => {
+            const plats = ['windows', 'macos', 'linux'].filter((p) => e.artifacts?.[p]?.url);
+            return (
+              <article key={e.id} className="card">
+                <h3>
+                  {e.id}
+                  {e.version ? <span className="muted"> v{e.version}</span> : null}
+                </h3>
+                <p>{e.description || 'No description.'}</p>
+                <p className="muted">
+                  {e.kind ?? 'native'}
+                  {plats.length > 0 ? ` · ${plats.join(' / ')}` : ' · source only'}
+                  {(e.permissions?.length ?? 0) > 0 ? ` · perms: ${e.permissions!.join(', ')}` : ''}
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => void copyInstall(e.id)}
+                  >
+                    {copied === e.id ? 'Copied!' : 'Copy install command'}
+                  </button>
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Install() {
   const [tab, setTab] = useState('Windows');
   const active = INSTALL_OPTIONS.find((o) => o.os === tab) ?? INSTALL_OPTIONS[0];
@@ -179,6 +309,8 @@ function Install() {
 function Docs() {
   const links = [
     { title: 'Import', href: `${REPO_URL}/blob/main/docs/import.md`, body: 'Bring settings from Alfred, Raycast, PowerToys, Flow Launcher, Ulauncher and more.' },
+    { title: 'Plugins', href: `${REPO_URL}/blob/main/docs/plugins.md`, body: 'Write native or stdio plugins, publish them to the gallery via pull request.' },
+    { title: 'Localization', href: `${REPO_URL}/blob/main/docs/localization.md`, body: 'UI languages, catalog files, and adding a translation.' },
     { title: 'Query language', href: `${REPO_URL}/blob/main/docs/query-language.md`, body: 'Every query form, in classification order.' },
     { title: 'Configuration', href: `${REPO_URL}/blob/main/docs/configuration.md`, body: 'All wilfred.yml keys plus pins, themes, workflows, quicklinks, app actions.' },
     { title: 'Sync and backup', href: `${REPO_URL}/blob/main/docs/sync-and-backup.md`, body: 'Portable archives, remote sync, and optional password encryption.' },
@@ -210,6 +342,7 @@ export default function App() {
         <nav>
           <a href="#features">Features</a>
           <a href="#queries">Queries</a>
+          <a href="#plugins">Plugins</a>
           <a href="#import">Import</a>
           <a href="#install">Install</a>
           <a href="#docs">Docs</a>
@@ -222,6 +355,7 @@ export default function App() {
         <Hero />
         <QueryDemo />
         <Features />
+        <Plugins />
         <Import />
         <Install />
         <Docs />

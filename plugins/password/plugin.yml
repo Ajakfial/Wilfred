@@ -1,0 +1,5 @@
+id: password
+kind: native
+version: 1.0.0
+description: Password, passphrase, and PIN generator (OS entropy)
+permissions: []

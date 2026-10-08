@@ -16,6 +16,12 @@ public:
   bool load(const std::string& snapshot_path);
   bool save(const std::string& snapshot_path) const;
 
+  // On-disk format to write: 2 (records only, postings rebuilt on load) or
+  // 3 (records + delta/varint-encoded postings, faster load for very large
+  // indexes). Loading accepts v1/v2/v3 regardless. Default is 3.
+  void set_write_version(int v);
+  int write_version() const;
+
   std::uint32_t upsert(IndexRecord rec, std::string_view path);
   void add_content_tokens(std::uint32_t id, const std::vector<std::string>& tokens);
   bool has_content_tokens(std::uint32_t id) const;
@@ -57,6 +63,7 @@ private:
                       std::uint32_t key, std::uint32_t id);
 
   mutable std::recursive_mutex mu_;
+  int write_version_{3};
   StringPool pool_;
   std::vector<IndexRecord> records_;
   std::vector<std::uint8_t> live_;

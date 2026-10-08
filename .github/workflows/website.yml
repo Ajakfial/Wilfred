@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'www/**'
+      - 'plugins/registry.json'
+      - 'plugins/dist/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
 
@@ -38,6 +40,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Stage plugin gallery
+        # The marketplace page fetches plugins/registry.json at runtime and
+        # links per-platform zips; both are staged here (gitignored locally —
+        # use `npm run prebuild` equivalent below before previewing).
+        run: |
+          mkdir -p public/plugins
+          cp ../plugins/registry.json public/plugins/registry.json
+          cp ../plugins/dist/*.zip public/plugins/ 2>/dev/null || echo "no published zips yet"
 
       - name: Build static site
         run: npm run build

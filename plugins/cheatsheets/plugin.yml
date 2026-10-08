@@ -1,0 +1,5 @@
+id: cheatsheets
+kind: native
+version: 1.0.0
+description: Offline cheat sheets for git, vim, and tmux
+permissions: []

@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <unordered_map>
 
 namespace wilfred {
 namespace fs = std::filesystem;
@@ -32,9 +33,18 @@ std::vector<RegistryEntry> plugin_registry_parse(const std::string& body) {
     e.kind = to_lower_utf8(json_get_string(obj, "kind"));
     if (e.kind.empty()) e.kind = "stdio";
     e.url = json_get_string(obj, "url");
-    if (e.url.empty()) continue;
     e.sha256 = to_lower_utf8(json_get_string(obj, "sha256"));
     e.description = json_get_string(obj, "description");
+    auto abody = json_extract_object(obj, "artifacts");
+    for (auto* os : {"windows", "macos", "linux"}) {
+      auto o = json_extract_object(abody, os);
+      if (o.empty()) continue;
+      RegistryEntry::Artifact a;
+      a.url = json_get_string(o, "url");
+      a.sha256 = to_lower_utf8(json_get_string(o, "sha256"));
+      if (!a.url.empty()) e.artifacts[os] = std::move(a);
+    }
+    if (e.url.empty() && e.artifacts.empty()) continue;
     auto parr = json_extract_array(obj, "permissions");
     std::size_t pos = 0;
     while ((pos = parr.find('"', pos)) != std::string::npos) {
@@ -69,6 +79,33 @@ std::vector<RegistryEntry> plugin_registry_fetch(const std::string& url, int tim
 
 static std::string registry_url(const Config& cfg) { return cfg.plugins.registry; }
 
+std::string plugin_registry_artifact_os() {
+#ifdef _WIN32
+  return "windows";
+#elif defined(__APPLE__)
+  return "macos";
+#else
+  return "linux";
+#endif
+}
+
+bool plugin_registry_resolve(const RegistryEntry& e, std::string& url, std::string& sha256) {
+  url.clear();
+  sha256.clear();
+  auto it = e.artifacts.find(plugin_registry_artifact_os());
+  if (it != e.artifacts.end() && !it->second.url.empty()) {
+    url = it->second.url;
+    sha256 = it->second.sha256;
+    return true;
+  }
+  if (!e.url.empty()) {
+    url = e.url;
+    sha256 = e.sha256;
+    return true;
+  }
+  return false;
+}
+
 int run_plugin_list() {
   ConfigError err;
   Config cfg = load_or_create_user_config(err);
@@ -97,6 +134,18 @@ int run_plugin_list() {
     std::cout << e.id;
     if (!e.version.empty()) std::cout << "  v" << e.version;
     std::cout << "  [" << e.kind << "]";
+    if (!e.artifacts.empty()) {
+      std::cout << "  {";
+      bool first = true;
+      for (auto* os : {"windows", "macos", "linux"}) {
+        auto it = e.artifacts.find(os);
+        if (it == e.artifacts.end()) continue;
+        if (!first) std::cout << ",";
+        first = false;
+        std::cout << (os == plugin_registry_artifact_os() ? "*" : "") << os;
+      }
+      std::cout << "}";
+    }
     if (!e.description.empty()) std::cout << " - " << e.description;
     std::cout << "\n";
   }
@@ -133,11 +182,20 @@ int run_plugin_pending() {
 
 bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
   error.clear();
-  if (entry.id.empty() || entry.url.empty()) {
+  std::string url, sha256;
+  if (!plugin_registry_resolve(entry, url, sha256)) {
+    error = "no installable artifact for this OS (needs one of: " + plugin_registry_artifact_os() +
+            ", or a plain url)";
+    return false;
+  }
+  RegistryEntry e = entry;
+  e.url = url;
+  e.sha256 = sha256;
+  if (e.id.empty() || e.url.empty()) {
     error = "invalid registry entry";
     return false;
   }
-  for (char c : entry.id) {
+  for (char c : e.id) {
     bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
               c == '_' || c == '-' || c == '.';
     if (!ok) {
@@ -145,28 +203,28 @@ bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
       return false;
     }
   }
-  auto dir = path_join(path_join(data_directory(), "plugins"), entry.id);
+  auto dir = path_join(path_join(data_directory(), "plugins"), e.id);
   create_directories(dir);
   auto tmp = path_join(dir, ".download");
   std::string dl_err;
-  bool dl_ok = download_file(entry.url, tmp, nullptr, nullptr, 30000,
-                             entry.url.rfind("https://", 0) == 0 || entry.url.rfind("http://", 0) == 0
+  bool dl_ok = download_file(e.url, tmp, nullptr, nullptr, 30000,
+                             e.url.rfind("https://", 0) == 0 || e.url.rfind("http://", 0) == 0
                                  ? &dl_err
                                  : nullptr);
   if (!dl_ok) {
     error = dl_err.empty() ? "download failed" : dl_err;
     return false;
   }
-  if (!entry.sha256.empty()) {
+  if (!e.sha256.empty()) {
     std::string hex, herr;
-    if (!sha256_file(tmp, hex, herr) || to_lower_utf8(hex) != to_lower_utf8(entry.sha256)) {
+    if (!sha256_file(tmp, hex, herr) || to_lower_utf8(hex) != to_lower_utf8(e.sha256)) {
       remove_file(tmp);
       error = "sha256 mismatch (not installing)";
       return false;
     }
   }
-  bool is_archive = entry.url.size() > 4 &&
-                    to_lower_utf8(entry.url.substr(entry.url.size() - 4)) == ".zip";
+  bool is_archive = e.url.size() > 4 &&
+                    to_lower_utf8(e.url.substr(e.url.size() - 4)) == ".zip";
   std::string artifact;
   if (is_archive) {
     std::string xerr;
@@ -178,10 +236,10 @@ bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
     remove_file(tmp);
     artifact = dir;
   } else {
-    auto base = entry.url.substr(entry.url.find_last_of("/\\") + 1);
+    auto base = e.url.substr(e.url.find_last_of("/\\") + 1);
     auto qm = base.find('?');
     if (qm != std::string::npos) base.resize(qm);
-    if (base.empty() || base.size() > 128) base = entry.id;
+    if (base.empty() || base.size() > 128) base = e.id;
     artifact = path_join(dir, base);
     std::error_code ec;
     fs::rename(fs::u8path(tmp), fs::u8path(artifact), ec);
@@ -196,24 +254,23 @@ bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
 #endif
   }
   // Write a manifest so discovery picks it up.
-  std::string yml = "id: " + entry.id + "\nkind: " + (entry.kind.empty() ? "stdio" : entry.kind) +
-                    "\n";
-  if ((entry.kind.empty() || entry.kind == "stdio"))
+  std::string yml = "id: " + e.id + "\nkind: " + (e.kind.empty() ? "stdio" : e.kind) + "\n";
+  if ((e.kind.empty() || e.kind == "stdio"))
     yml += "command: " + artifact + "\n";
   else
     yml += "path: " + artifact + "\n";
-  if (!entry.version.empty()) yml += "version: " + entry.version + "\n";
-  if (!entry.sha256.empty()) yml += "sha256: " + entry.sha256 + "\n";
-  if (!entry.description.empty()) yml += "# " + entry.description + "\n";
-  if (!entry.permissions.empty()) {
+  if (!e.version.empty()) yml += "version: " + e.version + "\n";
+  if (!e.sha256.empty()) yml += "sha256: " + e.sha256 + "\n";
+  if (!e.description.empty()) yml += "# " + e.description + "\n";
+  if (!e.permissions.empty()) {
     yml += "permissions: [";
-    for (std::size_t i = 0; i < entry.permissions.size(); ++i) {
+    for (std::size_t i = 0; i < e.permissions.size(); ++i) {
       if (i) yml += ", ";
-      yml += entry.permissions[i];
+      yml += e.permissions[i];
     }
     yml += "]\n";
   }
-  if (!entry.url.empty()) yml += "# origin: " + entry.url + "\n";
+  if (!e.url.empty()) yml += "# origin: " + e.url + "\n";
   auto mf = path_join(dir, "plugin.yml");
   if (!write_file_atomic(mf, yml.data(), yml.size())) {
     error = "cannot write manifest";

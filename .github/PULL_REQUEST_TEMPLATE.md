@@ -28,6 +28,15 @@ able to test all three (Windows / macOS / Linux).
 - [ ] I did not introduce new third-party dependencies without prior discussion
 - [ ] Docs (`README.md` / `docs/`) updated if user-facing behavior changed
 
+## Plugin submission (only if this PR adds `plugins/<id>/`)
+
+- [ ] `plugins/<id>/` holds `plugin.yml` (`id` = directory, `kind`, semver
+      `version`, `description`, `permissions`), source, and `README.md`
+      (see [plugins/README.md](../plugins/README.md))
+- [ ] No binaries, zips, or `dist/` output committed (CI builds those)
+- [ ] `python3 scripts/pack-plugins.py --validate-only` passes
+- [ ] `plugins/registry.json` gains the entry (pack script or CI publish fills `artifacts`)
+
 ## Related issue
 
 <!-- Fixes #... / Relates to #... -->

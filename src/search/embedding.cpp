@@ -47,9 +47,11 @@ std::vector<float> hash_embed_text(const std::string& text, int dim) {
   std::vector<float> v(static_cast<std::size_t>(dim), 0.0f);
   std::string folded = fold_search(normalize_query(text));
   if (folded.empty()) return v;
-  // Char 3-grams carry the bulk of the signal.
+  // Char 3-grams carry the bulk of the signal. All-space grams (padding
+  // artifacts) are skipped so short texts aren't dominated by blanks.
   std::string pad = "  " + folded + "  ";
   for (std::size_t i = 0; i + 2 < pad.size(); ++i) {
+    if (pad[i] == ' ' && pad[i + 1] == ' ' && pad[i + 2] == ' ') continue;
     std::uint64_t h = fnv1a(pad.data() + i, 3);
     v[h % static_cast<std::uint64_t>(dim)] += 1.0f;
     v[(h >> 16) % static_cast<std::uint64_t>(dim)] += 0.5f;
@@ -67,6 +69,11 @@ std::vector<float> hash_embed_text(const std::string& text, int dim) {
     }
     s = e;
   }
+  // Sublinear term frequency: repeated grams ("aaa", long paths with the
+  // same folder) contribute sqrt(tf) so one repeated token can't dominate.
+  // L2 normalization after that keeps cosine a dot product.
+  for (float& f : v)
+    if (f > 0) f = std::sqrt(f);
   float norm = 0;
   for (float f : v) norm += f * f;
   norm = std::sqrt(norm);

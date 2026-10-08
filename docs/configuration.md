@@ -241,7 +241,7 @@ hotkeys:
 | `theme` | `dark` | Overlay color theme |
 | `accent` | `""` | Custom accent (`#RRGGBB`, `#RGB`, or `indigo/blue/green/teal/pink/orange/red/purple`); empty = default |
 | `font_size` | `0` | Base overlay font size in px (`0` = default 14, clamped 10–24) |
-| `language` | `auto` | UI language: `auto` (OS locale), `en`, `de`, `fr`, `es`, or any two-letter code with optional region (`pt-BR`). Unknown languages fall back to English — see [localization.md](localization.md) |
+| `language` | `auto` | UI language: `auto` (OS locale), `en`, `de`, `fr`, `es`, `pt`, `it`, `nl`, or any two-letter code with optional region (`pt-BR`). Unknown languages fall back to English — see [localization.md](localization.md) |
 | `max_visible` | `9` | Max results shown in the overlay list at once (scrollable beyond that; independent of `search.max_results`, which caps what the engine computes) |
 | `width` | `720` | Overlay window width in pixels |
 
@@ -264,6 +264,16 @@ by.
 | `semantic_min_score` | `0.3` | Minimum similarity (0–1) for a semantic hit (applies to both backends) |
 | `semantic_backend` | `hybrid` | `vector` (HNSW only), `trigram` (legacy soft-match only), or `hybrid` (both, merged) |
 | `semantic_max_results` | `10` | Cap on semantic hits per query |
+| `semantic_vector_weight` | `1.0` | Hybrid fusion weight for vector hits (0–4; `0` mutes the backend) |
+| `semantic_trigram_weight` | `1.0` | Hybrid fusion weight for trigram hits (0–4; `0` mutes the backend) |
+
+The built-in hash embedder is dependency-free: folded char 3-grams
+(blank-only grams skipped) plus word unigrams, hashed into `dim` buckets
+with sublinear term frequencies and L2 normalization, so cosine is a dot
+product. The trigram path scores name+path trigram cosine with a top-K
+cutoff (no full sort per query). Each backend's 0..1 similarity is scaled
+by its fusion weight, then shifted by a +500 base before merging with
+keyword results.
 
 ## `embedding:` — local vector model for semantic search
 

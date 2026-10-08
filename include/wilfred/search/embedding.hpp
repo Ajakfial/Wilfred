@@ -27,8 +27,9 @@ struct EmbeddingConfigView {
   int dim{384};
 };
 
-// Deterministic, dependency-free text embedding. Char 3-grams + word hashes
-// are projected into `dim` buckets and L2-normalized, so cosine similarity is
+// Deterministic, dependency-free text embedding. Char 3-grams (blank-only
+// grams skipped) + word hashes are projected into `dim` buckets with
+// sublinear term frequencies and L2-normalized, so cosine similarity is
 // a dot product. Good enough for on-device fuzzy/semantic ranking and always
 // available offline.
 std::vector<float> hash_embed_text(const std::string& text, int dim);

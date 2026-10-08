@@ -534,6 +534,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_packages.cpp
   tests/test_new_batch.cpp
   tests/test_locale.cpp
+  tests/test_plugins.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

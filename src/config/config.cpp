@@ -413,6 +413,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                       "index_hidden",
                                       "index_system",
                                       "usn_scan",
+                                      "format",
                                       "max_file_size_bytes",
                                       "content_indexing",
                                       "content_max_bytes",
@@ -442,6 +443,12 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.index.index_hidden = index->boolean("index_hidden", true);
     c.index.index_system = index->boolean("index_system", false);
     c.index.usn_scan = index->boolean("usn_scan", true);
+    c.index.format = to_lower_utf8(index->str("format", "auto"));
+    if (c.index.format != "auto" && c.index.format != "v2" && c.index.format != "v3") {
+      err.message =
+          "index.format must be auto, v2, or v3 (got '" + index->str("format", "auto") + "')";
+      return false;
+    }
     c.index.max_file_size_bytes =
         static_cast<std::uint64_t>(std::max<std::int64_t>(0, index->integer("max_file_size_bytes", 0)));
     c.index.content_indexing = index->boolean("content_indexing", true);
@@ -787,6 +794,13 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.providers.semantic_min_score = pr->number("semantic_min_score", 0.3);
     if (c.providers.semantic_min_score < 0 || c.providers.semantic_min_score > 1) {
       err.message = "providers.semantic_min_score must be between 0 and 1";
+      return false;
+    }
+    c.providers.semantic_vector_weight = pr->number("semantic_vector_weight", 1.0);
+    c.providers.semantic_trigram_weight = pr->number("semantic_trigram_weight", 1.0);
+    if (c.providers.semantic_vector_weight < 0 || c.providers.semantic_vector_weight > 4 ||
+        c.providers.semantic_trigram_weight < 0 || c.providers.semantic_trigram_weight > 4) {
+      err.message = "providers.semantic_vector_weight and semantic_trigram_weight must be between 0 and 4";
       return false;
     }
     c.providers.semantic_backend = pr->str("semantic_backend", "hybrid");

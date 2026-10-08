@@ -11,8 +11,9 @@ ui:
 ```
 
 Shipped languages: English (`en`, always available), German (`de`), French
-(`fr`), Spanish (`es`). Unknown languages fall back to English per key, so a
-partial catalog is usable — untranslated strings simply stay English.
+(`fr`), Spanish (`es`), Portuguese (`pt`), Italian (`it`), Dutch (`nl`).
+Unknown languages fall back to English per key, so a partial catalog stays
+usable — untranslated strings simply remain English.
 
 ## How it works
 

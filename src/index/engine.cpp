@@ -6,6 +6,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/thread_pool.hpp"
 #include "wilfred/core/time_util.hpp"
+#include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/fs/walker.hpp"
 #include "wilfred/index/tokenizer.hpp"
@@ -26,6 +27,10 @@ bool IndexEngine::open(const std::string& dir, const Config& cfg) {
   cfg_ = cfg;
   dir_ = dir;
   create_directories(dir_);
+  // On-disk snapshot format: v3 persists postings for fast loads of very
+  // large indexes; v2 keeps the records-only layout older binaries read.
+  auto fmt = to_lower_utf8(cfg_.index.format);
+  store_.set_write_version(fmt == "v2" ? 2 : 3);
   snapshot_path_ = path_join(dir_, "snapshot.wilf");
   wal_path_ = path_join(dir_, "journal.wal");
   cancel_ = false;

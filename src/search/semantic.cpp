@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <unordered_map>
 
 namespace wilfred {
@@ -39,10 +40,13 @@ std::vector<std::uint32_t> trigrams_of(const std::string& folded) {
   std::vector<std::uint32_t> out;
   if (pad.size() < 3) return out;
   out.reserve(pad.size() - 2);
-  for (std::size_t i = 0; i + 2 < pad.size(); ++i)
+  for (std::size_t i = 0; i + 2 < pad.size(); ++i) {
+    // Skip padding artifacts so blank-heavy strings don't match everything.
+    if (pad[i] == ' ' && pad[i + 1] == ' ' && pad[i + 2] == ' ') continue;
     out.push_back((static_cast<std::uint32_t>(static_cast<unsigned char>(pad[i])) << 16) |
                   (static_cast<std::uint32_t>(static_cast<unsigned char>(pad[i + 1])) << 8) |
                   static_cast<std::uint32_t>(static_cast<unsigned char>(pad[i + 2])));
+  }
   std::sort(out.begin(), out.end());
   return out;
 }
@@ -108,18 +112,19 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
     if (has_flag(r->flags, RecordFlags::Hidden) && !cfg.search.include_hidden_files) return false;
     return true;
   };
-  auto push_hit = [&](std::uint32_t id, double sim, const char* tag) {
+  auto push_hit = [&](std::uint32_t id, double sim, double weight, const char* tag) {
     const IndexRecord* r = store.get(id);
     if (!r || !pass_filter(r)) return;
+    int score = 500 + static_cast<int>(weight * sim * 1000.0);
     for (auto& e : out)
       if (e.id == id) {
         // Merge: keep the best score, annotate hybrid source.
-        if (sim * 1000 > e.score - 500) e.score = 500 + static_cast<int>(sim * 1000.0);
+        if (score > e.score) e.score = score;
         return;
       }
     SearchResult sr;
     sr.id = id;
-    sr.score = 500 + static_cast<int>(sim * 1000.0);
+    sr.score = score;
     sr.kind = r->kind;
     sr.title = std::string(store.pool().get(r->name_id));
     sr.path = std::string(store.pool().get(r->path_id));
@@ -144,7 +149,7 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
     auto hits = index_.vectors().query(text, k, min_score);
     for (auto& h : hits) {
       if (out.size() >= budget) break;
-      push_hit(h.id, h.score, "semantic match");
+      push_hit(h.id, h.score, cfg.providers.semantic_vector_weight, "semantic match");
     }
     if (!out.empty() && backend == "vector") {
       std::sort(out.begin(), out.end(),
@@ -155,7 +160,9 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
   }
 
   // 2) Trigram path: dependency-free soft match (also the fallback when the
-  // vector sidecar is disabled or has no hits).
+  // vector sidecar is disabled or has no hits). Full scan, but only the top
+  // `budget` hits are sorted (nth_element) so million-record stores don't pay
+  // a full sort per query.
   if (use_trigram) {
     auto qtri = trigrams_of(folded);
     if (!qtri.empty()) {
@@ -173,10 +180,18 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
         double sim = cosine_sorted(qtri, trigrams_of(fold_search(name + " " + path)));
         if (sim >= min_sim) hits.push_back({i, sim});
       }
-      std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) { return a.sim > b.sim; });
+      auto cmp = [](const Hit& a, const Hit& b) { return a.sim > b.sim; };
+      std::size_t keep = std::min<std::size_t>(hits.size(), budget);
+      if (keep > 0) {
+        std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(keep),
+                         hits.end(), cmp);
+        std::sort(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(keep), cmp);
+        hits.resize(keep);
+      }
       for (auto& h : hits) {
         if (out.size() >= budget) break;
-        push_hit(h.id, h.sim, backend == "hybrid" ? "soft match" : "soft match");
+        push_hit(h.id, h.sim, cfg.providers.semantic_trigram_weight,
+                 backend == "hybrid" ? "soft match" : "soft match");
       }
     }
   }
