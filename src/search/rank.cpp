@@ -284,6 +284,16 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
     }
   }
 
+  // Pinned favorites: strong always-on boost so favorites surface first.
+  if (!ctx.pins.empty() && w.pinned != 0) {
+    for (auto& p : ctx.pins) {
+      if (!p.empty() && (folded.find(p) != std::string::npos || pl.find(p) != std::string::npos)) {
+        score += w.pinned;
+        break;
+      }
+    }
+  }
+
   // Prefer shorter names slightly when already matching.
   if (fuzzy.matched) score += std::max(0, 80 - static_cast<int>(name.size()));
   score += default_rank_pipeline().extras(ctx, store, rec, w);

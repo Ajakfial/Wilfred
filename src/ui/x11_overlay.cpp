@@ -203,7 +203,7 @@ static void wk_handle_json(const std::string& json) {
       gtk_window_present(GTK_WINDOW(g_wk.window));
       gtk_widget_grab_focus(GTK_WIDGET(g_wk.web));
       g_wk.visible = true;
-      wk_send_json("{\"type\":\"show\"}");
+      wk_send_json(overlay_show_json());
     }
     return;
   }
@@ -345,7 +345,7 @@ class LinuxWebkitOverlay final : public OverlayUi {
     gtk_window_present(GTK_WINDOW(g_wk.window));
     if (g_wk.web) gtk_widget_grab_focus(GTK_WIDGET(g_wk.web));
     g_wk.visible = true;
-    wk_send_json("{\"type\":\"show\"}");
+    wk_send_json(overlay_show_json());
   }
   void hide() override {
     if (g_wk.window) gtk_widget_hide(g_wk.window);

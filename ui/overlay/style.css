@@ -125,7 +125,7 @@ html, body {
   color: var(--ink);
   font-family: var(--font);
   font-feature-settings: "cv05", "cv08";
-  font-size: 14px;
+  font-size: var(--base-font, 14px);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

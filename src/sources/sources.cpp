@@ -362,7 +362,7 @@ std::vector<SearchResult> ContactsProvider::query(const std::string& text, const
 }
 
 std::vector<SearchResult> NotesProvider::query(const std::string& text, const Config& cfg,
-                                               std::size_t limit) {
+                                                std::size_t limit) {
   std::vector<SearchResult> out;
   if (!cfg.sources.notes || limit == 0) return out;
   auto needle = fold_search(normalize_query(text));
@@ -440,6 +440,123 @@ std::vector<SearchResult> NotesProvider::query(const std::string& text, const Co
     out.push_back(std::move(r));
   }
   return out;
+}
+
+namespace {
+
+std::string trim(const std::string& s) {
+  std::size_t b = 0;
+  while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n')) ++b;
+  std::size_t e = s.size();
+  while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
+    --e;
+  return s.substr(b, e - b);
+}
+
+std::string slug_for(const std::string& s) {
+  std::string o;
+  for (char c : to_lower_utf8(s)) {
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+      o.push_back(c);
+    else if (c == ' ' || c == '_' || c == '-')
+      o.push_back('-');
+  }
+  // Collapse dashes.
+  std::string c;
+  for (char ch : o) {
+    if (ch == '-' && !c.empty() && c.back() == '-') continue;
+    c.push_back(ch);
+  }
+  while (!c.empty() && c.front() == '-') c.erase(c.begin());
+  while (!c.empty() && c.back() == '-') c.pop_back();
+  if (c.empty()) c = "item";
+  if (c.size() > 48) c.resize(48);
+  return c;
+}
+
+std::string first_writable_root(const std::vector<std::string>& cfg_paths,
+                                const std::vector<std::string>& defs,
+                                const std::string& fallback_subdir) {
+  for (auto& r : cfg_paths) {
+    if (r.empty()) continue;
+    std::error_code ec;
+    fs::create_directories(fs::u8path(r), ec);
+    if (!ec) return r;
+  }
+  for (auto& r : defs) {
+    if (r.empty()) continue;
+    std::error_code ec;
+    fs::create_directories(fs::u8path(r), ec);
+    if (!ec) return r;
+  }
+  auto fb = path_join(data_directory(), fallback_subdir);
+  std::error_code ec;
+  fs::create_directories(fs::u8path(fb), ec);
+  return fb;
+}
+
+}  // namespace
+
+bool create_calendar_event(const Config& cfg, const std::string& summary,
+                           const std::string& when_hint, std::string& out_path,
+                           std::string& err) {
+  out_path.clear();
+  std::string s = trim(summary);
+  if (s.empty()) {
+    err = "event summary is empty (try: event add Team sync | tomorrow 10am)";
+    return false;
+  }
+  if (s.size() > 200) s.resize(200);
+  auto dir = first_writable_root(cfg.sources.calendar_paths, default_calendar_roots(), "calendar");
+  auto stamp = std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+                                  std::chrono::system_clock::now().time_since_epoch())
+                                  .count());
+  auto dest = path_join(dir, "wilfred-" + slug_for(s) + "-" + stamp + ".ics");
+  std::string ics =
+      "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Wilfred//Event//EN\nBEGIN:VEVENT\nUID:wilfred-" +
+      stamp + "@local\nSUMMARY:" + s + "\n";
+  auto when = trim(when_hint);
+  if (!when.empty()) {
+    if (when.size() > 64) when.resize(64);
+    ics += "DTSTART:" + when + "\nDESCRIPTION:" + when + "\n";
+  }
+  ics += "END:VEVENT\nEND:VCALENDAR\n";
+  create_directories(path_parent(dest));
+  if (!write_file_atomic(dest, ics.data(), ics.size())) {
+    err = "unable to write " + dest;
+    return false;
+  }
+  out_path = dest;
+  return true;
+}
+
+bool create_contact(const Config& cfg, const std::string& name, const std::string& email,
+                    const std::string& phone, std::string& out_path, std::string& err) {
+  out_path.clear();
+  std::string n = trim(name);
+  if (n.empty()) {
+    err = "contact name is empty (try: contact add Jane Doe jane@x.com 555-0100)";
+    return false;
+  }
+  if (n.size() > 120) n.resize(120);
+  auto dir = first_writable_root(cfg.sources.contacts_paths, default_contacts_roots(), "contacts");
+  auto dest = path_join(dir, slug_for(n) + ".vcf");
+  // Avoid collisions.
+  for (int i = 2; i < 100 && file_exists(dest); ++i)
+    dest = path_join(dir, slug_for(n) + "-" + std::to_string(i) + ".vcf");
+  std::string v = "BEGIN:VCARD\nVERSION:3.0\nFN:" + n + "\n";
+  auto e = trim(email);
+  auto p = trim(phone);
+  if (!e.empty()) v += "EMAIL:" + e.substr(0, 160) + "\n";
+  if (!p.empty()) v += "TEL:" + p.substr(0, 64) + "\n";
+  v += "END:VCARD\n";
+  create_directories(path_parent(dest));
+  if (!write_file_atomic(dest, v.data(), v.size())) {
+    err = "unable to write " + dest;
+    return false;
+  }
+  out_path = dest;
+  return true;
 }
 
 }  // namespace wilfred

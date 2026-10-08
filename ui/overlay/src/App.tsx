@@ -165,7 +165,65 @@ function applyGlassOpacity(opacity: number, transparent: boolean): void {
   root.style.setProperty("--pop-glass", `rgba(${popRgb}, ${popA.toFixed(3)})`);
 }
 
-function applyAppearance(m: { transparent?: unknown; opacity?: unknown; blur?: unknown }): void {
+function hexToRgb(v: string): [number, number, number] | null {
+  let h = v.trim().toLowerCase();
+  if (h.startsWith("#")) h = h.slice(1);
+  if (/^[0-9a-f]{3}$/.test(h)) {
+    const r = parseInt(h[0] + h[0], 16);
+    const g = parseInt(h[1] + h[1], 16);
+    const b = parseInt(h[2] + h[2], 16);
+    return [r, g, b];
+  }
+  if (/^[0-9a-f]{6}$/.test(h)) {
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  return null;
+}
+
+const kNamedAccents: Record<string, [number, number, number]> = {
+  indigo: [127, 140, 255],
+  blue: [80, 140, 250],
+  green: [40, 200, 150],
+  teal: [40, 190, 220],
+  pink: [240, 100, 160],
+  orange: [245, 140, 70],
+  red: [240, 100, 100],
+  purple: [150, 120, 250],
+  violet: [171, 144, 255],
+};
+
+function applyAccent(accent: unknown): void {
+  const root = document.documentElement;
+  if (typeof accent !== "string" || !accent.trim()) {
+    root.style.removeProperty("--accent");
+    root.style.removeProperty("--accent-rgb");
+    root.style.removeProperty("--accent-ink");
+    return;
+  }
+  const raw = accent.trim();
+  const rgb = hexToRgb(raw) || kNamedAccents[raw.toLowerCase()];
+  if (!rgb) return;
+  const hex = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
+  root.style.setProperty("--accent", hex);
+  root.style.setProperty("--accent-rgb", `${rgb[0]} ${rgb[1]} ${rgb[2]}`);
+  root.style.setProperty("--accent-ink", hex);
+}
+
+function applyFontSize(size: unknown): void {
+  const root = document.documentElement;
+  const n = typeof size === "number" ? size : typeof size === "string" ? parseFloat(size) : NaN;
+  if (!Number.isFinite(n) || n <= 0) {
+    root.style.removeProperty("--base-font");
+    root.style.removeProperty("font-size");
+    document.body.style.removeProperty("font-size");
+    return;
+  }
+  const px = Math.min(24, Math.max(10, Math.round(n)));
+  root.style.setProperty("--base-font", `${px}px`);
+  document.body.style.fontSize = `${px}px`;
+}
+
+function applyAppearance(m: { transparent?: unknown; opacity?: unknown; blur?: unknown; accent?: unknown; fontSize?: unknown }): void {
   const root = document.documentElement;
   if (typeof m.transparent === "boolean") {
     gAppearanceTransparent = m.transparent;
@@ -186,6 +244,8 @@ function applyAppearance(m: { transparent?: unknown; opacity?: unknown; blur?: u
     root.style.removeProperty("--glass");
     root.style.removeProperty("--pop-glass");
   }
+  if ("accent" in m) applyAccent(m.accent);
+  if ("fontSize" in m) applyFontSize(m.fontSize);
 }
 
 export function App() {

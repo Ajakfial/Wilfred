@@ -79,6 +79,12 @@ enum class MiniKind {
   Config,
   Plugins,
   Packages,
+  Define,
+  Pins,
+  PinOp,
+  EventAdd,
+  ContactAdd,
+  FileOp,
 };
 
 struct MiniIntent {

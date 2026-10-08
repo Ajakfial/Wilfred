@@ -40,4 +40,11 @@ FilePreview build_file_preview(const std::string& path, std::size_t max_text = 2
                                std::size_t max_image = 102400);
 std::string overlay_preview_json(const std::string& path);
 
+// Overlay appearance driven by `ui:` config (accent, font_size). The service
+// calls set_overlay_appearance(cfg) on config load; overlay backends send
+// overlay_show_json() instead of a bare {"type":"show"} so the web UI can
+// apply the custom theme without a separate config channel.
+void set_overlay_appearance(const Config& cfg);
+std::string overlay_show_json();
+
 }  // namespace wilfred

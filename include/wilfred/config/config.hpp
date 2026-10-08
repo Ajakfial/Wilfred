@@ -30,6 +30,7 @@ struct RankingWeights {
   int clipboard_overlap{240};
   int content_hit{190};
   int hour_affinity{70};
+  int pinned{900};
 };
 
 struct Config {
@@ -133,6 +134,10 @@ struct Config {
     std::string theme{"dark"};
     int max_visible{9};
     int width{720};
+    // Custom accent color (#RRGGBB / #RGB / named CSS color, empty = default).
+    std::string accent;
+    // Base font size in px for the overlay (10-24, 0 = default 14).
+    int font_size{0};
   } ui;
 
   struct Plugins {
@@ -263,6 +268,13 @@ struct Config {
     std::string token;
     int interval_seconds{0};
     bool include_index{true};
+    // Optional encryption-at-rest for the archive (dependency-free:
+    // SHA-256 key derivation + keystream XOR, see sync/backup.cpp).
+    // When true and password (or key_file) is set, sync_push encrypts and
+    // sync_pull/restore decrypt. Plain archives still restore.
+    bool encrypt{false};
+    std::string password;
+    std::string key_file;
   } sync;
 
   struct Snippets {
@@ -285,6 +297,10 @@ struct Config {
     std::unordered_map<std::string, std::string> monitor_layouts;
   } layouts;
 
+  // Pinned favorites: query-visible always-on-top results. Lowercased
+  // paths or titles; matched as substring against result title + path.
+  // Managed at runtime via `pin`/`unpin` minis and persisted to pins.bin.
+  std::vector<std::string> pins;
   // Named multi-step workflows: workflow name -> ordered action ids.
   // Each step is an action id accepted by execute_result_action
   // (e.g. "copy_path", "reveal", "open"), joined with '+' at runtime.

@@ -19,6 +19,7 @@ void fill_rank_context(RankContext& ctx, const std::string& query, const Config&
   ctx.allow_content = cfg.index.content_indexing;
   ctx.clipboard_folded = fold_search(clipboard.substr(0, 400));
   ctx.clipboard_tokens = tokenize_name(ctx.clipboard_folded);
+  ctx.pins = cfg.pins;
 
   auto now = static_cast<std::time_t>(unix_seconds());
   std::tm local{};

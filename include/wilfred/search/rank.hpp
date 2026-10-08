@@ -30,6 +30,8 @@ struct RankContext {
   std::vector<std::string> recent_exts;
   std::vector<std::string> recent_names;
   std::vector<std::string> session_tokens;
+  // Lowercased pin substrings (favorites). Matched against title + path.
+  std::vector<std::string> pins;
   bool context_aware{true};
   bool allow_content{true};
 };

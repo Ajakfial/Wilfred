@@ -8,6 +8,7 @@
 #include "wilfred/search/content.hpp"
 #include "wilfred/search/context.hpp"
 #include "wilfred/search/fuzzy.hpp"
+#include "wilfred/search/pins.hpp"
 
 #include <algorithm>
 #include <unordered_set>
@@ -119,6 +120,16 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
   RankContext ctx;
   fill_rank_context(ctx, q, cfg, history, cfg.search.clipboard ? clip.text : "");
   ctx.clipboard_paths = clipboard_path_hints(clip);
+  // Merge runtime pins (PinStore) with config pins so `pin` applies instantly.
+  for (auto& p : PinStore::instance().list()) {
+    bool dup = false;
+    for (auto& e : ctx.pins)
+      if (e == p) {
+        dup = true;
+        break;
+      }
+    if (!dup) ctx.pins.push_back(p);
+  }
   if (!cfg.search.context_aware) {
     ctx.recent_parents.clear();
     ctx.recent_exts.clear();

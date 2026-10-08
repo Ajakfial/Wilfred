@@ -15,6 +15,7 @@
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/layouts.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
@@ -69,6 +70,12 @@ void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
 #endif
   if (!is_dir) add("hash_file", "Copy SHA-256 hash");
   add("compress_zip", "Compress to .zip");
+  add("move_to", "Move to … (uses clipboard path)");
+  if (is_dir) {
+    add("bulk_rename", "Bulk rename… (uses clipboard pattern)");
+    add("new_from_template", "New from template…");
+  }
+  add("pin_add", "Pin as favorite");
   add("open_terminal", "Open terminal here");
   add("open_editor", "Open in editor");
   if (is_dir) {
@@ -230,6 +237,12 @@ std::string action_label_for(const std::string& id) {
   if (id == "copy_text") return "Copy";
   if (id == "hash_file") return "Copy SHA-256 hash";
   if (id == "compress_zip") return "Compress to .zip";
+  if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0) return "Bulk rename…";
+  if (id == "move_to" || id.rfind("move_to:", 0) == 0) return "Move to…";
+  if (id == "new_from_template" || id.rfind("new_from_template:", 0) == 0)
+    return "New from template…";
+  if (id == "pin_add") return "Pin as favorite";
+  if (id == "pin_remove") return "Unpin favorite";
   if (id == "open_terminal") return "Open terminal here";
   if (id == "open_editor") return "Open in editor";
   if (id == "new_file") return "New file here";
@@ -334,7 +347,11 @@ void attach_result_actions(std::vector<SearchResult>& results, const Config& cfg
 bool action_hides_overlay(const std::string& action_id) {
   if (action_id.empty() || action_id == "open" || action_id == "reveal" || action_id == "paste" ||
       action_id == "expand" || action_id == "open_terminal" || action_id == "open_editor" ||
-      action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder")
+      action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder" ||
+      action_id == "bulk_rename" || action_id.rfind("bulk_rename:", 0) == 0 ||
+      action_id == "move_to" || action_id.rfind("move_to:", 0) == 0 ||
+      action_id == "new_from_template" || action_id.rfind("new_from_template:", 0) == 0 ||
+      action_id == "pin_add" || action_id == "pin_remove")
     return true;
   if (action_id.rfind("open_with:", 0) == 0) return true;
   if (action_id.rfind("workflow:", 0) == 0) return true;
@@ -769,6 +786,102 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
                                  : create_new_folder_here(base, created, err);
       if (!ok) {
         log_warn("fileops", err.empty() ? "create failed" : err);
+        return false;
+      }
+      reveal_path(created);
+      return true;
+    }
+    if (id == "pin_add" || id == "pin_remove") {
+      auto target = p.empty() ? r.title : p;
+      if (target.empty()) return false;
+      bool ok = id == "pin_add" ? PinStore::instance().add(target)
+                                : PinStore::instance().remove(target);
+      if (ok) write_clipboard(id == "pin_add" ? ("pinned: " + target) : ("unpinned: " + target));
+      return ok;
+    }
+    if (id.rfind("bulk_rename", 0) == 0) {
+      auto base = fs_is_directory(p) ? p : path_parent(p);
+      if (base.empty() || !fs_exists(base)) return false;
+      std::string pattern = "file-{n}{ext}";
+      if (id.size() > 11 && id[11] == ':') pattern = id.substr(12);
+      if (pattern.empty()) {
+        try {
+          auto clip = read_clipboard().text;
+          auto nl = clip.find('\n');
+          auto first = nl == std::string::npos ? clip : clip.substr(0, nl);
+          while (!first.empty() && (first.front() == ' ')) first.erase(first.begin());
+          while (!first.empty() && (first.back() == ' ' || first.back() == '\r')) first.pop_back();
+          if (!first.empty() && first.size() < 64) pattern = first;
+        } catch (...) {
+        }
+      }
+      std::vector<std::string> renamed;
+      std::string err;
+      if (!bulk_rename_in_dir(base, pattern, renamed, err)) {
+        log_warn("fileops", err.empty() ? "rename failed" : err);
+        return false;
+      }
+      if (!renamed.empty()) write_clipboard(renamed.front());
+      reveal_path(base);
+      return true;
+    }
+    if (id.rfind("move_to", 0) == 0) {
+      if (p.empty() || !fs_exists(p)) return false;
+      std::string dest;
+      if (id.size() > 7 && id[7] == ':') dest = id.substr(8);
+      if (dest.empty()) {
+        try {
+          auto snap = read_clipboard();
+          for (auto& h : clipboard_path_hints(snap)) {
+            if (fs_is_directory(h)) {
+              dest = h;
+              break;
+            }
+          }
+          if (dest.empty() && !snap.text.empty() && fs_is_directory(snap.text)) dest = snap.text;
+        } catch (...) {
+        }
+      }
+      if (dest.empty() || !fs_is_directory(dest)) {
+        log_warn("fileops", "move_to needs a destination dir on the clipboard");
+        return false;
+      }
+      std::vector<std::string> moved;
+      std::string err;
+      if (!move_paths_to({p}, dest, moved, err)) {
+        log_warn("fileops", err.empty() ? "move failed" : err);
+        return false;
+      }
+      if (!moved.empty()) reveal_path(moved.front());
+      return true;
+    }
+    if (id.rfind("new_from_template", 0) == 0) {
+      auto base = fs_is_directory(p) ? p : path_parent(p);
+      if (base.empty() || !fs_exists(base)) return false;
+      std::string kind = "md", name;
+      if (id.size() > 17 && id[17] == ':') {
+        auto rest = id.substr(18);
+        auto c = rest.find(':');
+        if (c == std::string::npos) {
+          kind = rest;
+        } else {
+          kind = rest.substr(0, c);
+          name = rest.substr(c + 1);
+        }
+      } else {
+        try {
+          auto clip = read_clipboard().text;
+          if (!clip.empty() && clip.size() < 64) {
+            auto nl = clip.find('\n');
+            auto first = nl == std::string::npos ? clip : clip.substr(0, nl);
+            if (!first.empty()) name = first;
+          }
+        } catch (...) {
+        }
+      }
+      std::string created, err;
+      if (!create_from_template(base, kind, name, created, err)) {
+        log_warn("fileops", err.empty() ? "template failed" : err);
         return false;
       }
       reveal_path(created);

@@ -46,4 +46,13 @@ class NotesProvider : public SearchProvider {
                                   std::size_t limit) override;
 };
 
+// Creation (used by `event add ...` / `contact add ...` minis).
+// Writes a minimal .ics VEVENT / .vcf VCARD under the first configured root
+// (creating a data-dir fallback when none exists) and returns its path.
+bool create_calendar_event(const Config& cfg, const std::string& summary,
+                           const std::string& when_hint, std::string& out_path,
+                           std::string& err);
+bool create_contact(const Config& cfg, const std::string& name, const std::string& email,
+                    const std::string& phone, std::string& out_path, std::string& err);
+
 }  // namespace wilfred

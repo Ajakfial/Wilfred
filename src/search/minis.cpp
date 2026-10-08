@@ -14,11 +14,14 @@
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/convert.hpp"
+#include "wilfred/search/define.hpp"
 #include "wilfred/search/disktools.hpp"
+#include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/fuzzy.hpp"
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/nettools.hpp"
 #include "wilfred/search/pkg.hpp"
@@ -31,6 +34,7 @@
 #include "wilfred/plugin/mini.hpp"
 #include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
+#include "wilfred/sources/sources.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -1517,6 +1521,42 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Plugins, true);
   else if (key == "packages" || key == "package" || key == "pkg")
     set(MiniKind::Packages, true);
+  else if (key == "define" || key == "def" || key == "definition" || key == "meaning" ||
+           key == "synonym" || key == "synonyms" || key == "thesaurus" || key == "dict")
+    set(MiniKind::Define, false);
+  else if (key == "pins" || key == "pinlist" || key == "favorites" || key == "favourites" ||
+           key == "favorite" || key == "favourite")
+    set(MiniKind::Pins, true);
+  else if (key == "pin" || key == "unpin" || key == "favorite-add" || key == "unfavorite") {
+    it.kind = MiniKind::PinOp;
+    it.remainder = (key == "unpin" || key == "unfavorite" ? "unpin " : "pin ") + rest;
+    it.exact = false;
+  } else if ((key == "event" || key == "events" || key == "calendar") &&
+             (to_lower_utf8(rest).rfind("add ", 0) == 0 || to_lower_utf8(rest) == "add")) {
+    it.kind = MiniKind::EventAdd;
+    auto r = trim_sv(rest.substr(3));
+    it.remainder = r;
+    it.exact = false;
+  } else if ((key == "contact" || key == "contacts") &&
+             (to_lower_utf8(rest).rfind("add ", 0) == 0 || to_lower_utf8(rest) == "add")) {
+    it.kind = MiniKind::ContactAdd;
+    auto r = trim_sv(rest.substr(3));
+    it.remainder = r;
+    it.exact = false;
+  } else if (key == "rename" || key == "bulk-rename" || key == "bulkrename") {
+    it.kind = MiniKind::FileOp;
+    it.remainder = "rename " + rest;
+    it.exact = false;
+  } else if (key == "move" || key == "move-to" || key == "moveto") {
+    it.kind = MiniKind::FileOp;
+    it.remainder = "move " + rest;
+    it.exact = false;
+  } else if (key == "template" || key == "templates" || key == "new-from-template" ||
+             key == "from-template") {
+    it.kind = MiniKind::FileOp;
+    it.remainder = "template " + rest;
+    it.exact = false;
+  }
   return it;
 }
 
@@ -1948,21 +1988,36 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       } else if (fl == "text" || fl == "plain") {
         type_filter = "text";
         text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
+      } else if (fl == "image" || fl == "images" || fl == "img" || fl == "screenshots") {
+        type_filter = "image";
+        text_filter = sp == std::string::npos ? "" : trim_sv(filter.substr(sp + 1));
       }
     }
     auto& store = ClipStore::instance();
-    auto hits = text_filter.empty() ? store.texts() : store.search(text_filter, 64);
-    if (!type_filter.empty()) {
-      std::vector<std::string> typed;
-      for (auto& t : hits) {
-        if (typed.size() >= 8) break;
-        auto ct = clip_type_of(t);
-        if (type_filter == "text" ? ct == "text" : ct == type_filter) typed.push_back(t);
+    // Prefer typed entries so copied file paths and images surface with badges.
+    std::vector<ClipEntry> entries;
+    {
+      auto all = store.entries();
+      auto q = fold_search(normalize_query(text_filter));
+      for (auto& e : all) {
+        if (entries.size() >= 64) break;
+        if (!q.empty() && fold_search(e.text).find(q) == std::string::npos) continue;
+        if (!type_filter.empty()) {
+          auto ct = e.kind == ClipKind::Path
+                        ? "path"
+                        : (e.kind == ClipKind::Image ? "image" : clip_type_of(e.text));
+          if (type_filter == "text" ? ct != "text" : ct != type_filter) continue;
+        }
+        entries.push_back(e);
+        if (entries.size() >= 8 && !type_filter.empty()) break;
       }
-      hits.swap(typed);
-    } else if (!text_filter.empty() && hits.size() > 8) {
-      hits.resize(8);
+      if (type_filter.empty() && !text_filter.empty() && entries.size() > 8)
+        entries.resize(8);
+      if (entries.size() > 8) entries.resize(8);
     }
+    std::vector<std::string> hits;
+    hits.reserve(entries.size());
+    for (auto& e : entries) hits.push_back(e.text);
     if (hits.empty()) {
       out.push_back(card(text_filter.empty() && type_filter.empty()
                              ? "No clipboard history yet"
@@ -1972,12 +2027,20 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          "", "clips", 9000, ResultAction::None));
     } else {
       int n = 0;
-      for (auto& t : hits) {
-        bool pin = store.pinned(t);
+      for (auto& e : entries) {
+        auto& t = e.text;
+        bool pin = e.pinned;
+        std::string kind = e.kind == ClipKind::Path
+                               ? "path"
+                               : (e.kind == ClipKind::Image ? "image" : clip_type_of(t));
         std::string sub = pin ? "Pinned clip · enter copies" : "Clipboard history";
-        if (!type_filter.empty()) sub = type_filter + " clip · enter copies";
+        if (!type_filter.empty())
+          sub = type_filter + " clip · enter copies";
+        else if (kind == "path" || kind == "image")
+          sub = kind + " clip · enter copies";
         SearchResult r = card(clipboard_preview(t), sub, t, "clips", 10000 - n);
         r.category = "clips";
+        r.kind_label = kind == "text" ? "clips" : ("clips-" + kind);
         r.actions.push_back({"copy_text", "Copy"});
         r.actions.push_back({pin ? "clip_unpin" : "clip_pin", pin ? "Unpin" : "Pin"});
         out.push_back(std::move(r));
@@ -3326,9 +3389,250 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
   }
 
+  if (intent.kind == MiniKind::Define) {
+    auto word = trim_sv(intent.remainder);
+    // `define` alone lists usage; `define foo` looks up.
+    if (word.empty()) {
+      out.push_back(card("define <word>", "Offline dictionary · e.g. define resilient",
+                         "define ", "define", 10000, ResultAction::Habit));
+      out.push_back(card("thesaurus <word>", "Offline synonyms · e.g. thesaurus happy",
+                         "thesaurus ", "define", 9900, ResultAction::Habit));
+      return out;
+    }
+    DefineHit hit;
+    if (define_lookup(word, hit)) {
+      std::string title = hit.word + " (" + hit.pos + ") — " + hit.definition;
+      std::string sub = hit.synonyms.empty() ? "Definition · enter copies"
+                                             : "Synonyms: " + hit.synonyms;
+      auto r = card(title, sub, hit.definition, "define", 10100, ResultAction::Copy);
+      r.category = "define";
+      r.actions.clear();
+      r.actions.push_back({"copy_text", "Copy definition"});
+      out.push_back(std::move(r));
+      if (!hit.synonyms.empty()) {
+        auto s = card("Synonyms: " + hit.synonyms, "Thesaurus · enter copies", hit.synonyms,
+                      "define", 10000, ResultAction::Copy);
+        s.category = "define";
+        out.push_back(std::move(s));
+      }
+    } else {
+      auto sug = define_suggest(word, 6);
+      std::string sub = sug.empty() ? "No offline entry · enter copies the word"
+                                    : "No exact entry · did you mean: ";
+      for (std::size_t i = 0; i < sug.size(); ++i) {
+        if (i) sub += ", ";
+        sub += sug[i];
+      }
+      out.push_back(card("No definition for \"" + word + "\"", sub, word, "define", 9000,
+                         ResultAction::Copy));
+      for (auto& s : sug)
+        out.push_back(card(s, "Suggestion · enter looks up", s, "define", 8900,
+                           ResultAction::Habit));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Pins) {
+    auto pins = PinStore::instance().list();
+    if (pins.empty())
+      out.push_back(card("No pins yet", "Type pin <path or title> to pin a favorite",
+                         "pin ", "pins", 10000, ResultAction::Habit));
+    for (auto& p : pins) {
+      auto r = card("Pinned: " + p, "Favorite · unpin " + p, "unpin " + p, "pins", 10050,
+                    ResultAction::Copy);
+      r.category = "pins";
+      r.actions.clear();
+      r.actions.push_back({"copy_text", "Copy"});
+      out.push_back(std::move(r));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::PinOp) {
+    auto rest = trim_sv(intent.remainder);
+    bool unpin = rest.rfind("unpin ", 0) == 0;
+    auto target = trim_sv(unpin ? rest.substr(6) : (rest.rfind("pin ", 0) == 0 ? rest.substr(4) : rest));
+    if (target.empty()) {
+      out.push_back(card(unpin ? "unpin <text>" : "pin <text>",
+                         unpin ? "Remove a favorite" : "Pin a path/title as favorite",
+                         unpin ? "unpin " : "pin ", "pins", 10000, ResultAction::Habit));
+      return out;
+    }
+    if (unpin) {
+      bool ok = PinStore::instance().remove(target);
+      out.push_back(card(ok ? "Unpinned " + target : "No pin matching " + target,
+                         ok ? "Favorite removed" : "Try pins to list", target, "pins", 10000,
+                         ResultAction::Copy));
+    } else {
+      bool ok = PinStore::instance().add(target);
+      out.push_back(card(ok ? "Pinned " + target : "Already pinned: " + target,
+                         ok ? "Favorites boost ranking via ranking.pinned" : "Try pins to list",
+                         target, "pins", 10000, ResultAction::Copy));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::EventAdd) {
+    auto rest = trim_sv(intent.remainder);
+    if (rest.empty()) {
+      out.push_back(card("event add <summary> | <when>",
+                         "Create a calendar event · e.g. event add Team sync | tomorrow 10am",
+                         "event add ", "event", 10000, ResultAction::Habit));
+      return out;
+    }
+    // Split on last '|' for optional when-hint.
+    std::string summary = rest, when;
+    auto bar = rest.rfind('|');
+    if (bar != std::string::npos) {
+      summary = trim_sv(rest.substr(0, bar));
+      when = trim_sv(rest.substr(bar + 1));
+    }
+    std::string dest, err;
+    if (create_calendar_event(cfg, summary, when, dest, err)) {
+      auto r = card("Event created: " + summary, dest + " · enter opens",
+                    dest, "event", 10100, ResultAction::Open);
+      r.category = "calendar";
+      out.push_back(std::move(r));
+    } else {
+      out.push_back(card("Cannot create event", err, rest, "event", 9000, ResultAction::Copy));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::ContactAdd) {
+    auto rest = trim_sv(intent.remainder);
+    if (rest.empty()) {
+      out.push_back(card("contact add <name> [email] [phone]",
+                         "Create a contact · e.g. contact add Jane Doe jane@x.com 555-0100",
+                         "contact add ", "contact", 10000, ResultAction::Habit));
+      return out;
+    }
+    // Parse: name = leading non-email/non-phone tokens; email has '@'; phone has digit+dash.
+    std::string name, email, phone;
+    {
+      std::istringstream iss(rest);
+      std::string tok, name_acc;
+      while (iss >> tok) {
+        if (email.empty() && tok.find('@') != std::string::npos) {
+          email = tok;
+        } else if (phone.empty() && tok.find_first_of("0123456789") != std::string::npos &&
+                   (tok.find('-') != std::string::npos || tok.find('+') != std::string::npos ||
+                    tok.size() >= 7)) {
+          if (phone.empty())
+            phone = tok;
+          else if (name_acc.empty())
+            name_acc = tok;
+          else
+            name_acc += " " + tok;
+        } else {
+          if (name_acc.empty())
+            name_acc = tok;
+          else
+            name_acc += " " + tok;
+        }
+      }
+      name = name_acc;
+    }
+    std::string dest, err;
+    if (create_contact(cfg, name, email, phone, dest, err)) {
+      auto r = card("Contact created: " + name, dest + " · enter opens", dest, "contact",
+                    10100, ResultAction::Open);
+      r.category = "contact";
+      out.push_back(std::move(r));
+    } else {
+      out.push_back(card("Cannot create contact", err, rest, "contact", 9000,
+                         ResultAction::Copy));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::FileOp) {
+    auto rest = trim_sv(intent.remainder);
+    if (rest.rfind("rename ", 0) == 0) {
+      auto args = trim_sv(rest.substr(7));
+      // Forms: `rename <dir> <pattern>` or `rename <pattern>` (cwd-ish: data dir).
+      std::string dir, pattern;
+      auto sp = args.find(' ');
+      if (sp == std::string::npos) {
+        pattern = args;
+      } else {
+        auto first = trim_sv(args.substr(0, sp));
+        auto second = trim_sv(args.substr(sp + 1));
+        if (fs_is_directory(first) && !second.empty()) {
+          dir = first;
+          pattern = second;
+        } else {
+          pattern = args;
+        }
+      }
+      if (pattern.empty()) {
+        out.push_back(card("rename <dir> <pattern>",
+                           "Bulk rename with {n} {name} {ext} · e.g. rename ./photos photo-{n}.jpg",
+                           "rename ", "filerename", 10000, ResultAction::Habit));
+        return out;
+      }
+      if (dir.empty()) dir = ".";
+      std::vector<std::string> renamed;
+      std::string err;
+      if (bulk_rename_in_dir(dir, pattern, renamed, err)) {
+        out.push_back(card("Renamed " + std::to_string(renamed.size()) + " files",
+                           dir + " · " + pattern + " · enter copies first path",
+                           renamed.empty() ? dir : renamed.front(), "filerename", 10100,
+                           ResultAction::Copy));
+      } else {
+        out.push_back(card("Cannot rename", err, rest, "filerename", 9000,
+                           ResultAction::Copy));
+      }
+      return out;
+    }
+    if (rest.rfind("move ", 0) == 0) {
+      out.push_back(card("move <file> to <dir>",
+                         "Move files via result actions (open a file → move_to) or CLI",
+                         rest, "filemove", 10000, ResultAction::Copy));
+      return out;
+    }
+    // template
+    auto args = rest.rfind("template ", 0) == 0 ? trim_sv(rest.substr(9)) : rest;
+    if (args.empty()) {
+      out.push_back(card("template <kind> [name] [in <dir>]",
+                         "New from template · empty, md, python, cpp, html, json, gitignore",
+                         "template ", "filetemplate", 10000, ResultAction::Habit));
+      return out;
+    }
+    // Parse: `<kind> [name] [in <dir>]`.
+    std::string kind, name, dir;
+    {
+      auto in_pos = args.find(" in ");
+      std::string head = in_pos == std::string::npos ? args : args.substr(0, in_pos);
+      if (in_pos != std::string::npos) dir = trim_sv(args.substr(in_pos + 4));
+      std::istringstream iss(head);
+      iss >> kind;
+      std::string restname;
+      std::getline(iss, restname);
+      name = trim_sv(restname);
+    }
+    if (dir.empty()) dir = ".";
+    std::string created, err;
+    if (create_from_template(dir, kind, name, created, err)) {
+      auto r = card("Created " + created, kind + " template · enter opens", created,
+                    "filetemplate", 10100, ResultAction::Open);
+      out.push_back(std::move(r));
+    } else {
+      out.push_back(card("Cannot create from template", err, rest, "filetemplate", 9000,
+                         ResultAction::Copy));
+    }
+    return out;
+  }
+
   if (intent.kind == MiniKind::Help) {
     static const char* lines[] = {"weather [city]  ·  local forecast",
                                   "time [zone]  ·  clock and date",
+                                  "define <word> · thesaurus <word>  ·  offline dictionary",
+                                  "pin <text> · pins · unpin <text>  ·  favorites",
+                                  "event add <summary> | <when>  ·  new calendar event",
+                                  "contact add <name> [email] [phone]  ·  new contact",
+                                  "rename <dir> <pattern>  ·  bulk rename {n} {name} {ext}",
+                                  "template <kind> [name] [in <dir>]  ·  new from template",
                                   "timer 10m · pomodoro · stopwatch  ·  focus timers",
                                   "note <text> · notes  ·  quick notes",
                                   "todo <task> · todos · todo done <id>  ·  tasks",

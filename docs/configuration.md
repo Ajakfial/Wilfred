@@ -239,6 +239,8 @@ hotkeys:
 | Key | Default | Meaning |
 |---|---|---|
 | `theme` | `dark` | Overlay color theme |
+| `accent` | `""` | Custom accent (`#RRGGBB`, `#RGB`, or `indigo/blue/green/teal/pink/orange/red/purple`); empty = default |
+| `font_size` | `0` | Base overlay font size in px (`0` = default 14, clamped 10–24) |
 | `max_visible` | `9` | Max results shown in the overlay list at once (scrollable beyond that; independent of `search.max_results`, which caps what the engine computes) |
 | `width` | `720` | Overlay window width in pixels |
 
@@ -431,6 +433,9 @@ See [ipc-and-api.md](ipc-and-api.md) for the request/response format.
 | `token` | `""` | Auth token sent with sync requests |
 | `interval_seconds` | `0` | If non-zero, the daemon syncs automatically on this interval |
 | `include_index` | `true` | Whether the index is part of what's synced (a large payload) vs. config/snippets only |
+| `encrypt` | `false` | Encrypt the archive (SHA-256 KDF + keystream XOR, no new deps). Needs `password` or `key_file` |
+| `password` | `""` | Sync encryption password (never logged). Prefer `key_file` on shared machines |
+| `key_file` | `""` | Path to a file holding the password (trailing newlines trimmed) |
 
 See [sync-and-backup.md](sync-and-backup.md).
 
@@ -447,6 +452,19 @@ See [sync-and-backup.md](sync-and-backup.md).
 Snippet bodies support `{date} {time} {datetime} {year} {month} {day}
 {clipboard} {query}` placeholders. Snippets can carry a `folder:` in
 `snippets.yml` and are filtered with `;folder/name` or `snip folder/name`.
+
+## `pins:` — pinned favorites
+
+Lowercased path/title substrings, always boosted by `ranking.pinned` (default
+900). Managed live via `pin <text>`, `unpin <text>`, `pins` (persisted to
+`pins.bin`), or the `pin_add`/`pin_remove` file actions. `favorites:` is an
+accepted alias for `pins:`.
+
+```yaml
+pins:
+  - firefox
+  - /home/user/docs
+```
 
 ## `workflows:` — named multi-step actions
 

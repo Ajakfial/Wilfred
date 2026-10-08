@@ -289,6 +289,8 @@ bool is_valid_action_step(const std::string& s) {
                                 "timer_stop",  "paste",        "expand",     "clip_pin",
                                 "clip_unpin",  "clip_clear",   "copy_name",  "transcribe_run",
                                 "dictate_run", "convert_run", "bgremove_run",
+                                "bulk_rename", "move_to",      "new_from_template",
+                                "pin_add",     "pin_remove",
                                 "window_minimize", "window_maximize", "window_restore",
                                 "window_close", "window_snap_left", "window_snap_right",
                                 nullptr};
@@ -333,7 +335,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "ai",       "sources", "remotes", "packages", "layouts",
                                           "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
-                                          "app_actions", "hotkeys"};
+                                          "app_actions", "hotkeys", "pins", "favorites"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
       if (!err.message.empty()) {
         err.message += " (in " +
@@ -519,6 +521,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.ranking.content_hit = static_cast<int>(r->integer("content_hit", c.ranking.content_hit));
     c.ranking.hour_affinity =
         static_cast<int>(r->integer("hour_affinity", c.ranking.hour_affinity));
+    c.ranking.pinned = static_cast<int>(r->integer("pinned", c.ranking.pinned));
   }
 
   if (auto* a = root.get("aliases")) {
@@ -709,9 +712,31 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "ui: must be a mapping";
       return false;
     }
+    std::vector<std::string> ui_valid = {"theme",       "max_visible", "width",
+                                         "accent",      "font_size",   "fontSize",
+                                         "transparent", "opacity",     "blur"};
+    if (!check_unknown_keys(*ui, ui_valid, "ui", err)) return false;
     c.ui.theme = ui->str("theme", "dark");
     c.ui.max_visible = static_cast<int>(ui->integer("max_visible", 9));
     c.ui.width = static_cast<int>(ui->integer("width", 720));
+    c.ui.accent = ui->str("accent", "");
+    if (c.ui.accent.size() > 32) {
+      err.message = "ui.accent must be a short color like #7f8cff or indigo";
+      return false;
+    }
+    c.ui.font_size = static_cast<int>(ui->integer("font_size", ui->integer("fontSize", 0)));
+    if (c.ui.font_size < 0 || c.ui.font_size > 24) {
+      err.message = "ui.font_size must be between 0 (default) and 24";
+      return false;
+    }
+    if (c.ui.max_visible < 1 || c.ui.max_visible > 40) {
+      err.message = "ui.max_visible must be between 1 and 40";
+      return false;
+    }
+    if (c.ui.width < 320 || c.ui.width > 1600) {
+      err.message = "ui.width must be between 320 and 1600";
+      return false;
+    }
   }
 
   if (auto* pl = root.get("plugins")) {
@@ -1074,13 +1099,24 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "sync: must be a mapping";
       return false;
     }
+    std::vector<std::string> sync_valid = {"enabled", "url",       "token",
+                                           "interval_seconds", "include_index",
+                                           "encrypt", "password",  "key_file"};
+    if (!check_unknown_keys(*sy, sync_valid, "sync", err)) return false;
     c.sync.enabled = sy->boolean("enabled", false);
     c.sync.url = sy->str("url", "");
     c.sync.token = sy->str("token", "");
     c.sync.interval_seconds = static_cast<int>(sy->integer("interval_seconds", 0));
     c.sync.include_index = sy->boolean("include_index", true);
+    c.sync.encrypt = sy->boolean("encrypt", false);
+    c.sync.password = sy->str("password", "");
+    c.sync.key_file = sy->str("key_file", "");
     if (c.sync.interval_seconds < 0) {
       err.message = "sync.interval_seconds must be >= 0";
+      return false;
+    }
+    if (c.sync.encrypt && c.sync.password.empty() && c.sync.key_file.empty()) {
+      err.message = "sync.encrypt needs sync.password or sync.key_file set";
       return false;
     }
   }
@@ -1275,6 +1311,46 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         }
         c.app_actions[key].push_back(aid);
       }
+    }
+  }
+
+  if (auto* pins = root.get("pins")) {
+    auto collect = [&](const YamlValue* v) -> bool {
+      if (v->is_string()) {
+        if (!v->as_string().empty()) c.pins.push_back(to_lower_utf8(v->as_string()));
+        return true;
+      }
+      if (v->is_list()) {
+        for (auto& item : v->as_list()) {
+          if (!item.is_string() || item.as_string().empty()) {
+            err.message = "pins: entries must be non-empty strings (path or title)";
+            return false;
+          }
+          c.pins.push_back(to_lower_utf8(item.as_string()));
+          if (c.pins.size() > 256) {
+            err.message = "pins: supports at most 256 entries";
+            return false;
+          }
+        }
+        return true;
+      }
+      err.message = "pins: must be a list of path/title strings";
+      return false;
+    };
+    if (!collect(pins)) return false;
+  }
+  if (auto* favs = root.get("favorites")) {
+    if (favs->is_list()) {
+      for (auto& item : favs->as_list()) {
+        if (!item.is_string() || item.as_string().empty()) {
+          err.message = "favorites: entries must be non-empty strings";
+          return false;
+        }
+        c.pins.push_back(to_lower_utf8(item.as_string()));
+      }
+    } else if (!favs->is_string()) {
+      err.message = "favorites: must be a list of path/title strings";
+      return false;
     }
   }
 

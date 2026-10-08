@@ -156,6 +156,10 @@ ui:
   theme: dark
   max_visible: 9
   width: 720
+  # Custom accent (#RRGGBB, #RGB, or CSS name like indigo). Empty = default.
+  accent: ""
+  # Base overlay font size in px (0 = default 14, max 24).
+  font_size: 0
 
 plugins:
   enabled: true
@@ -288,6 +292,16 @@ sync:
   token: ""
   interval_seconds: 0
   include_index: true
+  # Optional encryption-at-rest (dependency-free, no new libs).
+  # When true, sync_push encrypts with password (or key_file contents) and
+  # sync_pull/restore decrypt. Plain archives still restore.
+  encrypt: false
+  password: ""
+  key_file: ""
+
+# Pinned favorites: always-boosted substring matches (path or title).
+# Managed live via `pin <text>`, `unpin <text>`, `pins` (persisted to pins.bin).
+pins: []
 
 snippets:
   expansion: true

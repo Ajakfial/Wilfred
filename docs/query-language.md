@@ -162,6 +162,13 @@ synthetic result card instead of searching the index
 | `fx [amount from to]` | `currency`, `forex`, `ccy` | Currency conversion (`fx 100 usd to eur` or `fx 25 gbp jpy`); bare `fx` lists spot rates |
 | `tz [zone]` | `timezone`, `worldclock` | World clock (`tz tokyo`) or zone convert (`tz 3pm est to pst`) |
 | `color [value]` | `colour` | Color convert (`color #ff5500`); enter copies hex/rgb/hsl |
+| `define <word>` | `def`, `thesaurus`, `synonym`, `dict` | Offline definition + synonyms (enter copies; `define` alone shows usage) |
+| `pins` | `favorites`, `pinlist` | List pinned favorites (`pin <text>` pins, `unpin <text>` removes) |
+| `pin <text>` / `unpin <text>` | `favorite` | Pin/unpin a path or title as favorite (boosted via `ranking.pinned`) |
+| `event add <summary> \| <when>` | `events` | Create a calendar event (writes `.ics` under `sources.calendar_paths`) |
+| `contact add <name> [email] [phone]` | `contacts` | Create a contact (writes `.vcf` under `sources.contacts_paths`) |
+| `rename <dir> <pattern>` | `bulk-rename` | Bulk rename with `{n}` `{name}` `{ext}` (e.g. `rename ./photos photo-{n}.jpg`) |
+| `template <kind> [name] [in <dir>]` | `templates` | New file from template (`empty/md/python/cpp/html/json/gitignore`) |
 | `uuid` | `uuid4`, `guid`, `uuidv4` | Generate a UUID v4 (enter copies) |
 | `base64 [text]` | `b64`, `encode64` | Base64-encode the argument or clipboard |
 | `base64d [text]` | `b64d`, `decode64` | Base64-decode the argument or clipboard |
@@ -217,7 +224,9 @@ synthetic result card instead of searching the index
 | `packages [filter]` | `package`, `pkg` | Detected manager list with usage examples |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
-`clips code`, `clips ip` (plus an optional text query after the type).
+`clips code`, `clips ip`, `clips image`, `clips text` (plus an optional text
+query after the type). Copied file paths are stored as `path` clips and
+images as `image` clips so they surface with badges.
 
 Minis can be disabled entirely with `search.minis: false`. `weather`, `speedtest`,
 and live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`
@@ -393,7 +402,10 @@ the classification pipeline above — snippet matching runs alongside the main
 search rather than being one of the `QueryKind` branches. Bodies support
 `{date} {time} {datetime} {year} {month} {day} {clipboard} {query}`, snippets
 carry an optional `folder:` (filter with `;folder/name`), and
-`snippets.global_expansion` expands abbreviations typed in any app.
+`snippets.global_expansion` expands abbreviations typed in any app:
+Windows via a low-level keyboard hook, macOS via a CGEventTap (needs
+Accessibility permission), Linux/BSD via an X11 key listener (XWayland
+included; native Wayland and mobile fall back to overlay paste).
 
 ## AI assistant
 

@@ -8,9 +8,11 @@
 //
 // Platform status:
 //  - Windows: low-level keyboard hook (WH_KEYBOARD_LL) + SendInput paste.
-//  - macOS/Linux: stub that keeps the API stable; expansion still works from
-//    the Wilfred overlay (Enter pastes). A full CGEventTap / XInput hook is
-//    left as an extension point so the core stays dependency-free.
+//  - macOS: CGEventTap key listener + Cmd+V paste (needs Accessibility
+//    permission; fails gracefully with a log hint otherwise).
+//  - Linux/BSD: X11 root-window KeyPress listener + synthetic BackSpace /
+//    Ctrl+V to the focused window (XWayland included). Native Wayland without
+//    XWayland and mobile fall back to overlay paste (Enter pastes).
 
 #include <string>
 

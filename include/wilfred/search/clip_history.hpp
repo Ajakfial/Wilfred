@@ -7,10 +7,28 @@
 
 namespace wilfred {
 
+enum class ClipKind : std::uint8_t {
+  Text = 0,
+  Path = 1,
+  Image = 2,
+};
+
+inline const char* clip_kind_name(ClipKind k) {
+  switch (k) {
+    case ClipKind::Path:
+      return "path";
+    case ClipKind::Image:
+      return "image";
+    default:
+      return "text";
+  }
+}
+
 struct ClipEntry {
   std::string text;
   std::int64_t when{0};
   bool pinned{false};
+  ClipKind kind{ClipKind::Text};
 };
 
 // Persistent clipboard history backing the `clips` mini. Process-wide
@@ -27,6 +45,9 @@ class ClipStore {
   void save_throttled();
 
   void record(const std::string& text);
+  void record_kind(const std::string& text, ClipKind kind);
+  void record_path(const std::string& path);
+  void record_image(const std::string& note);
   std::vector<std::string> texts() const;  // pinned first, then most recent
   std::vector<ClipEntry> entries() const;
   bool pinned(const std::string& text) const;

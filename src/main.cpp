@@ -3,7 +3,9 @@
 #include "wilfred/history/history.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/plugin/registry.hpp"
+#include "wilfred/search/define.hpp"
 #include "wilfred/search/layouts.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/setup.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/updater/updater.hpp"
@@ -291,6 +293,48 @@ static int wilfred_main(int argc, char** argv) {
       h.save(p);
       std::cout << "cleared " << p << "\n";
       return 0;
+    }
+    if (cmd == "pin" || cmd == "pin-add" || cmd == "favorite") {
+      if (query.empty()) {
+        std::cerr << "usage: wilfred pin <path or title>\n";
+        return 2;
+      }
+      wilfred::PinStore::instance().configure(wilfred::default_pins_path(), {});
+      wilfred::PinStore::instance().load();
+      bool ok = wilfred::PinStore::instance().add(query);
+      std::cout << (ok ? "pinned: " : "already pinned: ") << query << "\n";
+      return ok ? 0 : 1;
+    }
+    if (cmd == "unpin" || cmd == "pin-remove" || cmd == "unfavorite") {
+      if (query.empty()) {
+        std::cerr << "usage: wilfred unpin <path or title>\n";
+        return 2;
+      }
+      wilfred::PinStore::instance().configure(wilfred::default_pins_path(), {});
+      wilfred::PinStore::instance().load();
+      bool ok = wilfred::PinStore::instance().remove(query);
+      std::cout << (ok ? "unpinned: " : "no pin matching: ") << query << "\n";
+      return ok ? 0 : 1;
+    }
+    if (cmd == "pins" || cmd == "favorites") {
+      wilfred::PinStore::instance().configure(wilfred::default_pins_path(), {});
+      wilfred::PinStore::instance().load();
+      for (auto& p : wilfred::PinStore::instance().list()) std::cout << p << "\n";
+      return 0;
+    }
+    if (cmd == "define" || cmd == "def" || cmd == "thesaurus" || cmd == "synonym") {
+      if (query.empty()) {
+        std::cerr << "usage: wilfred define <word>\n";
+        return 2;
+      }
+      wilfred::DefineHit hit;
+      if (wilfred::define_lookup(query, hit)) {
+        std::cout << hit.word << " (" << hit.pos << ") — " << hit.definition << "\n";
+        if (!hit.synonyms.empty()) std::cout << "synonyms: " << hit.synonyms << "\n";
+        return 0;
+      }
+      std::cerr << "no definition for \"" << query << "\"\n";
+      return 1;
     }
     if (cmd == "update" || cmd == "upgrade") {
       bool check_only = false;

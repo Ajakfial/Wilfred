@@ -159,7 +159,7 @@ static void show_now() {
   SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
   SetForegroundWindow(g_hwnd);
   g_visible = true;
-  post_json("{\"type\":\"show\"}");
+  post_json(overlay_show_json());
 }
 
 static void tray_remove() {

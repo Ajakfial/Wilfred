@@ -83,7 +83,7 @@ static WilfredCtl* g_ctl = nil;
       [self.window makeKeyAndOrderFront:nil];
       [NSApp activateIgnoringOtherApps:YES];
       g_visible = true;
-      [self sendJson:"{\"type\":\"show\"}"];
+      [self sendJson:wilfred::overlay_show_json()];
     }
     return;
   }
@@ -225,7 +225,7 @@ public:
       [g_ctl.window makeKeyAndOrderFront:nil];
       [NSApp activateIgnoringOtherApps:YES];
       g_visible = true;
-      [g_ctl sendJson:"{\"type\":\"show\"}"];
+      [g_ctl sendJson:wilfred::overlay_show_json()];
     }
   }
   void hide() override {

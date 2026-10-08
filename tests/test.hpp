@@ -58,3 +58,4 @@ void test_wayland();
 void test_bsd();
 void test_toggles_remote_setup();
 void test_packages();
+void test_new_batch();

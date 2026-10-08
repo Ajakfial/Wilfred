@@ -35,6 +35,10 @@ void remember_text(const std::string& text) {
   ClipStore::instance().record(text);
 }
 
+void remember_paths(const std::vector<std::string>& paths) {
+  for (auto& p : paths) ClipStore::instance().record_path(p);
+}
+
 #ifdef _WIN32
 ClipboardSnapshot read_os_clipboard() {
   ClipboardSnapshot snap;
@@ -152,10 +156,12 @@ ClipboardSnapshot read_clipboard() {
   std::lock_guard<std::mutex> lock(mu);
   if (override_snap) {
     remember_text(override_snap->text);
+    remember_paths(override_snap->paths);
     return *override_snap;
   }
   auto snap = read_os_clipboard();
   remember_text(snap.text);
+  remember_paths(snap.paths);
   return snap;
 }
 

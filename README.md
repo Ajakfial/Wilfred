@@ -183,7 +183,13 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `bgremove photo.png` / `bgremove photo.png 40 #ffffff` | Background removal to transparent PNG (auto corners or explicit color) |
 | `windows chrome` / `minimize spotify` | List, switch, minimize, maximize, close, snap windows |
 | `layout save work` / `layout work` | Save and restore window layouts |
-| `clips url` / `clips code` | Clipboard history filtered by type (url/email/path/code/ip) |
+| `define resilient` / `thesaurus happy` | Offline definition + synonyms (enter copies) |
+| `pins` / `pin firefox` / `unpin firefox` | Pinned favorites (boosted via `ranking.pinned`) |
+| `event add Team sync \| tomorrow 10am` | Create a calendar event (writes `.ics`) |
+| `contact add Jane Doe jane@x.com 555-0100` | Create a contact (writes `.vcf`) |
+| `rename ./photos photo-{n}.jpg` | Bulk rename with `{n}` `{name}` `{ext}` |
+| `template python foo in ./dir` | New file from template (md/python/cpp/html/json/gitignore) |
+| `clips image` / `clips path` | Clipboard history filtered by type (text/url/email/path/code/ip/image) |
 | `workflow review` / `run review` | Named multi-step workflows (`workflows` lists) |
 | `ql docs hello` / `ticket:ABC-123` | Parameterized quicklinks (`{1}` `{*}` `{query}`) |
 | `lock` / `sleep` / `shutdown` / `restart` / `logout` / `empty trash` | System commands |

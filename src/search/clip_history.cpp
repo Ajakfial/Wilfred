@@ -20,6 +20,7 @@ namespace {
 constexpr std::size_t kMaxText = 65536;
 constexpr std::int64_t kSaveIntervalSec = 10;
 const char kMagic[8] = {'W', 'C', 'L', 'P', '0', '1', '\n', '\n'};
+const char kMagic2[8] = {'W', 'C', 'L', 'P', '0', '2', '\n', '\n'};
 
 void put_u32(std::string& o, std::uint32_t v) {
   for (int i = 0; i < 4; ++i)
@@ -73,7 +74,8 @@ bool ClipStore::load() {
   }
   std::string blob;
   if (!read_file_all(path, blob) || blob.size() < 16) return false;
-  if (std::memcmp(blob.data(), kMagic, 8) != 0) {
+  bool v2 = std::memcmp(blob.data(), kMagic2, 8) == 0;
+  if (!v2 && std::memcmp(blob.data(), kMagic, 8) != 0) {
     log_warn("clips", "unrecognized clipboard history format");
     return false;
   }
@@ -86,12 +88,19 @@ bool ClipStore::load() {
   for (std::uint32_t i = 0; i < count; ++i) {
     if (p >= end) return false;
     bool pinned = *p++ != 0;
+    ClipKind kind = ClipKind::Text;
+    if (v2) {
+      if (p >= end) return false;
+      auto kb = static_cast<std::uint8_t>(*p++);
+      kind = kb == 1 ? ClipKind::Path : (kb == 2 ? ClipKind::Image : ClipKind::Text);
+    }
     std::int64_t when = 0;
     std::uint32_t len = 0;
     if (!take_i64(p, end, when) || !take_u32(p, end, len)) return false;
     if (len > 4 * 1024 * 1024 || end - p < static_cast<std::ptrdiff_t>(len)) return false;
     ClipEntry e;
     e.pinned = pinned;
+    e.kind = kind;
     e.when = when;
     e.text.assign(p, len);
     p += len;
@@ -106,10 +115,11 @@ bool ClipStore::load() {
 
 bool ClipStore::save_locked() const {
   if (!persist_ || path_.empty()) return false;
-  std::string blob(kMagic, 8);
+  std::string blob(kMagic2, 8);
   put_u32(blob, static_cast<std::uint32_t>(items_.size()));
   for (auto& e : items_) {
     blob.push_back(e.pinned ? 1 : 0);
+    blob.push_back(static_cast<char>(e.kind == ClipKind::Path ? 1 : (e.kind == ClipKind::Image ? 2 : 0)));
     put_i64(blob, e.when);
     auto n = std::min<std::size_t>(e.text.size(), kMaxText);
     put_u32(blob, static_cast<std::uint32_t>(n));
@@ -154,7 +164,9 @@ void ClipStore::prune_locked() {
   }
 }
 
-void ClipStore::record(const std::string& text) {
+void ClipStore::record(const std::string& text) { record_kind(text, ClipKind::Text); }
+
+void ClipStore::record_kind(const std::string& text, ClipKind kind) {
   if (text.empty()) return;
   auto clipped = text.size() > kMaxText ? text.substr(0, kMaxText) : text;
   bool changed = false;
@@ -164,6 +176,7 @@ void ClipStore::record(const std::string& text) {
     for (auto it = items_.begin(); it != items_.end(); ++it) {
       if (it->text == clipped) {
         was_pinned = it->pinned;
+        if (it->kind == ClipKind::Text && kind != ClipKind::Text) it->kind = kind;
         items_.erase(it);
         changed = true;
         break;
@@ -173,11 +186,22 @@ void ClipStore::record(const std::string& text) {
     e.text = clipped;
     e.when = unix_seconds();
     e.pinned = was_pinned;
+    e.kind = kind;
     items_.insert(items_.begin(), std::move(e));
     prune_locked();
     changed = true;
   }
   if (changed) save_throttled();
+}
+
+void ClipStore::record_path(const std::string& path) {
+  if (path.empty()) return;
+  record_kind(path, ClipKind::Path);
+}
+
+void ClipStore::record_image(const std::string& note) {
+  if (note.empty()) return;
+  record_kind(note, ClipKind::Image);
 }
 
 std::vector<std::string> ClipStore::texts() const {

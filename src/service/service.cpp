@@ -18,6 +18,8 @@
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/pins.hpp"
+#include "wilfred/ui/web_ui.hpp"
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/expander.hpp"
@@ -137,6 +139,9 @@ bool Service::boot() {
   ClipStore::instance().configure(cfg_.clipboard.manager ? cfg_.clipboard.max_entries : 0,
                                   cfg_.clipboard.persist, default_clips_path());
   if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
+  PinStore::instance().configure(default_pins_path(), cfg_.pins);
+  PinStore::instance().load();
+  set_overlay_appearance(cfg_);
   snippets_.load(default_snippets_path(), cfg_);
   QuickNoteStore::instance().configure(path_join(data_directory(), "notes"));
   QuickNoteStore::instance().load();
@@ -644,7 +649,16 @@ int Service::run_restore(const std::string& src) {
   apply_logging();
   std::string e;
   auto path = src.empty() ? default_backup_path() : src;
-  if (!restore_backup(path, e)) {
+  // Encrypted archives restore when sync.password/key_file is set; plain
+  // archives always restore.
+  std::string pw;
+  std::string perr;
+  if (resolve_sync_password(cfg_, pw, perr)) {
+    if (!restore_backup_with_password(path, pw, e)) {
+      std::cerr << e << "\n";
+      return 1;
+    }
+  } else if (!restore_backup(path, e)) {
     std::cerr << e << "\n";
     return 1;
   }

@@ -512,4 +512,29 @@ std::string overlay_preview_json(const std::string& path) {
   return o;
 }
 
+namespace {
+std::string g_accent;
+int g_font_size = 0;
+}  // namespace
+
+void set_overlay_appearance(const Config& cfg) {
+  g_accent = cfg.ui.accent;
+  g_font_size = cfg.ui.font_size;
+}
+
+std::string overlay_show_json() {
+  std::string o = "{\"type\":\"show\"";
+  if (!g_accent.empty()) {
+    o += ",\"accent\":\"";
+    o += overlay_json_escape(g_accent);
+    o += "\"";
+  }
+  if (g_font_size > 0) {
+    o += ",\"fontSize\":";
+    o += std::to_string(g_font_size);
+  }
+  o += "}";
+  return o;
+}
+
 }  // namespace wilfred

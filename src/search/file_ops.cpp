@@ -504,4 +504,185 @@ bool fs_exists(const std::string& path) {
   return fs::exists(fs::u8path(path), ec);
 }
 
+bool bulk_rename_in_dir(const std::string& dir, const std::string& pattern,
+                        std::vector<std::string>& renamed_out, std::string& error) {
+  renamed_out.clear();
+  error.clear();
+  if (pattern.empty() || pattern.size() > 128) {
+    error = "rename pattern is empty (try: photo-{n}.jpg with {n} {name} {ext})";
+    return false;
+  }
+  std::error_code ec;
+  if (!fs::is_directory(fs::u8path(dir), ec)) {
+    error = "Not a directory";
+    return false;
+  }
+  std::vector<std::string> files;
+  for (auto it = fs::directory_iterator(fs::u8path(dir), ec);
+       it != fs::directory_iterator(); it.increment(ec)) {
+    if (ec) break;
+    std::error_code ec2;
+    if (it->is_regular_file(ec2)) {
+      auto u8 = it->path().u8string();
+      files.emplace_back(std::string(u8.begin(), u8.end()));
+    }
+  }
+  if (files.empty()) {
+    error = "No files to rename";
+    return false;
+  }
+  std::sort(files.begin(), files.end());
+  int n = 1;
+  std::vector<std::pair<std::string, std::string>> jobs;
+  for (auto& f : files) {
+    std::string stem = path_stem(f);
+    std::string ext = path_extension(f);
+    std::string name = pattern;
+    auto rep = [&](const std::string& key, const std::string& val) {
+      std::size_t pos = 0;
+      while ((pos = name.find(key, pos)) != std::string::npos) {
+        name.replace(pos, key.size(), val);
+        pos += val.size();
+      }
+    };
+    rep("{n}", std::to_string(n));
+    rep("{name}", stem);
+    rep("{ext}", ext);
+    if (name.find('.') == std::string::npos && !ext.empty()) name += ext;
+    auto dest = path_join(dir, name);
+    if (dest == f) {
+      ++n;
+      continue;
+    }
+    if (fs::exists(fs::u8path(dest), ec)) {
+      error = "Target exists: " + name + " (rename aborted, nothing changed)";
+      return false;
+    }
+    jobs.emplace_back(f, dest);
+    ++n;
+  }
+  if (jobs.empty()) {
+    error = "Nothing to rename";
+    return false;
+  }
+  for (auto& [src, dst] : jobs) {
+    std::error_code ec2;
+    fs::rename(fs::u8path(src), fs::u8path(dst), ec2);
+    if (ec2) {
+      error = "Rename failed: " + src + " -> " + dst;
+      return false;
+    }
+    renamed_out.push_back(dst);
+  }
+  return true;
+}
+
+bool move_paths_to(const std::vector<std::string>& sources, const std::string& dest_dir,
+                   std::vector<std::string>& moved_out, std::string& error) {
+  moved_out.clear();
+  error.clear();
+  if (dest_dir.empty()) {
+    error = "Destination is empty";
+    return false;
+  }
+  std::error_code ec;
+  fs::create_directories(fs::u8path(dest_dir), ec);
+  if (ec || !fs::is_directory(fs::u8path(dest_dir), ec)) {
+    error = "Cannot create destination";
+    return false;
+  }
+  for (auto& s : sources) {
+    if (s.empty() || !fs_exists(s)) {
+      error = "No such file: " + s;
+      return false;
+    }
+    auto base = path_filename(s);
+    if (base.empty()) base = "file";
+    auto dest = path_join(dest_dir, base);
+    if (fs::exists(fs::u8path(dest), ec)) {
+      error = "Target exists: " + dest;
+      return false;
+    }
+    std::error_code ec2;
+    fs::rename(fs::u8path(s), fs::u8path(dest), ec2);
+    if (ec2) {
+      error = "Move failed: " + s;
+      return false;
+    }
+    moved_out.push_back(dest);
+  }
+  return !moved_out.empty();
+}
+
+bool create_from_template(const std::string& dir, const std::string& template_name,
+                          const std::string& new_name, std::string& out_path,
+                          std::string& error) {
+  out_path.clear();
+  error.clear();
+  std::string t = template_name;
+  for (char& c : t) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  std::string body;
+  std::string ext = ".txt";
+  if (t.empty() || t == "empty" || t == "txt" || t == "text") {
+    body = "";
+  } else if (t == "md" || t == "markdown" || t == "note") {
+    ext = ".md";
+    body = "# Title\n\n";
+  } else if (t == "py" || t == "python") {
+    ext = ".py";
+    body = "#!/usr/bin/env python3\n\"\"\"Module.\"\"\"\n\n\ndef main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n";
+  } else if (t == "cpp" || t == "c++") {
+    ext = ".cpp";
+    body = "#include <iostream>\n\nint main() {\n  std::cout << \"hi\\n\";\n}\n";
+  } else if (t == "h" || t == "header") {
+    ext = ".hpp";
+    body = "#pragma once\n\n";
+  } else if (t == "html") {
+    ext = ".html";
+    body = "<!doctype html>\n<html>\n<head><meta charset=\"utf-8\"><title>Doc</title></head>\n<body></body>\n</html>\n";
+  } else if (t == "json") {
+    ext = ".json";
+    body = "{\n  \"key\": \"value\"\n}\n";
+  } else if (t == "gitignore" || t == "ignore") {
+    ext = "";
+    body = "build/\n*.o\nnode_modules/\n.DS_Store\n";
+  } else if (t == "todo" || t == "tasks") {
+    ext = ".md";
+    body = "# Todos\n\n- [ ] first task\n";
+  } else {
+    error = "Unknown template '" + template_name +
+            "' (try: empty, md, python, cpp, html, json, gitignore)";
+    return false;
+  }
+  std::string name = new_name.empty() ? "New file" : new_name;
+  if (t == "gitignore") name = ".gitignore";
+  else if (name.find('.') == std::string::npos)
+    name += ext;
+  std::error_code ec;
+  fs::create_directories(fs::u8path(dir), ec);
+  auto dest = path_join(dir, name);
+  if (fs::exists(fs::u8path(dest), ec)) {
+    auto stem = path_stem(dest);
+    auto e2 = path_extension(dest);
+    dest = unique_sibling_path(dir, stem.empty() ? name : stem, e2);
+  }
+#ifdef _WIN32
+  FILE* f = nullptr;
+  {
+    std::wstring w = fs::u8path(dest).wstring();
+    if (_wfopen_s(&f, w.c_str(), L"wb") != 0) f = nullptr;
+  }
+#else
+  FILE* f = std::fopen(dest.c_str(), "wb");
+#endif
+  if (!f) {
+    error = "Could not create file";
+    return false;
+  }
+  if (!body.empty()) std::fwrite(body.data(), 1, body.size(), f);
+  std::fclose(f);
+  out_path = dest;
+  return true;
+}
+
 }  // namespace wilfred

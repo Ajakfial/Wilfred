@@ -85,6 +85,8 @@ set(WILFRED_CORE_SOURCES
   src/search/snippets.cpp
   src/search/expander.cpp
   src/search/actions.cpp
+  src/search/pins.cpp
+  src/search/define.cpp
   src/search/screenshot.cpp
   src/search/file_ops.cpp
   src/search/convert.cpp
@@ -179,6 +181,8 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/glyphs.hpp
   include/wilfred/search/snippets.hpp
   include/wilfred/search/expander.hpp
+  include/wilfred/search/pins.hpp
+  include/wilfred/search/define.hpp
   include/wilfred/search/toggles.hpp
   include/wilfred/search/remote.hpp
   include/wilfred/search/setup.hpp
@@ -526,6 +530,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_bsd.cpp
   tests/test_toggles_remote_setup.cpp
   tests/test_packages.cpp
+  tests/test_new_batch.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

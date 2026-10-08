@@ -83,6 +83,28 @@ wilfred sync-push   # PUT the archive to sync.url
 wilfred sync-pull    # GET the archive from sync.url and restore it
 ```
 
+### Encrypted sync
+
+Set `sync.encrypt: true` with `sync.password` (or `sync.key_file` holding the
+password) to encrypt the archive at rest and in transit:
+
+```yaml
+sync:
+  enabled: true
+  url: "https://your-server.example/wilfred-backup"
+  token: "a-shared-secret"
+  encrypt: true
+  password: "correct horse battery staple"
+  # key_file: "~/.config/wilfred/sync.key"  # alternative to password
+```
+
+Encryption is dependency-free (in-tree SHA-256 KDF with 12,000 iterations +
+per-block keystream XOR, magic `WILFEK1` with salt/iteration/crc header). The
+password is never logged. `sync_push` encrypts; `sync_pull` and `wilfred
+restore` auto-detect plain vs encrypted (encrypted restores need the same
+password). Plain archives keep restoring everywhere, so mixed fleets can
+migrate by flipping `encrypt: true` after all machines have the password.
+
 or via the HTTP API's `/sync/push` / `/sync/pull` (see
 [ipc-and-api.md](ipc-and-api.md)), or automatically every
 `interval_seconds` from within a running daemon if non-zero.
