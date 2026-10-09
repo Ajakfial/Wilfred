@@ -16,8 +16,10 @@ namespace wilfred {
 namespace {
 
 std::string trim_copy(std::string s) {
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+    s.pop_back();
   return s;
 }
 
@@ -36,7 +38,8 @@ void split_key(const std::string& s, std::string& key, std::string& rest) {
 std::string uuid_v4() {
   std::random_device rd;
   std::uint8_t b[16];
-  for (int i = 0; i < 16; ++i) b[i] = static_cast<std::uint8_t>(rd() & 0xff);
+  for (int i = 0; i < 16; ++i)
+    b[i] = static_cast<std::uint8_t>(rd() & 0xff);
   b[6] = static_cast<std::uint8_t>((b[6] & 0x0f) | 0x40);
   b[8] = static_cast<std::uint8_t>((b[8] & 0x3f) | 0x80);
   static const char* hex = "0123456789abcdef";
@@ -71,8 +74,7 @@ std::string uuid_v4() {
 }
 
 std::string b64_encode(const std::string& in) {
-  static const char tbl[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string o;
   o.reserve(((in.size() + 2) / 3) * 4);
   std::size_t i = 0;
@@ -99,9 +101,11 @@ std::string b64_encode(const std::string& in) {
 
 bool b64_decode(const std::string& in, std::string& out) {
   int dec[256];
-  for (int& d : dec) d = -1;
+  for (int& d : dec)
+    d = -1;
   const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  for (int i = 0; i < 64; ++i) dec[static_cast<unsigned char>(tbl[i])] = i;
+  for (int i = 0; i < 64; ++i)
+    dec[static_cast<unsigned char>(tbl[i])] = i;
   std::vector<int> vals;
   vals.reserve(in.size());
   for (unsigned char c : in) {
@@ -127,7 +131,9 @@ bool b64_decode(const std::string& in, std::string& out) {
   return true;
 }
 
-std::uint32_t rotr(std::uint32_t x, int n) { return (x >> n) | (x << (32 - n)); }
+std::uint32_t rotr(std::uint32_t x, int n) {
+  return (x >> n) | (x << (32 - n));
+}
 
 std::string sha256_hex(const std::string& msg) {
   static const std::uint32_t K[64] = {
@@ -146,8 +152,10 @@ std::string sha256_hex(const std::string& msg) {
   std::vector<unsigned char> data(msg.begin(), msg.end());
   auto bitlen = static_cast<std::uint64_t>(msg.size()) * 8;
   data.push_back(0x80);
-  while ((data.size() % 64) != 56) data.push_back(0);
-  for (int i = 7; i >= 0; --i) data.push_back(static_cast<unsigned char>((bitlen >> (i * 8)) & 0xff));
+  while ((data.size() % 64) != 56)
+    data.push_back(0);
+  for (int i = 7; i >= 0; --i)
+    data.push_back(static_cast<unsigned char>((bitlen >> (i * 8)) & 0xff));
   for (std::size_t off = 0; off < data.size(); off += 64) {
     std::uint32_t w[64];
     for (int i = 0; i < 16; ++i) {
@@ -199,21 +207,23 @@ std::string sha256_hex(const std::string& msg) {
   return o;
 }
 
-const char* kLorem[] = {
-    "lorem",     "ipsum",     "dolor",    "sit",      "amet",     "consectetur", "adipiscing",
-    "elit",      "sed",       "do",       "eiusmod",  "tempor",   "incididunt",  "ut",
-    "labore",    "et",        "dolore",   "magna",    "aliqua",   "ut",          "enim",
-    "ad",        "minim",     "veniam",   "quis",     "nostrud",  "exercitation","ullamco",
-    "laboris",   "nisi",      "aliquip",  "ex",       "ea",       "commodo",     "consequat",
-    "duis",      "aute",      "irure",    "in",       "reprehenderit", "voluptate", "velit",
-    "esse",      "cillum",    nullptr};
+const char* kLorem[] = {"lorem",       "ipsum",        "dolor",      "sit",     "amet",
+                        "consectetur", "adipiscing",   "elit",       "sed",     "do",
+                        "eiusmod",     "tempor",       "incididunt", "ut",      "labore",
+                        "et",          "dolore",       "magna",      "aliqua",  "ut",
+                        "enim",        "ad",           "minim",      "veniam",  "quis",
+                        "nostrud",     "exercitation", "ullamco",    "laboris", "nisi",
+                        "aliquip",     "ex",           "ea",         "commodo", "consequat",
+                        "duis",        "aute",         "irure",      "in",      "reprehenderit",
+                        "voluptate",   "velit",        "esse",       "cillum",  nullptr};
 
 std::string lorem_text(int words) {
   if (words < 1) words = 30;
   if (words > 400) words = 400;
   std::string o;
   int nwords = 0;
-  for (auto** p = kLorem; *p; ++p) ++nwords;
+  for (auto** p = kLorem; *p; ++p)
+    ++nwords;
   for (int i = 0; i < words; ++i) {
     if (i) o.push_back(' ');
     auto w = kLorem[i % nwords];
@@ -228,7 +238,8 @@ std::string lorem_text(int words) {
 }
 
 void skip_ws(const std::string& s, std::size_t& i) {
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r'))
+    ++i;
 }
 
 bool emit_json(const std::string& s, std::size_t& i, std::string& pretty, std::string& compact,
@@ -361,17 +372,20 @@ bool emit_json(const std::string& s, std::size_t& i, std::string& pretty, std::s
     auto start = i;
     if (c == '-') ++i;
     if (i >= s.size() || !std::isdigit(static_cast<unsigned char>(s[i]))) return false;
-    while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+    while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])))
+      ++i;
     if (i < s.size() && s[i] == '.') {
       ++i;
       if (i >= s.size() || !std::isdigit(static_cast<unsigned char>(s[i]))) return false;
-      while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+      while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])))
+        ++i;
     }
     if (i < s.size() && (s[i] == 'e' || s[i] == 'E')) {
       ++i;
       if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
       if (i >= s.size() || !std::isdigit(static_cast<unsigned char>(s[i]))) return false;
-      while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+      while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i])))
+        ++i;
     }
     pretty.append(s, start, i - start);
     compact.append(s, start, i - start);
@@ -427,9 +441,12 @@ bool parse_int_auto(const std::string& s, std::int64_t& out) {
   for (; i < t.size(); ++i) {
     char c = t[i];
     int d = -1;
-    if (c >= '0' && c <= '9') d = c - '0';
-    else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
-    else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+    if (c >= '0' && c <= '9')
+      d = c - '0';
+    else if (c >= 'a' && c <= 'f')
+      d = c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F')
+      d = c - 'A' + 10;
     else
       return false;
     if (d >= base) return false;
@@ -469,8 +486,8 @@ std::string to_base_str(std::int64_t v, int base, bool prefix) {
 
 std::string base_overview(std::int64_t v) {
   std::ostringstream os;
-  os << std::to_string(v) << " = " << to_base_str(v, 16, true) << " = "
-     << to_base_str(v, 2, true) << " = " << to_base_str(v, 8, true);
+  os << std::to_string(v) << " = " << to_base_str(v, 16, true) << " = " << to_base_str(v, 2, true)
+     << " = " << to_base_str(v, 8, true);
   return os.str();
 }
 
@@ -542,7 +559,8 @@ bool b64url_decode(const std::string& in, std::string& out) {
     if (c == '-') c = '+';
     if (c == '_') c = '/';
   }
-  while (s.size() % 4) s.push_back('=');
+  while (s.size() % 4)
+    s.push_back('=');
   return b64_decode(s, out);
 }
 
@@ -593,7 +611,8 @@ bool convert_devutil(std::string_view expr, MathResult& out) {
   if (key == "json" || key == "prettyjson" || key == "jsonfmt" || key == "pretty") {
     auto payload = rest;
     auto pl = to_lower_utf8(payload);
-    if (pl.rfind("pretty ", 0) == 0) payload = trim_copy(rest.substr(7));
+    if (pl.rfind("pretty ", 0) == 0)
+      payload = trim_copy(rest.substr(7));
     else if (pl.rfind("minify ", 0) == 0 || pl.rfind("compact ", 0) == 0)
       payload = trim_copy(rest.substr(pl.find(' ') + 1));
     if (payload.empty()) return false;
@@ -631,15 +650,22 @@ bool convert_devutil(std::string_view expr, MathResult& out) {
     auto vl = to_lower_utf8(val);
     // Support "<value> to <base>" inside the rest, e.g. `hex 255 to bin`? Keep simple:
     // strip trailing " to <base>" if present and honor it as output base.
-    int out_base = (key == "hex" ? 16 : key == "dec" || key == "decimal" ? 10 : key == "bin" || key == "binary" ? 2 : 8);
+    int out_base = (key == "hex"                       ? 16
+                    : key == "dec" || key == "decimal" ? 10
+                    : key == "bin" || key == "binary"  ? 2
+                                                       : 8);
     auto to_pos = vl.rfind(" to ");
     if (to_pos != std::string::npos) {
       std::string want = trim_copy(val.substr(to_pos + 4));
       auto wl = to_lower_utf8(want);
-      if (wl == "hex" || wl == "h") out_base = 16;
-      else if (wl == "dec" || wl == "decimal" || wl == "d") out_base = 10;
-      else if (wl == "bin" || wl == "binary" || wl == "b") out_base = 2;
-      else if (wl == "oct" || wl == "octal" || wl == "o") out_base = 8;
+      if (wl == "hex" || wl == "h")
+        out_base = 16;
+      else if (wl == "dec" || wl == "decimal" || wl == "d")
+        out_base = 10;
+      else if (wl == "bin" || wl == "binary" || wl == "b")
+        out_base = 2;
+      else if (wl == "oct" || wl == "octal" || wl == "o")
+        out_base = 8;
       else
         return false;
       val = trim_copy(val.substr(0, to_pos));
@@ -836,7 +862,7 @@ bool convert_devutil(std::string_view expr, MathResult& out) {
     if (pattern.empty() || text.empty()) return false;
     // Support /pattern/flags form.
     std::string pat = pattern;
-    if (pat.size() >= 2 && pat.front() == '/' ) {
+    if (pat.size() >= 2 && pat.front() == '/') {
       auto end = pat.rfind('/');
       if (end != std::string::npos && end > 0) {
         std::string flags = pat.substr(end + 1);
@@ -856,7 +882,8 @@ bool convert_devutil(std::string_view expr, MathResult& out) {
       }
       std::ostringstream os;
       os << "match: " << m.str(0);
-      for (std::size_t i = 1; i < m.size() && i <= 5; ++i) os << "\n$" << i << ": " << m.str(i);
+      for (std::size_t i = 1; i < m.size() && i <= 5; ++i)
+        os << "\n$" << i << ": " << m.str(i);
       ok_text(out, os.str());
       return true;
     } catch (...) {

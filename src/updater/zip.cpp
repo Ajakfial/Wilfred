@@ -1,8 +1,8 @@
 // Minimal ZIP archive extractor.
 // Supports stored (method 0) and deflate (method 8) compression.
 
-#include "wilfred/updater/updater.hpp"
 #include "wilfred/updater/inflate.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include "wilfred/core/log.hpp"
 
@@ -25,7 +25,7 @@ namespace {
 // sizeof() != on-disk size). All header fields are read explicitly with
 // rd16/rd32 below; do not memcpy these structs from file bytes.
 struct ZipEndRecord {
-  std::uint32_t signature;    // 0x06054b50
+  std::uint32_t signature;  // 0x06054b50
   std::uint16_t disk_num;
   std::uint16_t disk_start;
   std::uint16_t entries_here;
@@ -91,8 +91,7 @@ bool write_file(const std::string& path, const std::vector<std::uint8_t>& data) 
 
 }  // namespace
 
-bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
-                 std::string* error) {
+bool extract_zip(const std::string& archive_path, const std::string& dest_dir, std::string* error) {
   std::vector<std::uint8_t> data;
   if (!read_file(archive_path, data)) {
     if (error) *error = "cannot read archive: " + archive_path;
@@ -175,8 +174,7 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
       return false;
     }
 
-    std::uint32_t data_off =
-        local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
+    std::uint32_t data_off = local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
 
     if (data_off + comp_size > data.size()) {
       if (error) *error = "invalid ZIP: compressed data out of bounds";
@@ -198,10 +196,10 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
       // looks successful but is missing files. Our archives only ever use
       // store/deflate, so anything else means a foreign/corrupt zip.
       if (error)
-        *error = "unsupported ZIP compression method " + std::to_string(method) + " for " +
-                 name + " (need store/deflate)";
-      log_warn("updater", "unsupported ZIP compression method " + std::to_string(method) +
-                              " for " + name);
+        *error = "unsupported ZIP compression method " + std::to_string(method) + " for " + name +
+                 " (need store/deflate)";
+      log_warn("updater",
+               "unsupported ZIP compression method " + std::to_string(method) + " for " + name);
       return false;
     }
 

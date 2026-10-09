@@ -19,12 +19,12 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shellapi.h>
+#include <windows.h>
 #else
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 #if defined(WILFRED_BSD)
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -179,8 +179,9 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   f.close();
 
   // Launch PowerShell detached
-  std::string cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" +
-                    script_path + "\"";
+  std::string cmd =
+      "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" +
+      script_path + "\"";
 
   STARTUPINFOW si{};
   si.cb = sizeof(si);
@@ -245,8 +246,7 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
 
 // Public API implementation
 
-UpdateCheckResult check_for_update(const std::string& repo_url,
-                                   const std::string& current_ver,
+UpdateCheckResult check_for_update(const std::string& repo_url, const std::string& current_ver,
                                    int timeout_ms) {
   UpdateCheckResult result;
   result.current_version = current_ver;
@@ -283,9 +283,8 @@ UpdateCheckResult check_for_update(const std::string& repo_url,
   return result;
 }
 
-bool download_file(const std::string& url, const std::string& dest_path,
-                   ProgressCallback progress, void* user_data,
-                   int timeout_ms, std::string* error) {
+bool download_file(const std::string& url, const std::string& dest_path, ProgressCallback progress,
+                   void* user_data, int timeout_ms, std::string* error) {
   // Use http_get for simplicity (downloads entire file to memory)
   // For large files this could be streamed, but Wilfred binaries are small
   std::string data = http_get(url, "", timeout_ms);
@@ -341,7 +340,8 @@ bool perform_update(bool dry_run, std::string* error) {
   PlatformInfo platform = detect_platform();
   std::string current = wilfred_version();
 
-  log_info("updater", "checking for updates (current: " + current + ", platform: " + platform.id() + ")");
+  log_info("updater",
+           "checking for updates (current: " + current + ", platform: " + platform.id() + ")");
 
   UpdateCheckResult check = check_for_update(kRepoApiBase, current);
   if (!check.error.empty()) {

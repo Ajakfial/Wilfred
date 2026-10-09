@@ -61,7 +61,7 @@ std::vector<RegistryEntry> plugin_registry_parse(const std::string& body) {
 }
 
 std::vector<RegistryEntry> plugin_registry_fetch(const std::string& url, int timeout_ms,
-                                                std::string& error) {
+                                                 std::string& error) {
   error.clear();
   if (url.empty()) {
     error = "plugins.registry is not configured";
@@ -77,7 +77,9 @@ std::vector<RegistryEntry> plugin_registry_fetch(const std::string& url, int tim
   return entries;
 }
 
-static std::string registry_url(const Config& cfg) { return cfg.plugins.registry; }
+static std::string registry_url(const Config& cfg) {
+  return cfg.plugins.registry;
+}
 
 std::string plugin_registry_artifact_os() {
 #ifdef _WIN32
@@ -170,7 +172,8 @@ int run_plugin_pending() {
       std::cout << "  [" << m.kind << "]";
       if (!m.permissions.empty()) {
         std::cout << "  permissions:";
-        for (auto& p : m.permissions) std::cout << " " << p;
+        for (auto& p : m.permissions)
+          std::cout << " " << p;
       }
       if (!fp.empty()) std::cout << "  sha256:" << fp.substr(0, 12) << "...";
       std::cout << "\n";
@@ -207,10 +210,9 @@ bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
   create_directories(dir);
   auto tmp = path_join(dir, ".download");
   std::string dl_err;
-  bool dl_ok = download_file(e.url, tmp, nullptr, nullptr, 30000,
-                             e.url.rfind("https://", 0) == 0 || e.url.rfind("http://", 0) == 0
-                                 ? &dl_err
-                                 : nullptr);
+  bool dl_ok = download_file(
+      e.url, tmp, nullptr, nullptr, 30000,
+      e.url.rfind("https://", 0) == 0 || e.url.rfind("http://", 0) == 0 ? &dl_err : nullptr);
   if (!dl_ok) {
     error = dl_err.empty() ? "download failed" : dl_err;
     return false;
@@ -223,8 +225,7 @@ bool plugin_registry_install(const RegistryEntry& entry, std::string& error) {
       return false;
     }
   }
-  bool is_archive = e.url.size() > 4 &&
-                    to_lower_utf8(e.url.substr(e.url.size() - 4)) == ".zip";
+  bool is_archive = e.url.size() > 4 && to_lower_utf8(e.url.substr(e.url.size() - 4)) == ".zip";
   std::string artifact;
   if (is_archive) {
     std::string xerr;

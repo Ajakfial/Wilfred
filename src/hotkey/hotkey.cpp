@@ -9,7 +9,9 @@ struct GlobalHotkey::Impl {
 };
 
 GlobalHotkey::GlobalHotkey() : impl_(std::make_unique<Impl>()) {}
-GlobalHotkey::~GlobalHotkey() { stop(); }
+GlobalHotkey::~GlobalHotkey() {
+  stop();
+}
 
 bool GlobalHotkey::start(const Config& cfg, HotkeyFn cb) {
   return impl_ && impl_->b ? impl_->b->start(cfg, std::move(cb)) : false;

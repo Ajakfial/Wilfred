@@ -22,8 +22,10 @@ SearchResult pcard(const std::string& title, const std::string& sub, const std::
 
 std::string trim_ws(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t')) o.erase(o.begin());
-  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r')) o.pop_back();
+  while (!o.empty() && (o.front() == ' ' || o.front() == '\t'))
+    o.erase(o.begin());
+  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r'))
+    o.pop_back();
   return o;
 }
 
@@ -50,10 +52,11 @@ std::vector<SearchResult> plugin_results(const std::string& remainder, const Con
       int n = 0;
       for (auto& m : host.manifests())
         if (is_pending(m)) ++n;
-      out.push_back(pcard(n ? "Approve all plugins (" + std::to_string(n) + ")" : "No pending plugins",
-                          n ? "trust-on-first-use — records hash + permissions"
-                            : "every installed plugin is approved",
-                          "plugin_approve_all"));
+      out.push_back(
+          pcard(n ? "Approve all plugins (" + std::to_string(n) + ")" : "No pending plugins",
+                n ? "trust-on-first-use — records hash + permissions"
+                  : "every installed plugin is approved",
+                "plugin_approve_all"));
       return out;
     }
     out.push_back(pcard("Approve plugin " + id, "records hash + permissions — enter approves",
@@ -70,20 +73,20 @@ std::vector<SearchResult> plugin_results(const std::string& remainder, const Con
     if (!m.version.empty()) sub += " v" + m.version;
     if (!m.permissions.empty()) {
       sub += " ·";
-      for (auto& p : m.permissions) sub += " " + p;
+      for (auto& p : m.permissions)
+        sub += " " + p;
     }
     sub += " — enter approves";
     out.push_back(pcard("Approve " + m.id, sub, "plugin_approve:" + m.id));
   }
   if (any_pending) {
-    out.push_back(pcard("Approve all plugins", "trust every pending plugin",
-                        "plugin_approve_all"));
+    out.push_back(pcard("Approve all plugins", "trust every pending plugin", "plugin_approve_all"));
   }
   if (host.manifests().empty()) {
-    out.push_back(pcard("No plugins installed", "drop a plugin.yml in " +
-                                                     (cfg.plugins.directories.empty()
-                                                          ? "<config>/plugins"
-                                                          : cfg.plugins.directories.front()),
+    out.push_back(pcard("No plugins installed",
+                        "drop a plugin.yml in " + (cfg.plugins.directories.empty()
+                                                       ? "<config>/plugins"
+                                                       : cfg.plugins.directories.front()),
                         "config:open"));
     if (!cfg.plugins.registry.empty())
       out.push_back(pcard("Browse registry", "run: wilfred plugin list", "config:open"));
@@ -91,9 +94,12 @@ std::vector<SearchResult> plugin_results(const std::string& remainder, const Con
   }
   for (auto& m : host.manifests()) {
     std::string status;
-    if (!m.enabled) status = "disabled";
-    else if (is_pending(m)) status = "pending approval";
-    else status = "approved";
+    if (!m.enabled)
+      status = "disabled";
+    else if (is_pending(m))
+      status = "pending approval";
+    else
+      status = "approved";
     std::string sub = m.kind + " · " + status;
     if (!m.version.empty()) sub += " · v" + m.version;
     out.push_back(pcard(m.id, sub, is_pending(m) ? ("plugin_approve:" + m.id) : "config:open"));

@@ -133,10 +133,8 @@ const std::unordered_map<std::string, UnitDef>& units() {
               "cubiccentimeter", "cubiccentimeters"});
     add_unit(u, Qty::Volume, 1e-5, 0,
              {"cl", "centiliter", "centiliters", "centilitre", "centilitres"});
-    add_unit(u, Qty::Volume, 1e-4, 0,
-             {"dl", "deciliter", "deciliters", "decilitre", "decilitres"});
-    add_unit(u, Qty::Volume, 0.001, 0,
-             {"l", "lt", "ltr", "liter", "liters", "litre", "litres"});
+    add_unit(u, Qty::Volume, 1e-4, 0, {"dl", "deciliter", "deciliters", "decilitre", "decilitres"});
+    add_unit(u, Qty::Volume, 0.001, 0, {"l", "lt", "ltr", "liter", "liters", "litre", "litres"});
     add_unit(u, Qty::Volume, 1, 0,
              {"m3", "cubicmeter", "cubicmeters", "cubicmetre", "cubicmetres"});
     add_unit(u, Qty::Volume, 1e-3, 0, {"dm3", "cubicdecimeter"});
@@ -147,15 +145,13 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Volume, 0.000473176473, 0, {"pt", "pint", "pints"});
     add_unit(u, Qty::Volume, 0.0002365882365, 0, {"cup", "cups"});
     add_unit(u, Qty::Volume, 0.00025, 0, {"metriccup", "metriccups"});
-    add_unit(u, Qty::Volume, 2.95735295625e-5, 0,
-             {"floz", "flozs", "fluidounce", "fluidounces"});
+    add_unit(u, Qty::Volume, 2.95735295625e-5, 0, {"floz", "flozs", "fluidounce", "fluidounces"});
     add_unit(u, Qty::Volume, 1.478676478125e-5, 0,
              {"tbsp", "tbs", "tbl", "tbls", "tblsp", "tbspn", "tablespoon", "tablespoons",
               "tablespoonful", "tablespoonfuls"});
     add_unit(u, Qty::Volume, 4.92892159375e-6, 0,
              {"tsp", "tspn", "teaspoon", "teaspoons", "teaspoonful", "teaspoonfuls"});
-    add_unit(u, Qty::Volume, 9.8578431875e-6, 0,
-             {"dsp", "dessertspoon", "dessertspoons"});
+    add_unit(u, Qty::Volume, 9.8578431875e-6, 0, {"dsp", "dessertspoon", "dessertspoons"});
     add_unit(u, Qty::Volume, 6.1611519921875e-7, 0, {"dash", "dashes"});
     add_unit(u, Qty::Volume, 3.08057599609375e-7, 0, {"pinch", "pinches"});
 
@@ -634,7 +630,7 @@ struct SplitUnit {
 // Split "tbsp sugar" / "fluid ounce of flour" into unit + ingredient by
 // matching the longest leading token run against the unit table.
 SplitUnit split_unit_ingredient(const std::string& raw,
-                               const std::unordered_map<std::string, UnitDef>& tab) {
+                                const std::unordered_map<std::string, UnitDef>& tab) {
   SplitUnit out;
   std::vector<std::string> toks;
   std::string cur;

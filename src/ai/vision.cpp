@@ -20,7 +20,9 @@ std::uint32_t rd_u32le(const std::uint8_t* p) {
          (static_cast<std::uint32_t>(p[2]) << 16) | (static_cast<std::uint32_t>(p[3]) << 24);
 }
 
-std::int32_t rd_i32le(const std::uint8_t* p) { return static_cast<std::int32_t>(rd_u32le(p)); }
+std::int32_t rd_i32le(const std::uint8_t* p) {
+  return static_cast<std::int32_t>(rd_u32le(p));
+}
 
 std::uint16_t rd_u16le(const std::uint8_t* p) {
   return static_cast<std::uint16_t>(p[0] | (p[1] << 8));
@@ -48,7 +50,8 @@ void put_chunk(std::vector<std::uint8_t>& o, const char type[4], const std::uint
   put_u32be(o, static_cast<std::uint32_t>(size));
   std::uint32_t crc = crc32(type, 4);
   if (size) crc = crc32(data, size, crc);
-  for (int i = 0; i < 4; ++i) o.push_back(type[i]);
+  for (int i = 0; i < 4; ++i)
+    o.push_back(type[i]);
   o.insert(o.end(), data, data + size);
   put_u32be(o, crc);
 }
@@ -56,8 +59,7 @@ void put_chunk(std::vector<std::uint8_t>& o, const char type[4], const std::uint
 }  // namespace
 
 std::string base64_encode_bytes(const std::uint8_t* data, std::size_t size) {
-  static const char tbl[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string o;
   o.reserve(((size + 2) / 3) * 4);
   std::size_t i = 0;
@@ -79,8 +81,7 @@ std::string base64_encode_bytes(const std::uint8_t* data, std::size_t size) {
     o.push_back('=');
     o.push_back('=');
   } else if (rem == 2) {
-    unsigned n = (static_cast<unsigned>(data[i]) << 16) |
-                 (static_cast<unsigned>(data[i + 1]) << 8);
+    unsigned n = (static_cast<unsigned>(data[i]) << 16) | (static_cast<unsigned>(data[i + 1]) << 8);
     o.push_back(tbl[(n >> 18) & 63]);
     o.push_back(tbl[(n >> 12) & 63]);
     o.push_back(tbl[(n >> 6) & 63]);
@@ -264,7 +265,8 @@ std::string build_openai_vision_body(const std::string& model, const std::string
   std::string m = json_escape(model);
   std::string p = json_escape(prompt);
   return "{\"model\":\"" + m + "\",\"max_tokens\":" + std::to_string(max_tokens) +
-         ",\"temperature\":" + tmp + ",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":"
+         ",\"temperature\":" + tmp +
+         ",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":"
          "\"text\",\"text\":\"" +
          p + "\"},{\"type\":\"image_url\",\"image_url\":{\"url\":\"data:" + mime + ";base64," +
          image_b64 + "\"}}]}]}";
@@ -284,8 +286,8 @@ std::string build_anthropic_vision_body(const std::string& model, const std::str
 std::string build_gemini_vision_body(const std::string& prompt, const std::string& image_b64,
                                      const std::string& mime) {
   std::string p = json_escape(prompt);
-  return "{\"contents\":[{\"parts\":[{\"text\":\"" + p +
-         "\"},{\"inline_data\":{\"mime_type\":\"" + mime + "\",\"data\":\"" + image_b64 + "\"}}]}]}";
+  return "{\"contents\":[{\"parts\":[{\"text\":\"" + p + "\"},{\"inline_data\":{\"mime_type\":\"" +
+         mime + "\",\"data\":\"" + image_b64 + "\"}}]}]}";
 }
 
 }  // namespace wilfred

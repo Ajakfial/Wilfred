@@ -1,6 +1,7 @@
 #include "wilfred/service/service.hpp"
 
 #include "wilfred/apps/discovery.hpp"
+#include "wilfred/browser/library.hpp"
 #include "wilfred/core/json.hpp"
 #include "wilfred/core/log.hpp"
 #include "wilfred/core/mmap.hpp"
@@ -9,24 +10,22 @@
 #include "wilfred/fs/volumes.hpp"
 #include "wilfred/fs/watcher.hpp"
 #include "wilfred/hotkey/hotkey.hpp"
+#include "wilfred/import/import.hpp"
 #include "wilfred/ipc/http.hpp"
 #include "wilfred/ipc/server.hpp"
-#include "wilfred/browser/library.hpp"
-#include "wilfred/import/import.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
 #include "wilfred/search/clip_history.hpp"
-#include "wilfred/locale/locale.hpp"
-#include "wilfred/search/pins.hpp"
-#include "wilfred/ui/web_ui.hpp"
-#include "wilfred/search/convert.hpp"
 #include "wilfred/search/clipboard.hpp"
+#include "wilfred/search/convert.hpp"
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
 #include "wilfred/search/os_search.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
@@ -154,23 +153,20 @@ bool Service::boot() {
   LayoutStore::instance().configure(path_join(data_directory(), "layouts"));
   TodoStore::instance().configure(path_join(data_directory(), "todos.txt"));
   TodoStore::instance().load();
-  for (auto& d : default_plugin_directories()) create_directories(d);
+  for (auto& d : default_plugin_directories())
+    create_directories(d);
   plugins_.load(cfg_);
   set_plugin_host_for_actions(&plugins_);
   if (cfg_.providers.semantic || cfg_.embedding.enabled)
     interpreter_.providers().add(std::make_unique<SemanticProvider>(index_));
-  if (cfg_.sources.calendar)
-    interpreter_.providers().add(std::make_unique<CalendarProvider>());
-  if (cfg_.sources.contacts)
-    interpreter_.providers().add(std::make_unique<ContactsProvider>());
-  if (cfg_.sources.notes)
-    interpreter_.providers().add(std::make_unique<NotesProvider>());
+  if (cfg_.sources.calendar) interpreter_.providers().add(std::make_unique<CalendarProvider>());
+  if (cfg_.sources.contacts) interpreter_.providers().add(std::make_unique<ContactsProvider>());
+  if (cfg_.sources.notes) interpreter_.providers().add(std::make_unique<NotesProvider>());
   if (cfg_.browser.library)
     interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (cfg_.remotes.enabled && !cfg_.remotes.sources.empty())
     interpreter_.providers().add(std::make_unique<RemoteProvider>());
-  if (cfg_.packages.enabled)
-    interpreter_.providers().add(std::make_unique<PkgProvider>());
+  if (cfg_.packages.enabled) interpreter_.providers().add(std::make_unique<PkgProvider>());
   if (cfg_.os_search.enabled && os_search_available())
     interpreter_.providers().add(std::make_unique<OsSearchProvider>());
   if (cfg_.search.async_providers) async_providers_ = std::make_unique<AsyncProviders>();
@@ -211,14 +207,14 @@ void Service::on_provider_results(std::uint64_t gen, std::vector<SearchResult> e
 // headless against the clipboard (workflows use targetless steps here).
 void Service::run_hotkey_action(const std::string& run) {
   auto l = to_lower_utf8(run);
-  while (!l.empty() && (l.front() == ' ' || l.front() == '\t')) l.erase(l.begin());
+  while (!l.empty() && (l.front() == ' ' || l.front() == '\t'))
+    l.erase(l.begin());
   if (l == "show") {
     on_hotkey();
     return;
   }
   if (l.rfind("system:", 0) == 0) {
-    if (!native_system_action(run.substr(7)))
-      log_warn("hotkey", "system action failed: " + run);
+    if (!native_system_action(run.substr(7))) log_warn("hotkey", "system action failed: " + run);
     return;
   }
   if (l.rfind("media:", 0) == 0) {
@@ -229,7 +225,8 @@ void Service::run_hotkey_action(const std::string& run) {
   }
   if (l.rfind("macro:", 0) == 0) {
     auto text = run.substr(6);
-    while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.erase(text.begin());
+    while (!text.empty() && (text.front() == ' ' || text.front() == '\t'))
+      text.erase(text.begin());
     ClipboardSnapshot clip;
     if (cfg_.search.clipboard) clip = read_clipboard();
     auto m = match_macro(text, cfg_);
@@ -316,10 +313,12 @@ int Service::run_workflow(const std::string& name, const std::string& target) {
     std::cerr << "unknown workflow \"" << name << "\"";
     if (!cfg_.workflows.empty()) {
       std::vector<std::string> names;
-      for (auto& [k, _] : cfg_.workflows) names.push_back(k);
+      for (auto& [k, _] : cfg_.workflows)
+        names.push_back(k);
       std::sort(names.begin(), names.end());
       std::cerr << " (try:";
-      for (auto& n : names) std::cerr << " " << n;
+      for (auto& n : names)
+        std::cerr << " " << n;
       std::cerr << ")";
     }
     std::cerr << "\n";
@@ -376,7 +375,8 @@ int Service::run_convert(const std::vector<std::string>& args) {
     const std::string& a = args[i];
     auto need = [&](std::string& out) -> bool {
       if (i + 1 >= args.size()) {
-        std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n";
+        std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] "
+                     "[--mono|--stereo] [--bits N]\n";
         return false;
       }
       out = args[++i];
@@ -418,7 +418,8 @@ int Service::run_convert(const std::vector<std::string>& args) {
     } else if (a == "--stereo") {
       channels = 2;
     } else if (a == "--help" || a == "-h" || a == "help") {
-      std::cout << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n"
+      std::cout << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] "
+                   "[--mono|--stereo] [--bits N]\n"
                    "  wilfred convert song.wav --to mp3\n"
                    "  wilfred convert song.wav out.ogg\n"
                    "  wilfred convert photo.bmp --to png\n";
@@ -439,8 +440,10 @@ int Service::run_convert(const std::vector<std::string>& args) {
       const std::string& t = positional[1];
       bool looks_path = t.find('/') != std::string::npos || t.find('\\') != std::string::npos ||
                         t.find('.') != std::string::npos;
-      if (looks_path && t.find('.') != std::string::npos) dst = t;
-      else fmt = t;
+      if (looks_path && t.find('.') != std::string::npos)
+        dst = t;
+      else
+        fmt = t;
     }
   }
   if (positional.size() > 2) {
@@ -448,7 +451,8 @@ int Service::run_convert(const std::vector<std::string>& args) {
     return 2;
   }
   if (src.empty()) {
-    std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] [--mono|--stereo] [--bits N]\n";
+    std::cerr << "usage: wilfred convert <src> [--to <fmt>] [--out <dst>] [--rate N] "
+                 "[--mono|--stereo] [--bits N]\n";
     return 2;
   }
   if (dst.empty()) {
@@ -483,7 +487,8 @@ int Service::run_bgremove(const std::vector<std::string>& args) {
     const std::string& a = args[i];
     auto need = [&](std::string& out) -> bool {
       if (i + 1 >= args.size()) {
-        std::cerr << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance N] [--color #rrggbb] [--global|--contiguous] [--feather N]\n";
+        std::cerr << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance N] [--color "
+                     "#rrggbb] [--global|--contiguous] [--feather N]\n";
         return false;
       }
       out = args[++i];
@@ -517,7 +522,8 @@ int Service::run_bgremove(const std::vector<std::string>& args) {
         return 2;
       }
     } else if (a == "--help" || a == "-h" || a == "help") {
-      std::cout << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color #rrggbb] [--global|--contiguous] [--feather 0-8]\n";
+      std::cout << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color "
+                   "#rrggbb] [--global|--contiguous] [--feather 0-8]\n";
       return 0;
     } else if (!a.empty() && a[0] == '-') {
       std::cerr << "unknown option " << a << "\n";
@@ -533,7 +539,8 @@ int Service::run_bgremove(const std::vector<std::string>& args) {
     std::uint8_t r = 0, g = 0, b = 0;
     bool is_color = parse_hex_color(t, r, g, b);
     std::string l = t;
-    for (char& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (char& c : l)
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     bool is_named = l == "white" || l == "black" || l == "red" || l == "green" || l == "blue";
     int v = -1;
     try {
@@ -557,7 +564,8 @@ int Service::run_bgremove(const std::vector<std::string>& args) {
     }
   }
   if (src.empty()) {
-    std::cerr << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color #rrggbb]\n";
+    std::cerr
+        << "usage: wilfred bgremove <src> [--out <dst>] [--tolerance 0-100] [--color #rrggbb]\n";
     return 2;
   }
   BgRemoveOptions opts;
@@ -567,13 +575,29 @@ int Service::run_bgremove(const std::vector<std::string>& args) {
   if (!color.empty()) {
     std::uint8_t r = 0, g = 0, b = 0;
     std::string l = color;
-    for (char& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    if (l == "white") { r = 255; g = 255; b = 255; }
-    else if (l == "black") { r = 0; g = 0; b = 0; }
-    else if (l == "red") { r = 255; g = 0; b = 0; }
-    else if (l == "green") { r = 0; g = 128; b = 0; }
-    else if (l == "blue") { r = 0; g = 0; b = 255; }
-    else if (!parse_hex_color(color, r, g, b)) {
+    for (char& c : l)
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (l == "white") {
+      r = 255;
+      g = 255;
+      b = 255;
+    } else if (l == "black") {
+      r = 0;
+      g = 0;
+      b = 0;
+    } else if (l == "red") {
+      r = 255;
+      g = 0;
+      b = 0;
+    } else if (l == "green") {
+      r = 0;
+      g = 128;
+      b = 0;
+    } else if (l == "blue") {
+      r = 0;
+      g = 0;
+      b = 255;
+    } else if (!parse_hex_color(color, r, g, b)) {
       std::cerr << "bad --color " << color << " (try #rrggbb)\n";
       return 2;
     }
@@ -610,13 +634,13 @@ int Service::run_preview(const std::string& path) {
   if (!pv.size_label.empty()) std::cout << " · " << pv.size_label;
   if (!pv.modified_label.empty()) std::cout << " · " << pv.modified_label;
   std::cout << "\n";
-  if (!pv.image_data_url.empty())
-    std::cout << "[image " << pv.image_data_url.size() << " bytes]\n";
+  if (!pv.image_data_url.empty()) std::cout << "[image " << pv.image_data_url.size() << " bytes]\n";
   if (!pv.text.empty()) std::cout << pv.text << "\n";
   return 0;
 }
 
-int Service::run_status() {  if (!boot()) return 1;
+int Service::run_status() {
+  if (!boot()) return 1;
   auto st = index_.stats();
   std::cout << "platform: " << platform_name() << "\n"
             << "config: " << cfg_.source_path << "\n"
@@ -631,9 +655,8 @@ int Service::run_status() {  if (!boot()) return 1;
             << " (registry=" << (cfg_.plugins.registry.empty() ? "off" : "on")
             << " approval=" << (cfg_.plugins.require_approval ? "on" : "off") << ")\n"
             << "snippets: " << snippets_.all().size() << "\n"
-            << "layouts: auto_apply=" << (cfg_.layouts.auto_apply ? "on" : "off")
-            << " auto_layout=" << (cfg_.layouts.auto_layout.empty() ? "-" : cfg_.layouts.auto_layout)
-            << "\n"
+            << "layouts: auto_apply=" << (cfg_.layouts.auto_apply ? "on" : "off") << " auto_layout="
+            << (cfg_.layouts.auto_layout.empty() ? "-" : cfg_.layouts.auto_layout) << "\n"
             << "vectors: " << (index_.vectors().enabled() ? "on" : "off") << " ("
             << index_.vectors().size() << " backend=" << index_.vectors().backend() << ")\n"
             << "semantic: " << (cfg_.providers.semantic ? "on" : "off") << " ("
@@ -657,9 +680,8 @@ int Service::run_status() {  if (!boot()) return 1;
   }
   std::cout << ")\n"
             << "os_search: " << (cfg_.os_search.enabled ? "on" : "off") << " ("
-            << os_search_backend_label(cfg_.os_search.backend.empty()
-                                           ? os_search_default_backend()
-                                           : cfg_.os_search.backend)
+            << os_search_backend_label(cfg_.os_search.backend.empty() ? os_search_default_backend()
+                                                                      : cfg_.os_search.backend)
             << ")\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
   print_provider_probe();
@@ -673,8 +695,7 @@ int Service::run_status() {  if (!boot()) return 1;
 // status (a detached thread would outlive this one-shot process).
 void Service::print_provider_probe() {
   std::string probe;
-  for (auto it = history_.recent_queries().rbegin(); it != history_.recent_queries().rend();
-       ++it) {
+  for (auto it = history_.recent_queries().rbegin(); it != history_.recent_queries().rend(); ++it) {
     if (it->empty() || it->size() > 64) continue;
     bool sane = true;
     for (unsigned char c : *it) {
@@ -794,8 +815,10 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
                         bool include_theme, bool include_browser) {
   using namespace import;
   std::string lid = to_lower_utf8(launcher);
-  while (!lid.empty() && (lid.front() == ' ' || lid.front() == '\t')) lid.erase(lid.begin());
-  while (!lid.empty() && (lid.back() == ' ' || lid.back() == '\t')) lid.pop_back();
+  while (!lid.empty() && (lid.front() == ' ' || lid.front() == '\t'))
+    lid.erase(lid.begin());
+  while (!lid.empty() && (lid.back() == ' ' || lid.back() == '\t'))
+    lid.pop_back();
   if (lid.empty()) lid = from_path.empty() ? "auto" : "auto";
 
   ImportOptions opts;
@@ -875,7 +898,8 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
         if (one.searches.empty() && one.snippets.empty() && one.quicklinks.empty() &&
             !one.hotkey.has && !one.theme) {
           std::cerr << "no importable settings found under " << from_path << "\n";
-          for (auto& wmsg : one.warnings) std::cerr << "  warn: " << wmsg << "\n";
+          for (auto& wmsg : one.warnings)
+            std::cerr << "  warn: " << wmsg << "\n";
           return 1;
         }
       } else if (!parse_file_auto(from_path, one, detected, err)) {
@@ -887,8 +911,7 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
     } else {
       const LauncherInfo* li = find_launcher(use_id);
       if (!li) {
-        std::cerr << "unknown launcher \"" << launcher
-                  << "\". Use `wilfred import --list`.\n";
+        std::cerr << "unknown launcher \"" << launcher << "\". Use `wilfred import --list`.\n";
         return 1;
       }
       if (!file_exists(from_path) && !is_dir_path(from_path)) {
@@ -910,11 +933,11 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
         one = parse_text(li->id, text, from_path, w);
         one.warnings.insert(one.warnings.end(), w.begin(), w.end());
         if (one.searches.empty() && one.snippets.empty() && one.quicklinks.empty() &&
-            one.aliases.empty() && !one.hotkey.has && !one.theme &&
-            !one.default_search_template) {
+            one.aliases.empty() && !one.hotkey.has && !one.theme && !one.default_search_template) {
           std::cerr << "no importable settings found in " << from_path << " (as " << li->id
                     << ")\n";
-          for (auto& wmsg : one.warnings) std::cerr << "  warn: " << wmsg << "\n";
+          for (auto& wmsg : one.warnings)
+            std::cerr << "  warn: " << wmsg << "\n";
           return 1;
         }
       }
@@ -962,8 +985,7 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
       // Wox shares Flow's layout; if user asked for wox but only flow paths exist
       // (or vice versa), try the sibling id as a fallback.
       if (!any && (li->id == "wox" || li->id == "flowlauncher")) {
-        const LauncherInfo* other =
-            find_launcher(li->id == "wox" ? "flowlauncher" : "wox");
+        const LauncherInfo* other = find_launcher(li->id == "wox" ? "flowlauncher" : "wox");
         if (other) {
           for (auto& cand : other->candidates) {
             if (!file_exists(cand)) continue;
@@ -978,7 +1000,8 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
       if (!any) {
         std::cerr << "No " << li->name << " config found in default locations.\n";
         std::cerr << "Looked in:\n";
-        for (auto& cand : li->candidates) std::cerr << "  " << cand << "\n";
+        for (auto& cand : li->candidates)
+          std::cerr << "  " << cand << "\n";
         std::cerr << "Pass an explicit file/dir with --from <path>.\n";
         return 1;
       }
@@ -1017,26 +1040,25 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
   }
 
   auto print_summary = [&] {
-    std::cout << (dry_run ? "Import preview (dry run, nothing written):\n"
-                          : "Import result:\n");
-    for (auto& l : batch_labels) std::cout << "  source: " << l << "\n";
+    std::cout << (dry_run ? "Import preview (dry run, nothing written):\n" : "Import result:\n");
+    for (auto& l : batch_labels)
+      std::cout << "  source: " << l << "\n";
     std::cout << "  macros: +" << total.macros_added << " new, " << total.macros_overwritten
               << " overwritten, " << total.macros_skipped << " skipped\n";
     std::cout << "  quicklinks: +" << total.quicklinks_added << " new, "
               << total.quicklinks_overwritten << " overwritten, " << total.quicklinks_skipped
               << " skipped\n";
-    std::cout << "  snippets: +" << total.snippets_added << " new, "
-              << total.snippets_overwritten << " overwritten, " << total.snippets_skipped
-              << " skipped\n";
+    std::cout << "  snippets: +" << total.snippets_added << " new, " << total.snippets_overwritten
+              << " overwritten, " << total.snippets_skipped << " skipped\n";
     std::cout << "  aliases: +" << total.aliases_added << " new, " << total.aliases_overwritten
               << " overwritten, " << total.aliases_skipped << " skipped\n";
     std::cout << "  hotkey: " << (total.hotkey_applied ? "imported" : "unchanged") << "\n";
     std::cout << "  theme: " << (total.theme_applied ? "imported" : "unchanged") << "\n";
-    std::cout << "  default search: " << (total.browser_applied ? "imported" : "unchanged")
-              << "\n";
+    std::cout << "  default search: " << (total.browser_applied ? "imported" : "unchanged") << "\n";
     if (!all_warnings.empty()) {
       std::cout << "  warnings:\n";
-      for (auto& wmsg : all_warnings) std::cout << "    - " << wmsg << "\n";
+      for (auto& wmsg : all_warnings)
+        std::cout << "    - " << wmsg << "\n";
     }
   };
 
@@ -1049,8 +1071,8 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
   {
     std::string orig;
     if (read_file_all(cfg.source_path.empty() ? default_config_path() : cfg.source_path, orig)) {
-      std::string bak = (cfg.source_path.empty() ? default_config_path() : cfg.source_path) +
-                        ".pre-import.bak";
+      std::string bak =
+          (cfg.source_path.empty() ? default_config_path() : cfg.source_path) + ".pre-import.bak";
       create_directories(path_parent(bak));
       write_file_atomic(bak, orig.data(), orig.size());
       std::cout << "Backed up existing config to " << bak << "\n";
@@ -1321,177 +1343,184 @@ int Service::run_daemon() {
 
   if (cfg_.api.enabled) {
     http_ = std::make_unique<HttpApiServer>();
-    if (!http_->start(cfg_.api.bind, cfg_.api.port, cfg_.api.token, [this](const HttpApiRequest& req) {
-      HttpApiResponse out;
-      if (req.method == "OPTIONS") {
-        out.body = "";
-        return out;
-      }
-      auto path = req.path;
-      if (path.rfind("/v1/", 0) == 0) path = path.substr(3);
-      auto q = req.query;
-      auto body = req.body;
-      auto qtext = query_param(q, "q");
-      if (qtext.empty()) qtext = json_get_string(body, "q");
-      if (qtext.empty()) qtext = json_get_string(body, "query");
-      auto action = query_param(q, "action");
-      if (action.empty()) action = json_get_string(body, "action");
-      auto rpath = query_param(q, "path");
-      if (rpath.empty()) rpath = json_get_string(body, "path");
-      int limit = json_get_int(body, "limit", 40);
-      auto n = query_param(q, "limit");
-      if (!n.empty()) {
-        try {
-          limit = std::stoi(n);
-        } catch (...) {
-        }
-      }
+    if (!http_->start(
+            cfg_.api.bind, cfg_.api.port, cfg_.api.token, [this](const HttpApiRequest& req) {
+              HttpApiResponse out;
+              if (req.method == "OPTIONS") {
+                out.body = "";
+                return out;
+              }
+              auto path = req.path;
+              if (path.rfind("/v1/", 0) == 0) path = path.substr(3);
+              auto q = req.query;
+              auto body = req.body;
+              auto qtext = query_param(q, "q");
+              if (qtext.empty()) qtext = json_get_string(body, "q");
+              if (qtext.empty()) qtext = json_get_string(body, "query");
+              auto action = query_param(q, "action");
+              if (action.empty()) action = json_get_string(body, "action");
+              auto rpath = query_param(q, "path");
+              if (rpath.empty()) rpath = json_get_string(body, "path");
+              int limit = json_get_int(body, "limit", 40);
+              auto n = query_param(q, "limit");
+              if (!n.empty()) {
+                try {
+                  limit = std::stoi(n);
+                } catch (...) {
+                }
+              }
 
-      if ((path == "/search" || path == "/query") && (req.method == "GET" || req.method == "POST")) {
-        auto iq = interpreter_.interpret(qtext, cfg_, &history_);
-        if (limit > 0 && static_cast<int>(iq.results.size()) > limit)
-          iq.results.resize(static_cast<std::size_t>(limit));
-        IpcResponse ir;
-        ir.results = std::move(iq.results);
-        out.body = encode_response(ir);
-        return out;
-      }
-      if (path == "/status" && req.method == "GET") {
-        auto st = index_.stats();
-        std::string prov = "\"providers\":[";
-        bool first = true;
-        for (auto& [id, s] : interpreter_.providers().stats()) {
-          if (!first) prov += ",";
-          first = false;
-          double avg_ms = s.calls ? static_cast<double>(s.total_us) / s.calls / 1000.0 : 0.0;
-          char buf[128];
-          std::snprintf(buf, sizeof(buf),
-                        "{\"id\":\"%s\",\"calls\":%llu,\"avg_ms\":%.1f,\"last_ms\":%.1f,\"last_hits\":%zu}",
-                        json_escape(id).c_str(), (unsigned long long)s.calls, avg_ms,
-                        static_cast<double>(s.last_us) / 1000.0, s.last_hits);
-          prov += buf;
-        }
-        prov += "]";
-        out.body = json_ok(true, "\"files\":" + std::to_string(st.files) + ",\"dirs\":" +
-                                   std::to_string(st.dirs) + ",\"apps\":" +
-                                   std::to_string(st.apps) + ",\"plugins\":" +
-                                   std::to_string(plugins_.manifests().size()) + ",\"snippets\":" +
-                                   std::to_string(snippets_.all().size()) + "," + prov);
-        return out;
-      }
-      if (path == "/show" && req.method == "POST") {
-        on_hotkey();
-        out.body = json_ok(true);
-        return out;
-      }
-      if (path == "/index" && req.method == "POST") {
-        index_.scan_roots();
-        out.body = json_ok(true);
-        return out;
-      }
-      if ((path == "/launch" || path == "/open" || path == "/exec") && req.method == "POST") {
-        SearchResult r;
-        r.path = rpath;
-        r.payload = json_get_string(body, "payload");
-        if (r.payload.empty()) r.payload = rpath;
-        r.title = json_get_string(body, "title");
-        r.plugin_id = json_get_string(body, "plugin");
-        if (r.plugin_id.empty()) r.plugin_id = json_get_string(body, "plugin_id");
-        auto cat = json_get_string(body, "category");
-        r.category = cat;
-        if (!qtext.empty() && r.path.empty()) {
-          auto iq = interpreter_.interpret(qtext, cfg_, &history_);
-          if (iq.results.empty()) {
-            out.status = 404;
-            out.body = json_ok(false, "\"error\":\"no results\"");
-            return out;
-          }
-          r = iq.results.front();
-        }
-        bool ok = execute_result(r, cfg_, action);
-        out.body = json_ok(ok);
-        if (!ok) out.status = 400;
-        return out;
-      }
-      if (path == "/backup" && req.method == "GET") {
-        std::string err;
-        auto dest = default_backup_path();
-        if (!create_backup(cfg_, dest, cfg_.sync.include_index, err)) {
-          out.status = 500;
-          out.body = json_ok(false, "\"error\":\"" + json_escape(err) + "\"");
-          return out;
-        }
-        std::string blob;
-        read_file_all(dest, blob);
-        out.content_type = "application/octet-stream";
-        out.body = std::move(blob);
-        return out;
-      }
-      if (path == "/backup" && req.method == "PUT") {
-        auto tmp = default_backup_path() + ".http";
-        if (!write_file_atomic(tmp, body.data(), body.size())) {
-          out.status = 500;
-          out.body = json_ok(false, "\"error\":\"write failed\"");
-          return out;
-        }
-        std::string err;
-        bool ok = restore_backup(tmp, err);
-        out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
-        if (!ok) out.status = 400;
-        return out;
-      }
-      if (path == "/sync/push" && req.method == "POST") {
-        std::string err;
-        bool ok = sync_push(cfg_, err);
-        out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
-        if (!ok) out.status = 400;
-        return out;
-      }
-      if (path == "/sync/pull" && req.method == "POST") {
-        std::string err;
-        bool ok = sync_pull(cfg_, err);
-        out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
-        if (!ok) out.status = 400;
-        return out;
-      }
-      if (path == "/snippets" && req.method == "POST") {
-        Snippet s;
-        s.trigger = json_get_string(body, "trigger");
-        if (s.trigger.empty()) s.trigger = json_get_string(body, "name");
-        s.id = json_get_string(body, "id");
-        if (s.id.empty()) s.id = s.trigger;
-        s.title = json_get_string(body, "title");
-        s.body = json_get_string(body, "body");
-        if (s.body.empty()) s.body = json_get_string(body, "text");
-        s.kind = json_get_string(body, "kind");
-        if (s.trigger.empty()) {
-          out.status = 400;
-          out.body = json_ok(false, "\"error\":\"trigger required\"");
-          return out;
-        }
-        snippets_.upsert(std::move(s));
-        snippets_.save();
-        out.body = json_ok(true);
-        return out;
-      }
-      if (path == "/snippets" && req.method == "GET") {
-        std::ostringstream os;
-        os << "{\"ok\":true,\"items\":[";
-        bool first = true;
-        for (auto& s : snippets_.all()) {
-          if (!first) os << ',';
-          first = false;
-          os << "{\"id\":\"" << json_escape(s.id) << "\",\"trigger\":\"" << json_escape(s.trigger)
-             << "\",\"title\":\"" << json_escape(s.title) << "\"}";
-        }
-        os << "]}";
-        out.body = os.str();
-        return out;
-      }
-      out.status = 404;
-      out.body = json_ok(false, "\"error\":\"not found\"");
-      return out;
-    })) {
+              if ((path == "/search" || path == "/query") &&
+                  (req.method == "GET" || req.method == "POST")) {
+                auto iq = interpreter_.interpret(qtext, cfg_, &history_);
+                if (limit > 0 && static_cast<int>(iq.results.size()) > limit)
+                  iq.results.resize(static_cast<std::size_t>(limit));
+                IpcResponse ir;
+                ir.results = std::move(iq.results);
+                out.body = encode_response(ir);
+                return out;
+              }
+              if (path == "/status" && req.method == "GET") {
+                auto st = index_.stats();
+                std::string prov = "\"providers\":[";
+                bool first = true;
+                for (auto& [id, s] : interpreter_.providers().stats()) {
+                  if (!first) prov += ",";
+                  first = false;
+                  double avg_ms =
+                      s.calls ? static_cast<double>(s.total_us) / s.calls / 1000.0 : 0.0;
+                  char buf[128];
+                  std::snprintf(buf, sizeof(buf),
+                                "{\"id\":\"%s\",\"calls\":%llu,\"avg_ms\":%.1f,\"last_ms\":%.1f,"
+                                "\"last_hits\":%zu}",
+                                json_escape(id).c_str(), (unsigned long long)s.calls, avg_ms,
+                                static_cast<double>(s.last_us) / 1000.0, s.last_hits);
+                  prov += buf;
+                }
+                prov += "]";
+                out.body = json_ok(
+                    true, "\"files\":" + std::to_string(st.files) + ",\"dirs\":" +
+                              std::to_string(st.dirs) + ",\"apps\":" + std::to_string(st.apps) +
+                              ",\"plugins\":" + std::to_string(plugins_.manifests().size()) +
+                              ",\"snippets\":" + std::to_string(snippets_.all().size()) + "," +
+                              prov);
+                return out;
+              }
+              if (path == "/show" && req.method == "POST") {
+                on_hotkey();
+                out.body = json_ok(true);
+                return out;
+              }
+              if (path == "/index" && req.method == "POST") {
+                index_.scan_roots();
+                out.body = json_ok(true);
+                return out;
+              }
+              if ((path == "/launch" || path == "/open" || path == "/exec") &&
+                  req.method == "POST") {
+                SearchResult r;
+                r.path = rpath;
+                r.payload = json_get_string(body, "payload");
+                if (r.payload.empty()) r.payload = rpath;
+                r.title = json_get_string(body, "title");
+                r.plugin_id = json_get_string(body, "plugin");
+                if (r.plugin_id.empty()) r.plugin_id = json_get_string(body, "plugin_id");
+                auto cat = json_get_string(body, "category");
+                r.category = cat;
+                if (!qtext.empty() && r.path.empty()) {
+                  auto iq = interpreter_.interpret(qtext, cfg_, &history_);
+                  if (iq.results.empty()) {
+                    out.status = 404;
+                    out.body = json_ok(false, "\"error\":\"no results\"");
+                    return out;
+                  }
+                  r = iq.results.front();
+                }
+                bool ok = execute_result(r, cfg_, action);
+                out.body = json_ok(ok);
+                if (!ok) out.status = 400;
+                return out;
+              }
+              if (path == "/backup" && req.method == "GET") {
+                std::string err;
+                auto dest = default_backup_path();
+                if (!create_backup(cfg_, dest, cfg_.sync.include_index, err)) {
+                  out.status = 500;
+                  out.body = json_ok(false, "\"error\":\"" + json_escape(err) + "\"");
+                  return out;
+                }
+                std::string blob;
+                read_file_all(dest, blob);
+                out.content_type = "application/octet-stream";
+                out.body = std::move(blob);
+                return out;
+              }
+              if (path == "/backup" && req.method == "PUT") {
+                auto tmp = default_backup_path() + ".http";
+                if (!write_file_atomic(tmp, body.data(), body.size())) {
+                  out.status = 500;
+                  out.body = json_ok(false, "\"error\":\"write failed\"");
+                  return out;
+                }
+                std::string err;
+                bool ok = restore_backup(tmp, err);
+                out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
+                if (!ok) out.status = 400;
+                return out;
+              }
+              if (path == "/sync/push" && req.method == "POST") {
+                std::string err;
+                bool ok = sync_push(cfg_, err);
+                out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
+                if (!ok) out.status = 400;
+                return out;
+              }
+              if (path == "/sync/pull" && req.method == "POST") {
+                std::string err;
+                bool ok = sync_pull(cfg_, err);
+                out.body = json_ok(ok, ok ? "" : "\"error\":\"" + json_escape(err) + "\"");
+                if (!ok) out.status = 400;
+                return out;
+              }
+              if (path == "/snippets" && req.method == "POST") {
+                Snippet s;
+                s.trigger = json_get_string(body, "trigger");
+                if (s.trigger.empty()) s.trigger = json_get_string(body, "name");
+                s.id = json_get_string(body, "id");
+                if (s.id.empty()) s.id = s.trigger;
+                s.title = json_get_string(body, "title");
+                s.body = json_get_string(body, "body");
+                if (s.body.empty()) s.body = json_get_string(body, "text");
+                s.kind = json_get_string(body, "kind");
+                if (s.trigger.empty()) {
+                  out.status = 400;
+                  out.body = json_ok(false, "\"error\":\"trigger required\"");
+                  return out;
+                }
+                snippets_.upsert(std::move(s));
+                snippets_.save();
+                out.body = json_ok(true);
+                return out;
+              }
+              if (path == "/snippets" && req.method == "GET") {
+                std::ostringstream os;
+                os << "{\"ok\":true,\"items\":[";
+                bool first = true;
+                for (auto& s : snippets_.all()) {
+                  if (!first) os << ',';
+                  first = false;
+                  os << "{\"id\":\"" << json_escape(s.id) << "\",\"trigger\":\""
+                     << json_escape(s.trigger) << "\",\"title\":\"" << json_escape(s.title)
+                     << "\"}";
+                }
+                os << "]}";
+                out.body = os.str();
+                return out;
+              }
+              out.status = 404;
+              out.body = json_ok(false, "\"error\":\"not found\"");
+              return out;
+            })) {
       log_warn("api", "failed to start HTTP API on " + cfg_.api.bind + ":" +
                           std::to_string(cfg_.api.port));
     }

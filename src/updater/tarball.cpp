@@ -1,8 +1,8 @@
 // Minimal tar.gz archive extractor.
 // Handles gzip decompression followed by tar parsing.
 
-#include "wilfred/updater/updater.hpp"
 #include "wilfred/updater/inflate.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include "wilfred/core/log.hpp"
 

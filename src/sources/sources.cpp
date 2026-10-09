@@ -96,7 +96,8 @@ std::string unfold_ics(const std::string& text) {
   for (std::size_t i = 0; i < text.size(); ++i) {
     if ((text[i] == '\n' || text[i] == '\r')) {
       std::size_t j = i + 1;
-      while (j < text.size() && (text[j] == '\r' || text[j] == '\n')) ++j;
+      while (j < text.size() && (text[j] == '\r' || text[j] == '\n'))
+        ++j;
       if (j < text.size() && (text[j] == ' ' || text[j] == '\t')) {
         i = j;  // continuation: skip the break entirely
         continue;
@@ -144,8 +145,7 @@ bool score_hit(const std::string& needle_folded, const std::string& hay, int& sc
 }
 
 std::vector<std::string> roots_or(const std::vector<std::string>& cfg_paths,
-                                   const std::vector<std::string>& defs,
-                                   const char* ext_filter) {
+                                  const std::vector<std::string>& defs, const char* ext_filter) {
   std::vector<std::string> roots = cfg_paths.empty() ? defs : cfg_paths;
   (void)ext_filter;
   std::vector<std::string> live;
@@ -174,8 +174,8 @@ void walk_files(const std::vector<std::string>& roots, const char* ext, int dept
         continue;
       }
       if (!fs::is_directory(st) || d > depth_max) continue;
-      for (auto it = fs::directory_iterator(fs::u8path(cur), ec2);
-           it != fs::directory_iterator(); it.increment(ec2)) {
+      for (auto it = fs::directory_iterator(fs::u8path(cur), ec2); it != fs::directory_iterator();
+           it.increment(ec2)) {
         if (ec2) break;
         if ((int)out.size() + (int)stack.size() > cap + 200) break;
         stack.emplace_back(it->path().string(), d + 1);
@@ -187,7 +187,7 @@ void walk_files(const std::vector<std::string>& roots, const char* ext, int dept
 }  // namespace
 
 std::vector<SearchResult> CalendarProvider::query(const std::string& text, const Config& cfg,
-                                                 std::size_t limit) {
+                                                  std::size_t limit) {
   std::vector<SearchResult> out;
   if (!cfg.sources.calendar || limit == 0) return out;
   auto needle = fold_search(normalize_query(text));
@@ -234,8 +234,7 @@ std::vector<SearchResult> CalendarProvider::query(const std::string& text, const
   std::vector<Hit> hits;
   for (std::size_t i = 0; i < cache.size(); ++i) {
     int s = 0;
-    if (score_hit(needle, cache[i].summary + " " + cache[i].desc, s))
-      hits.push_back({s, i});
+    if (score_hit(needle, cache[i].summary + " " + cache[i].desc, s)) hits.push_back({s, i});
   }
   std::sort(hits.begin(), hits.end(), [](auto& a, auto& b) { return a.score > b.score; });
   for (auto& h : hits) {
@@ -256,7 +255,7 @@ std::vector<SearchResult> CalendarProvider::query(const std::string& text, const
 }
 
 std::vector<SearchResult> ContactsProvider::query(const std::string& text, const Config& cfg,
-                                                 std::size_t limit) {
+                                                  std::size_t limit) {
   std::vector<SearchResult> out;
   if (!cfg.sources.contacts || limit == 0) return out;
   auto needle = fold_search(normalize_query(text));
@@ -303,8 +302,10 @@ std::vector<SearchResult> ContactsProvider::query(const std::string& text, const
           auto colon = block.find(':', p);
           if (colon == std::string::npos) return {};
           auto nl = block.find('\n', colon);
-          auto v = block.substr(colon + 1, nl == std::string::npos ? std::string::npos : nl - colon - 1);
-          while (!v.empty() && (v.back() == '\r' || v.back() == '\n')) v.pop_back();
+          auto v =
+              block.substr(colon + 1, nl == std::string::npos ? std::string::npos : nl - colon - 1);
+          while (!v.empty() && (v.back() == '\r' || v.back() == '\n'))
+            v.pop_back();
           return v;
         };
         if (c.name.empty()) {
@@ -347,8 +348,10 @@ std::vector<SearchResult> ContactsProvider::query(const std::string& text, const
     r.title = c.name.empty() ? c.email : c.name;
     std::string sub = c.email;
     if (!c.phone.empty()) sub += (sub.empty() ? "" : " · ") + c.phone;
-    if (sub.empty()) sub = "Contact";
-    else sub += " · Contact";
+    if (sub.empty())
+      sub = "Contact";
+    else
+      sub += " · Contact";
     r.subtitle = sub;
     r.path = c.path;
     r.payload = c.email.empty() ? c.name : c.email;
@@ -362,7 +365,7 @@ std::vector<SearchResult> ContactsProvider::query(const std::string& text, const
 }
 
 std::vector<SearchResult> NotesProvider::query(const std::string& text, const Config& cfg,
-                                                std::size_t limit) {
+                                               std::size_t limit) {
   std::vector<SearchResult> out;
   if (!cfg.sources.notes || limit == 0) return out;
   auto needle = fold_search(normalize_query(text));
@@ -388,8 +391,8 @@ std::vector<SearchResult> NotesProvider::query(const std::string& text, const Co
         continue;
       }
       if (!fs::is_directory(st) || d > 4) continue;
-      for (auto it = fs::directory_iterator(fs::u8path(cur), ec2);
-           it != fs::directory_iterator(); it.increment(ec2)) {
+      for (auto it = fs::directory_iterator(fs::u8path(cur), ec2); it != fs::directory_iterator();
+           it.increment(ec2)) {
         if (ec2) break;
         stack.emplace_back(it->path().string(), d + 1);
       }
@@ -405,7 +408,8 @@ std::vector<SearchResult> NotesProvider::query(const std::string& text, const Co
   for (auto& f : files) {
     std::string raw;
     if (!read_file_all(f, raw)) continue;
-    if (looks_binary(std::string_view(raw.data(), std::min<std::size_t>(raw.size(), 8000)))) continue;
+    if (looks_binary(std::string_view(raw.data(), std::min<std::size_t>(raw.size(), 8000))))
+      continue;
     if (raw.size() > 256 * 1024) raw.resize(256 * 1024);
     std::string title = path_stem(f);
     // First Markdown heading wins for the title.
@@ -413,8 +417,10 @@ std::vector<SearchResult> NotesProvider::query(const std::string& text, const Co
     if (hpos != std::string::npos) {
       auto nl = raw.find('\n', hpos);
       auto t = raw.substr(hpos + 2, nl == std::string::npos ? std::string::npos : nl - hpos - 2);
-      while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
-      while (!t.empty() && (t.back() == ' ' || t.back() == '\r')) t.pop_back();
+      while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+        t.erase(t.begin());
+      while (!t.empty() && (t.back() == ' ' || t.back() == '\r'))
+        t.pop_back();
       if (!t.empty() && t.size() < 120) title = t;
     }
     int s = 0;
@@ -446,7 +452,8 @@ namespace {
 
 std::string trim(const std::string& s) {
   std::size_t b = 0;
-  while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n')) ++b;
+  while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n'))
+    ++b;
   std::size_t e = s.size();
   while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
     --e;
@@ -467,8 +474,10 @@ std::string slug_for(const std::string& s) {
     if (ch == '-' && !c.empty() && c.back() == '-') continue;
     c.push_back(ch);
   }
-  while (!c.empty() && c.front() == '-') c.erase(c.begin());
-  while (!c.empty() && c.back() == '-') c.pop_back();
+  while (!c.empty() && c.front() == '-')
+    c.erase(c.begin());
+  while (!c.empty() && c.back() == '-')
+    c.pop_back();
   if (c.empty()) c = "item";
   if (c.size() > 48) c.resize(48);
   return c;
@@ -498,8 +507,7 @@ std::string first_writable_root(const std::vector<std::string>& cfg_paths,
 }  // namespace
 
 bool create_calendar_event(const Config& cfg, const std::string& summary,
-                           const std::string& when_hint, std::string& out_path,
-                           std::string& err) {
+                           const std::string& when_hint, std::string& out_path, std::string& err) {
   out_path.clear();
   std::string s = trim(summary);
   if (s.empty()) {

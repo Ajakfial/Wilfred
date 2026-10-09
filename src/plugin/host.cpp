@@ -30,7 +30,8 @@ namespace wilfred {
 namespace fs = std::filesystem;
 
 std::string plugin_query_json(const std::string& q, std::size_t limit) {
-  return "{\"op\":\"query\",\"q\":\"" + json_escape(q) + "\",\"limit\":" + std::to_string(limit) + "}";
+  return "{\"op\":\"query\",\"q\":\"" + json_escape(q) + "\",\"limit\":" + std::to_string(limit) +
+         "}";
 }
 
 std::vector<SearchResult> parse_plugin_results_json(const std::string& json,
@@ -111,7 +112,8 @@ static bool load_manifest_file(const std::string& path, PluginManifest& m) {
   m.description = root.str("description", "");
   m.sha256 = to_lower_utf8(root.str("sha256", root.str("hash", "")));
   m.permissions = root.string_list("permissions");
-  for (auto& p : m.permissions) p = to_lower_utf8(p);
+  for (auto& p : m.permissions)
+    p = to_lower_utf8(p);
   m.origin = root.str("origin", root.str("url", ""));
   if (m.id.empty()) m.id = path_stem(path);
   if (m.kind.empty()) m.kind = m.command.empty() ? "native" : "stdio";
@@ -126,19 +128,22 @@ static std::vector<PluginManifest> discover_plugins(const Config& cfg) {
   for (auto& dir : dirs) {
     fs::path root = fs::u8path(dir);
     if (!fs::exists(root, ec)) continue;
-    for (auto it = fs::directory_iterator(root, ec); it != fs::directory_iterator(); it.increment(ec)) {
+    for (auto it = fs::directory_iterator(root, ec); it != fs::directory_iterator();
+         it.increment(ec)) {
       if (ec) break;
       auto p = it->path();
       PluginManifest m;
-      m.directory = p.parent_path().u8string().empty()
-                        ? dir
-                        : std::string(p.parent_path().u8string().begin(), p.parent_path().u8string().end());
+      m.directory =
+          p.parent_path().u8string().empty()
+              ? dir
+              : std::string(p.parent_path().u8string().begin(), p.parent_path().u8string().end());
       auto name = p.filename().u8string();
       std::string fname(name.begin(), name.end());
       auto ext = to_lower_utf8(path_extension(fname));
       if (it->is_directory(ec)) {
-        auto yml = path_join(p.u8string().empty() ? dir : std::string(p.u8string().begin(), p.u8string().end()),
-                             "plugin.yml");
+        auto yml = path_join(
+            p.u8string().empty() ? dir : std::string(p.u8string().begin(), p.u8string().end()),
+            "plugin.yml");
         auto json = path_join(path_parent(yml), "plugin.json");
         std::string folder(p.u8string().begin(), p.u8string().end());
         if (file_exists(yml) && load_manifest_file(yml, m)) {
@@ -152,7 +157,9 @@ static std::vector<PluginManifest> discover_plugins(const Config& cfg) {
         continue;
       }
       if (fname == "plugin.yml" || fname == "plugin.json") {
-        if (load_manifest_file(p.u8string().empty() ? fname : std::string(p.u8string().begin(), p.u8string().end()),
+        if (load_manifest_file(p.u8string().empty()
+                                   ? fname
+                                   : std::string(p.u8string().begin(), p.u8string().end()),
                                m)) {
           m.directory = dir;
           out.push_back(m);
@@ -199,7 +206,8 @@ static std::wstring quote_win_arg(const std::string& a) {
   if (w.find_first_of(L" \t\"") == std::wstring::npos) return w;
   std::wstring o = L"\"";
   for (wchar_t c : w) {
-    if (c == L'"') o += L"\\\"";
+    if (c == L'"')
+      o += L"\\\"";
     else
       o.push_back(c);
   }
@@ -237,7 +245,8 @@ static std::string resolve_native_lib(const PluginManifest& m) {
   else if (!m.directory.empty())
     dir = fs::u8path(m.directory);
   if (!dir.empty() && fs::is_directory(dir, ec)) {
-    for (auto it = fs::directory_iterator(dir, ec); it != fs::directory_iterator(); it.increment(ec)) {
+    for (auto it = fs::directory_iterator(dir, ec); it != fs::directory_iterator();
+         it.increment(ec)) {
       if (ec || !it->is_regular_file(ec)) continue;
       auto p = std::string(it->path().u8string().begin(), it->path().u8string().end());
       if (looks_like_native_lib(p)) return p;
@@ -258,7 +267,8 @@ static std::string resolve_stdio_exe(const PluginManifest& m) {
   return exe;
 }
 
-static std::string run_stdio_once(const PluginManifest& m, const std::string& request, int timeout_ms) {
+static std::string run_stdio_once(const PluginManifest& m, const std::string& request,
+                                  int timeout_ms) {
   std::string line = request;
   if (line.empty() || line.back() != '\n') line.push_back('\n');
 
@@ -327,7 +337,8 @@ static std::string run_stdio_once(const PluginManifest& m, const std::string& re
   CloseHandle(out_r);
   CloseHandle(pi.hThread);
   CloseHandle(pi.hProcess);
-  while (!resp.empty() && (resp.back() == '\n' || resp.back() == '\r')) resp.pop_back();
+  while (!resp.empty() && (resp.back() == '\n' || resp.back() == '\r'))
+    resp.pop_back();
   return resp;
 #else
   int in_pipe[2];
@@ -354,7 +365,8 @@ static std::string run_stdio_once(const PluginManifest& m, const std::string& re
     argv_store.push_back(resolve_stdio_exe(m));
     argv_store.insert(argv_store.end(), m.args.begin(), m.args.end());
     std::vector<char*> argv;
-    for (auto& a : argv_store) argv.push_back(a.data());
+    for (auto& a : argv_store)
+      argv.push_back(a.data());
     argv.push_back(nullptr);
     execvp(argv[0], argv.data());
     _exit(127);
@@ -378,7 +390,8 @@ static std::string run_stdio_once(const PluginManifest& m, const std::string& re
       int st = 0;
       pid_t w = waitpid(pid, &st, WNOHANG);
       if (w == pid) break;
-      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start)
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - start)
                     .count();
       if (ms > timeout_ms) {
         kill(pid, SIGKILL);
@@ -391,7 +404,8 @@ static std::string run_stdio_once(const PluginManifest& m, const std::string& re
   close(out_pipe[0]);
   int st = 0;
   waitpid(pid, &st, WNOHANG);
-  while (!resp.empty() && (resp.back() == '\n' || resp.back() == '\r')) resp.pop_back();
+  while (!resp.empty() && (resp.back() == '\n' || resp.back() == '\r'))
+    resp.pop_back();
   return resp;
 #endif
 }
@@ -418,13 +432,17 @@ struct PluginHost::Impl {
 };
 
 PluginHost::PluginHost() : impl_(std::make_unique<Impl>()) {}
-PluginHost::~PluginHost() { unload(); }
+PluginHost::~PluginHost() {
+  unload();
+}
 
 void PluginHost::unload() {
   if (impl_) impl_->unload();
 }
 
-const std::vector<PluginManifest>& PluginHost::manifests() const { return impl_->manifests; }
+const std::vector<PluginManifest>& PluginHost::manifests() const {
+  return impl_->manifests;
+}
 
 void PluginHost::load(const Config& cfg) {
   unload();
@@ -449,10 +467,14 @@ void PluginHost::load(const Config& cfg) {
       log_warn("plugin", "failed to load " + lib);
       continue;
     }
-    auto abi = reinterpret_cast<wilfred_plugin_abi_fn>(GetProcAddress(np.handle, "wilfred_plugin_abi"));
-    np.query = reinterpret_cast<wilfred_plugin_query_fn>(GetProcAddress(np.handle, "wilfred_plugin_query"));
-    np.exec = reinterpret_cast<wilfred_plugin_exec_fn>(GetProcAddress(np.handle, "wilfred_plugin_exec"));
-    np.idfn = reinterpret_cast<wilfred_plugin_id_fn>(GetProcAddress(np.handle, "wilfred_plugin_id"));
+    auto abi =
+        reinterpret_cast<wilfred_plugin_abi_fn>(GetProcAddress(np.handle, "wilfred_plugin_abi"));
+    np.query = reinterpret_cast<wilfred_plugin_query_fn>(
+        GetProcAddress(np.handle, "wilfred_plugin_query"));
+    np.exec =
+        reinterpret_cast<wilfred_plugin_exec_fn>(GetProcAddress(np.handle, "wilfred_plugin_exec"));
+    np.idfn =
+        reinterpret_cast<wilfred_plugin_id_fn>(GetProcAddress(np.handle, "wilfred_plugin_id"));
 #else
     np.handle = dlopen(lib.c_str(), RTLD_NOW);
     if (!np.handle) {
@@ -490,7 +512,8 @@ void PluginHost::load(const Config& cfg) {
   }
 }
 
-std::vector<SearchResult> PluginHost::query(const std::string& text, const Config& cfg, std::size_t limit) {
+std::vector<SearchResult> PluginHost::query(const std::string& text, const Config& cfg,
+                                            std::size_t limit) {
   std::lock_guard<std::mutex> lock(impl_->mu);
   std::vector<SearchResult> out;
   if (text.empty()) return out;
@@ -535,9 +558,9 @@ std::vector<SearchResult> PluginHost::query(const std::string& text, const Confi
 
 bool PluginHost::execute(const SearchResult& r, const std::string& action_id) {
   std::lock_guard<std::mutex> lock(impl_->mu);
-  auto req = std::string("{\"op\":\"exec\",\"action\":\"") + json_escape(action_id) + "\",\"path\":\"" +
-             json_escape(r.path) + "\",\"payload\":\"" + json_escape(r.payload) + "\",\"title\":\"" +
-             json_escape(r.title) + "\"}";
+  auto req = std::string("{\"op\":\"exec\",\"action\":\"") + json_escape(action_id) +
+             "\",\"path\":\"" + json_escape(r.path) + "\",\"payload\":\"" + json_escape(r.payload) +
+             "\",\"title\":\"" + json_escape(r.title) + "\"}";
   for (auto& n : impl_->native) {
     if (n.manifest.id != r.plugin_id) continue;
     if (!n.exec) return false;

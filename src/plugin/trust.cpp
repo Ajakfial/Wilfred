@@ -10,7 +10,9 @@
 
 namespace wilfred {
 
-std::string plugin_trust_path() { return path_join(path_join(data_directory(), "plugins"), "trust.json"); }
+std::string plugin_trust_path() {
+  return path_join(path_join(data_directory(), "plugins"), "trust.json");
+}
 
 std::vector<TrustEntry> plugin_trust_load() {
   std::vector<TrustEntry> out;

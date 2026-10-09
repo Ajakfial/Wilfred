@@ -13,8 +13,10 @@ namespace wilfred {
 
 bool looks_like_url(std::string_view s) {
   auto t = std::string(s);
-  while (!t.empty() && t.back() == ' ') t.pop_back();
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+  while (!t.empty() && t.back() == ' ')
+    t.pop_back();
+  while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+    t.erase(t.begin());
   auto l = to_lower_utf8(t);
   if (l.rfind("http://", 0) == 0 || l.rfind("https://", 0) == 0 || l.rfind("file://", 0) == 0)
     return true;
@@ -30,10 +32,10 @@ bool looks_like_url(std::string_view s) {
     if (k != FileKind::File && k != FileKind::Unknown) return false;
   }
   auto tld = to_lower_utf8(host.substr(dot + 1));
-  static const char* tlds[] = {"com", "org",  "net", "edu", "gov", "io",  "co",  "uk", "de",
-                               "app", "dev",  "info", "biz", "us", "ca", "au", "jp", "fr",
-                               "ru",  "cn",   "nl",  "se",  "no",  "fi",  "es", "it", "br",
-                               "xyz", "me",   "tv",  nullptr};
+  static const char* tlds[] = {"com", "org", "net", "edu",  "gov", "io", "co",   "uk",
+                               "de",  "app", "dev", "info", "biz", "us", "ca",   "au",
+                               "jp",  "fr",  "ru",  "cn",   "nl",  "se", "no",   "fi",
+                               "es",  "it",  "br",  "xyz",  "me",  "tv", nullptr};
   bool ok = false;
   for (auto** p = tlds; *p; ++p)
     if (tld == *p) {
@@ -95,8 +97,10 @@ bool looks_like_math(std::string_view s) {
 QueryClass classify_query(std::string_view raw) {
   QueryClass q;
   std::string s(raw);
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+    s.pop_back();
   q.text = s;
   if (s.empty()) {
     q.kind = QueryKind::Empty;

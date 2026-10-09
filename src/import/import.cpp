@@ -19,16 +19,21 @@ namespace {
 
 std::string trim(const std::string& s) {
   std::size_t a = 0;
-  while (a < s.size() && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n')) ++a;
+  while (a < s.size() && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n'))
+    ++a;
   std::size_t b = s.size();
   while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r' || s[b - 1] == '\n'))
     --b;
   return s.substr(a, b - a);
 }
 
-std::string lower(const std::string& s) { return to_lower_utf8(s); }
+std::string lower(const std::string& s) {
+  return to_lower_utf8(s);
+}
 
-bool eq_ci(const std::string& a, const std::string& b) { return lower(a) == lower(b); }
+bool eq_ci(const std::string& a, const std::string& b) {
+  return lower(a) == lower(b);
+}
 
 std::string xml_unescape(std::string s) {
   auto rep = [&](const char* from, const char* to) {
@@ -73,7 +78,9 @@ std::string yaml_escape_inner(const std::string& s) {
   return o;
 }
 
-std::string yq(const std::string& s) { return "\"" + yaml_escape_inner(s) + "\""; }
+std::string yq(const std::string& s) {
+  return "\"" + yaml_escape_inner(s) + "\"";
+}
 
 std::string ykey(const std::string& s) {
   if (s.empty()) return "\"\"";
@@ -95,11 +102,12 @@ void emit_str_list(std::ostringstream& os, const char* key, const std::vector<st
   std::string pad(static_cast<std::size_t>(indent), ' ');
   os << pad << key << ":";
   if (v.empty()) {
-    os << "\n"; // bare empty (no flow []);
+    os << "\n";  // bare empty (no flow []);
     return;
   }
   os << "\n";
-  for (auto& s : v) os << pad << "  - " << yq(s) << "\n";
+  for (auto& s : v)
+    os << pad << "  - " << yq(s) << "\n";
 }
 
 void emit_map(std::ostringstream& os, const char* key, const std::map<std::string, std::string>& m,
@@ -107,11 +115,12 @@ void emit_map(std::ostringstream& os, const char* key, const std::map<std::strin
   std::string pad(static_cast<std::size_t>(indent), ' ');
   os << pad << key << ":";
   if (m.empty()) {
-    os << "\n"; // bare empty (no flow {});
+    os << "\n";  // bare empty (no flow {});
     return;
   }
   os << "\n";
-  for (auto& [k, v] : m) os << pad << "  " << ykey(k) << ": " << yq(v) << "\n";
+  for (auto& [k, v] : m)
+    os << pad << "  " << ykey(k) << ": " << yq(v) << "\n";
 }
 
 void emit_map_unordered(std::ostringstream& os, const char* key,
@@ -129,15 +138,16 @@ bool json_string_for_key(const std::string& text, const std::string& key, std::s
   std::size_t pos = 0;
   while ((pos = tl.find(kl, pos)) != std::string::npos) {
     std::size_t c = pos + kl.size();
-    while (c < text.size() && (text[c] == ' ' || text[c] == '\t' || text[c] == '\r' ||
-                              text[c] == '\n'))
+    while (c < text.size() &&
+           (text[c] == ' ' || text[c] == '\t' || text[c] == '\r' || text[c] == '\n'))
       ++c;
     if (c >= text.size() || text[c] != ':') {
       pos += kl.size();
       continue;
     }
     ++c;
-    while (c < text.size() && (text[c] == ' ' || text[c] == '\t')) ++c;
+    while (c < text.size() && (text[c] == ' ' || text[c] == '\t'))
+      ++c;
     if (c < text.size() && text[c] == '"') {
       ++c;
       std::string v;
@@ -179,8 +189,8 @@ std::vector<std::string> find_all_urls(const std::string& text) {
     std::size_t e = h;
     while (e < text.size()) {
       char c = text[e];
-      if (c == '"' || c == '\'' || c == '<' || c == '>' || c == ' ' || c == '\t' ||
-          c == '\r' || c == '\n' || c == ',' || c == ']')
+      if (c == '"' || c == '\'' || c == '<' || c == '>' || c == ' ' || c == '\t' || c == '\r' ||
+          c == '\n' || c == ',' || c == ']')
         break;
       // Keep '}' only if it is clearly not a placeholder tail? URLs with
       // {query} contain braces; don't stop there.
@@ -195,7 +205,8 @@ std::vector<std::string> find_all_urls(const std::string& text) {
     }
     std::string u = text.substr(h, e - h);
     // Trim trailing punctuation unlikely to be part of URL.
-    while (!u.empty() && (u.back() == '.' || u.back() == ';' || u.back() == ')' || u.back() == '}')) {
+    while (!u.empty() &&
+           (u.back() == '.' || u.back() == ';' || u.back() == ')' || u.back() == '}')) {
       // Don't strip a trailing } that closes a {query} placeholder.
       if (u.size() >= 7 && u.compare(u.size() - 7, 7, "{query}") == 0) break;
       if (u.size() >= 3 && u.compare(u.size() - 3, 3, "{q}") == 0) break;
@@ -228,10 +239,12 @@ std::string guess_name_near(const std::string& text, std::size_t url_pos) {
       best = p;
       // Extract quoted value after colon.
       std::size_t c = p + kk.size();
-      while (c < window.size() && window[c] != ':') ++c;
+      while (c < window.size() && window[c] != ':')
+        ++c;
       if (c < window.size()) {
         ++c;
-        while (c < window.size() && (window[c] == ' ' || window[c] == '\t')) ++c;
+        while (c < window.size() && (window[c] == ' ' || window[c] == '\t'))
+          ++c;
         if (c < window.size() && window[c] == '"') {
           ++c;
           std::string v;
@@ -253,8 +266,8 @@ std::string guess_name_near(const std::string& text, std::size_t url_pos) {
 std::string guess_keyword_near(const std::string& text, std::size_t url_pos) {
   std::size_t win_start = url_pos > 800 ? url_pos - 800 : 0;
   std::string window = text.substr(win_start, url_pos - win_start);
-  const char* keys[] = {"keyword",  "trigger",  "actionkeyword", "actionKeyword",
-                        "keywordprefix", "prefix", "key", "shortcut", "alias", nullptr};
+  const char* keys[] = {"keyword", "trigger", "actionkeyword", "actionKeyword", "keywordprefix",
+                        "prefix",  "key",     "shortcut",      "alias",         nullptr};
   std::string wl = lower(window);
   std::size_t best = std::string::npos;
   std::string best_val;
@@ -263,10 +276,12 @@ std::string guess_keyword_near(const std::string& text, std::size_t url_pos) {
     std::size_t p = wl.rfind(kk);
     if (p == std::string::npos) continue;
     std::size_t c = p + kk.size();
-    while (c < window.size() && window[c] != ':') ++c;
+    while (c < window.size() && window[c] != ':')
+      ++c;
     if (c >= window.size()) continue;
     ++c;
-    while (c < window.size() && (window[c] == ' ' || window[c] == '\t')) ++c;
+    while (c < window.size() && (window[c] == ' ' || window[c] == '\t'))
+      ++c;
     if (c < window.size() && window[c] == '"') {
       ++c;
       std::string v;
@@ -314,8 +329,8 @@ IniFile parse_ini(const std::string& text) {
     std::string k = trim(t.substr(0, eq));
     std::string v = trim(t.substr(eq + 1));
     // Strip surrounding quotes.
-    if (v.size() >= 2 && ((v.front() == '"' && v.back() == '"') ||
-                          (v.front() == '\'' && v.back() == '\'')))
+    if (v.size() >= 2 &&
+        ((v.front() == '"' && v.back() == '"') || (v.front() == '\'' && v.back() == '\'')))
       v = v.substr(1, v.size() - 2);
     out[section][lower(k)] = v;
     out[section]["__key_" + lower(k)] = k;  // keep original case if needed
@@ -352,7 +367,8 @@ std::string slugify_keyword(const std::string& s) {
       dash = false;
     }
   }
-  while (!c2.empty() && c2.back() == '-') c2.pop_back();
+  while (!c2.empty() && c2.back() == '-')
+    c2.pop_back();
   // Keywords with dashes still work as macros, but single tokens are nicer.
   // Remove dashes for macro keys (yt-style); keep readable.
   std::string nos;
@@ -365,8 +381,7 @@ std::string slugify_keyword(const std::string& s) {
 }
 
 bool looks_like_search_url(const std::string& s) {
-  if (s.rfind("http://", 0) != 0 && s.rfind("https://", 0) != 0 &&
-      s.rfind("http", 0) != 0)
+  if (s.rfind("http://", 0) != 0 && s.rfind("https://", 0) != 0 && s.rfind("http", 0) != 0)
     return false;
   std::string l = lower(s);
   return l.find("%s") != std::string::npos || l.find("%q") != std::string::npos ||
@@ -553,7 +568,9 @@ std::vector<LauncherInfo> supported_launchers() {
   if (xdg_data.empty()) xdg_data = path_join(home, ".local/share");
 
   std::vector<LauncherInfo> v;
-  v.push_back({"alfred", "Alfred", "macOS",
+  v.push_back({"alfred",
+               "Alfred",
+               "macOS",
                "Custom web searches, snippets and workflow keywords from "
                "Alfred.alfredpreferences (prefs.plist / info.plist).",
                "plist (XML)",
@@ -561,14 +578,18 @@ std::vector<LauncherInfo> supported_launchers() {
                 path_join(home, "Library/Preferences/com.runningwithcrayons.Alfred.plist"),
                 path_join(xdg_config, "alfred/Alfred.alfredpreferences")}});
 
-  v.push_back({"raycast", "Raycast", "macOS",
+  v.push_back({"raycast",
+               "Raycast",
+               "macOS",
                "Quicklinks (and snippets where present) from Raycast JSON exports.",
                "json",
                {path_join(home, "Library/Application Support/com.raycast.macos/quicklinks.json"),
                 path_join(home, "Library/Application Support/com.raycast.macos/preferences.json"),
                 path_join(xdg_config, "raycast/quicklinks.json")}});
 
-  v.push_back({"powertoys", "PowerToys Run", "Windows",
+  v.push_back({"powertoys",
+               "PowerToys Run",
+               "Windows",
                "Activation hotkey and custom web-search URLs from PowerToys Run "
                "settings.json.",
                "json",
@@ -576,20 +597,26 @@ std::vector<LauncherInfo> supported_launchers() {
                 path_join(appdata, "Microsoft/PowerToys/PowerToys Run/settings.json"),
                 path_join(xdg_config, "powertoys/settings.json")}});
 
-  v.push_back({"flowlauncher", "Flow Launcher", "Windows",
+  v.push_back({"flowlauncher",
+               "Flow Launcher",
+               "Windows",
                "Hotkey plus WebSearch SearchSources (name/keyword/URL) and custom "
                "query shortcuts from Flow Launcher Settings.json.",
                "json",
                {path_join(appdata, "FlowLauncher/Settings/Settings.json"),
                 path_join(xdg_config, "FlowLauncher/Settings/Settings.json")}});
 
-  v.push_back({"wox", "Wox", "Windows",
+  v.push_back({"wox",
+               "Wox",
+               "Windows",
                "Alias of Flow Launcher: same Settings.json layout (Wox predates Flow).",
                "json",
                {path_join(appdata, "Wox/Settings/Settings.json"),
                 path_join(xdg_config, "Wox/Settings/Settings.json")}});
 
-  v.push_back({"keypirinha", "Keypirinha", "Windows",
+  v.push_back({"keypirinha",
+               "Keypirinha",
+               "Windows",
                "Global hotkey plus WebSearch profiles (keyword + URL) from "
                "Keypirinha.ini / WebSearch.ini.",
                "ini",
@@ -597,43 +624,53 @@ std::vector<LauncherInfo> supported_launchers() {
                 path_join(xdg_config, "keypirinha/keypirinha.ini"),
                 path_join(home, "Keypirinha/User/Keypirinha.ini")}});
 
-  v.push_back({"listary", "Listary", "Windows",
+  v.push_back({"listary",
+               "Listary",
+               "Windows",
                "Launcher hotkey plus keyword web searches from Listary "
                "Preferences.json.",
                "json",
                {path_join(appdata, "Listary/UserData/Preferences.json"),
                 path_join(xdg_config, "listary/preferences.json")}});
 
-  v.push_back({"ulauncher", "Ulauncher", "Linux",
+  v.push_back({"ulauncher",
+               "Ulauncher",
+               "Linux",
                "Show-app hotkey, theme and shortcuts.json web shortcuts "
                "(keyword -> URL or command) from Ulauncher.",
                "json",
                {path_join(xdg_config, "ulauncher/shortcuts.json"),
                 path_join(xdg_config, "ulauncher/settings.json")}});
 
-  v.push_back({"albert", "Albert", "Linux",
-               "Hotkey plus websearch engines (trigger -> URL) from albert.conf "
-               "and engines.json.",
-               "ini+json",
-               {path_join(xdg_config, "albert/albert.conf"),
-                path_join(xdg_data, "albert/org.albert.extension.websearch/engines.json"),
-                path_join(home, ".local/share/albert/org.albert.extension.websearch/engines.json")}});
+  v.push_back(
+      {"albert",
+       "Albert",
+       "Linux",
+       "Hotkey plus websearch engines (trigger -> URL) from albert.conf "
+       "and engines.json.",
+       "ini+json",
+       {path_join(xdg_config, "albert/albert.conf"),
+        path_join(xdg_data, "albert/org.albert.extension.websearch/engines.json"),
+        path_join(home, ".local/share/albert/org.albert.extension.websearch/engines.json")}});
 
-  v.push_back({"krunner", "KRunner / KDE Web Shortcuts", "Linux",
+  v.push_back({"krunner",
+               "KRunner / KDE Web Shortcuts",
+               "Linux",
                "Custom web shortcuts (keyword -> URL with \\{@\\} placeholder) from "
                "kuriikwsfilterrc / krunnerrc.",
                "ini",
-               {path_join(xdg_config, "kuriikwsfilterrc"),
-                path_join(xdg_config, "krunnerrc"),
+               {path_join(xdg_config, "kuriikwsfilterrc"), path_join(xdg_config, "krunnerrc"),
                 path_join(home, ".kde/share/config/kuriikwsfilterrc")}});
 
-  v.push_back({"rofi", "Rofi", "Linux",
-               "Theme (dark/light) and any embedded search URLs from config.rasi. "
-               "Note: the Rofi summon key usually lives in the window-manager "
-               "config, not here.",
-               "rasi",
-               {path_join(xdg_config, "rofi/config.rasi"),
-                path_join(home, ".config/rofi/config.rasi")}});
+  v.push_back(
+      {"rofi",
+       "Rofi",
+       "Linux",
+       "Theme (dark/light) and any embedded search URLs from config.rasi. "
+       "Note: the Rofi summon key usually lives in the window-manager "
+       "config, not here.",
+       "rasi",
+       {path_join(xdg_config, "rofi/config.rasi"), path_join(home, ".config/rofi/config.rasi")}});
 
   return v;
 }
@@ -689,14 +726,14 @@ std::string detect_id_for_path(const std::string& path, const std::string& conte
   if (has("ulauncher")) return "ulauncher";
   if (has("albert")) return "albert";
   if (has("krunner") || has("kuriikwsfilterrc")) return "krunner";
-  if (has("rofi") || (lp.size() >= 5 && lp.compare(lp.size() - 5, 5, ".rasi") == 0))
-    return "rofi";
+  if (has("rofi") || (lp.size() >= 5 && lp.compare(lp.size() - 5, 5, ".rasi") == 0)) return "rofi";
   // Content sniffing.
   std::string lc = lower(content.substr(0, 4000));
   if (lc.find("alfred") != std::string::npos && lc.find("<plist") != std::string::npos)
     return "alfred";
   if (lc.find("searchsources") != std::string::npos) return "flowlauncher";
-  if (lc.find("shortcuts.json") != std::string::npos || lc.find("hotkey-show-app") != std::string::npos)
+  if (lc.find("shortcuts.json") != std::string::npos ||
+      lc.find("hotkey-show-app") != std::string::npos)
     return "ulauncher";
   if (lc.find("open_powerlauncher") != std::string::npos ||
       lc.find("powerlauncher") != std::string::npos)
@@ -786,7 +823,7 @@ ImportedSettings parse_powertoys(const std::string& text, const std::string& hin
   }
   if (!s.hotkey.has) {
     std::string hk_raw;
-    const char* keys[] = {"activation_shortcut", "hotkey",   "shortcut",
+    const char* keys[] = {"activation_shortcut", "hotkey",      "shortcut",
                           "toggle_hotkey",       "show_hotkey", nullptr};
     for (auto** k = keys; *k; ++k) {
       if (json_string_for_key(text, *k, hk_raw) && !hk_raw.empty()) {
@@ -846,8 +883,7 @@ ImportedSettings parse_powertoys(const std::string& text, const std::string& hin
     s.searches.push_back(std::move(w));
   }
   if (s.searches.empty() && !s.hotkey.has)
-    warnings.push_back("PowerToys file parsed but no hotkey or web searches found (" + hint +
-                       ").");
+    warnings.push_back("PowerToys file parsed but no hotkey or web searches found (" + hint + ").");
   (void)hint;
   return s;
 }
@@ -939,7 +975,8 @@ ImportedSettings parse_flow(const std::string& text, const std::string& launcher
 }
 
 ImportedSettings parse_ini_searches(const std::string& text, const std::string& launcher_id,
-                                    const std::string& display, std::vector<std::string>& warnings) {
+                                    const std::string& display,
+                                    std::vector<std::string>& warnings) {
   ImportedSettings s;
   s.source_id = launcher_id;
   s.source_name = display;
@@ -1036,8 +1073,8 @@ ImportedSettings parse_listary(const std::string& text, std::vector<std::string>
   s.source_id = "listary";
   s.source_name = "Listary";
   std::string hk;
-  const char* hk_keys[] = {"launcherHotkey", "hotkey",     "showHotkey", "activationHotkey",
-                           "toggleHotkey",   "hotKey",     nullptr};
+  const char* hk_keys[] = {"launcherHotkey", "hotkey", "showHotkey", "activationHotkey",
+                           "toggleHotkey",   "hotKey", nullptr};
   for (auto** k = hk_keys; *k; ++k) {
     if (json_string_for_key(text, *k, hk) && !hk.empty()) {
       ImportHotkey h;
@@ -1240,8 +1277,9 @@ ImportedSettings parse_plist(const std::string& text, std::vector<std::string>& 
     }
   }
   if (found == 0 && s.searches.empty() && s.snippets.empty())
-    warnings.push_back("No Alfred keywords/URLs found. Expected prefs.plist with custom "
-                       "searches or a workflow info.plist.");
+    warnings.push_back(
+        "No Alfred keywords/URLs found. Expected prefs.plist with custom "
+        "searches or a workflow info.plist.");
   return s;
 }
 
@@ -1302,7 +1340,8 @@ ImportedSettings parse_raycast(const std::string& text, std::vector<std::string>
     }
   };
   if (!arr.empty()) {
-    for (auto& obj : json_object_array(arr)) handle_obj(obj);
+    for (auto& obj : json_object_array(arr))
+      handle_obj(obj);
   } else {
     // Single object file?
     if (text.find('{') != std::string::npos && text.find("http") != std::string::npos)
@@ -1342,8 +1381,9 @@ ImportedSettings parse_raycast(const std::string& text, std::vector<std::string>
     }
   }
   if (s.searches.empty() && s.quicklinks.empty() && s.snippets.empty())
-    warnings.push_back("No Raycast quicklinks found. Export Raycast quicklinks as JSON "
-                       "(array of {name, link}) and pass with --from.");
+    warnings.push_back(
+        "No Raycast quicklinks found. Export Raycast quicklinks as JSON "
+        "(array of {name, link}) and pass with --from.");
   return s;
 }
 
@@ -1353,8 +1393,8 @@ ImportedSettings parse_ulauncher(const std::string& text, const std::string& hin
   s.source_id = "ulauncher";
   s.source_name = "Ulauncher";
   std::string t = trim(text);
-  bool looks_shortcuts = hint.find("shortcut") != std::string::npos ||
-                         text.find("\"keyword\"") != std::string::npos;
+  bool looks_shortcuts =
+      hint.find("shortcut") != std::string::npos || text.find("\"keyword\"") != std::string::npos;
   std::string arr;
   if (!t.empty() && t.front() == '[')
     arr = t;
@@ -1425,8 +1465,9 @@ ImportedSettings parse_ulauncher(const std::string& text, const std::string& hin
     }
   }
   if (s.searches.empty() && s.quicklinks.empty() && !s.hotkey.has)
-    warnings.push_back("No Ulauncher shortcuts found. Expected shortcuts.json array with "
-                       "{name, keyword, cmd}.");
+    warnings.push_back(
+        "No Ulauncher shortcuts found. Expected shortcuts.json array with "
+        "{name, keyword, cmd}.");
   return s;
 }
 
@@ -1584,8 +1625,9 @@ ImportedSettings parse_generic_json(const std::string& text, std::vector<std::st
     }
   }
   if (s.searches.empty() && s.quicklinks.empty() && !s.hotkey.has)
-    warnings.push_back("Generic JSON scan found nothing importable (no hotkey, URLs, or "
-                       "shortcut arrays).");
+    warnings.push_back(
+        "Generic JSON scan found nothing importable (no hotkey, URLs, or "
+        "shortcut arrays).");
   return s;
 }
 
@@ -1640,8 +1682,8 @@ ImportedSettings parse_directory(const std::string& launcher_id, const std::stri
     if (!it->is_regular_file(ec)) continue;
     auto p = it->path();
     auto ext = lower(p.extension().string());
-    if (ext != ".plist" && ext != ".json" && ext != ".ini" && ext != ".rasi" &&
-        ext != ".conf" && ext != ".rc") {
+    if (ext != ".plist" && ext != ".json" && ext != ".ini" && ext != ".rasi" && ext != ".conf" &&
+        ext != ".rc") {
       // Still allow files without extension inside Alfred bundles? Skip others.
       auto name = lower(p.filename().string());
       if (name != "prefs" && name.find("pref") == std::string::npos &&
@@ -1659,7 +1701,8 @@ ImportedSettings parse_directory(const std::string& launcher_id, const std::stri
     if (!read_file_all(std::string(up.begin(), up.end()), text)) continue;
     std::vector<std::string> w;
     ImportedSettings one = parse_text(merged.source_id, text, std::string(up.begin(), up.end()), w);
-    for (auto& x : w) warnings.push_back(x);
+    for (auto& x : w)
+      warnings.push_back(x);
     // Merge.
     merged.searches.insert(merged.searches.end(), one.searches.begin(), one.searches.end());
     merged.snippets.insert(merged.snippets.end(), one.snippets.begin(), one.snippets.end());
@@ -1690,8 +1733,8 @@ bool parse_file_auto(const std::string& path, ImportedSettings& out, std::string
     std::string guess = detect_id_for_path(path, "");
     if (guess == "auto") {
       // Look inside for characteristic files.
-      for (auto it = fs::directory_iterator(fs::path(path), ec);
-           it != fs::directory_iterator(); it.increment(ec)) {
+      for (auto it = fs::directory_iterator(fs::path(path), ec); it != fs::directory_iterator();
+           it.increment(ec)) {
         if (ec) break;
         std::string n = lower(it->path().filename().string());
         if (n.find("alfred") != std::string::npos) {
@@ -1742,7 +1785,8 @@ bool parse_file_auto(const std::string& path, ImportedSettings& out, std::string
 ImportCounts apply_settings(Config& cfg, const ImportedSettings& in, const ImportOptions& opts,
                             std::vector<std::string>& warnings) {
   ImportCounts c;
-  for (auto& w : in.warnings) warnings.push_back(w);
+  for (auto& w : in.warnings)
+    warnings.push_back(w);
   auto sanitize_macro_key = [](std::string k) {
     k = lower(trim(k));
     std::string o;
@@ -1782,7 +1826,8 @@ ImportCounts apply_settings(Config& cfg, const ImportedSettings& in, const Impor
         ++c.macros_overwritten;
       } else {
         ++c.macros_skipped;
-        warnings.push_back("Macro '" + key + "' already exists; kept existing (use "
+        warnings.push_back("Macro '" + key +
+                           "' already exists; kept existing (use "
                            "--overwrite to replace).");
       }
       if (opts.include_quicklinks) {
@@ -1810,7 +1855,8 @@ ImportCounts apply_settings(Config& cfg, const ImportedSettings& in, const Impor
       bool mirrored = false;
       if (opts.include_searches) {
         for (auto& w : in.searches) {
-          std::string wk = w.keyword.empty() ? slugify_keyword(w.name) : sanitize_macro_key(w.keyword);
+          std::string wk =
+              w.keyword.empty() ? slugify_keyword(w.name) : sanitize_macro_key(w.keyword);
           if (wk == key && normalize_url_template(w.url) == tpl_raw) {
             mirrored = true;
             break;
@@ -1842,7 +1888,8 @@ ImportCounts apply_settings(Config& cfg, const ImportedSettings& in, const Impor
   if (opts.include_snippets) {
     // Build lowercase index of existing triggers for case-insensitive compare.
     std::map<std::string, std::string> existing;  // lower -> actual key
-    for (auto& [k, v] : cfg.snippets.items) existing[lower(k)] = k;
+    for (auto& [k, v] : cfg.snippets.items)
+      existing[lower(k)] = k;
     for (auto& sn : in.snippets) {
       if (sn.trigger.empty() || sn.body.empty()) {
         warnings.push_back("Skipped snippet with empty trigger/body.");
@@ -1997,8 +2044,10 @@ std::string serialize_config(const Config& cfg) {
   if (!cfg.scopes.empty()) {
     os << "\nscopes:\n";
     std::map<std::string, std::vector<std::string>> sorted;
-    for (auto& [k, v] : cfg.scopes) sorted[k] = v;
-    for (auto& [k, v] : sorted) emit_str_list(os, k.c_str(), v, 2);
+    for (auto& [k, v] : cfg.scopes)
+      sorted[k] = v;
+    for (auto& [k, v] : sorted)
+      emit_str_list(os, k.c_str(), v, 2);
   }
   if (!cfg.custom_metadata.empty()) {
     os << "\n";
@@ -2100,9 +2149,9 @@ std::string serialize_config(const Config& cfg) {
   os << "  global_expansion: " << (cfg.snippets.global_expansion ? "true" : "false") << "\n";
   if (!cfg.snippets.items.empty()) {
     os << "  items:\n";
-    std::map<std::string, std::string> sorted(cfg.snippets.items.begin(),
-                                              cfg.snippets.items.end());
-    for (auto& [k, v] : sorted) os << "    " << ykey(k) << ": " << yq(v) << "\n";
+    std::map<std::string, std::string> sorted(cfg.snippets.items.begin(), cfg.snippets.items.end());
+    for (auto& [k, v] : sorted)
+      os << "    " << ykey(k) << ": " << yq(v) << "\n";
   }
   if (!cfg.workflows.empty()) {
     os << "\nworkflows:\n";
@@ -2110,13 +2159,15 @@ std::string serialize_config(const Config& cfg) {
                                                            cfg.workflows.end());
     for (auto& [k, v] : sorted) {
       os << "  " << ykey(k) << ":\n";
-      for (auto& st : v) os << "    - " << yq(st) << "\n";
+      for (auto& st : v)
+        os << "    - " << yq(st) << "\n";
     }
   }
   if (!cfg.quicklinks.empty()) {
     os << "\nquicklinks:\n";
     std::map<std::string, std::string> sorted(cfg.quicklinks.begin(), cfg.quicklinks.end());
-    for (auto& [k, v] : sorted) os << "  " << ykey(k) << ": " << yq(v) << "\n";
+    for (auto& [k, v] : sorted)
+      os << "  " << ykey(k) << ": " << yq(v) << "\n";
   }
   if (!cfg.app_actions.empty()) {
     os << "\napp_actions:\n";
@@ -2124,7 +2175,8 @@ std::string serialize_config(const Config& cfg) {
                                                            cfg.app_actions.end());
     for (auto& [k, v] : sorted) {
       os << "  " << ykey(k) << ":\n";
-      for (auto& st : v) os << "    - " << yq(st) << "\n";
+      for (auto& st : v)
+        os << "    - " << yq(st) << "\n";
     }
   }
   // Trailing newline keeps the file POSIX-clean; the last section above is

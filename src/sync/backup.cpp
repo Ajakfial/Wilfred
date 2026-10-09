@@ -45,7 +45,8 @@ struct BackupSha256 {
     for (int i = 0; i < 16; ++i)
       w[i] = (static_cast<std::uint32_t>(p[i * 4]) << 24) |
              (static_cast<std::uint32_t>(p[i * 4 + 1]) << 16) |
-             (static_cast<std::uint32_t>(p[i * 4 + 2]) << 8) | static_cast<std::uint32_t>(p[i * 4 + 3]);
+             (static_cast<std::uint32_t>(p[i * 4 + 2]) << 8) |
+             static_cast<std::uint32_t>(p[i * 4 + 3]);
     for (int i = 16; i < 64; ++i) {
       auto s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
       auto s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
@@ -59,9 +60,23 @@ struct BackupSha256 {
       auto S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
       auto maj = (a & b) ^ (a & c) ^ (b & c);
       auto t2 = S0 + maj;
-      hh = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2;
+      hh = g;
+      g = f;
+      f = e;
+      e = d + t1;
+      d = c;
+      c = b;
+      b = a;
+      a = t1 + t2;
     }
-    h[0] += a; h[1] += b; h[2] += c; h[3] += d; h[4] += e; h[5] += f; h[6] += g; h[7] += hh;
+    h[0] += a;
+    h[1] += b;
+    h[2] += c;
+    h[3] += d;
+    h[4] += e;
+    h[5] += f;
+    h[6] += g;
+    h[7] += hh;
   }
   void update(const unsigned char* data, std::size_t n) {
     total += n;
@@ -69,8 +84,13 @@ struct BackupSha256 {
       std::size_t take = 64 - buffered;
       if (take > n) take = n;
       std::memcpy(buf + buffered, data, take);
-      buffered += take; data += take; n -= take;
-      if (buffered == 64) { block(buf); buffered = 0; }
+      buffered += take;
+      data += take;
+      n -= take;
+      if (buffered == 64) {
+        block(buf);
+        buffered = 0;
+      }
     }
   }
   void update(const std::string& s) {
@@ -88,9 +108,13 @@ struct BackupSha256 {
     update(pad, first);
     for (int i = 0; i < 8; ++i) {
       buf[buffered++] = static_cast<unsigned char>((bits >> ((7 - i) * 8)) & 0xff);
-      if (buffered == 64) { block(buf); buffered = 0; }
+      if (buffered == 64) {
+        block(buf);
+        buffered = 0;
+      }
     }
-    (void)saved; (void)saved_buf;
+    (void)saved;
+    (void)saved_buf;
     std::string o(32, '\0');
     for (int i = 0; i < 8; ++i) {
       o[i * 4] = static_cast<char>((h[i] >> 24) & 0xff);
@@ -111,7 +135,8 @@ static std::string backup_sha256(const std::string& s) {
 static std::string derive_backup_key(const std::string& password, const std::string& salt,
                                      std::uint32_t iters) {
   std::string key = backup_sha256(password + salt);
-  for (std::uint32_t i = 1; i < iters; ++i) key = backup_sha256(key + password + salt);
+  for (std::uint32_t i = 1; i < iters; ++i)
+    key = backup_sha256(key + password + salt);
   return key;
 }
 
@@ -119,7 +144,8 @@ static void xor_keystream(std::string& data, const std::string& key, const std::
   std::uint64_t blocks = (data.size() + 31) / 32;
   for (std::uint64_t b = 0; b < blocks; ++b) {
     std::string ctr(8, '\0');
-    for (int i = 0; i < 8; ++i) ctr[i] = static_cast<char>((b >> (i * 8)) & 0xff);
+    for (int i = 0; i < 8; ++i)
+      ctr[i] = static_cast<char>((b >> (i * 8)) & 0xff);
     auto ks = backup_sha256(key + salt + ctr);
     std::size_t off = static_cast<std::size_t>(b * 32);
     for (std::size_t i = 0; i < 32 && off + i < data.size(); ++i)
@@ -131,9 +157,11 @@ static std::string random_salt() {
   std::string s(kSaltLen, '\0');
   std::random_device rd;
   auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  std::uint64_t seed = static_cast<std::uint64_t>(now) ^ (static_cast<std::uint64_t>(rd()) << 32 | rd());
+  std::uint64_t seed =
+      static_cast<std::uint64_t>(now) ^ (static_cast<std::uint64_t>(rd()) << 32 | rd());
   std::mt19937_64 rng(seed);
-  for (auto& c : s) c = static_cast<char>(rng() & 0xff);
+  for (auto& c : s)
+    c = static_cast<char>(rng() & 0xff);
   return s;
 }
 
@@ -151,7 +179,8 @@ static void put_u64(std::string& o, std::uint64_t v) {
 
 static bool get_u32(const std::string& s, std::size_t& i, std::uint32_t& v) {
   if (i + 4 > s.size()) return false;
-  v = static_cast<std::uint8_t>(s[i]) | (static_cast<std::uint32_t>(static_cast<std::uint8_t>(s[i + 1])) << 8) |
+  v = static_cast<std::uint8_t>(s[i]) |
+      (static_cast<std::uint32_t>(static_cast<std::uint8_t>(s[i + 1])) << 8) |
       (static_cast<std::uint32_t>(static_cast<std::uint8_t>(s[i + 2])) << 16) |
       (static_cast<std::uint32_t>(static_cast<std::uint8_t>(s[i + 3])) << 24);
   i += 4;
@@ -165,7 +194,8 @@ static bool get_u64(const std::string& s, std::size_t& i, std::uint64_t& v) {
   return true;
 }
 
-bool pack_backup_archive(const std::vector<BackupEntry>& files, std::string& out, std::string& err) {
+bool pack_backup_archive(const std::vector<BackupEntry>& files, std::string& out,
+                         std::string& err) {
   out.clear();
   out.append(kMagic, 7);
   put_u32(out, static_cast<std::uint32_t>(files.size()));
@@ -180,7 +210,8 @@ bool pack_backup_archive(const std::vector<BackupEntry>& files, std::string& out
   return true;
 }
 
-bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& files, std::string& err) {
+bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& files,
+                           std::string& err) {
   files.clear();
   if (blob.size() < 11 || blob.compare(0, 7, kMagic) != 0) {
     err = "not a Wilfred backup archive";
@@ -222,7 +253,8 @@ bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& fi
   return true;
 }
 
-static bool add_file(std::vector<BackupEntry>& files, const std::string& disk, const std::string& name) {
+static bool add_file(std::vector<BackupEntry>& files, const std::string& disk,
+                     const std::string& name) {
   if (!file_exists(disk)) return true;
   BackupEntry e;
   e.name = name;
@@ -231,12 +263,13 @@ static bool add_file(std::vector<BackupEntry>& files, const std::string& disk, c
   return true;
 }
 
-static bool add_tree(std::vector<BackupEntry>& files, const std::string& dir, const std::string& prefix) {
+static bool add_tree(std::vector<BackupEntry>& files, const std::string& dir,
+                     const std::string& prefix) {
   std::error_code ec;
   fs::path root = fs::u8path(dir);
   if (!fs::exists(root, ec)) return true;
-  for (auto it = fs::recursive_directory_iterator(root, ec); it != fs::recursive_directory_iterator();
-       it.increment(ec)) {
+  for (auto it = fs::recursive_directory_iterator(root, ec);
+       it != fs::recursive_directory_iterator(); it.increment(ec)) {
     if (ec || !it->is_regular_file(ec)) continue;
     auto rel = fs::relative(it->path(), root, ec);
     if (ec) continue;
@@ -257,7 +290,8 @@ std::string default_backup_path() {
   return path_join(dir, "wilfred.wilfbk");
 }
 
-bool create_backup(const Config& cfg, const std::string& dest_path, bool include_index, std::string& err) {
+bool create_backup(const Config& cfg, const std::string& dest_path, bool include_index,
+                   std::string& err) {
   std::vector<BackupEntry> files;
   auto cfg_path = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
   add_file(files, cfg_path, "wilfred.yml");
@@ -286,7 +320,8 @@ bool resolve_sync_password(const Config& cfg, std::string& out, std::string& err
       err = "unable to read sync.key_file";
       return false;
     }
-    while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+      out.pop_back();
     if (out.empty()) {
       err = "sync.key_file is empty";
       return false;

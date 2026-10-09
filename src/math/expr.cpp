@@ -14,7 +14,8 @@ struct Lexer {
   char peek() const { return i < s.size() ? s[i] : 0; }
   char get() { return i < s.size() ? s[i++] : 0; }
   void skip() {
-    while (peek() == ' ' || peek() == '\t') get();
+    while (peek() == ' ' || peek() == '\t')
+      get();
   }
 };
 
@@ -37,7 +38,8 @@ struct Parser {
     n.reserve(e.size());
     int depth = 0;
     for (std::size_t i = 0; i < e.size(); ++i) {
-      if (e[i] == '(') ++depth;
+      if (e[i] == '(')
+        ++depth;
       else if (e[i] == ')') {
         if (depth > 0) --depth;
       }
@@ -200,8 +202,9 @@ struct Parser {
     if (cur.k == Tk::Id) {
       auto id = cur.id;
       next();
-      static const std::unordered_map<std::string, double> k = {
-          {"pi", 3.14159265358979323846}, {"e", 2.71828182845904523536}, {"tau", 6.283185307179586}};
+      static const std::unordered_map<std::string, double> k = {{"pi", 3.14159265358979323846},
+                                                                {"e", 2.71828182845904523536},
+                                                                {"tau", 6.283185307179586}};
       auto it = k.find(id);
       if (it != k.end()) return it->second;
       if (!eat(Tk::LParen)) {
@@ -236,13 +239,13 @@ struct Parser {
       if (id == "min") return two ? std::min(a, b) : a;
       if (id == "max") return two ? std::max(a, b) : a;
       if (id == "pow") return std::pow(a, two ? b : 2);
-  if (id == "frac" || id == "div") {
-    if (!two || b == 0) {
-      fail("invalid fraction");
-      return 0;
-    }
-    return a / b;
-  }
+      if (id == "frac" || id == "div") {
+        if (!two || b == 0) {
+          fail("invalid fraction");
+          return 0;
+        }
+        return a / b;
+      }
       if (id == "deg") return a * 3.14159265358979323846 / 180.0;
       if (id == "rad") return a * 180.0 / 3.14159265358979323846;
       fail("unknown function: " + id);
