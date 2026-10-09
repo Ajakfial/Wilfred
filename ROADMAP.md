@@ -70,7 +70,9 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
 
 * ~~**Run tests in CI on every PR.**~~ Done —
   `.github/workflows/tests.yml` builds + runs `ctest` on Windows, Linux
-  and macOS for every PR and `main` push (BSD stays on nightly — VM
+  and macOS for every PR and `main` push, compile-gates the Android
+  (debug APK) and iOS (unsigned simulator) builds so mobile no longer
+  breaks only on release tags (BSD stays on nightly — VM
   runners are slow), plus an overlay job (`typecheck`, bundle build, and
   a stale-`dist/` check so TS changes always ship their bundle).
 * ~~**Enforce formatting/linting in CI.**~~ Done —

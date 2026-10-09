@@ -1,8 +1,10 @@
 name: Tests
 
 # Runs the unit tests on every PR, plus the overlay typecheck/bundle check.
-# BSD coverage stays on the nightly workflow (VM runners are slow); the
-# release workflow builds every platform on tags.
+# Mobile (Android/iOS) compile gates run here too: both only built on
+# release tags before, which let a broken iOS compile and a broken Android
+# link ship in v35.0.0. BSD coverage stays on the nightly workflow (VM
+# runners are slow); the release workflow builds every platform on tags.
 
 on:
   pull_request:
@@ -92,4 +94,108 @@ jobs:
           if ! git diff --exit-code -- dist/; then
             echo "::error::ui/overlay/dist/ is stale — run 'npm run build' in ui/overlay and commit it."
             exit 1
+          fi
+
+  android:
+    # Compile gate: the NDK/JNI build only ran on release tags before,
+    # so a broken Android link shipped in v35.0.0. Debug APK (auto-signed
+    # with the debug key — no secrets needed). SDK/NDK versions mirror
+    # release.yml; no artifacts are staged for PRs.
+    name: Build android (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${HOME}/android-sdk"
+          mkdir -p "${SDK_ROOT}/cmdline-tools"
+          cd /tmp
+          curl -fsSLO https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          rm -rf "${SDK_ROOT}/cmdline-tools/latest"
+          unzip -q -o commandlinetools-linux-11076708_latest.zip -d "${SDK_ROOT}/cmdline-tools"
+          mv "${SDK_ROOT}/cmdline-tools/cmdline-tools" "${SDK_ROOT}/cmdline-tools/latest"
+          rm -f commandlinetools-linux-11076708_latest.zip
+          {
+            echo "ANDROID_HOME=${SDK_ROOT}"
+            echo "ANDROID_SDK_ROOT=${SDK_ROOT}"
+            echo "ANDROID_NDK_HOME=${SDK_ROOT}/ndk/26.3.11579264"
+          } >> "${GITHUB_ENV}"
+          echo "${SDK_ROOT}/cmdline-tools/latest/bin" >> "${GITHUB_PATH}"
+          echo "${SDK_ROOT}/platform-tools" >> "${GITHUB_PATH}"
+          export PATH="${SDK_ROOT}/cmdline-tools/latest/bin:${PATH}"
+          sdkmanager --version
+
+      - name: Install Android packages
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build debug APK
+        run: |
+          set -euo pipefail
+          bash ./scripts/build-android.sh --debug --apk 2>&1 | tee "${GITHUB_WORKSPACE}/android-build.log"
+          find android/app/build/outputs/apk -name '*.apk' || true
+
+      - name: Surface Kotlin errors
+        if: failure()
+        run: |
+          LOG="${GITHUB_WORKSPACE}/android-build.log"
+          if [[ -f "${LOG}" ]]; then
+            echo "--- Kotlin compiler errors ---"
+            grep -E "^e: |error: " "${LOG}" | head -n 60 || true
+            echo "--- end ---"
+          else
+            echo "No android-build.log captured."
+          fi
+
+  ios:
+    # Compile gate: the Xcode build only ran on release tags before, so a
+    # broken iOS compile shipped in v35.0.0. Unsigned simulator build needs
+    # no signing and no version overrides.
+    name: Build ios (simulator)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | head -n 20 || true
+
+      - name: Build app (simulator, unsigned)
+        run: |
+          set -euo pipefail
+          bash ./scripts/build-ios.sh --simulator 2>&1 | tee "${GITHUB_WORKSPACE}/ios-build.log"
+          find ios/build/DerivedData/Build/Products -maxdepth 2 -name '*.app' || true
+
+      - name: Surface Swift errors
+        if: failure()
+        run: |
+          LOG="${GITHUB_WORKSPACE}/ios-build.log"
+          if [[ -f "${LOG}" ]]; then
+            echo "--- Swift compiler errors ---"
+            grep -E "error: " "${LOG}" | head -n 60 || true
+            echo "--- end ---"
+          else
+            echo "No ios-build.log captured."
           fi
