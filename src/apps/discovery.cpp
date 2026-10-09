@@ -33,8 +33,14 @@ void index_applications(IndexEngine& engine) {
   engine.bump_generation();
 }
 
-bool launch_path(const std::string& path) { return native_launch(path); }
-bool reveal_path(const std::string& path) { return native_reveal(path); }
-bool open_url(const std::string& url) { return native_open_url(url); }
+bool launch_path(const std::string& path) {
+  return native_launch(path);
+}
+bool reveal_path(const std::string& path) {
+  return native_reveal(path);
+}
+bool open_url(const std::string& url) {
+  return native_open_url(url);
+}
 
 }  // namespace wilfred

@@ -60,7 +60,8 @@ std::string encode_response(const IpcResponse& r) {
       for (auto& a : it.actions) {
         if (!af) os << ',';
         af = false;
-        os << "{\"id\":\"" << json_escape(a.id) << "\",\"label\":\"" << json_escape(a.label) << "\"}";
+        os << "{\"id\":\"" << json_escape(a.id) << "\",\"label\":\"" << json_escape(a.label)
+           << "\"}";
       }
       os << "]";
     }

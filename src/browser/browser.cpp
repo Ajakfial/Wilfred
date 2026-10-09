@@ -7,9 +7,15 @@
 
 namespace wilfred {
 
-std::string default_browser_id() { return native_default_browser_id(); }
-std::string default_browser_executable() { return native_default_browser_executable(); }
-std::vector<BrowserInfo> list_browsers() { return native_list_browsers(); }
+std::string default_browser_id() {
+  return native_default_browser_id();
+}
+std::string default_browser_executable() {
+  return native_default_browser_executable();
+}
+std::vector<BrowserInfo> list_browsers() {
+  return native_list_browsers();
+}
 
 std::string web_search_url(const std::string& tmpl, const std::string& query) {
   std::string enc;
@@ -31,6 +37,8 @@ std::string web_search_url(const std::string& tmpl, const std::string& query) {
   return out;
 }
 
-bool open_in_default_browser(const std::string& url) { return native_open_url(url); }
+bool open_in_default_browser(const std::string& url) {
+  return native_open_url(url);
+}
 
 }  // namespace wilfred

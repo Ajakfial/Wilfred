@@ -8,7 +8,9 @@
 
 namespace wilfred {
 
-std::string fold_search(std::string_view s) { return to_lower_utf8(s); }
+std::string fold_search(std::string_view s) {
+  return to_lower_utf8(s);
+}
 
 bool looks_binary(std::string_view bytes) {
   if (bytes.empty()) return false;
@@ -25,10 +27,10 @@ bool looks_binary(std::string_view bytes) {
 }
 
 bool content_stopword(std::string_view tok) {
-  static const char* w[] = {"the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
-                            "her", "was", "one", "our", "out", "has", "his", "how", "its", "may",
-                            "from", "this", "that", "with", "have", "been", "were", "they", "will",
-                            "your", "what", "when", "which", nullptr};
+  static const char* w[] = {"the",  "and",  "for",  "are",  "but",  "not",   "you",  "all",  "can",
+                            "had",  "her",  "was",  "one",  "our",  "out",   "has",  "his",  "how",
+                            "its",  "may",  "from", "this", "that", "with",  "have", "been", "were",
+                            "they", "will", "your", "what", "when", "which", nullptr};
   for (auto** p = w; *p; ++p)
     if (tok == *p) return true;
   return tok.size() < 2;
@@ -61,7 +63,8 @@ std::string content_snippet(std::string_view text, std::string_view query, std::
   std::size_t pos = q.empty() ? 0 : folded.find(q);
   if (pos == std::string::npos) pos = 0;
   std::size_t start = pos > 40 ? pos - 40 : 0;
-  while (start < text.size() && start > 0 && text[start] != '\n' && pos - start < 80) --start;
+  while (start < text.size() && start > 0 && text[start] != '\n' && pos - start < 80)
+    --start;
   if (start < text.size() && text[start] == '\n') ++start;
   std::string s(text.substr(start, std::min(max_len, text.size() - start)));
   for (char& c : s)
@@ -99,8 +102,7 @@ std::vector<std::string> tokenize_name(std::string_view name) {
     unsigned char c = static_cast<unsigned char>(name[i]);
     bool alnum = std::isalnum(c) != 0;
     if (alnum) {
-      if (!cur.empty() && std::islower(static_cast<unsigned char>(cur.back())) &&
-          std::isupper(c)) {
+      if (!cur.empty() && std::islower(static_cast<unsigned char>(cur.back())) && std::isupper(c)) {
         flush();
       }
       cur.push_back(static_cast<char>(c));
@@ -127,7 +129,8 @@ std::vector<std::string> trigrams(std::string_view folded) {
   s.push_back(' ');
   if (s.size() < 3) return t;
   t.reserve(s.size() - 2);
-  for (std::size_t i = 0; i + 2 < s.size(); ++i) t.push_back(s.substr(i, 3));
+  for (std::size_t i = 0; i + 2 < s.size(); ++i)
+    t.push_back(s.substr(i, 3));
   return t;
 }
 

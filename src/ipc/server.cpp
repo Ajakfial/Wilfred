@@ -31,7 +31,9 @@ struct IpcServer::Impl {
 };
 
 IpcServer::IpcServer() : impl_(std::make_unique<Impl>()) {}
-IpcServer::~IpcServer() { stop(); }
+IpcServer::~IpcServer() {
+  stop();
+}
 
 #ifdef _WIN32
 void IpcServer::Impl::loop() {
@@ -53,7 +55,8 @@ void IpcServer::Impl::loop() {
     if (ReadFile(pipe, buf, sizeof(buf) - 1, &n, nullptr) && n > 0) {
       buf[n] = 0;
       std::string line(buf, n);
-      while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+      while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
+        line.pop_back();
       IpcRequest req;
       IpcResponse resp;
       if (!decode_request(line, req)) {
@@ -90,7 +93,8 @@ void IpcServer::Impl::loop() {
     if (n > 0) {
       buf[n] = 0;
       std::string line(buf, static_cast<std::size_t>(n));
-      while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+      while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
+        line.pop_back();
       IpcRequest req;
       IpcResponse resp;
       if (!decode_request(line, req)) {

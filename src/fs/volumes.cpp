@@ -4,6 +4,8 @@
 
 namespace wilfred {
 
-std::vector<VolumeInfo> list_volumes() { return native_list_volumes(); }
+std::vector<VolumeInfo> list_volumes() {
+  return native_list_volumes();
+}
 
 }  // namespace wilfred

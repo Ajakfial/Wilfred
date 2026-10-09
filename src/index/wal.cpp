@@ -77,7 +77,9 @@ static bool read_record(FILE* f, IndexRecord& r) {
   return true;
 }
 
-WriteAheadLog::~WriteAheadLog() { close(); }
+WriteAheadLog::~WriteAheadLog() {
+  close();
+}
 
 bool WriteAheadLog::open(const std::string& path) {
   close();

@@ -21,7 +21,9 @@ namespace wilfred {
 namespace fs = std::filesystem;
 
 IndexEngine::IndexEngine() = default;
-IndexEngine::~IndexEngine() { close(); }
+IndexEngine::~IndexEngine() {
+  close();
+}
 
 bool IndexEngine::open(const std::string& dir, const Config& cfg) {
   cfg_ = cfg;
@@ -148,7 +150,8 @@ void IndexEngine::compact() {
   persist_snapshot();
 }
 
-static IndexRecord record_from_stat(const std::string& path, const FileStat& st, const Config& cfg) {
+static IndexRecord record_from_stat(const std::string& path, const FileStat& st,
+                                    const Config& cfg) {
   IndexRecord rec;
   rec.size = st.size;
   rec.ctime = st.ctime;
@@ -307,14 +310,15 @@ void IndexEngine::scan_roots(const std::vector<std::string>& extra) {
   if (roots.empty()) roots = default_index_roots();
   roots.insert(roots.end(), extra.begin(), extra.end());
 
-  std::size_t workers = cfg_.index.workers > 0
-                            ? static_cast<std::size_t>(cfg_.index.workers)
-                            : adaptive_index_workers(cfg_.index.cpu_percent_limit,
-                                                     static_cast<std::size_t>(cfg_.index.memory_limit_mb));
+  std::size_t workers =
+      cfg_.index.workers > 0
+          ? static_cast<std::size_t>(cfg_.index.workers)
+          : adaptive_index_workers(cfg_.index.cpu_percent_limit,
+                                   static_cast<std::size_t>(cfg_.index.memory_limit_mb));
   ThreadPool pool(workers);
   std::atomic<std::uint64_t> seen{0};
-  const std::size_t bound = std::max<std::size_t>(
-      64, static_cast<std::size_t>(std::max(1, cfg_.index.batch_size)) * 4);
+  const std::size_t bound =
+      std::max<std::size_t>(64, static_cast<std::size_t>(std::max(1, cfg_.index.batch_size)) * 4);
 
   for (auto& root : roots) {
     if (cancel_) break;
@@ -351,8 +355,7 @@ void IndexEngine::scan_roots(const std::vector<std::string>& extra) {
   {
     std::lock_guard<std::mutex> lock(stats_mu_);
     stats_.scanning = false;
-    stats_.last_scan_seconds =
-        std::chrono::duration<double>(t1 - t0).count();
+    stats_.last_scan_seconds = std::chrono::duration<double>(t1 - t0).count();
     stats_.files = store_.live_count();
   }
   log_info("index", "scan complete");

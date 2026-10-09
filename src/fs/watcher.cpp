@@ -9,7 +9,9 @@ struct FsWatcher::Impl {
 };
 
 FsWatcher::FsWatcher() : impl_(std::make_unique<Impl>()) {}
-FsWatcher::~FsWatcher() { stop(); }
+FsWatcher::~FsWatcher() {
+  stop();
+}
 
 bool FsWatcher::start(const std::vector<std::string>& roots, int debounce_ms, FsEventFn cb) {
   return impl_ && impl_->b ? impl_->b->start(roots, debounce_ms, std::move(cb)) : false;

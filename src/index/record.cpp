@@ -40,8 +40,7 @@ std::string_view kind_name(FileKind k) {
 FileKind kind_from_name(std::string_view n) {
   auto s = to_lower_utf8(n);
   if (s == "file" || s == "files") return FileKind::File;
-  if (s == "dir" || s == "directory" || s == "folder" || s == "folders")
-    return FileKind::Directory;
+  if (s == "dir" || s == "directory" || s == "folder" || s == "folders") return FileKind::Directory;
   if (s == "app" || s == "application" || s == "applications") return FileKind::Application;
   if (s == "exe" || s == "executable" || s == "bin") return FileKind::Executable;
   if (s == "doc" || s == "document" || s == "documents") return FileKind::Document;

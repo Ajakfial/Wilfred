@@ -62,8 +62,7 @@ static bool read_varint(const std::uint8_t*& p, const std::uint8_t* end, std::ui
   return false;
 }
 static void write_svarint(std::vector<std::uint8_t>& o, std::int64_t n) {
-  write_varint(o, (static_cast<std::uint64_t>(n) << 1) ^
-                      static_cast<std::uint64_t>(n >> 63));
+  write_varint(o, (static_cast<std::uint64_t>(n) << 1) ^ static_cast<std::uint64_t>(n >> 63));
 }
 static bool read_svarint(const std::uint8_t*& p, const std::uint8_t* end, std::int64_t& v) {
   std::uint64_t u = 0;
@@ -110,7 +109,8 @@ void IndexStore::index_record_locked(const IndexRecord& rec) {
   }
   auto ac = acronym_of(name);
   if (ac.size() >= 2) add_posting(token_postings_, pool_.intern(ac), rec.id);
-  for (auto& tri : trigrams(folded)) add_posting(tri_postings_, pool_.intern(tri), rec.id);
+  for (auto& tri : trigrams(folded))
+    add_posting(tri_postings_, pool_.intern(tri), rec.id);
   if (rec.ext_id != StringPool::kInvalid) add_posting(ext_postings_, rec.ext_id, rec.id);
   auto path = std::string(pool_.get(rec.path_id));
   std::string comp;
@@ -119,7 +119,8 @@ void IndexStore::index_record_locked(const IndexRecord& rec) {
     if (!(comp.size() == 2 && comp[1] == ':')) {
       auto cf = fold_search(comp);
       add_posting(token_postings_, pool_.intern(cf), rec.id);
-      for (auto& tok : tokenize_name(comp)) add_posting(token_postings_, pool_.intern(tok), rec.id);
+      for (auto& tok : tokenize_name(comp))
+        add_posting(token_postings_, pool_.intern(tok), rec.id);
     }
     comp.clear();
   };
@@ -132,7 +133,8 @@ void IndexStore::index_record_locked(const IndexRecord& rec) {
   flush_comp();
   auto extra = extra_tokens_.find(rec.id);
   if (extra != extra_tokens_.end()) {
-    for (auto tid : extra->second) add_posting(token_postings_, tid, rec.id);
+    for (auto tid : extra->second)
+      add_posting(token_postings_, tid, rec.id);
   }
   path_to_id_[rec.path_id] = rec.id;
 }
@@ -178,7 +180,8 @@ void IndexStore::unindex_record_locked(const IndexRecord& rec) {
   flush_comp();
   auto extra = extra_tokens_.find(rec.id);
   if (extra != extra_tokens_.end()) {
-    for (auto tid : extra->second) remove_posting(token_postings_, tid, rec.id);
+    for (auto tid : extra->second)
+      remove_posting(token_postings_, tid, rec.id);
   }
   path_to_id_.erase(rec.path_id);
 }
@@ -264,7 +267,8 @@ int IndexStore::content_token_hits(std::uint32_t id, const std::vector<std::stri
   return hits;
 }
 
-bool IndexStore::content_covers_tokens(std::uint32_t id, const std::vector<std::string>& tokens) const {
+bool IndexStore::content_covers_tokens(std::uint32_t id,
+                                       const std::vector<std::string>& tokens) const {
   if (tokens.empty()) return false;
   std::lock_guard<std::recursive_mutex> lock(mu_);
   auto it = extra_tokens_.find(id);
@@ -426,7 +430,8 @@ bool IndexStore::save(const std::string& snapshot_path) const {
   for (auto& [id, toks] : extra_tokens_) {
     write_u32(buf, id);
     write_u32(buf, static_cast<std::uint32_t>(toks.size()));
-    for (auto t : toks) write_u32(buf, t);
+    for (auto t : toks)
+      write_u32(buf, t);
   }
   if (write_version_ >= 3) {
     // v3: persist the secondary indexes so huge stores skip the re-tokenize
@@ -435,7 +440,8 @@ bool IndexStore::save(const std::string& snapshot_path) const {
     write_postings(buf, tri_postings_);
     write_postings(buf, ext_postings_);
     write_u32(buf, static_cast<std::uint32_t>(sorted_by_name_.size()));
-    for (auto id : sorted_by_name_) write_u32(buf, id);
+    for (auto id : sorted_by_name_)
+      write_u32(buf, id);
   }
   auto c = crc32(buf.data(), buf.size());
   write_u32(buf, c);
@@ -468,7 +474,8 @@ bool IndexStore::load(const std::string& snapshot_path) {
   off += nlive;
   records_.assign(nrec, {});
   constexpr std::size_t recsz = 4 * 10 + 8 * 4;  // 40 + 32 = 72? Let's count:
-  // 5 u32 ids = 20, size u64=8, 3 times i64=24, flags u32, vol u32, kind u32, mode u32 = 16; total 68
+  // 5 u32 ids = 20, size u64=8, 3 times i64=24, flags u32, vol u32, kind u32, mode u32 = 16; total
+  // 68
   constexpr std::size_t rec_bytes = 20 + 8 + 24 + 16;
   if (off + static_cast<std::size_t>(nrec) * rec_bytes + 4 > mf.size()) return false;
   for (std::uint32_t i = 0; i < nrec; ++i) {
@@ -568,15 +575,15 @@ bool IndexStore::load(const std::string& snapshot_path) {
     read_map(tri_postings_);
     read_map(ext_postings_);
     std::size_t live_hint = 0;
-    for (auto b : live_) live_hint += b ? 1 : 0;
+    for (auto b : live_)
+      live_hint += b ? 1 : 0;
     if (ok) {
       if (end - q < 4) {
         ok = false;
       } else {
         std::uint32_t nsorted = rd32(q);
         q += 4;
-        if (nsorted != live_hint ||
-            end - q < static_cast<std::ptrdiff_t>(nsorted) * 4) {
+        if (nsorted != live_hint || end - q < static_cast<std::ptrdiff_t>(nsorted) * 4) {
           ok = false;
         } else {
           sorted_by_name_.reserve(nsorted);

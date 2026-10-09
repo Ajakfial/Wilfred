@@ -51,7 +51,8 @@ void StringPool::serialize(std::vector<std::uint8_t>& out) const {
   };
   push32(static_cast<std::uint32_t>(offsets_.size()));
   push32(static_cast<std::uint32_t>(storage_.size()));
-  for (std::uint32_t i = 0; i < offsets_.size(); ++i) push32(lengths_[i]);
+  for (std::uint32_t i = 0; i < offsets_.size(); ++i)
+    push32(lengths_[i]);
   out.insert(out.end(), storage_.begin(), storage_.end());
 }
 

@@ -13,10 +13,10 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <windows.h>
 #include <winhttp.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #else
 #include <arpa/inet.h>
@@ -30,15 +30,27 @@ namespace wilfred {
 #ifdef _WIN32
 using Socket = SOCKET;
 static constexpr Socket kInvalidSock = INVALID_SOCKET;
-static void close_sock(Socket s) { closesocket(s); }
-static int sock_send(Socket s, const char* p, int n) { return send(s, p, n, 0); }
-static int sock_recv(Socket s, char* p, int n) { return recv(s, p, n, 0); }
+static void close_sock(Socket s) {
+  closesocket(s);
+}
+static int sock_send(Socket s, const char* p, int n) {
+  return send(s, p, n, 0);
+}
+static int sock_recv(Socket s, char* p, int n) {
+  return recv(s, p, n, 0);
+}
 #else
 using Socket = int;
 static constexpr Socket kInvalidSock = -1;
-static void close_sock(Socket s) { close(s); }
-static int sock_send(Socket s, const char* p, int n) { return static_cast<int>(send(s, p, n, 0)); }
-static int sock_recv(Socket s, char* p, int n) { return static_cast<int>(recv(s, p, n, 0)); }
+static void close_sock(Socket s) {
+  close(s);
+}
+static int sock_send(Socket s, const char* p, int n) {
+  return static_cast<int>(send(s, p, n, 0));
+}
+static int sock_recv(Socket s, char* p, int n) {
+  return static_cast<int>(recv(s, p, n, 0));
+}
 #endif
 
 static std::once_flag g_sock_once;
@@ -73,7 +85,8 @@ static std::string url_decode(std::string_view s) {
   return o;
 }
 
-static bool parse_http_request(const std::string& raw, HttpApiRequest& req, std::size_t& body_need) {
+static bool parse_http_request(const std::string& raw, HttpApiRequest& req,
+                               std::size_t& body_need) {
   auto hdr_end = raw.find("\r\n\r\n");
   if (hdr_end == std::string::npos) {
     body_need = 0;
@@ -102,7 +115,8 @@ static bool parse_http_request(const std::string& raw, HttpApiRequest& req, std:
     if (colon != std::string::npos) {
       auto k = to_lower_utf8(line.substr(0, colon));
       auto v = line.substr(colon + 1);
-      while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+      while (!v.empty() && (v.front() == ' ' || v.front() == '\t'))
+        v.erase(v.begin());
       if (k == "content-length") {
         try {
           content_len = static_cast<std::size_t>(std::stoul(v));
@@ -127,9 +141,13 @@ static bool parse_http_request(const std::string& raw, HttpApiRequest& req, std:
 
 static std::string encode_http(const HttpApiResponse& r) {
   std::ostringstream os;
-  os << "HTTP/1.1 " << r.status << " " << (r.status == 200 ? "OK" : r.status == 401 ? "Unauthorized" : "Error")
+  os << "HTTP/1.1 " << r.status << " "
+     << (r.status == 200   ? "OK"
+         : r.status == 401 ? "Unauthorized"
+                           : "Error")
      << "\r\n";
-  os << "Content-Type: " << (r.content_type.empty() ? "application/json" : r.content_type) << "\r\n";
+  os << "Content-Type: " << (r.content_type.empty() ? "application/json" : r.content_type)
+     << "\r\n";
   os << "Content-Length: " << r.body.size() << "\r\n";
   os << "Connection: close\r\n";
   os << "Access-Control-Allow-Origin: *\r\n\r\n";
@@ -199,11 +217,16 @@ struct HttpApiServer::Impl {
 };
 
 HttpApiServer::HttpApiServer() : impl_(std::make_unique<Impl>()) {}
-HttpApiServer::~HttpApiServer() { stop(); }
+HttpApiServer::~HttpApiServer() {
+  stop();
+}
 
-int HttpApiServer::port() const { return impl_ ? impl_->port : 0; }
+int HttpApiServer::port() const {
+  return impl_ ? impl_->port : 0;
+}
 
-bool HttpApiServer::start(const std::string& bind, int port, const std::string& token, HttpApiHandler handler) {
+bool HttpApiServer::start(const std::string& bind, int port, const std::string& token,
+                          HttpApiHandler handler) {
   ensure_sockets();
   stop();
   impl_->bind = bind.empty() ? "127.0.0.1" : bind;
@@ -213,7 +236,8 @@ bool HttpApiServer::start(const std::string& bind, int port, const std::string& 
   impl_->listen_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (impl_->listen_fd == kInvalidSock) return false;
   int yes = 1;
-  setsockopt(impl_->listen_fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&yes), sizeof(yes));
+  setsockopt(impl_->listen_fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&yes),
+             sizeof(yes));
   sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(static_cast<std::uint16_t>(port));
@@ -249,7 +273,9 @@ void HttpApiServer::stop() {
 }
 
 #ifdef _WIN32
-static std::wstring utf16(const std::string& s) { return utf8_to_wide(s); }
+static std::wstring utf16(const std::string& s) {
+  return utf8_to_wide(s);
+}
 
 static bool parse_url(const std::string& url, bool& https, std::wstring& host, INTERNET_PORT& port,
                       std::wstring& path) {
@@ -281,7 +307,8 @@ static bool parse_url(const std::string& url, bool& https, std::wstring& host, I
 #endif
 
 #ifndef _WIN32
-static bool parse_url_posix(const std::string& url, bool& https, std::string& host, int& port, std::string& path) {
+static bool parse_url_posix(const std::string& url, bool& https, std::string& host, int& port,
+                            std::string& path) {
   https = url.rfind("https://", 0) == 0;
   auto rest = url;
   if (url.rfind("https://", 0) == 0)
@@ -315,8 +342,8 @@ std::string http_get(const std::string& url, const std::string& token, int timeo
   std::wstring host, path;
   INTERNET_PORT port = 80;
   if (!parse_url(url, https, host, port, path)) return {};
-  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
-                              WINHTTP_NO_PROXY_BYPASS, 0);
+  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
   if (!ses) return {};
   WinHttpSetTimeouts(ses, timeout_ms, timeout_ms, timeout_ms, timeout_ms);
   HINTERNET con = WinHttpConnect(ses, host.c_str(), port, 0);
@@ -335,7 +362,8 @@ std::string http_get(const std::string& url, const std::string& token, int timeo
   std::wstring hdr;
   if (!token.empty()) hdr = L"X-Wilfred-Token: " + utf16(token) + L"\r\n";
   BOOL ok = WinHttpSendRequest(req, hdr.empty() ? WINHTTP_NO_ADDITIONAL_HEADERS : hdr.c_str(),
-                               hdr.empty() ? 0 : static_cast<DWORD>(-1), WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+                               hdr.empty() ? 0 : static_cast<DWORD>(-1), WINHTTP_NO_REQUEST_DATA, 0,
+                               0, 0);
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
   std::string body;
   if (ok) {
@@ -394,8 +422,8 @@ std::string http_get(const std::string& url, const std::string& token, int timeo
 #endif
 }
 
-bool http_put(const std::string& url, const std::string& token, const std::string& body, int timeout_ms,
-              std::string* err) {
+bool http_put(const std::string& url, const std::string& token, const std::string& body,
+              int timeout_ms, std::string* err) {
 #ifdef _WIN32
   bool https = false;
   std::wstring host, path;
@@ -404,8 +432,8 @@ bool http_put(const std::string& url, const std::string& token, const std::strin
     if (err) *err = "invalid url";
     return false;
   }
-  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
-                              WINHTTP_NO_PROXY_BYPASS, 0);
+  HINTERNET ses = WinHttpOpen(L"Wilfred/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
   if (!ses) return false;
   WinHttpSetTimeouts(ses, timeout_ms, timeout_ms, timeout_ms, timeout_ms);
   HINTERNET con = WinHttpConnect(ses, host.c_str(), port, 0);

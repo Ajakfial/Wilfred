@@ -83,7 +83,8 @@ void collect_chromium_urls(const std::string& text, std::vector<LibraryItem>& ou
     auto c = text.find(':', t + 6);
     if (c == std::string::npos) break;
     std::size_t v = c + 1;
-    while (v < text.size() && (text[v] == ' ' || text[v] == '\t')) ++v;
+    while (v < text.size() && (text[v] == ' ' || text[v] == '\t'))
+      ++v;
     bool is_url = text.compare(v, 5, "\"url\"") == 0;
     // Enclosing object: scan backwards for the nearest unmatched '{'.
     // (Start before the key itself so its quotes don't skew parity.)
@@ -191,12 +192,10 @@ void collect_chromium(std::vector<LibraryItem>& out, std::size_t cap) {
       if (!it->is_directory(ec2)) continue;
       auto fn_u8 = it->path().filename().u8string();
       std::string fn(fn_u8.begin(), fn_u8.end());
-      if (fn != "Default" && fn.rfind("Profile ", 0) != 0 &&
-          fn.rfind("Guest Profile", 0) != 0)
+      if (fn != "Default" && fn.rfind("Profile ", 0) != 0 && fn.rfind("Guest Profile", 0) != 0)
         continue;
       auto fp_u8 = it->path().u8string();
-      add_bookmarks_file(path_join(std::string(fp_u8.begin(), fp_u8.end()), "Bookmarks"), out,
-                         cap);
+      add_bookmarks_file(path_join(std::string(fp_u8.begin(), fp_u8.end()), "Bookmarks"), out, cap);
     }
   }
 }
@@ -258,7 +257,8 @@ void add_rows(std::vector<LibraryItem>& out, const std::string& rows, const std:
     if (tab == std::string::npos) continue;
     std::string title = line.substr(0, tab);
     std::string url = line.substr(tab + 1);
-    while (!url.empty() && (url.back() == '\n' || url.back() == '\r')) url.pop_back();
+    while (!url.empty() && (url.back() == '\n' || url.back() == '\r'))
+      url.pop_back();
     if (url.rfind("http://", 0) != 0 && url.rfind("https://", 0) != 0) continue;
     LibraryItem it;
     it.title = title.empty() ? url : title;
@@ -278,8 +278,8 @@ void collect_chromium_history(std::vector<LibraryItem>& out, std::size_t cap) {
     dbs.push_back(path_join(base, "Default/History"));
     for (auto& db : dbs) {
       if (out.size() >= cap || !file_exists(db)) continue;
-      auto rows = sqlite_query(db,
-                               "SELECT title,url FROM urls ORDER BY last_visit_time DESC LIMIT 300;");
+      auto rows =
+          sqlite_query(db, "SELECT title,url FROM urls ORDER BY last_visit_time DESC LIMIT 300;");
       add_rows(out, rows, "history", cap);
     }
   }
@@ -299,8 +299,8 @@ void collect_firefox(std::vector<LibraryItem>& out, bool history, std::size_t ca
   }
   ini = path_join(path_join(ad, "Mozilla/Firefox"), "profiles.ini");
 #elif defined(__APPLE__)
-  ini = path_join(path_join(home_directory(), "Library/Application Support/Firefox"),
-                  "profiles.ini");
+  ini =
+      path_join(path_join(home_directory(), "Library/Application Support/Firefox"), "profiles.ini");
 #else
   ini = path_join(path_join(home_directory(), ".mozilla/firefox"), "profiles.ini");
 #endif
@@ -314,15 +314,16 @@ void collect_firefox(std::vector<LibraryItem>& out, bool history, std::size_t ca
     pos = p + 5;
     auto e = text.find('\n', pos);
     std::string rel = text.substr(pos, e == std::string::npos ? std::string::npos : e - pos);
-    while (!rel.empty() && (rel.back() == '\r' || rel.back() == ' ')) rel.pop_back();
+    while (!rel.empty() && (rel.back() == '\r' || rel.back() == ' '))
+      rel.pop_back();
     if (rel.empty()) continue;
     auto prof = path_is_absolute(rel) ? rel : path_join(dir, rel);
     auto db = path_join(prof, "places.sqlite");
     if (!file_exists(db)) continue;
-    auto rows = sqlite_query(
-        db,
-        "SELECT b.title,p.url FROM moz_bookmarks b JOIN moz_places p ON b.fk=p.id "
-        "WHERE b.type=1 AND p.url LIKE 'http%' LIMIT 500;");
+    auto rows =
+        sqlite_query(db,
+                     "SELECT b.title,p.url FROM moz_bookmarks b JOIN moz_places p ON b.fk=p.id "
+                     "WHERE b.type=1 AND p.url LIKE 'http%' LIMIT 500;");
     add_rows(out, rows, "bookmark", cap);
     if (history && out.size() < cap) {
       auto hrows = sqlite_query(db,
@@ -336,8 +337,10 @@ void collect_firefox(std::vector<LibraryItem>& out, bool history, std::size_t ca
 void collect_tabs_macos(std::vector<LibraryItem>& out, std::size_t cap) {
 #ifdef __APPLE__
   auto probe = [](const char* proc) {
-    std::string cmd = std::string("osascript -e 'tell application \"System Events\" to (exists "
-                                  "process \"") + proc + "\")' 2>/dev/null";
+    std::string cmd = std::string(
+                          "osascript -e 'tell application \"System Events\" to (exists "
+                          "process \"") +
+                      proc + "\")' 2>/dev/null";
     FILE* f = popen(cmd.c_str(), "r");
     if (!f) return false;
     char buf[32]{};
@@ -401,7 +404,7 @@ struct LibraryCache {
 }  // namespace
 
 bool parse_chromium_bookmarks_file(const std::string& file, std::vector<LibraryItem>& out,
-                                  std::size_t cap) {
+                                   std::size_t cap) {
   std::string text;
   if (!read_file_all(file, text) || text.size() > 8 * 1024 * 1024) return false;
   auto n0 = out.size();

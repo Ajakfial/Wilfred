@@ -11,7 +11,8 @@ namespace wilfred {
 namespace fs = std::filesystem;
 
 void walk_tree(const std::string& root, const Config& cfg, WalkFn on_entry,
-               std::atomic<bool>* cancel, WalkStats* stats) {  std::error_code ec;
+               std::atomic<bool>* cancel, WalkStats* stats) {
+  std::error_code ec;
   auto start = fs::u8path(root);
   if (!fs::exists(start, ec)) {
     if (stats) ++stats->errors;

@@ -21,20 +21,20 @@ namespace fs = std::filesystem;
 FileKind classify_extension(std::string_view ext) {
   auto e = to_lower_utf8(ext);
   if (e.empty()) return FileKind::File;
-  static const char* docs[] = {".pdf", ".doc",  ".docx", ".odt", ".rtf", ".txt", ".md",
+  static const char* docs[] = {".pdf", ".doc",  ".docx", ".odt",  ".rtf", ".txt", ".md",
                                ".xls", ".xlsx", ".ppt",  ".pptx", ".csv", nullptr};
-  static const char* imgs[] = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
-                               ".tif", ".tiff", ".ico",  ".svg",  ".heic", nullptr};
+  static const char* imgs[] = {".png", ".jpg",  ".jpeg", ".gif", ".webp", ".bmp",
+                               ".tif", ".tiff", ".ico",  ".svg", ".heic", nullptr};
   static const char* vids[] = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".wmv", ".m4v", nullptr};
   static const char* aud[] = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", nullptr};
-  static const char* arc[] = {".zip", ".7z",  ".rar", ".tar", ".gz",  ".bz2",
-                              ".xz",  ".iso", ".cab", nullptr};
-  static const char* src[] = {".c",    ".h",   ".cpp", ".hpp", ".cc",  ".cxx", ".rs",  ".py",
-                              ".js",   ".ts",  ".jsx", ".tsx", ".go",  ".java", ".kt", ".cs",
-                              ".rb",   ".php", ".swift", ".m",  ".mm", ".sh",  ".ps1", ".lua",
-                              ".r",    ".sql", ".html", ".css", ".scss", ".vue", ".json", nullptr};
-  static const char* cfg[] = {".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf",
-                              ".xml", ".plist", ".env", nullptr};
+  static const char* arc[] = {".zip", ".7z", ".rar", ".tar", ".gz",
+                              ".bz2", ".xz", ".iso", ".cab", nullptr};
+  static const char* src[] = {".c",  ".h",   ".cpp",   ".hpp", ".cc",   ".cxx",  ".rs",   ".py",
+                              ".js", ".ts",  ".jsx",   ".tsx", ".go",   ".java", ".kt",   ".cs",
+                              ".rb", ".php", ".swift", ".m",   ".mm",   ".sh",   ".ps1",  ".lua",
+                              ".r",  ".sql", ".html",  ".css", ".scss", ".vue",  ".json", nullptr};
+  static const char* cfg[] = {".yml",  ".yaml", ".toml",  ".ini", ".cfg",
+                              ".conf", ".xml",  ".plist", ".env", nullptr};
   static const char* exe[] = {".exe", ".bat", ".cmd", ".com", ".msi", ".appimage", nullptr};
   auto has = [&](const char** a) {
     for (auto* p = a; *p; ++p)
