@@ -85,6 +85,7 @@ enum class MiniKind {
   EventAdd,
   ContactAdd,
   FileOp,
+  Update,
 };
 
 struct MiniIntent {

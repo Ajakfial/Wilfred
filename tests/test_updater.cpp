@@ -1,5 +1,8 @@
 #include "test.hpp"
 
+#include "wilfred/config/config.hpp"
+#include "wilfred/search/minis.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/updater/updater.hpp"
 
 void test_updater() {
@@ -78,4 +81,21 @@ void test_updater() {
   CHECK(trailing_dash.valid());
   CHECK_EQ(trailing_dash.compare(v), 0);
   CHECK(!Version().valid());
+
+  // Background-check state starts unchecked (no network in tests).
+  auto pend = pending_update();
+  CHECK(!pend.checked);
+  CHECK(!pend.available);
+
+  // `update` mini intent.
+  CHECK(parse_mini_intent("update").kind == MiniKind::Update);
+  CHECK(parse_mini_intent("updates").kind == MiniKind::Update);
+  CHECK(parse_mini_intent("upgrade").kind == MiniKind::Update);
+  CHECK(parse_mini_intent("upgrades").kind == MiniKind::Update);
+
+  // Unchecked state yields the "checking" card, never empty.
+  Config cfg;
+  auto cards = update_results("", cfg);
+  CHECK(!cards.empty());
+  CHECK(cards[0].category == "update");
 }

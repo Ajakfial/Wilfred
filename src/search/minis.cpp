@@ -1518,6 +1518,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Setup, true);
   else if (key == "config" || key == "configuration" || key == "wilfredconfig")
     set(MiniKind::Config, true);
+  else if (key == "update" || key == "updates" || key == "upgrade" || key == "upgrades" ||
+           key == "new-version" || key == "newversion" || key == "check-update")
+    set(MiniKind::Update, true);
   else if (key == "plugins" || key == "plugin" || key == "extensions" || key == "extension")
     set(MiniKind::Plugins, true);
   else if (key == "packages" || key == "package" || key == "pkg")
@@ -1575,6 +1578,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Settings) return settings_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Setup) return setup_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Config) return config_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Update) return update_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Plugins) return plugin_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Packages) return pkg_managers_results(intent.remainder, cfg);
 

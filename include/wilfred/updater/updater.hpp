@@ -110,7 +110,19 @@ bool perform_update(bool dry_run, std::string* error);
 
 // Called on daemon startup to check for updates in the background.
 // Safe to call multiple times; subsequent calls are no-ops if already checked.
+// The result is kept for the overlay `update` mini via pending_update().
 void startup_update_check();
+
+// Last background-check outcome (no network on call; returns the stored
+// state, unchecked until the startup thread finishes).
+struct PendingUpdate {
+  bool checked{false};
+  bool available{false};
+  std::string current_version;
+  std::string latest_version;
+  std::string download_url;
+};
+PendingUpdate pending_update();
 
 // CLI command handler: "wilfred update [--check] [--yes]"
 int run_update_command(bool check_only, bool auto_yes);

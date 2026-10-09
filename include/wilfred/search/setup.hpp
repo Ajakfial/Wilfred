@@ -17,6 +17,11 @@ namespace wilfred {
 std::vector<SearchResult> setup_results(const std::string& remainder, const Config& cfg);
 std::vector<SearchResult> config_results(const std::string& remainder, const Config& cfg);
 
+// New-version card backed by the daemon's background startup check
+// (`startup_update_check` + `pending_update`). Read-only: Enter copies the
+// release download link, installing stays `wilfred update` on the terminal.
+std::vector<SearchResult> update_results(const std::string& remainder, const Config& cfg);
+
 // Validate wilfred.yml text with the same loader the daemon uses.
 // Returns true when valid; message holds the human-readable error or "ok".
 bool validate_config_text(const std::string& text, std::string& message);

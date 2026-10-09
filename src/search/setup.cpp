@@ -5,6 +5,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/platform/native.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -303,6 +304,31 @@ std::vector<SearchResult> setup_results(const std::string& remainder, const Conf
   // Default: show status.
   out.push_back(scard("Setup: " + setup_summary(cfg), "setup — enter opens wilfred.yml",
                       "config:open", "setup", "setup"));
+  return out;
+}
+
+std::vector<SearchResult> update_results(const std::string& remainder, const Config& cfg) {
+  (void)remainder;
+  (void)cfg;
+  std::vector<SearchResult> out;
+  PendingUpdate p = pending_update();
+  if (p.available) {
+    out.push_back(scard("Update available: " + p.current_version + " → " + p.latest_version,
+                        "enter copies download link · run `wilfred update` to install",
+                        p.download_url.empty() ? p.latest_version : p.download_url, "update",
+                        "update"));
+    return out;
+  }
+  if (p.checked) {
+    std::string cur = p.current_version.empty() ? wilfred_version() : p.current_version;
+    out.push_back(scard("Wilfred up to date (" + cur + ")",
+                        "enter copies version · `wilfred update --check` re-checks now", cur,
+                        "update", "update"));
+    return out;
+  }
+  out.push_back(scard("Checking for updates…",
+                      "background check runs at startup · `wilfred update --check` checks now",
+                      wilfred_version(), "update", "update"));
   return out;
 }
 

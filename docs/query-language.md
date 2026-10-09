@@ -217,6 +217,7 @@ synthetic result card instead of searching the index
 | `settings get <key>` | | Show one setting's value (enter copies; `wilfred config-get`) |
 | `setup [check]` | `wizard`, `onboard` | First-run status (roots, hotkey, browser; enter opens wilfred.yml; terminal: `wilfred setup`) |
 | `config [open\|validate]` | `configuration` | Edit/validate wilfred.yml (`config open`, `config validate`, `config reveal`) |
+| `update` | `upgrade`, `updates` | New-version status from the startup background check (enter copies link; `wilfred update` installs) |
 | `config set <key> <value>` | `config edit` | Same editor as `settings edit` (`config:get:`, `config:reset` supported) |
 | `plugins [approve]` | `plugin`, `extensions` | Installed list + trust approvals (`plugins approve <id>`, `approve all`; `wilfred plugin …`) |
 | `layout tile <preset>` | `tile`, `tiling` | Tile open windows (`halves`, `thirds`, `grid`, `columns N`, `rows N`, `stack`; `wilfred tile …`) |

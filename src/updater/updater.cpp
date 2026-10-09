@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -37,6 +38,10 @@ namespace {
 // Background check state
 std::atomic<bool> g_check_started{false};
 std::atomic<bool> g_check_done{false};
+
+// Last background-check outcome, surfaced to the overlay `update` mini.
+std::mutex g_pending_mu;
+PendingUpdate g_pending;
 
 // The GitHub repo API base
 const char* kRepoApiBase = "https://api.github.com/repos/Ajakfial/Wilfred";
@@ -415,10 +420,22 @@ void startup_update_check() {
   if (g_check_started.exchange(true)) return;
 
   std::thread([]() {
-    std::string error;
-    perform_update(true, &error);  // dry run - just check
+    UpdateCheckResult r = check_for_update(kRepoApiBase, wilfred_version());
+    {
+      std::lock_guard<std::mutex> lk(g_pending_mu);
+      g_pending.checked = r.error.empty();
+      g_pending.available = r.update_available;
+      g_pending.current_version = r.current_version;
+      g_pending.latest_version = r.latest_version;
+      g_pending.download_url = r.download_url;
+    }
     g_check_done = true;
   }).detach();
+}
+
+PendingUpdate pending_update() {
+  std::lock_guard<std::mutex> lk(g_pending_mu);
+  return g_pending;
 }
 
 int run_update_command(bool check_only, bool auto_yes) {

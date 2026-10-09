@@ -197,6 +197,7 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `volume 50` / `volume mute` / `brightness 70` | Volume level/mute + display brightness (enter applies) |
 | `settings wifi` / `settings sound` / `settings` | Open OS settings pages (wifi/network/bluetooth/sound/display/...) |
 | `setup` / `config validate` / `config open` | First-run status + edit/validate wilfred.yml (`wilfred setup`, `config-validate`) |
+| `update` / `upgrade` | New-version status from the startup check (enter copies link, `wilfred update` installs) |
 | `settings edit search.max_results 40` / `settings get hotkey.key` | Update/read one setting in place, validated (`wilfred config-set/get`) |
 | `plugins` / `plugins approve demo` | Plugin list + trust approvals (`wilfred plugin list/install/approve`) |
 | `layout tile grid` / `tile halves` / `layout work` | Tile open windows or apply a saved layout (`wilfred tile`, `layouts.auto_apply` on monitor change) |

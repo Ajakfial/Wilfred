@@ -79,8 +79,8 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   reformat, since most of the codebase predates these configs).
 * **Packaged installers.** Windows now ships an `.msi` (per-user, WiX)
   and a Chocolatey package from the release workflow, Linux a `.deb` and
-  an AppImage, alongside the zip/tar.gz per platform. Still open: a
-  Homebrew formula and a winget/Scoop submission.
+  an AppImage, alongside the zip/tar.gz per platform. That is the full
+  distribution story (see explicitly-not-planned below).
 * **Expand the mini and macro library.** Largely expanded (timers, notes,
   media, network, workflows, quicklinks — see
   [docs/query-language.md](docs/query-language.md) and
@@ -128,3 +128,7 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   low-resource footprint is a stated project goal.
 * A hosted/cloud-only mode that requires an account — Wilfred is a local
   search tool first; sync is opt-in and points at an endpoint you control.
+* Homebrew formulae, winget packages, and Scoop manifests — the release
+  workflow archives (.msi/.nupkg/.deb/.AppImage/.tar.gz/.apk) plus wilfred update
+  are the distribution story; store submissions are a maintenance burden the
+  project will not take on.
