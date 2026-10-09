@@ -74,7 +74,7 @@ std::vector<SearchResult> remote_parse_response(const std::string& body,
     r.path = url.empty() ? title : url;
     r.payload = r.path;
     r.action = url.empty() ? ResultAction::Copy : ResultAction::WebSearch;
-    if (!url.empty() && url[0] == '/' ) r.action = ResultAction::Open;
+    if (!url.empty() && url[0] == '/') r.action = ResultAction::Open;
     r.score = 400 + json_get_int(o, "score", 100);
     if (r.score < 1) r.score = 400;
     if (r.score > 5000) r.score = 5000;
@@ -145,12 +145,12 @@ std::string remote_fetch(const std::string& url, int timeout_ms,
       ok = WinHttpSendRequest(req, wh.c_str(), static_cast<DWORD>(wh.size()),
                               WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
     } else {
-      ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0,
-                              0, 0);
+      ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0,
+                              0);
     }
   } else {
-    ok = WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0,
-                            0, 0);
+    ok =
+        WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
   }
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
   if (ok) {
@@ -174,8 +174,10 @@ std::string remote_fetch(const std::string& url, int timeout_ms,
   // Quote URL for sh: wrap in single quotes, escape embedded quotes.
   std::string q;
   for (char c : url) {
-    if (c == '\'') q += "'\\''";
-    else q.push_back(c);
+    if (c == '\'')
+      q += "'\\''";
+    else
+      q.push_back(c);
   }
   std::string hopts;
   for (auto& [k, v] : headers) {
@@ -184,15 +186,17 @@ std::string remote_fetch(const std::string& url, int timeout_ms,
     std::string h = k + ": " + v;
     std::string hq;
     for (char c : h) {
-      if (c == '\'') hq += "'\\''";
-      else hq.push_back(c);
+      if (c == '\'')
+        hq += "'\\''";
+      else
+        hq.push_back(c);
     }
     hopts += " -H '" + hq + "'";
     if (hopts.size() > 4096) break;
   }
   char cmd[8192];
-  std::snprintf(cmd, sizeof(cmd), "curl -fsS --max-time %d -A Wilfred/1.0%s '%s' 2>/dev/null",
-                secs, hopts.c_str(), q.c_str());
+  std::snprintf(cmd, sizeof(cmd), "curl -fsS --max-time %d -A Wilfred/1.0%s '%s' 2>/dev/null", secs,
+                hopts.c_str(), q.c_str());
   FILE* f = popen(cmd, "r");
   if (!f) return {};
   std::string body;

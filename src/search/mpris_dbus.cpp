@@ -16,7 +16,8 @@ namespace {
 struct Buf {
   std::vector<unsigned char> b;
   void align(std::size_t a) {
-    while (b.size() % a) b.push_back(0);
+    while (b.size() % a)
+      b.push_back(0);
   }
   void u8(std::uint8_t v) { b.push_back(v); }
   void u32(std::uint32_t v) {
@@ -28,13 +29,15 @@ struct Buf {
   }
   void sig(const std::string& s) {
     u8(static_cast<std::uint8_t>(s.size()));
-    for (char c : s) b.push_back(static_cast<unsigned char>(c));
+    for (char c : s)
+      b.push_back(static_cast<unsigned char>(c));
     b.push_back(0);
   }
   void str(const std::string& s) {
     align(4);
     u32(static_cast<std::uint32_t>(s.size()));
-    for (char c : s) b.push_back(static_cast<unsigned char>(c));
+    for (char c : s)
+      b.push_back(static_cast<unsigned char>(c));
     b.push_back(0);
   }
   void field(std::uint8_t code, const std::string& sig_type, const std::string& value) {
@@ -81,8 +84,10 @@ std::vector<unsigned char> mpris_build_method_call(std::uint32_t serial,
   msg.u32(0);
   msg.u32(serial);
   msg.u32(static_cast<std::uint32_t>(fields.b.size()));
-  for (auto c : fields.b) msg.b.push_back(c);
-  while (msg.b.size() % 8) msg.b.push_back(0);
+  for (auto c : fields.b)
+    msg.b.push_back(c);
+  while (msg.b.size() % 8)
+    msg.b.push_back(0);
   return msg.b;
 }
 
@@ -100,7 +105,8 @@ bool mpris_parse_names_reply(const unsigned char* data, std::size_t size,
   std::size_t hdr_end = 16 + hlen;
   if (hdr_end > size) return false;
   std::size_t body_off = hdr_end;
-  while (body_off % 8) ++body_off;
+  while (body_off % 8)
+    ++body_off;
   if (body_off + body_len > size) return false;
   if (body_len < 4) return false;
   std::size_t p = body_off;
@@ -111,7 +117,8 @@ bool mpris_parse_names_reply(const unsigned char* data, std::size_t size,
   std::size_t arr_end = p + arr_len;
   if (arr_end > body_off + body_len) return false;
   while (p < arr_end) {
-    while (p % 4) ++p;
+    while (p % 4)
+      ++p;
     if (!need(4) || p + 4 > arr_end) return false;
     std::uint32_t slen = rd_u32le(data + p);
     p += 4;
@@ -219,7 +226,7 @@ struct Bus {
     ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 
-    sockaddr_un sa {};
+    sockaddr_un sa{};
     sa.sun_family = AF_UNIX;
     if (abstract) {
       if (path.size() + 1 >= sizeof(sa.sun_path)) {
@@ -265,8 +272,8 @@ struct Bus {
       error = "bus begin failed";
       return false;
     }
-    auto hello = mpris_build_method_call(serial++, "org.freedesktop.DBus",
-                                         "/org/freedesktop/DBus", "org.freedesktop.DBus", "Hello");
+    auto hello = mpris_build_method_call(serial++, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                                         "org.freedesktop.DBus", "Hello");
     if (!send_all(fd, hello.data(), hello.size())) {
       error = "bus hello send failed";
       return false;
@@ -276,16 +283,15 @@ struct Bus {
       error = "bus hello reply failed";
       return false;
     }
-    std::uint32_t body_len = (static_cast<std::uint32_t>(hdr[4])) |
-                             (static_cast<std::uint32_t>(hdr[5]) << 8) |
-                             (static_cast<std::uint32_t>(hdr[6]) << 16) |
-                             (static_cast<std::uint32_t>(hdr[7]) << 24);
-    std::uint32_t hlen = (static_cast<std::uint32_t>(hdr[12])) |
-                         (static_cast<std::uint32_t>(hdr[13]) << 8) |
-                         (static_cast<std::uint32_t>(hdr[14]) << 16) |
-                         (static_cast<std::uint32_t>(hdr[15]) << 24);
+    std::uint32_t body_len =
+        (static_cast<std::uint32_t>(hdr[4])) | (static_cast<std::uint32_t>(hdr[5]) << 8) |
+        (static_cast<std::uint32_t>(hdr[6]) << 16) | (static_cast<std::uint32_t>(hdr[7]) << 24);
+    std::uint32_t hlen =
+        (static_cast<std::uint32_t>(hdr[12])) | (static_cast<std::uint32_t>(hdr[13]) << 8) |
+        (static_cast<std::uint32_t>(hdr[14]) << 16) | (static_cast<std::uint32_t>(hdr[15]) << 24);
     std::size_t rest = hlen;
-    while ((16 + rest) % 8) ++rest;
+    while ((16 + rest) % 8)
+      ++rest;
     rest += body_len;
     if (rest > 1 << 20) {
       error = "bus hello reply too large";
@@ -321,20 +327,19 @@ struct Bus {
       return false;
     }
     std::uint8_t type = hdr[1];
-    std::uint32_t body_len = (static_cast<std::uint32_t>(hdr[4])) |
-                             (static_cast<std::uint32_t>(hdr[5]) << 8) |
-                             (static_cast<std::uint32_t>(hdr[6]) << 16) |
-                             (static_cast<std::uint32_t>(hdr[7]) << 24);
-    std::uint32_t hlen = (static_cast<std::uint32_t>(hdr[12])) |
-                         (static_cast<std::uint32_t>(hdr[13]) << 8) |
-                         (static_cast<std::uint32_t>(hdr[14]) << 16) |
-                         (static_cast<std::uint32_t>(hdr[15]) << 24);
+    std::uint32_t body_len =
+        (static_cast<std::uint32_t>(hdr[4])) | (static_cast<std::uint32_t>(hdr[5]) << 8) |
+        (static_cast<std::uint32_t>(hdr[6]) << 16) | (static_cast<std::uint32_t>(hdr[7]) << 24);
+    std::uint32_t hlen =
+        (static_cast<std::uint32_t>(hdr[12])) | (static_cast<std::uint32_t>(hdr[13]) << 8) |
+        (static_cast<std::uint32_t>(hdr[14]) << 16) | (static_cast<std::uint32_t>(hdr[15]) << 24);
     if (hlen > 1 << 16 || body_len > 1 << 20) {
       error = "reply too large";
       return false;
     }
     std::size_t rest = hlen;
-    while ((16 + rest) % 8) ++rest;
+    while ((16 + rest) % 8)
+      ++rest;
     rest += body_len;
     reply.assign(16 + rest, 0);
     std::memcpy(reply.data(), hdr, 16);
@@ -406,8 +411,8 @@ bool mpris_media_action(const std::string& id, std::string& error) {
   std::string last_err;
   for (auto& p : players) {
     std::vector<unsigned char> r2;
-    if (bus.call_no_args(p, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player", method,
-                         r2, last_err))
+    if (bus.call_no_args(p, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player", method, r2,
+                         last_err))
       any = true;
   }
   if (!any) error = last_err.empty() ? "all players failed" : last_err;

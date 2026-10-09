@@ -59,8 +59,9 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
         best_ts = 1000;
         return;
       }
-      int diff = static_cast<int>(cand.size() > ctx.folded.size() ? cand.size() - ctx.folded.size()
-                                                                  : ctx.folded.size() - cand.size());
+      int diff =
+          static_cast<int>(cand.size() > ctx.folded.size() ? cand.size() - ctx.folded.size()
+                                                           : ctx.folded.size() - cand.size());
       if (diff > thr) {
         // Still try head-window for prefix typos ("firefozXXX" case).
         if (cand.size() >= ctx.folded.size()) {
@@ -236,7 +237,8 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
     if (rec.atime > 0) {
       auto age = unix_seconds() - rec.atime;
       if (age >= 0 && age < 86400 * 3)
-        score += static_cast<int>(w.access_recency * (1.0 / (1.0 + static_cast<double>(age) / 7200.0)));
+        score +=
+            static_cast<int>(w.access_recency * (1.0 / (1.0 + static_cast<double>(age) / 7200.0)));
     }
     if (rec.kind == FileKind::Application && (ctx.hour >= 18 || ctx.hour < 8))
       score += w.hour_affinity / 2;
@@ -248,8 +250,7 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
       for (auto& t : ctx.session_tokens) {
         if (folded.find(t) != std::string::npos || pl.find(t) != std::string::npos) ++session_hits;
       }
-      if (session_hits)
-        score += (w.context_parent * std::min(session_hits, 4)) / 5;
+      if (session_hits) score += (w.context_parent * std::min(session_hits, 4)) / 5;
     }
   }
 
@@ -279,7 +280,8 @@ int rank_record(const RankContext& ctx, const IndexStore& store, const IndexReco
   for (auto& [alias, target] : ctx.aliases) {
     if (alias == ctx.folded) {
       auto tn = fold_search(target);
-      if (tn == folded || folded.find(tn) != std::string::npos || tn.find(folded) != std::string::npos)
+      if (tn == folded || folded.find(tn) != std::string::npos ||
+          tn.find(folded) != std::string::npos)
         score += w.alias;
     }
   }

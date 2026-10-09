@@ -15,7 +15,9 @@
 
 namespace wilfred {
 
-std::string default_snippets_path() { return path_join(config_directory(), "snippets.yml"); }
+std::string default_snippets_path() {
+  return path_join(config_directory(), "snippets.yml");
+}
 
 bool snippet_query_forced(const std::string& query, const Config& cfg) {
   auto raw = query;
@@ -29,12 +31,14 @@ bool snippet_query_forced(const std::string& query, const Config& cfg) {
 bool query_is_snippet_save(const std::string& query, std::string& name_out) {
   auto q = normalize_query(query);
   auto l = to_lower_utf8(q);
-  const char* prefixes[] = {"clip save ", "snip save ", "snippet save ", "clip:save ", "snip:save "};
+  const char* prefixes[] = {"clip save ", "snip save ", "snippet save ", "clip:save ",
+                            "snip:save "};
   for (auto* p : prefixes) {
     auto n = std::strlen(p);
     if (l.rfind(p, 0) == 0) {
       name_out = q.substr(n);
-      while (!name_out.empty() && name_out.front() == ' ') name_out.erase(name_out.begin());
+      while (!name_out.empty() && name_out.front() == ' ')
+        name_out.erase(name_out.begin());
       return !name_out.empty();
     }
   }
@@ -110,7 +114,8 @@ bool SnippetStore::save() const {
     os << "  body: |\n";
     std::istringstream body(s.body);
     std::string line;
-    while (std::getline(body, line)) os << "    " << line << "\n";
+    while (std::getline(body, line))
+      os << "    " << line << "\n";
     if (s.body.empty()) os << "    \n";
   }
   auto t = os.str();
@@ -258,7 +263,8 @@ std::vector<SearchResult> SnippetStore::match(const std::string& query, const Co
       score = 9800;
     else if (!lq.empty() && (trig.rfind(lq, 0) == 0 || trig_full.rfind(lq, 0) == 0))
       score = 9000;
-    else if (!lq.empty() && (trig.find(lq) != std::string::npos || trig_full.find(lq) != std::string::npos))
+    else if (!lq.empty() &&
+             (trig.find(lq) != std::string::npos || trig_full.find(lq) != std::string::npos))
       score = 7600;
     else if (!lq.empty() && score_fuzzy(lq, trig, s.trigger).matched)
       score = 6200 + score_fuzzy(lq, trig, s.trigger).score;
@@ -283,9 +289,8 @@ std::vector<SearchResult> SnippetStore::match(const std::string& query, const Co
     r.category = "snippet";
     out.push_back(std::move(r));
   }
-  std::sort(out.begin(), out.end(), [](const SearchResult& a, const SearchResult& b) {
-    return a.score > b.score;
-  });
+  std::sort(out.begin(), out.end(),
+            [](const SearchResult& a, const SearchResult& b) { return a.score > b.score; });
   return out;
 }
 

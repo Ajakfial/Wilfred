@@ -50,10 +50,10 @@ void VectorIndex::set_config(const Config& cfg) {
   }
   auto backend = embedder_.configure(ev);
   enabled_ = ev.enabled;
-  min_score_ = (float)(cfg.embedding.enabled ? cfg.embedding.min_score
-                                            : cfg.providers.semantic_min_score);
-  max_results_ = cfg.embedding.enabled ? cfg.embedding.max_results
-                                      : cfg.providers.semantic_max_results;
+  min_score_ =
+      (float)(cfg.embedding.enabled ? cfg.embedding.min_score : cfg.providers.semantic_min_score);
+  max_results_ =
+      cfg.embedding.enabled ? cfg.embedding.max_results : cfg.providers.semantic_max_results;
   if (hnsw_.dim() != 0 && hnsw_.dim() != embedder_.dim()) {
     hnsw_.clear();
   }
@@ -83,8 +83,7 @@ bool VectorIndex::has(std::uint32_t id) const {
   return hnsw_.get(id) != nullptr;
 }
 
-std::vector<VectorHit> VectorIndex::query(const std::string& text, int k,
-                                          float min_score) const {
+std::vector<VectorHit> VectorIndex::query(const std::string& text, int k, float min_score) const {
   std::vector<VectorHit> out;
   if (!enabled_ || hnsw_.empty()) return out;
   if (k <= 0) k = max_results_;
@@ -110,7 +109,8 @@ void VectorIndex::gc(const IndexStore& store) {
   for (std::uint32_t id = 1; id < store.next_id(); ++id) {
     if (hnsw_.get(id) && !store.get(id)) stale.push_back(id);
   }
-  for (auto id : stale) hnsw_.remove(id);
+  for (auto id : stale)
+    hnsw_.remove(id);
   if (!stale.empty()) dirty_ = true;
 }
 

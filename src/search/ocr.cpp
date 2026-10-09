@@ -23,7 +23,8 @@ namespace {
 std::string shell_quote(const std::string& s) {
   std::string o = "\"";
   for (char c : s) {
-    if (c == '"') o += "\\\"";
+    if (c == '"')
+      o += "\\\"";
     else
       o.push_back(c);
   }
@@ -49,7 +50,8 @@ std::string collapse(const std::string& s, std::size_t cap) {
       if (o.size() >= cap) break;
     }
   }
-  while (!o.empty() && o.back() == ' ') o.pop_back();
+  while (!o.empty() && o.back() == ' ')
+    o.pop_back();
   return o;
 }
 
@@ -57,11 +59,13 @@ std::string collapse(const std::string& s, std::size_t cap) {
 
 bool is_image_extension(const std::string& path) {
   auto e = to_lower_utf8(path_extension(path));
-  return e == ".png" || e == ".jpg" || e == ".jpeg" || e == ".tif" ||
-         e == ".tiff" || e == ".bmp" || e == ".webp" || e == ".gif";
+  return e == ".png" || e == ".jpg" || e == ".jpeg" || e == ".tif" || e == ".tiff" || e == ".bmp" ||
+         e == ".webp" || e == ".gif";
 }
 
-bool is_ocr_candidate(const std::string& path) { return is_image_extension(path); }
+bool is_ocr_candidate(const std::string& path) {
+  return is_image_extension(path);
+}
 
 bool tesseract_available() {
 #ifdef _WIN32
@@ -76,8 +80,8 @@ bool tesseract_available() {
 #endif
 }
 
-bool extract_ocr_text(const std::string& path, std::string& out_text,
-                      std::size_t max_bytes, const std::string& languages) {
+bool extract_ocr_text(const std::string& path, std::string& out_text, std::size_t max_bytes,
+                      const std::string& languages) {
   out_text.clear();
   if (max_bytes == 0 || path.empty()) return false;
   if (!is_ocr_candidate(path)) return false;
@@ -91,11 +95,11 @@ bool extract_ocr_text(const std::string& path, std::string& out_text,
   }
   if (safe_langs.empty()) safe_langs = "eng";
 #ifdef _WIN32
-  std::string cmd = "tesseract " + shell_quote(path) + " stdout -l " + safe_langs +
-                    " --psm 6 2>NUL";
+  std::string cmd =
+      "tesseract " + shell_quote(path) + " stdout -l " + safe_langs + " --psm 6 2>NUL";
 #else
-  std::string cmd = "tesseract " + shell_quote(path) +
-                    " stdout -l " + safe_langs + " --psm 6 2>/dev/null";
+  std::string cmd =
+      "tesseract " + shell_quote(path) + " stdout -l " + safe_langs + " --psm 6 2>/dev/null";
 #endif
   FILE* f = POPEN(cmd.c_str(), "r");
   if (!f) return false;

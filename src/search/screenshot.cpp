@@ -20,8 +20,10 @@ std::string screenshot_mode_name(ScreenshotMode mode) {
 bool parse_screenshot_mode(const std::string& s, ScreenshotMode& out) {
   auto l = to_lower_utf8(s);
   // Trim whitespace.
-  while (!l.empty() && (l.front() == ' ' || l.front() == '\t')) l.erase(l.begin());
-  while (!l.empty() && (l.back() == ' ' || l.back() == '\t')) l.pop_back();
+  while (!l.empty() && (l.front() == ' ' || l.front() == '\t'))
+    l.erase(l.begin());
+  while (!l.empty() && (l.back() == ' ' || l.back() == '\t'))
+    l.pop_back();
   if (l.empty()) return false;
   if (l == "fullscreen" || l == "full" || l == "screen" || l == "desktop" || l == "all" ||
       l == "monitor" || l == "monitors")

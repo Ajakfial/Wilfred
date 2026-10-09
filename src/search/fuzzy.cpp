@@ -29,7 +29,8 @@ int levenshtein_bounded(std::string_view a, std::string_view b, int max_dist) {
       max_dist)
     return max_dist + 1;
   std::vector<int> prev(b.size() + 1), cur(b.size() + 1);
-  for (std::size_t j = 0; j <= b.size(); ++j) prev[j] = static_cast<int>(j);
+  for (std::size_t j = 0; j <= b.size(); ++j)
+    prev[j] = static_cast<int>(j);
   for (std::size_t i = 1; i <= a.size(); ++i) {
     cur[0] = static_cast<int>(i);
     int row_min = cur[0];
@@ -61,8 +62,10 @@ int damerau_bounded(std::string_view a, std::string_view b, int max_dist) {
   // Optimal string alignment (restricted Damerau-Levenshtein) with adjacent
   // transposition. Bounded + early exit; inputs are short (queries, tokens).
   std::vector<std::vector<int>> d(n + 1, std::vector<int>(m + 1, 0));
-  for (std::size_t i = 0; i <= n; ++i) d[i][0] = static_cast<int>(i);
-  for (std::size_t j = 0; j <= m; ++j) d[0][j] = static_cast<int>(j);
+  for (std::size_t i = 0; i <= n; ++i)
+    d[i][0] = static_cast<int>(i);
+  for (std::size_t j = 0; j <= m; ++j)
+    d[0][j] = static_cast<int>(j);
   for (std::size_t i = 1; i <= n; ++i) {
     int row_min = max_dist + 1;
     for (std::size_t j = 1; j <= m; ++j) {
@@ -126,9 +129,9 @@ int typo_score(std::string_view query_folded, std::string_view text_folded) {
   // 1000 for exact (handled elsewhere), ~800/600/400 for d=1/2/3.
   int base = 900 - d * 220;
   // Prefer same-length (likely true typo) over length mismatch.
-  int len_diff =
-      static_cast<int>(query_folded.size() > text_folded.size() ? query_folded.size() - text_folded.size()
-                                                                : text_folded.size() - query_folded.size());
+  int len_diff = static_cast<int>(query_folded.size() > text_folded.size()
+                                      ? query_folded.size() - text_folded.size()
+                                      : text_folded.size() - query_folded.size());
   base -= len_diff * 40;
   // Shared prefix is a strong typo signal ("firefoz" vs "firefox").
   std::size_t common = 0;
@@ -195,7 +198,7 @@ FuzzyScore score_fuzzy(std::string_view query_folded, std::string_view text_fold
       for (auto& t : toks) {
         if (t.size() < 3) continue;
         if (static_cast<int>(t.size() > query_folded.size() ? t.size() - query_folded.size()
-                                                             : query_folded.size() - t.size()) > thr)
+                                                            : query_folded.size() - t.size()) > thr)
           continue;
         int td = damerau_bounded(query_folded, std::string_view(t), thr);
         if (td < best_d) best_d = td;
@@ -206,9 +209,9 @@ FuzzyScore score_fuzzy(std::string_view query_folded, std::string_view text_fold
         return fs;
       }
     }
-    int d = levenshtein_bounded(query_folded, text_folded.substr(0, std::min(text_folded.size(),
-                                                                             query_folded.size() + 2)),
-                                2);
+    int d = levenshtein_bounded(
+        query_folded, text_folded.substr(0, std::min(text_folded.size(), query_folded.size() + 2)),
+        2);
     if (d <= 2) {
       fs.matched = true;
       fs.score = 320 - d * 60;
@@ -223,7 +226,8 @@ FuzzyScore score_fuzzy(std::string_view query_folded, std::string_view text_fold
     if (text_folded[i] == query_folded[qi]) {
       ++consec;
       score += 12 + consec * 8;
-      if (i == 0) score += 40;
+      if (i == 0)
+        score += 40;
       else {
         char p = text_folded[i - 1];
         if (p == ' ' || p == '-' || p == '_' || p == '/' || p == '\\' || p == '.') score += 28;

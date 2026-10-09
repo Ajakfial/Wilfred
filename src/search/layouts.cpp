@@ -186,8 +186,7 @@ bool LayoutStore::apply_layout_by_name(const std::string& name, std::string& err
       if (hay.find(needle) == std::string::npos) continue;
       used.push_back(w.id);
       if (e.maximized) {
-        if (!native_window_action(w.id, NativeWindowOp::Maximize, error))
-          return false;
+        if (!native_window_action(w.id, NativeWindowOp::Maximize, error)) return false;
       } else if (!native_window_move(w.id, e.x, e.y, e.w, e.h, error)) {
         return false;
       }
@@ -208,8 +207,10 @@ bool LayoutStore::apply_tiling_preset(const std::string& preset, std::string& er
   if (!native_primary_work_area(area, error)) return false;
   // Parse "columns 3" / "rows 2" / bare names.
   std::string p = to_lower_utf8(preset);
-  while (!p.empty() && (p.front() == ' ' || p.front() == '\t')) p.erase(p.begin());
-  while (!p.empty() && (p.back() == ' ' || p.back() == '\t')) p.pop_back();
+  while (!p.empty() && (p.front() == ' ' || p.front() == '\t'))
+    p.erase(p.begin());
+  while (!p.empty() && (p.back() == ' ' || p.back() == '\t'))
+    p.pop_back();
   std::string mode = p;
   int count = 0;
   if (p.rfind("columns", 0) == 0) {
@@ -255,7 +256,8 @@ bool LayoutStore::apply_tiling_preset(const std::string& preset, std::string& er
     std::vector<NativeWorkArea> cells = {{area.x, area.y, third, area.h},
                                          {area.x + third, area.y, third, area.h},
                                          {area.x + 2 * third, area.y, area.w - 2 * third, area.h}};
-    while (cells.size() < wins.size()) cells.push_back(cells.back());
+    while (cells.size() < wins.size())
+      cells.push_back(cells.back());
     return move_all(cells);
   }
   if (mode == "grid") {
@@ -266,8 +268,8 @@ bool LayoutStore::apply_tiling_preset(const std::string& preset, std::string& er
     for (std::size_t i = 0; i < n; ++i) {
       int c = static_cast<int>(i % cols);
       int r = static_cast<int>(i / cols);
-      cells.push_back({area.x + c * area.w / cols, area.y + r * area.h / rows,
-                       area.w / cols, area.h / rows});
+      cells.push_back(
+          {area.x + c * area.w / cols, area.y + r * area.h / rows, area.w / cols, area.h / rows});
     }
     return move_all(cells);
   }
@@ -306,7 +308,8 @@ bool LayoutStore::apply_tiling_preset(const std::string& preset, std::string& er
     }
     return move_all(cells);
   }
-  error = "unknown tiling preset '" + preset + "' (try halves, thirds, grid, columns N, rows N, stack)";
+  error =
+      "unknown tiling preset '" + preset + "' (try halves, thirds, grid, columns N, rows N, stack)";
   return false;
 }
 

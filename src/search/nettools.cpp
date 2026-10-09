@@ -14,10 +14,10 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
-#include <netdb.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #endif
 
 namespace wilfred {
@@ -128,7 +128,8 @@ std::string ping_summary(const std::string& host) {
   if (pos != std::string::npos) {
     auto eol = out.find('\n', pos);
     std::string line = out.substr(pos, eol == std::string::npos ? std::string::npos : eol - pos);
-    while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
+      line.pop_back();
     return line.size() > 120 ? line.substr(0, 120) : line;
   }
   if (low.find("unreachable") != std::string::npos) return "host unreachable";
@@ -163,7 +164,8 @@ std::string public_ip() {
   if (fgets(buf, sizeof(buf), f)) o = buf;
   pclose(f);
 #endif
-  while (!o.empty() && (o.back() == '\n' || o.back() == '\r' || o.back() == ' ')) o.pop_back();
+  while (!o.empty() && (o.back() == '\n' || o.back() == '\r' || o.back() == ' '))
+    o.pop_back();
   if (o.size() > 64) return {};
   // Basic sanity: digits/dots/colons only.
   for (char c : o) {
@@ -174,8 +176,10 @@ std::string public_ip() {
 
 bool looks_like_email(const std::string& s) {
   auto t = s;
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
-  while (!t.empty() && (t.back() == ' ' || t.back() == '\t' || t.back() == '\n' || t.back() == '\r'))
+  while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+    t.erase(t.begin());
+  while (!t.empty() &&
+         (t.back() == ' ' || t.back() == '\t' || t.back() == '\n' || t.back() == '\r'))
     t.pop_back();
   if (t.size() > 254 || t.find(' ') != std::string::npos) return false;
   auto at = t.find('@');
@@ -187,7 +191,8 @@ bool looks_like_email(const std::string& s) {
 
 bool looks_like_url_text(const std::string& s) {
   auto t = s;
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+  while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+    t.erase(t.begin());
   auto l = to_lower_utf8(t);
   if (l.rfind("http://", 0) == 0 || l.rfind("https://", 0) == 0 || l.rfind("www.", 0) == 0)
     return true;
@@ -202,7 +207,8 @@ bool looks_like_url_text(const std::string& s) {
   if (dot == std::string::npos || dot + 1 >= host.size()) return false;
   std::string tld = to_lower_utf8(host.substr(dot + 1));
   // Trim trailing punctuation.
-  while (!tld.empty() && (tld.back() == '.' || tld.back() == ',' || tld.back() == ')')) tld.pop_back();
+  while (!tld.empty() && (tld.back() == '.' || tld.back() == ',' || tld.back() == ')'))
+    tld.pop_back();
   static const char* known[] = {"com", "org", "net", "io", "dev", "app", "edu", "gov", nullptr};
   for (auto** p = known; *p; ++p)
     if (tld == *p) return true;
@@ -211,7 +217,9 @@ bool looks_like_url_text(const std::string& s) {
 
 bool looks_like_path_text(const std::string& s) {
   auto t = s;
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t' || t.front() == '"' || t.front() == '\'')) t.erase(t.begin());
+  while (!t.empty() &&
+         (t.front() == ' ' || t.front() == '\t' || t.front() == '"' || t.front() == '\''))
+    t.erase(t.begin());
   if (t.size() < 2) return false;
   if (t[0] == '/' || t[0] == '~') return true;
   if (t.size() >= 3 && std::isalpha(static_cast<unsigned char>(t[0])) && t[1] == ':' &&
@@ -227,8 +235,10 @@ bool looks_like_path_text(const std::string& s) {
 
 bool looks_like_ip_text(const std::string& s) {
   auto t = s;
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
-  while (!t.empty() && (t.back() == ' ' || t.back() == '\t')) t.pop_back();
+  while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+    t.erase(t.begin());
+  while (!t.empty() && (t.back() == ' ' || t.back() == '\t'))
+    t.pop_back();
   if (t.empty() || t.size() > 64) return false;
   int dots = 0, colons = 0;
   for (char c : t) {

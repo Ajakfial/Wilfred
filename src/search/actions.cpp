@@ -7,25 +7,24 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/index/record.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/plugin/host.hpp"
-#include "wilfred/search/clipboard.hpp"
+#include "wilfred/plugin/trust.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/layouts.hpp"
-#include "wilfred/search/pins.hpp"
-#include "wilfred/locale/locale.hpp"
 #include "wilfred/search/media.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/screenshot.hpp"
 #include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/toggles.hpp"
-#include "wilfred/plugin/host.hpp"
-#include "wilfred/plugin/trust.hpp"
 #include "wilfred/search/transcribe.hpp"
 
 #include <chrono>
@@ -45,7 +44,9 @@ namespace wilfred {
 
 static PluginHost* g_plugin_exec = nullptr;
 
-void set_plugin_host_for_actions(PluginHost* host) { g_plugin_exec = host; }
+void set_plugin_host_for_actions(PluginHost* host) {
+  g_plugin_exec = host;
+}
 
 namespace {
 
@@ -149,12 +150,18 @@ void attach_impl(SearchResult& r, bool include_open_with) {
   if (r.action == ResultAction::System || r.category == "system") {
     auto sid = r.payload.empty() ? r.path : r.payload;
     std::string lab = tr("action.run");
-    if (sid == "lock") lab = tr("action.lock");
-    else if (sid == "sleep") lab = tr("action.sleep");
-    else if (sid == "shutdown") lab = tr("action.shutdown");
-    else if (sid == "restart") lab = tr("action.restart");
-    else if (sid == "logout") lab = tr("action.logout");
-    else if (sid == "empty_trash") lab = tr("action.empty_trash");
+    if (sid == "lock")
+      lab = tr("action.lock");
+    else if (sid == "sleep")
+      lab = tr("action.sleep");
+    else if (sid == "shutdown")
+      lab = tr("action.shutdown");
+    else if (sid == "restart")
+      lab = tr("action.restart");
+    else if (sid == "logout")
+      lab = tr("action.logout");
+    else if (sid == "empty_trash")
+      lab = tr("action.empty_trash");
     add("open", lab);
     return;
   }
@@ -198,7 +205,9 @@ void attach_impl(SearchResult& r, bool include_open_with) {
 
 }  // namespace
 
-void attach_result_actions(SearchResult& r) { attach_impl(r, true); }
+void attach_result_actions(SearchResult& r) {
+  attach_impl(r, true);
+}
 
 void attach_result_actions(std::vector<SearchResult>& results) {
   // Open-with lookups touch the registry / LaunchServices / .desktop files,
@@ -223,7 +232,8 @@ namespace {
 std::string lower_copy(const std::string& s) {
   std::string o;
   o.reserve(s.size());
-  for (unsigned char c : s) o.push_back(static_cast<char>(std::tolower(c)));
+  for (unsigned char c : s)
+    o.push_back(static_cast<char>(std::tolower(c)));
   return o;
 }
 
@@ -238,7 +248,8 @@ std::string action_label_for(const std::string& id) {
   if (id == "copy_text") return tr("action.copy_text");
   if (id == "hash_file") return tr("action.hash_file");
   if (id == "compress_zip") return tr("action.compress_zip");
-  if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0) return tr("action.bulk_rename_short");
+  if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0)
+    return tr("action.bulk_rename_short");
   if (id == "move_to" || id.rfind("move_to:", 0) == 0) return tr("action.move_to_short");
   if (id == "new_from_template" || id.rfind("new_from_template:", 0) == 0)
     return tr("action.new_from_template_short");
@@ -274,12 +285,12 @@ bool is_file_like(const SearchResult& r) {
   if (r.category == "timer" || r.category == "stopwatch" || r.category == "note" ||
       r.category == "todo" || r.category == "kill" || r.category == "media" ||
       r.category == "workflow" || r.category == "quicklink" || r.category == "process" ||
-      r.category == "ping" || r.category == "dns" || r.category == "myip" ||
-      r.category == "dupe" || r.category == "large" || r.category == "transcribe" ||
-      r.category == "dictate" || r.category == "layout" || r.category == "convert" ||
-      r.category == "bgremove" || r.category == "toggle" || r.category == "settings" ||
-      r.category == "config" || r.category == "setup" || r.category == "remote" ||
-      r.category == "plugins" || r.category == "pkg")
+      r.category == "ping" || r.category == "dns" || r.category == "myip" || r.category == "dupe" ||
+      r.category == "large" || r.category == "transcribe" || r.category == "dictate" ||
+      r.category == "layout" || r.category == "convert" || r.category == "bgremove" ||
+      r.category == "toggle" || r.category == "settings" || r.category == "config" ||
+      r.category == "setup" || r.category == "remote" || r.category == "plugins" ||
+      r.category == "pkg")
     return false;
   return true;
 }
@@ -418,7 +429,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       id = r.path.rfind("pkg-install:", 0) == 0 ? "open" : "copy_text";
     } else if (r.category == "process" || r.category == "kill") {
       // `process` list cards: copy by default, `kill` cards: kill by default.
-      if (r.category == "kill") id = "kill_process";
+      if (r.category == "kill")
+        id = "kill_process";
       else if (r.action == ResultAction::Copy || r.action == ResultAction::Mini)
         id = "copy_text";
       else
@@ -457,7 +469,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   // Named workflows: "workflow:<name>" expands to its '+'-joined chain.
   if (id.rfind("workflow:", 0) == 0) {
     auto name = id.substr(9);
-    for (char& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (char& c : name)
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     auto it = cfg.workflows.find(name);
     if (it == cfg.workflows.end()) {
       log_warn("workflow", "unknown workflow '" + name + "'");
@@ -479,8 +492,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     std::size_t pos = 0;
     while (pos <= id.size()) {
       auto plus = id.find('+', pos);
-      std::string seg =
-          plus == std::string::npos ? id.substr(pos) : id.substr(pos, plus - pos);
+      std::string seg = plus == std::string::npos ? id.substr(pos) : id.substr(pos, plus - pos);
       if (seg.empty() || !execute_result_action(r, cfg, seg)) ok = false;
       if (plus == std::string::npos) break;
       pos = plus + 1;
@@ -488,8 +500,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     return ok;
   }
   if (id == "clip_pin" || id == "clip_unpin" || id == "clip_clear" ||
-      (r.category == "clips" &&
-       (r.payload == "clip:clear" || r.path == "clip:clear"))) {
+      (r.category == "clips" && (r.payload == "clip:clear" || r.path == "clip:clear"))) {
     auto& store = ClipStore::instance();
     if (id == "clip_pin") {
       auto t = r.payload.empty() ? r.title : r.payload;
@@ -595,7 +606,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
         return false;
       };
       if (raw == "plugin_approve_all") {
-        for (auto& m : host.manifests()) approve_one(m.id);
+        for (auto& m : host.manifests())
+          approve_one(m.id);
       } else if (raw.rfind("plugin_approve:", 0) == 0) {
         if (!approve_one(raw.substr(15))) {
           log_warn("plugin", "unknown plugin");
@@ -795,8 +807,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     if (id == "pin_add" || id == "pin_remove") {
       auto target = p.empty() ? r.title : p;
       if (target.empty()) return false;
-      bool ok = id == "pin_add" ? PinStore::instance().add(target)
-                                : PinStore::instance().remove(target);
+      bool ok =
+          id == "pin_add" ? PinStore::instance().add(target) : PinStore::instance().remove(target);
       if (ok) write_clipboard(id == "pin_add" ? ("pinned: " + target) : ("unpinned: " + target));
       return ok;
     }
@@ -810,8 +822,10 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
           auto clip = read_clipboard().text;
           auto nl = clip.find('\n');
           auto first = nl == std::string::npos ? clip : clip.substr(0, nl);
-          while (!first.empty() && (first.front() == ' ')) first.erase(first.begin());
-          while (!first.empty() && (first.back() == ' ' || first.back() == '\r')) first.pop_back();
+          while (!first.empty() && (first.front() == ' '))
+            first.erase(first.begin());
+          while (!first.empty() && (first.back() == ' ' || first.back() == '\r'))
+            first.pop_back();
           if (!first.empty() && first.size() < 64) pattern = first;
         } catch (...) {
         }
@@ -1005,7 +1019,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     return true;
   }
   // Window management on window cards (payload holds the numeric window id).
-  if (id.rfind("window_", 0) == 0 && (r.action == ResultAction::SwitchWindow || r.category == "window")) {
+  if (id.rfind("window_", 0) == 0 &&
+      (r.action == ResultAction::SwitchWindow || r.category == "window")) {
     auto raw = r.payload.empty() ? r.path : r.payload;
     char* end = nullptr;
     auto wid = std::strtoull(raw.c_str(), &end, 10);
@@ -1079,7 +1094,8 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   // Window layouts + focus-by-name (automation-friendly window steps).
   // Tiling presets (`tile:<preset>`) tile current windows; layout steps
   // apply saved files. Both are shared with the daemon auto-apply.
-  if (id.rfind("tile:", 0) == 0 || (r.category == "layout" && r.payload.rfind("tile:", 0) == 0 && id == "open")) {
+  if (id.rfind("tile:", 0) == 0 ||
+      (r.category == "layout" && r.payload.rfind("tile:", 0) == 0 && id == "open")) {
     auto preset = id.rfind("tile:", 0) == 0 ? id.substr(5) : r.payload.substr(5);
     if (preset.empty()) preset = "grid";
     std::string err;

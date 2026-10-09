@@ -30,8 +30,8 @@ std::string human_bytes_local(std::uint64_t n) {
   return buf;
 }
 
-SearchResult card_local(const std::string& title, const std::string& sub, const std::string& payload,
-                        const std::string& label, int score) {
+SearchResult card_local(const std::string& title, const std::string& sub,
+                        const std::string& payload, const std::string& label, int score) {
   SearchResult r;
   r.title = title;
   r.subtitle = sub;
@@ -89,8 +89,8 @@ std::vector<SearchResult> large_file_results(IndexEngine& index, const Config& c
     ++n;
   }
   if (out.empty()) {
-    SearchResult r = card_local("No files found", dir_filter.empty() ? "Index is empty" : dir_filter,
-                               "", "large", 9000);
+    SearchResult r = card_local(
+        "No files found", dir_filter.empty() ? "Index is empty" : dir_filter, "", "large", 9000);
     r.action = ResultAction::None;
     out.push_back(std::move(r));
   }
@@ -156,8 +156,7 @@ std::vector<SearchResult> dupe_file_results(IndexEngine& index, const Config& cf
     }
     if (groups.size() >= 4) break;
   }
-  std::sort(groups.begin(), groups.end(),
-            [](auto& a, auto& b) { return a.size > b.size; });
+  std::sort(groups.begin(), groups.end(), [](auto& a, auto& b) { return a.size > b.size; });
   std::vector<SearchResult> out;
   int n = 0;
   for (auto& g : groups) {
@@ -174,8 +173,8 @@ std::vector<SearchResult> dupe_file_results(IndexEngine& index, const Config& cf
   }
   if (out.empty()) {
     SearchResult r = card_local("No duplicates found",
-                               dir_filter.empty() ? "No same-size files in index" : dir_filter, "",
-                               "dupe", 9000);
+                                dir_filter.empty() ? "No same-size files in index" : dir_filter, "",
+                                "dupe", 9000);
     r.action = ResultAction::None;
     out.push_back(std::move(r));
   }

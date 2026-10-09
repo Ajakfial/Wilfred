@@ -5,7 +5,6 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
-#include "wilfred/core/utf8.hpp"
 #include "wilfred/index/tokenizer.hpp"
 
 #include <algorithm>
@@ -119,7 +118,8 @@ bool ClipStore::save_locked() const {
   put_u32(blob, static_cast<std::uint32_t>(items_.size()));
   for (auto& e : items_) {
     blob.push_back(e.pinned ? 1 : 0);
-    blob.push_back(static_cast<char>(e.kind == ClipKind::Path ? 1 : (e.kind == ClipKind::Image ? 2 : 0)));
+    blob.push_back(
+        static_cast<char>(e.kind == ClipKind::Path ? 1 : (e.kind == ClipKind::Image ? 2 : 0)));
     put_i64(blob, e.when);
     auto n = std::min<std::size_t>(e.text.size(), kMaxText);
     put_u32(blob, static_cast<std::uint32_t>(n));
@@ -155,7 +155,8 @@ void ClipStore::prune_locked() {
   for (auto& e : items_)
     if (!e.pinned) ++unpinned;
   // items_ is most-recent-first, so drop from the back.
-  for (auto it = items_.end(); it != items_.begin() && unpinned > static_cast<std::size_t>(max_entries_);) {
+  for (auto it = items_.end();
+       it != items_.begin() && unpinned > static_cast<std::size_t>(max_entries_);) {
     --it;
     if (!it->pinned) {
       it = items_.erase(it);
@@ -164,7 +165,9 @@ void ClipStore::prune_locked() {
   }
 }
 
-void ClipStore::record(const std::string& text) { record_kind(text, ClipKind::Text); }
+void ClipStore::record(const std::string& text) {
+  record_kind(text, ClipKind::Text);
+}
 
 void ClipStore::record_kind(const std::string& text, ClipKind kind) {
   if (text.empty()) return;
@@ -270,9 +273,9 @@ void ClipStore::clear_unpinned() {
   {
     std::lock_guard<std::mutex> lock(mu_);
     auto n0 = items_.size();
-    items_.erase(std::remove_if(items_.begin(), items_.end(),
-                                [](const ClipEntry& e) { return !e.pinned; }),
-                 items_.end());
+    items_.erase(
+        std::remove_if(items_.begin(), items_.end(), [](const ClipEntry& e) { return !e.pinned; }),
+        items_.end());
     changed = items_.size() != n0;
   }
   if (changed) save_throttled();

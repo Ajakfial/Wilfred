@@ -42,7 +42,9 @@ bool have_tool(const char* name) {
   return std::system(cmd.c_str()) == 0;
 }
 
-bool sys_ok(const std::string& cmd) { return std::system(cmd.c_str()) == 0; }
+bool sys_ok(const std::string& cmd) {
+  return std::system(cmd.c_str()) == 0;
+}
 
 bool playerctl_try(const std::string& id) {
   std::string arg = id == "playpause" ? "play-pause" : id;
@@ -56,11 +58,9 @@ bool playerctl_try(const std::string& id) {
 // pactl (Pulse/PipeWire-pulse) -> amixer (ALSA) -> pamixer (optional).
 bool volume_try(const std::string& id, bool mute) {
   if (mute) {
-    if (have_tool("wpctl") &&
-        sys_ok("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle >/dev/null 2>&1"))
+    if (have_tool("wpctl") && sys_ok("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle >/dev/null 2>&1"))
       return true;
-    if (have_tool("pactl") &&
-        sys_ok("pactl set-sink-mute @DEFAULT_SINK@ toggle >/dev/null 2>&1"))
+    if (have_tool("pactl") && sys_ok("pactl set-sink-mute @DEFAULT_SINK@ toggle >/dev/null 2>&1"))
       return true;
     if (have_tool("amixer") && sys_ok("amixer -q sset Master toggle >/dev/null 2>&1")) return true;
     if (have_tool("pamixer") && sys_ok("pamixer -t >/dev/null 2>&1")) return true;
@@ -75,10 +75,10 @@ bool volume_try(const std::string& id, bool mute) {
   if (have_tool("pactl") &&
       sys_ok("pactl set-sink-volume @DEFAULT_SINK@ " + pa + " >/dev/null 2>&1"))
     return true;
-  if (have_tool("amixer") && sys_ok("amixer -q sset Master " + al + " >/dev/null 2>&1")) return true;
+  if (have_tool("amixer") && sys_ok("amixer -q sset Master " + al + " >/dev/null 2>&1"))
+    return true;
   if (have_tool("pamixer")) {
-    if (sys_ok(std::string("pamixer ") + (id == "volup" ? "-i 10" : "-d 10") +
-               " >/dev/null 2>&1"))
+    if (sys_ok(std::string("pamixer ") + (id == "volup" ? "-i 10" : "-d 10") + " >/dev/null 2>&1"))
       return true;
   }
   return false;
@@ -99,8 +99,7 @@ bool native_media_action(const std::string& id, std::string& error) {
     if (have_tool("playerctl"))
       error = "playback failed (tried native MPRIS D-Bus + playerctl: " + native_err + ")";
     else if (!native_err.empty())
-      error = native_err +
-              " (tried native MPRIS D-Bus; playerctl not installed, none required)";
+      error = native_err + " (tried native MPRIS D-Bus; playerctl not installed, none required)";
     else
       error = "no MPRIS players found (tried native D-Bus)";
     return false;

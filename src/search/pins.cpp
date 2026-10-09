@@ -15,7 +15,9 @@ PinStore& PinStore::instance() {
   return inst;
 }
 
-std::string default_pins_path() { return path_join(data_directory(), "pins.bin"); }
+std::string default_pins_path() {
+  return path_join(data_directory(), "pins.bin");
+}
 
 void PinStore::configure(std::string path, const std::vector<std::string>& from_config) {
   std::lock_guard<std::mutex> lock(mu_);
@@ -68,7 +70,8 @@ bool PinStore::save_now() {
   std::string path = path_.empty() ? default_pins_path() : path_;
   std::string blob("WLPIN1", 6);
   auto put = [&](std::uint32_t v) {
-    for (int b = 0; b < 4; ++b) blob.push_back(static_cast<char>((v >> (b * 8)) & 0xff));
+    for (int b = 0; b < 4; ++b)
+      blob.push_back(static_cast<char>((v >> (b * 8)) & 0xff));
   };
   put(static_cast<std::uint32_t>(pins_.size()));
   for (auto& p : pins_) {
@@ -81,8 +84,10 @@ bool PinStore::save_now() {
 
 bool PinStore::add(const std::string& text) {
   auto l = to_lower_utf8(text);
-  while (!l.empty() && (l.front() == ' ')) l.erase(l.begin());
-  while (!l.empty() && (l.back() == ' ')) l.pop_back();
+  while (!l.empty() && (l.front() == ' '))
+    l.erase(l.begin());
+  while (!l.empty() && (l.back() == ' '))
+    l.pop_back();
   if (l.empty()) return false;
   {
     std::lock_guard<std::mutex> lock(mu_);

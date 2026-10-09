@@ -25,7 +25,8 @@ static void add_ids(std::unordered_set<std::uint32_t>& cand, const std::vector<s
   }
 }
 
-static SearchResult result_from_record(const IndexStore& store, const ScoredHit& h, bool content_hit) {
+static SearchResult result_from_record(const IndexStore& store, const ScoredHit& h,
+                                       bool content_hit) {
   SearchResult sr;
   sr.id = h.id;
   sr.score = h.score;
@@ -49,8 +50,8 @@ static bool tokens_in_text(const std::vector<std::string>& tokens, std::string_v
                            std::string_view folded_path) {
   for (auto& t : tokens) {
     if (t.size() < 2) continue;
-    if (folded_name.find(t) == std::string_view::npos && folded_path.find(t) == std::string_view::npos &&
-        !is_subsequence(t, folded_name)) {
+    if (folded_name.find(t) == std::string_view::npos &&
+        folded_path.find(t) == std::string_view::npos && !is_subsequence(t, folded_name)) {
       // Typo-tolerant token gate: "visaul" still passes for "visual".
       // Keeps multi-token typo queries ("visaul docs") from being discarded
       // before ranking can score the near-miss.
@@ -85,9 +86,10 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
   ClipboardSnapshot clip;
   if (cfg.search.clipboard) clip = read_clipboard();
 
-  std::string cache_key = query + "\n" + std::to_string(limit) + "\n" +
-                          std::to_string(history && history->enabled() ? history->generation() : 0) +
-                          "\n" + clip.text.substr(0, 64);
+  std::string cache_key =
+      query + "\n" + std::to_string(limit) + "\n" +
+      std::to_string(history && history->enabled() ? history->generation() : 0) + "\n" +
+      clip.text.substr(0, 64);
   auto gen = index_.generation();
   if (gen == cache_gen_ && cache_key_ == cache_key) return cache_;
 
@@ -95,13 +97,12 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
   auto filter = parse_filter_clauses(q);
   apply_named_scopes(filter, cfg);
   q = normalize_query(q);
-  const bool has_filter = !filter.extensions.empty() || !filter.kinds.empty() ||
-                          !filter.in_dirs.empty() || !filter.name_contains.empty() ||
-                          !filter.phrases.empty() || !filter.content_contains.empty() ||
-                          filter.min_size || filter.max_size || filter.min_mtime ||
-                          filter.max_mtime || filter.hidden || filter.system ||
-                          filter.directories_only || filter.files_only || filter.apps_only ||
-                          filter.content_only;
+  const bool has_filter =
+      !filter.extensions.empty() || !filter.kinds.empty() || !filter.in_dirs.empty() ||
+      !filter.name_contains.empty() || !filter.phrases.empty() ||
+      !filter.content_contains.empty() || filter.min_size || filter.max_size || filter.min_mtime ||
+      filter.max_mtime || filter.hidden || filter.system || filter.directories_only ||
+      filter.files_only || filter.apps_only || filter.content_only;
   if (static_cast<int>(q.size()) < cfg.search.min_query_length && !has_filter) {
     cache_gen_ = gen;
     cache_key_ = std::move(cache_key);
@@ -144,7 +145,8 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
   const std::size_t cap = 8000;
 
   auto consider_tokens = ctx.tokens;
-  for (auto& t : filter.content_contains) consider_tokens.push_back(t);
+  for (auto& t : filter.content_contains)
+    consider_tokens.push_back(t);
 
   for (auto& tok : consider_tokens) {
     auto id = store.pool().find(tok);
@@ -165,9 +167,10 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
       if (!want.empty() && want[0] != '.') want.insert(want.begin(), '.');
       auto eid = store.pool().find(want);
       if (eid != StringPool::kInvalid)
-        add_ids(cand, store.ext_index().count(eid) ? store.ext_index().at(eid)
-                                                   : std::vector<std::uint32_t>{},
-                cap);
+        add_ids(
+            cand,
+            store.ext_index().count(eid) ? store.ext_index().at(eid) : std::vector<std::uint32_t>{},
+            cap);
     }
   }
 
@@ -210,8 +213,8 @@ std::vector<SearchResult> SearchEngine::search(const std::string& query, const C
             typo_head = is_typo_match(ctx.folded, stem);
         }
       }
-      if (folded.find(ctx.folded) != std::string_view::npos ||
-          is_subsequence(ctx.folded, folded) || acronym_match(ctx.folded, name) || typo_head ||
+      if (folded.find(ctx.folded) != std::string_view::npos || is_subsequence(ctx.folded, folded) ||
+          acronym_match(ctx.folded, name) || typo_head ||
           store.content_token_hits(i, ctx.tokens) > 0) {
         cand.insert(i);
         if (cand.size() >= cap) break;

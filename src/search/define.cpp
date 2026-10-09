@@ -9,7 +9,8 @@ namespace {
 
 inline std::string trim(const std::string& s) {
   std::size_t b = 0;
-  while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n')) ++b;
+  while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n'))
+    ++b;
   std::size_t e = s.size();
   while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
     --e;
@@ -28,11 +29,13 @@ struct Row {
 constexpr Row kWords[] = {
     {"abandon", "verb", "Give up completely; leave behind.", "leave, forsake, relinquish"},
     {"ability", "noun", "Skill or power to do something.", "skill, talent, capability"},
-    {"abstract", "adjective", "Theoretical rather than concrete; hard to picture.", "theoretical, conceptual"},
+    {"abstract", "adjective", "Theoretical rather than concrete; hard to picture.",
+     "theoretical, conceptual"},
     {"achieve", "verb", "Reach a goal through effort.", "accomplish, attain, reach"},
     {"adapt", "verb", "Adjust to new conditions.", "adjust, conform, acclimate"},
     {"adventure", "noun", "An exciting or unusual experience.", "escapade, journey, quest"},
-    {"aesthetic", "adjective", "Concerned with beauty or appearance.", "artistic, stylish, tasteful"},
+    {"aesthetic", "adjective", "Concerned with beauty or appearance.",
+     "artistic, stylish, tasteful"},
     {"agile", "adjective", "Able to move quickly and adapt.", "nimble, flexible, spry"},
     {"ambiguous", "adjective", "Open to more than one meaning.", "vague, unclear, equivocal"},
     {"ambition", "noun", "Strong desire to succeed.", "drive, aspiration, goal"},

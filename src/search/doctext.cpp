@@ -119,9 +119,9 @@ std::string strip_xml_tags(const std::string& xml, bool drop_code_blocks) {
         if (low == "script" || low == "style") ++skip_depth;
         if ((low == "/script" || low == "/style") && skip_depth > 0) --skip_depth;
       }
-      if (skip_depth == 0 && (low == "p" || low == "/p" || low == "br" || low == "div" ||
-                              low == "/div" || low == "tr" || low == "li" || low == "/li" ||
-                              low == "h1" || low == "h2" || low == "h3"))
+      if (skip_depth == 0 &&
+          (low == "p" || low == "/p" || low == "br" || low == "div" || low == "/div" ||
+           low == "tr" || low == "li" || low == "/li" || low == "h1" || low == "h2" || low == "h3"))
         o.push_back(' ');
       i = e + 1;
     } else if (skip_depth == 0) {
@@ -151,7 +151,8 @@ std::string collapse_ws(std::string s, std::size_t cap) {
       if (o.size() >= cap) break;
     }
   }
-  while (!o.empty() && o.back() == ' ') o.pop_back();
+  while (!o.empty() && o.back() == ' ')
+    o.pop_back();
   return o;
 }
 
@@ -173,8 +174,8 @@ bool read_bytes(const std::string& path, std::vector<std::uint8_t>& data, std::s
   return true;
 }
 
-bool extract_office(const std::vector<std::uint8_t>& data, const std::string& ext,
-                    std::string& out, std::size_t cap) {
+bool extract_office(const std::vector<std::uint8_t>& data, const std::string& ext, std::string& out,
+                    std::size_t cap) {
   std::string acc;
   auto grab = [&](const std::string& prefix, const std::string& suffix) {
     std::string part;
@@ -223,7 +224,8 @@ bool extract_pdf(const std::vector<std::uint8_t>& data, std::string& out, std::s
     }
     if (s == std::string::npos) break;
     std::size_t body = s + 6;
-    while (body < data.size() && is_ws(data[body])) ++body;
+    while (body < data.size() && is_ws(data[body]))
+      ++body;
     auto e = std::string::npos;
     for (std::size_t k = body; k + 9 < data.size() && k < body + 4 * 1024 * 1024; ++k) {
       if (data[k] == 'e' && data[k + 1] == 'n' && data[k + 2] == 'd' && data[k + 3] == 's' &&
@@ -347,9 +349,9 @@ bool extract_rtf(const std::string& text, std::string& out, std::size_t cap) {
   int ignore_depth = -1;
   int depth = 0;
   auto is_dest = [](const std::string& w) {
-    return w == "fonttbl" || w == "colortbl" || w == "stylesheet" || w == "info" ||
-           w == "header" || w == "footer" || w == "footnote" || w == "pict" || w == "object" ||
-           w == "themedata" || w == "colorschememapping";
+    return w == "fonttbl" || w == "colortbl" || w == "stylesheet" || w == "info" || w == "header" ||
+           w == "footer" || w == "footnote" || w == "pict" || w == "object" || w == "themedata" ||
+           w == "colorschememapping";
   };
   while (i < text.size()) {
     char c = text[i];
@@ -372,13 +374,13 @@ bool extract_rtf(const std::string& text, std::string& out, std::size_t cap) {
           if (std::sscanf(hex.c_str(), "%x", &v) == 1) o.push_back(static_cast<char>(v));
         }
         i += 4;
-      } else if (n == '*' ) {
+      } else if (n == '*') {
         ignore_depth = depth;
         i += 2;
       } else if ((n >= 'a' && n <= 'z') || (n >= 'A' && n <= 'Z')) {
         std::size_t j = i + 1;
-        while (j < text.size() && ((text[j] >= 'a' && text[j] <= 'z') ||
-                                   (text[j] >= 'A' && text[j] <= 'Z')))
+        while (j < text.size() &&
+               ((text[j] >= 'a' && text[j] <= 'z') || (text[j] >= 'A' && text[j] <= 'Z')))
           ++j;
         std::string word = text.substr(i + 1, j - i - 1);
         std::size_t k = j;
@@ -387,7 +389,8 @@ bool extract_rtf(const std::string& text, std::string& out, std::size_t cap) {
           neg = true;
           ++k;
         }
-        while (k < text.size() && text[k] >= '0' && text[k] <= '9') ++k;
+        while (k < text.size() && text[k] >= '0' && text[k] <= '9')
+          ++k;
         if (k < text.size() && text[k] == ' ') ++k;
         (void)neg;
         if (ignore_depth < 0) {

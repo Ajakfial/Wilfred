@@ -8,11 +8,13 @@
 #include "wilfred/fs/volumes.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/locale/locale.hpp"
 #include "wilfred/math/expr.hpp"
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
-#include "wilfred/search/clipboard.hpp"
+#include "wilfred/plugin/mini.hpp"
 #include "wilfred/search/clip_history.hpp"
+#include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/define.hpp"
 #include "wilfred/search/disktools.hpp"
@@ -21,10 +23,9 @@
 #include "wilfred/search/glyphs.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
-#include "wilfred/locale/locale.hpp"
-#include "wilfred/search/pins.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/nettools.hpp"
+#include "wilfred/search/pins.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
@@ -32,7 +33,6 @@
 #include "wilfred/search/setup.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/toggles.hpp"
-#include "wilfred/plugin/mini.hpp"
 #include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 #include "wilfred/sources/sources.hpp"
@@ -91,11 +91,11 @@
 #endif
 #if defined(WILFRED_BSD)
 // Order matters: socket types precede interface and address headers.
-#include <sys/socket.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #endif
 #endif
 
@@ -348,9 +348,9 @@ static bool speed_http_get_count(const wchar_t* host, const wchar_t* path, std::
       double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
       if (live_down) speed_set_down(n, mbps_of(n, sec));
       if (max_bytes && n >= max_bytes) break;
-      auto elapsed_ms =
-          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
-              .count();
+      auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - t0)
+                            .count();
       if (elapsed_ms > timeout_ms) break;
     }
   }
@@ -396,9 +396,9 @@ static bool speed_http_post_count(const wchar_t* host, const wchar_t* path, std:
       n += wrote;
       double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
       speed_set_up(n, mbps_of(n, sec));
-      auto elapsed_ms =
-          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
-              .count();
+      auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - t0)
+                            .count();
       if (elapsed_ms > timeout_ms) break;
     }
     WinHttpReceiveResponse(req, nullptr);
@@ -417,8 +417,8 @@ static bool speed_http_get_count(const char* url, std::uint64_t max_bytes, int t
   char cmd[768];
   int cap = timeout_ms / 1000;
   if (cap < 2) cap = 2;
-  std::snprintf(cmd, sizeof(cmd),
-                "curl -fsSN --max-time %d -A Wilfred/1.0 \"%s\" 2>/dev/null", cap, url);
+  std::snprintf(cmd, sizeof(cmd), "curl -fsSN --max-time %d -A Wilfred/1.0 \"%s\" 2>/dev/null", cap,
+                url);
   FILE* f = popen(cmd, "r");
   if (!f) return false;
   auto t0 = std::chrono::steady_clock::now();
@@ -501,8 +501,8 @@ static void run_speed_test() {
   std::uint64_t bytes = 0;
   double sec = 0;
 #ifdef _WIN32
-  if (!speed_http_get_count(L"speed.cloudflare.com", L"/__down?bytes=1000", 1000, 4000, &bytes, &sec,
-                            false)) {
+  if (!speed_http_get_count(L"speed.cloudflare.com", L"/__down?bytes=1000", 1000, 4000, &bytes,
+                            &sec, false)) {
 #else
   if (!speed_http_get_count("https://speed.cloudflare.com/__down?bytes=1000", 1000, 4000, &bytes,
                             &sec, true)) {
@@ -540,8 +540,8 @@ static void run_speed_test() {
   bytes = 0;
   sec = 0;
 #ifdef _WIN32
-  bool up_ok = speed_http_post_count(L"speed.cloudflare.com", L"/__up", up_target, phase_ms, &bytes,
-                                    &sec);
+  bool up_ok =
+      speed_http_post_count(L"speed.cloudflare.com", L"/__up", up_target, phase_ms, &bytes, &sec);
 #else
   bool up_ok =
       speed_http_post_count("https://speed.cloudflare.com/__up", up_target, phase_ms, &bytes, &sec);
@@ -637,21 +637,21 @@ static std::vector<SearchResult> speed_cards() {
                      " · Ping " + fmt_ping(s.ping_ms);
   out.push_back(card(summary, std::string("Ping ") + fmt_ping(s.ping_ms) + " · " + phase, copy,
                      "speedtest", 10000, ResultAction::Copy, meter));
-  out.push_back(card("Download  " + fmt_mbps(s.down_mbps),
-                     s.phase == SpeedPhase::Download
-                         ? human_bytes(s.down_bytes) + " received"
-                         : (s.phase == SpeedPhase::Idle || s.phase == SpeedPhase::Ping
-                                ? "Waiting…"
-                                : "Peak throughput"),
-                     copy, "speedtest", 9990, ResultAction::Copy,
-                     s.phase == SpeedPhase::Download ? meter : (s.down_mbps > 0 ? 100 : 0)));
-  out.push_back(card("Upload  " + fmt_mbps(s.up_mbps),
-                     s.phase == SpeedPhase::Upload
-                         ? human_bytes(s.up_bytes) + " sent"
-                         : (s.phase == SpeedPhase::Done || s.up_mbps > 0 ? "Peak throughput"
-                                                                        : "Waiting…"),
-                     copy, "speedtest", 9980, ResultAction::Copy,
-                     s.phase == SpeedPhase::Upload ? meter : (s.up_mbps > 0 ? 100 : 0)));
+  out.push_back(
+      card("Download  " + fmt_mbps(s.down_mbps),
+           s.phase == SpeedPhase::Download
+               ? human_bytes(s.down_bytes) + " received"
+               : (s.phase == SpeedPhase::Idle || s.phase == SpeedPhase::Ping ? "Waiting…"
+                                                                             : "Peak throughput"),
+           copy, "speedtest", 9990, ResultAction::Copy,
+           s.phase == SpeedPhase::Download ? meter : (s.down_mbps > 0 ? 100 : 0)));
+  out.push_back(
+      card("Upload  " + fmt_mbps(s.up_mbps),
+           s.phase == SpeedPhase::Upload
+               ? human_bytes(s.up_bytes) + " sent"
+               : (s.phase == SpeedPhase::Done || s.up_mbps > 0 ? "Peak throughput" : "Waiting…"),
+           copy, "speedtest", 9980, ResultAction::Copy,
+           s.phase == SpeedPhase::Upload ? meter : (s.up_mbps > 0 ? 100 : 0)));
   return out;
 }
 
@@ -734,7 +734,7 @@ static std::vector<DriveUse> drive_usage() {
 // Seconds since boot via kern.boottime (no /proc on BSD). Returns 0 when
 // the sysctl is unavailable; callers fall back to omitting the value.
 static std::uint64_t bsd_uptime_sec() {
-  struct timeval boot{};
+  struct timeval boot {};
   std::size_t sz = sizeof(boot);
   if (sysctlbyname("kern.boottime", &boot, &sz, nullptr, 0) != 0) return 0;
   std::time_t now = std::time(nullptr);
@@ -779,13 +779,12 @@ static void ram_stats(std::uint64_t& total, std::uint64_t& used) {
   }
 #elif defined(__OpenBSD__) || defined(__NetBSD__)
   // vm.uvmexp: npages/free are page counts (cf. htop's OpenBSD backend).
-  struct uvmexp uv{};
+  struct uvmexp uv {};
   std::size_t uvsz = sizeof(uv);
   long page = sysconf(_SC_PAGESIZE);
   if (total && page > 0 && sysctlbyname("vm.uvmexp", &uv, &uvsz, nullptr, 0) == 0 &&
       uv.npages > 0 && uv.free >= 0 && uv.free <= uv.npages) {
-    used =
-        static_cast<std::uint64_t>(uv.npages - uv.free) * static_cast<std::uint64_t>(page);
+    used = static_cast<std::uint64_t>(uv.npages - uv.free) * static_cast<std::uint64_t>(page);
   }
 #endif
 #else
@@ -843,7 +842,8 @@ static double cpu_percent() {
     std::size_t n = sz / sizeof(st[0]);
     if (n < 5) return {0, 0};
     unsigned long long total = 0;
-    for (std::size_t i = 0; i < n; ++i) total += st[i];
+    for (std::size_t i = 0; i < n; ++i)
+      total += st[i];
     return {st[n - 1], total};
   };
   auto [idle_all, total] = read_times();
@@ -1008,8 +1008,7 @@ static std::vector<ProcInfo> list_processes(const std::string& needle) {
   std::size_t len = 0;
   if (sysctl(mib, 6, nullptr, &len, nullptr, 0) == 0 && len > 0) {
     std::vector<char> buf(len + 16);
-    if (sysctl(mib, 6, buf.data(), &len, nullptr, 0) == 0 &&
-        len >= sizeof(struct kinfo_proc2)) {
+    if (sysctl(mib, 6, buf.data(), &len, nullptr, 0) == 0 && len >= sizeof(struct kinfo_proc2)) {
       long page = sysconf(_SC_PAGESIZE);
       if (page <= 0) page = 4096;
       std::size_t n = len / sizeof(struct kinfo_proc2);
@@ -1321,8 +1320,7 @@ MiniIntent parse_mini_intent(std::string_view query) {
     auto r = to_lower_utf8(rest);
     if (rest.empty() || r == "again" || r == "retry" || r == "new" || r == "rerun")
       set(MiniKind::Speedtest, true);
-  }
-  else if (key == "macros" || key == "bangs")
+  } else if (key == "macros" || key == "bangs")
     set(MiniKind::MacrosList, true);
   else if (key == "windows" || key == "window" || key == "winswitch" || key == "wswitch" ||
            key == "switchto" || key == "switch")
@@ -1401,9 +1399,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     it.remainder = "logout";
     it.exact = true;
   } else if (key == "emptytrash" || key == "emptyrecycle" ||
-             (key == "empty" && (rest == "trash" || rest == "recycle" || rest == "bin" ||
-                                 rest == "recycle bin" || rest == "recyclebin" ||
-                                 rest == "the trash" || rest == "the bin"))) {
+             (key == "empty" &&
+              (rest == "trash" || rest == "recycle" || rest == "bin" || rest == "recycle bin" ||
+               rest == "recyclebin" || rest == "the trash" || rest == "the bin"))) {
     it.kind = MiniKind::System;
     it.remainder = "empty_trash";
     it.exact = true;
@@ -1420,12 +1418,11 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Kill, false);
   else if (key == "media" || key == "player" || key == "music" || key == "mediakeys")
     set(MiniKind::Media, false);
-  else if (key == "play" || key == "pause" || key == "next" || key == "previous" ||
-           key == "prev" || key == "mute") {
+  else if (key == "play" || key == "pause" || key == "next" || key == "previous" || key == "prev" ||
+           key == "mute") {
     // Bare media verbs double as media controls (non-exact so file hits still show).
     // `volume`/`vol` are owned by the Volume mini (exact levels + mute); see below.
-    if (rest.empty() ||
-        to_lower_utf8(rest) == "track" || to_lower_utf8(rest) == "song" ||
+    if (rest.empty() || to_lower_utf8(rest) == "track" || to_lower_utf8(rest) == "song" ||
         to_lower_utf8(rest) == "music" || to_lower_utf8(rest) == "media" ||
         to_lower_utf8(rest) == "up" || to_lower_utf8(rest) == "down" ||
         to_lower_utf8(rest) == "next" || to_lower_utf8(rest) == "prev") {
@@ -1435,19 +1432,18 @@ MiniIntent parse_mini_intent(std::string_view query) {
     }
   } else if (key == "ping")
     set(MiniKind::Ping, false);
-  else if (key == "dns" || key == "nslookup" || key == "dig" || key == "resolve" ||
-           key == "lookup")
+  else if (key == "dns" || key == "nslookup" || key == "dig" || key == "resolve" || key == "lookup")
     set(MiniKind::Dns, false);
   else if (key == "myip" || key == "publicip" || key == "public-ip" || key == "my-ip" ||
-           key == "wanip" || (key == "ip" && (to_lower_utf8(rest) == "public" ||
-                                              to_lower_utf8(rest) == "wan" ||
-                                              to_lower_utf8(rest) == "external"))) {
+           key == "wanip" ||
+           (key == "ip" && (to_lower_utf8(rest) == "public" || to_lower_utf8(rest) == "wan" ||
+                            to_lower_utf8(rest) == "external"))) {
     it.kind = MiniKind::MyIp;
     it.remainder = (key == "ip" ? rest : std::string());
     it.exact = true;
-  } else if (key == "hex" || key == "dec" || key == "decimal" || key == "bin" ||
-             key == "binary" || key == "oct" || key == "octal" || key == "base" ||
-             key == "bit" || key == "bits" || key == "bitwise") {
+  } else if (key == "hex" || key == "dec" || key == "decimal" || key == "bin" || key == "binary" ||
+             key == "oct" || key == "octal" || key == "base" || key == "bit" || key == "bits" ||
+             key == "bitwise") {
     // Number-base and bit tools also live in math/dev; expose as minis for help.
     it.kind = (key == "bit" || key == "bits" || key == "bitwise") ? MiniKind::Bits : MiniKind::Base;
     it.remainder = s.substr(key.size());
@@ -1474,8 +1470,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "ql" || key == "quicklink" || key == "quicklinks" || key == "links" ||
            key == "link")
     set(MiniKind::Quicklink, false);
-  else if (key == "transcribe" || key == "transcribes" || key == "transcription" ||
-           key == "stt" || key == "speech-to-text" || key == "speech_to_text")
+  else if (key == "transcribe" || key == "transcribes" || key == "transcription" || key == "stt" ||
+           key == "speech-to-text" || key == "speech_to_text")
     set(MiniKind::Transcribe, false);
   else if (key == "dictate" || key == "dictation" || key == "dictating")
     set(MiniKind::Dictate, false);
@@ -1485,9 +1481,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
     it.kind = MiniKind::Layout;
     it.remainder = trim_sv("tile " + rest);
     it.exact = false;
-  }
-  else if (key == "convert" || key == "converts" || key == "conversion" || key == "transcode" ||
-           key == "transcoding" || key == "wav2mp3" || key == "convertfile")
+  } else if (key == "convert" || key == "converts" || key == "conversion" || key == "transcode" ||
+             key == "transcoding" || key == "wav2mp3" || key == "convertfile")
     set(MiniKind::Convert, false);
   else if (key == "bgremove" || key == "bg-remove" || key == "removebg" || key == "remove-bg" ||
            key == "unbackground" || key == "transparent" || key == "bgclear" || key == "clearbg" ||
@@ -1959,9 +1954,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Clips) {
     auto filter = trim_sv(intent.remainder);
     if (to_lower_utf8(filter) == "clear") {
-      SearchResult r =
-          card(tr("clips.clear_title"), tr("clips.clear_sub"), "clip:clear", "clips",
-               10000, ResultAction::None);
+      SearchResult r = card(tr("clips.clear_title"), tr("clips.clear_sub"), "clip:clear", "clips",
+                            10000, ResultAction::None);
       r.category = "clips";
       r.actions.push_back({"open", tr("clips.clear_action")});
       out.push_back(std::move(r));
@@ -2016,21 +2010,21 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         entries.push_back(e);
         if (entries.size() >= 8 && !type_filter.empty()) break;
       }
-      if (type_filter.empty() && !text_filter.empty() && entries.size() > 8)
-        entries.resize(8);
+      if (type_filter.empty() && !text_filter.empty() && entries.size() > 8) entries.resize(8);
       if (entries.size() > 8) entries.resize(8);
     }
     std::vector<std::string> hits;
     hits.reserve(entries.size());
-    for (auto& e : entries) hits.push_back(e.text);
+    for (auto& e : entries)
+      hits.push_back(e.text);
     if (hits.empty()) {
-      out.push_back(card(text_filter.empty() && type_filter.empty()
-                             ? tr("clips.empty")
-                             : (type_filter.empty()
-                                    ? tr("clips.no_match")
-                                    : tr("clips.no_type_match", {{"type", type_filter}})),
-                         filter.empty() ? tr("clips.empty_hint") : tr("clips.no_match_hint"),
-                         "", "clips", 9000, ResultAction::None));
+      out.push_back(
+          card(text_filter.empty() && type_filter.empty()
+                   ? tr("clips.empty")
+                   : (type_filter.empty() ? tr("clips.no_match")
+                                          : tr("clips.no_type_match", {{"type", type_filter}})),
+               filter.empty() ? tr("clips.empty_hint") : tr("clips.no_match_hint"), "", "clips",
+               9000, ResultAction::None));
     } else {
       int n = 0;
       for (auto& e : entries) {
@@ -2048,8 +2042,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         r.category = "clips";
         r.kind_label = kind == "text" ? "clips" : ("clips-" + kind);
         r.actions.push_back({"copy_text", tr("action.copy_text")});
-        r.actions.push_back(
-            {pin ? "clip_unpin" : "clip_pin", pin ? tr("action.clip_unpin") : tr("action.clip_pin")});
+        r.actions.push_back({pin ? "clip_unpin" : "clip_pin",
+                             pin ? tr("action.clip_unpin") : tr("action.clip_pin")});
         out.push_back(std::move(r));
         if (++n >= 8) break;
       }
@@ -2152,12 +2146,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     ScreenshotMode single = ScreenshotMode::Fullscreen;
     bool filtered = !intent.remainder.empty() && parse_screenshot_mode(intent.remainder, single);
     if (!filtered) {
-      out.push_back(shot_card(ScreenshotMode::Fullscreen, "Capture fullscreen",
-                             "Full screen", 10000));
       out.push_back(
-          shot_card(ScreenshotMode::Window, "Capture window", "Active window", 9990));
-      out.push_back(shot_card(ScreenshotMode::Region, "Capture region",
-                              "Drag to select a region", 9980));
+          shot_card(ScreenshotMode::Fullscreen, "Capture fullscreen", "Full screen", 10000));
+      out.push_back(shot_card(ScreenshotMode::Window, "Capture window", "Active window", 9990));
+      out.push_back(
+          shot_card(ScreenshotMode::Region, "Capture region", "Drag to select a region", 9980));
       return out;
     }
     const char* title = "Capture fullscreen";
@@ -2225,8 +2218,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (total) {
       int pct = static_cast<int>((used * 100) / total);
       char title[128];
-      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
-                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct, human_bytes(used).c_str(),
+                    human_bytes(total).c_str());
       out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
     } else {
       out.push_back(card("No swap", "Swap is unused or disabled", "No swap", "swap"));
@@ -2248,8 +2241,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (total && used <= total) {
       int pct = static_cast<int>((used * 100) / total);
       char title[128];
-      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
-                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct, human_bytes(used).c_str(),
+                    human_bytes(total).c_str());
       out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
     } else {
       out.push_back(card("Swap stats unavailable", "No swap devices reported", "No swap", "swap"));
@@ -2279,12 +2272,12 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (total && used <= total) {
       int pct = static_cast<int>((used * 100) / total);
       char title[128];
-      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct,
-                    human_bytes(used).c_str(), human_bytes(total).c_str());
+      std::snprintf(title, sizeof(title), "Swap  %d%%  ·  %s of %s", pct, human_bytes(used).c_str(),
+                    human_bytes(total).c_str());
       out.push_back(card(title, "Swap space", title, "swap", 10000, ResultAction::Copy, pct));
     } else {
-      out.push_back(card("Swap stats unavailable", "Swap reporting needs verification here", "",
-                         "swap"));
+      out.push_back(
+          card("Swap stats unavailable", "Swap reporting needs verification here", "", "swap"));
     }
 #else
     std::ifstream in("/proc/meminfo");
@@ -2419,8 +2412,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     MathResult m;
     auto expr = std::string(decode ? "base64d " : "base64 ") + payload;
     if (convert_devutil(expr, m) && m.ok) {
-      out.push_back(card(m.display, decode ? "Base64 decode · enter copies"
-                                           : "Base64 encode · enter copies",
+      out.push_back(card(m.display,
+                         decode ? "Base64 decode · enter copies" : "Base64 encode · enter copies",
                          m.display, "base64", 10000, ResultAction::Convert));
       if (!decode) {
         MathResult d;
@@ -2429,8 +2422,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                              ResultAction::Convert));
       }
     } else {
-      out.push_back(card("Can't convert that", "Need plain text to encode, or valid Base64 to decode",
-                         "", "base64", 8000, ResultAction::None));
+      out.push_back(card("Can't convert that",
+                         "Need plain text to encode, or valid Base64 to decode", "", "base64", 8000,
+                         ResultAction::None));
     }
     return out;
   }
@@ -2461,8 +2455,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Json) {
     auto payload = intent.remainder;
     auto pl = to_lower_utf8(payload);
-    if (pl.rfind("pretty ", 0) == 0) payload = payload.substr(7);
-    else if (pl == "pretty") payload.clear();
+    if (pl.rfind("pretty ", 0) == 0)
+      payload = payload.substr(7);
+    else if (pl == "pretty")
+      payload.clear();
     if (payload.empty()) payload = clipboard;
     if (payload.empty()) {
       out.push_back(card("JSON pretty-print", "Type json {\"a\":1}  or copy JSON first", "", "json",
@@ -2471,8 +2467,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     MathResult pretty, compact;
     if (convert_devutil("json " + payload, pretty) && pretty.ok) {
-      out.push_back(card(pretty.display, "Pretty JSON · enter copies", pretty.display, "json", 10000,
-                         ResultAction::Convert));
+      out.push_back(card(pretty.display, "Pretty JSON · enter copies", pretty.display, "json",
+                         10000, ResultAction::Convert));
       if (convert_devutil("json minify " + payload, compact) && compact.ok &&
           compact.display != pretty.display)
         out.push_back(card(compact.display, "Minified JSON · enter copies", compact.display, "json",
@@ -2590,18 +2586,19 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                            format_duration_ms(el), "stopwatch", 10000, ResultAction::Copy));
         auto laps = sw.laps();
         int n = 0;
-        for (auto& lp : laps) out.push_back(card(lp, "Lap", lp, "stopwatch", 9900 - n++));
+        for (auto& lp : laps)
+          out.push_back(card(lp, "Lap", lp, "stopwatch", 9900 - n++));
         return out;
       }
       auto msg = sw.start();
-      out.push_back(card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000,
-                         ResultAction::Copy));
+      out.push_back(
+          card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000, ResultAction::Copy));
       return out;
     }
     if (rest == "stop" || rest == "pause") {
       auto msg = sw.stop();
-      out.push_back(card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000,
-                         ResultAction::Copy));
+      out.push_back(
+          card(msg, "Stopwatch · enter copies", msg, "stopwatch", 10000, ResultAction::Copy));
       return out;
     }
     if (rest == "reset" || rest == "clear") {
@@ -2612,14 +2609,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (rest.rfind("lap", 0) == 0) {
       std::string label = trim_sv(intent.remainder.substr(3));
       auto msg = sw.lap(label);
-      out.push_back(card(msg, "Stopwatch lap · enter copies", msg, "stopwatch", 10000,
-                         ResultAction::Copy));
+      out.push_back(
+          card(msg, "Stopwatch lap · enter copies", msg, "stopwatch", 10000, ResultAction::Copy));
       return out;
     }
     auto el = sw.elapsed_ms();
-    out.push_back(card("Stopwatch · " + format_duration_ms(el),
-                       "start · stop · lap · reset", format_duration_ms(el), "stopwatch", 10000,
-                       ResultAction::Copy));
+    out.push_back(card("Stopwatch · " + format_duration_ms(el), "start · stop · lap · reset",
+                       format_duration_ms(el), "stopwatch", 10000, ResultAction::Copy));
     return out;
   }
 
@@ -2629,16 +2625,16 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto& store = QuickNoteStore::instance();
     if (rl == "clear") {
       store.clear();
-      out.push_back(card("Notes cleared", "All quick notes removed", "", "note", 10000,
-                         ResultAction::Copy));
+      out.push_back(
+          card("Notes cleared", "All quick notes removed", "", "note", 10000, ResultAction::Copy));
       return out;
     }
     if (rl.rfind("add ", 0) == 0) rest = trim_sv(rest.substr(4));
     if (rl.rfind("rm ", 0) == 0 || rl.rfind("del ", 0) == 0 || rl.rfind("remove ", 0) == 0) {
       auto id = trim_sv(rest.substr(rest.find(' ') + 1));
       bool ok = store.remove(id);
-      out.push_back(card(ok ? "Note removed" : "No note " + id, ok ? id : "Try notes to list",
-                         "", "note", 9000, ResultAction::None));
+      out.push_back(card(ok ? "Note removed" : "No note " + id, ok ? id : "Try notes to list", "",
+                         "note", 9000, ResultAction::None));
       return out;
     }
     if (!rest.empty() && rl != "list" && rl != "ls") {
@@ -2647,8 +2643,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       bool list_only = ql == "notes" || ql == "note" || rl == "list" || rl == "ls";
       if (!list_only) {
         auto id = store.add(rest);
-        out.push_back(card("Note saved (#" + id + ")", rest, rest, "note", 10000,
-                           ResultAction::Copy));
+        out.push_back(
+            card("Note saved (#" + id + ")", rest, rest, "note", 10000, ResultAction::Copy));
         return out;
       }
     }
@@ -2676,8 +2672,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto& store = TodoStore::instance();
     if (rl == "clear") {
       store.clear_all();
-      out.push_back(card("Todos cleared", "All tasks removed", "", "todo", 10000,
-                         ResultAction::Copy));
+      out.push_back(
+          card("Todos cleared", "All tasks removed", "", "todo", 10000, ResultAction::Copy));
       return out;
     }
     if (rl == "clear done" || rl == "clear-done" || rl == "clean") {
@@ -2690,8 +2686,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       try {
         int id = std::stoi(id_s);
         bool ok = store.set_done(id, true);
-        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " done" : "No todo " + id_s, "",
-                           "", "todo", 9000, ResultAction::None));
+        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " done" : "No todo " + id_s, "", "",
+                           "todo", 9000, ResultAction::None));
       } catch (...) {
         out.push_back(card("Usage: todo done <id>", "Try todos to list ids", "", "todo", 8000,
                            ResultAction::None));
@@ -2703,8 +2699,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       try {
         int id = std::stoi(id_s);
         bool ok = store.set_done(id, false);
-        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " reopened" : "No todo " + id_s,
-                           "", "", "todo", 9000, ResultAction::None));
+        out.push_back(card(ok ? "Todo #" + std::to_string(id) + " reopened" : "No todo " + id_s, "",
+                           "", "todo", 9000, ResultAction::None));
       } catch (...) {
         out.push_back(card("Usage: todo undo <id>", "", "", "todo", 8000, ResultAction::None));
       }
@@ -2728,29 +2724,29 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       bool list_only = ql == "todos" || ql == "todo" || rl == "list" || rl == "ls";
       if (!list_only) {
         auto id = store.add(rest);
-        out.push_back(card("Todo #" + id + " added", rest, rest, "todo", 10000,
-                           ResultAction::Copy));
+        out.push_back(
+            card("Todo #" + id + " added", rest, rest, "todo", 10000, ResultAction::Copy));
         return out;
       }
     }
     auto items = store.list(true, (rl == "list" || rl == "ls") ? "" : rest, 12);
     if (items.empty()) {
-      out.push_back(card("No todos", "Type todo <task> to add one", "", "todo", 9000,
-                         ResultAction::None));
+      out.push_back(
+          card("No todos", "Type todo <task> to add one", "", "todo", 9000, ResultAction::None));
       return out;
     }
     int n = 0;
     for (auto& t : items) {
-      std::string title = (t.done ? "[x] " : "[ ] ") + std::string("#") + std::to_string(t.id) +
-                          " · " + t.text;
-      SearchResult r = card(title, t.done ? "Done · enter copies" : "Open · todo done " +
-                                                                          std::to_string(t.id),
-                            t.text, "todo", 10000 - n++);
+      std::string title =
+          (t.done ? "[x] " : "[ ] ") + std::string("#") + std::to_string(t.id) + " · " + t.text;
+      SearchResult r =
+          card(title, t.done ? "Done · enter copies" : "Open · todo done " + std::to_string(t.id),
+               t.text, "todo", 10000 - n++);
       r.actions.clear();
       r.actions.push_back({"copy_text", "Copy"});
-      r.actions.push_back({t.done ? "todo_undo:" + std::to_string(t.id)
-                                  : "todo_done:" + std::to_string(t.id),
-                           t.done ? "Reopen" : "Done"});
+      r.actions.push_back(
+          {t.done ? "todo_undo:" + std::to_string(t.id) : "todo_done:" + std::to_string(t.id),
+           t.done ? "Reopen" : "Done"});
       r.actions.push_back({"todo_delete:" + std::to_string(t.id), "Delete"});
       out.push_back(std::move(r));
     }
@@ -2789,8 +2785,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       std::string err;
       bool ok = native_media_action(act, err);
       std::string title = ok ? ("Media · " + act) : ("Media failed · " + err);
-      SearchResult r = card(title, ok ? "Sent to system player" : err, title, "media",
-                            10000, ok ? ResultAction::Copy : ResultAction::None);
+      SearchResult r = card(title, ok ? "Sent to system player" : err, title, "media", 10000,
+                            ok ? ResultAction::Copy : ResultAction::None);
       r.category = "media";
       r.actions.clear();
       r.actions.push_back({"media:" + act, "Run again"});
@@ -2840,14 +2836,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       if (sp != std::string::npos) host.resize(sp);
     }
     if (host.empty()) {
-      out.push_back(card("DNS lookup", "Type dns <hostname>", "", "dns", 8000,
-                         ResultAction::None));
+      out.push_back(card("DNS lookup", "Type dns <hostname>", "", "dns", 8000, ResultAction::None));
       return out;
     }
     auto ips = dns_lookup(host);
     if (ips.empty()) {
-      out.push_back(card("No address for " + host, "DNS lookup failed", "", "dns", 9000,
-                         ResultAction::None));
+      out.push_back(
+          card("No address for " + host, "DNS lookup failed", "", "dns", 9000, ResultAction::None));
       return out;
     }
     int n = 0;
@@ -2861,8 +2856,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto ip = public_ip();
     if (ip.empty()) {
       if (!g_net)
-        out.push_back(card("Public IP", "Network checks are disabled", "", "myip", 8000,
-                           ResultAction::None));
+        out.push_back(
+            card("Public IP", "Network checks are disabled", "", "myip", 8000, ResultAction::None));
       else
         out.push_back(card("Public IP unavailable", "Offline or blocked", "", "myip", 8000,
                            ResultAction::None));
@@ -2871,8 +2866,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     out.push_back(card(ip, "Public IP · enter copies", ip, "myip", 10000, ResultAction::Copy));
     auto local = first_ipv4();
     if (!local.empty() && local != ip)
-      out.push_back(card(local, "Local IPv4 · enter copies", local, "myip", 9900,
-                         ResultAction::Copy));
+      out.push_back(
+          card(local, "Local IPv4 · enter copies", local, "myip", 9900, ResultAction::Copy));
     return out;
   }
 
@@ -2886,11 +2881,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto rem = trim_sv(intent.remainder);
     if (rem.empty()) {
       if (intent.kind == MiniKind::Base)
-        out.push_back(card("Number bases", "Try hex 255 · dec 0xff · bin 10 · base 16 255",
-                           "", "base", 8000, ResultAction::None));
+        out.push_back(card("Number bases", "Try hex 255 · dec 0xff · bin 10 · base 16 255", "",
+                           "base", 8000, ResultAction::None));
       else if (intent.kind == MiniKind::Bits)
-        out.push_back(card("Bit tools", "Try bit and 12 10 · bit or 12 10 · bit not 5",
-                           "", "bits", 8000, ResultAction::None));
+        out.push_back(card("Bit tools", "Try bit and 12 10 · bit or 12 10 · bit not 5", "", "bits",
+                           8000, ResultAction::None));
       else if (intent.kind == MiniKind::Regex)
         out.push_back(card("Regex tester", "Try regex foo.* \"foobar\" · regexi hi HELLO", "",
                            "regex", 8000, ResultAction::None));
@@ -2898,8 +2893,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         out.push_back(card("URL codec", "Try urlencode a b&c · urldecode a%20b", "", "url", 8000,
                            ResultAction::None));
       else
-        out.push_back(card("JWT decode", "Paste a header.payload.signature token", "", "jwt",
-                           8000, ResultAction::None));
+        out.push_back(card("JWT decode", "Paste a header.payload.signature token", "", "jwt", 8000,
+                           ResultAction::None));
       // If clipboard can complete it, also show the converted clipboard.
       if (!clipboard.empty()) {
         MathResult m;
@@ -2911,8 +2906,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     MathResult m;
     if (convert_devutil(expr, m) && m.ok) {
-      out.push_back(card(m.display, "Dev · enter copies", m.display, "dev", 10000,
-                         ResultAction::Convert));
+      out.push_back(
+          card(m.display, "Dev · enter copies", m.display, "dev", 10000, ResultAction::Convert));
       // For base overview, also offer each radix as its own copyable card.
       if (intent.kind == MiniKind::Base && m.display.find('=') != std::string::npos) {
         // display is "255 = 0xFF = 0b... = 0o..." — split for convenience.
@@ -2924,8 +2919,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       }
       return out;
     }
-    out.push_back(card("Can't convert that", "Check the syntax · type help for examples", "",
-                       "dev", 8000, ResultAction::None));
+    out.push_back(card("Can't convert that", "Check the syntax · type help for examples", "", "dev",
+                       8000, ResultAction::None));
     return out;
   }
 
@@ -2969,8 +2964,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       return out;
     }
     Config cfg2 = cfg;
-    if (intent.kind == MiniKind::Dupes)
-      return dupe_file_results(*index, cfg2, dir, limit);
+    if (intent.kind == MiniKind::Dupes) return dupe_file_results(*index, cfg2, dir, limit);
     return large_file_results(*index, cfg2, dir, limit);
   }
 
@@ -3010,8 +3004,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                            "Add quicklinks: in wilfred.yml with {query} or {1} placeholders", "",
                            "quicklink", 8000, ResultAction::None));
       else
-        out.push_back(card("Quicklink", "Type ql <name> <args> · try ql to list", "",
-                           "quicklink", 8000, ResultAction::None));
+        out.push_back(card("Quicklink", "Type ql <name> <args> · try ql to list", "", "quicklink",
+                           8000, ResultAction::None));
       // List configured ones for discovery.
       int n = 0;
       for (auto& [name, tmpl] : cfg.quicklinks) {
@@ -3027,30 +3021,28 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
 
   if (intent.kind == MiniKind::Transcribe) {
     if (!cfg.transcription.enabled) {
-      out.push_back(card("Transcription disabled",
-                         "Set transcription.enabled: true in wilfred.yml", "", "transcribe", 8000,
-                         ResultAction::None));
+      out.push_back(card("Transcription disabled", "Set transcription.enabled: true in wilfred.yml",
+                         "", "transcribe", 8000, ResultAction::None));
       return out;
     }
     // Setup state first: without a whisper binary/model there is nothing to run.
     auto binary = resolve_whisper_binary(cfg);
     auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
     if (binary.empty() || model.empty()) {
-      std::string what = binary.empty() ? transcribe_install_hint("whisper")
-                                        : transcribe_install_hint("model");
+      std::string what =
+          binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model");
       out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model", what, "",
                          "transcribe", 9000, ResultAction::None));
       return out;
     }
     auto target = trim_sv(intent.remainder);
-    if (target.size() >= 2 &&
-        ((target.front() == '"' && target.back() == '"') ||
-         (target.front() == '\'' && target.back() == '\'')))
+    if (target.size() >= 2 && ((target.front() == '"' && target.back() == '"') ||
+                               (target.front() == '\'' && target.back() == '\'')))
       target = target.substr(1, target.size() - 2);
     if (target.empty()) {
       out.push_back(card("Transcribe audio to text",
-                         "Type transcribe <file.mp3|file.mp4> · enter transcribes", "", "transcribe",
-                         8000, ResultAction::None));
+                         "Type transcribe <file.mp3|file.mp4> · enter transcribes", "",
+                         "transcribe", 8000, ResultAction::None));
       return out;
     }
     std::vector<std::string> paths;
@@ -3061,21 +3053,21 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     if (paths.empty()) {
       if (file_exists(target))
-        out.push_back(card("Not an audio file",
-                           "Wilfred transcribes mp3, wav, m4a, mp4, ogg, flac, opus, webm, aac, wma",
-                           "", "transcribe", 8000, ResultAction::None));
+        out.push_back(
+            card("Not an audio file",
+                 "Wilfred transcribes mp3, wav, m4a, mp4, ogg, flac, opus, webm, aac, wma", "",
+                 "transcribe", 8000, ResultAction::None));
       else
         out.push_back(card("No audio found", "Try an absolute path or an indexed filename", "",
                            "transcribe", 8000, ResultAction::None));
       return out;
     }
-    std::string dest_note =
-        cfg.transcription.save_txt ? " · transcript to clipboard + .txt" : " · transcript to clipboard";
+    std::string dest_note = cfg.transcription.save_txt ? " · transcript to clipboard + .txt"
+                                                       : " · transcript to clipboard";
     int n = 0;
     for (auto& p : paths) {
-      SearchResult r =
-          card("Transcribe " + path_filename(p), "Enter transcribes" + dest_note, p, "transcribe",
-               10000 - n * 10, ResultAction::Copy);
+      SearchResult r = card("Transcribe " + path_filename(p), "Enter transcribes" + dest_note, p,
+                            "transcribe", 10000 - n * 10, ResultAction::Copy);
       r.category = "transcribe";
       r.actions.clear();
       r.actions.push_back({"transcribe_run", "Transcribe"});
@@ -3088,9 +3080,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
 
   if (intent.kind == MiniKind::Dictate) {
     if (!cfg.transcription.enabled) {
-      out.push_back(card("Dictation disabled",
-                         "Set transcription.enabled: true in wilfred.yml", "", "dictate", 8000,
-                         ResultAction::None));
+      out.push_back(card("Dictation disabled", "Set transcription.enabled: true in wilfred.yml", "",
+                         "dictate", 8000, ResultAction::None));
       return out;
     }
     int seconds = 10;
@@ -3122,10 +3113,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto binary = resolve_whisper_binary(cfg);
     auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
     if (binary.empty() || model.empty()) {
-      out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model",
-                         binary.empty() ? transcribe_install_hint("whisper")
-                                        : transcribe_install_hint("model"),
-                         "", "dictate", 9000, ResultAction::None));
+      out.push_back(card(
+          binary.empty() ? "Whisper not found" : "No whisper model",
+          binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model"),
+          "", "dictate", 9000, ResultAction::None));
       return out;
     }
     SearchResult r = card("Dictate " + std::to_string(seconds) + "s",
@@ -3140,9 +3131,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
 
   if (intent.kind == MiniKind::Convert) {
     auto target = trim_sv(intent.remainder);
-    if (target.size() >= 2 &&
-        ((target.front() == '"' && target.back() == '"') ||
-         (target.front() == '\'' && target.back() == '\'')))
+    if (target.size() >= 2 && ((target.front() == '"' && target.back() == '"') ||
+                               (target.front() == '\'' && target.back() == '\'')))
       target = target.substr(1, target.size() - 2);
     if (target.empty()) {
       out.push_back(card("Convert audio or image files",
@@ -3153,8 +3143,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     ConvertRequest req;
     if (!parse_convert_query(target, req) || req.src.empty()) {
       out.push_back(card("Can't parse that conversion",
-                         "Try convert song.wav to mp3 · convert photo.bmp to png", "",
-                         "convert", 8000, ResultAction::None));
+                         "Try convert song.wav to mp3 · convert photo.bmp to png", "", "convert",
+                         8000, ResultAction::None));
       return out;
     }
     // Resolve the source: absolute path first, then the index.
@@ -3180,10 +3170,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (req.fmt.empty() && req.dst.empty()) {
       bool audio = is_audio_convertible(paths.front());
       const char* choices = audio ? "mp3|wav|ogg|flac" : "png|jpg|bmp|tga";
-      out.push_back(card("Convert " + path_filename(paths.front()),
-                         std::string("Pick a target: convert ") + paths.front() + " to <" +
-                             choices + ">",
-                         "", "convert", 8000, ResultAction::None));
+      out.push_back(
+          card("Convert " + path_filename(paths.front()),
+               std::string("Pick a target: convert ") + paths.front() + " to <" + choices + ">", "",
+               "convert", 8000, ResultAction::None));
       return out;
     }
     int n = 0;
@@ -3194,8 +3184,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         std::string err;
         dst = resolve_convert_output(p, fmt, err);
         if (dst.empty()) {
-          out.push_back(card("Can't convert that", err, "", "convert", 8000,
-                             ResultAction::None));
+          out.push_back(card("Can't convert that", err, "", "convert", 8000, ResultAction::None));
           return out;
         }
       } else if (fmt.empty()) {
@@ -3206,21 +3195,20 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       // Compressed audio targets need ffmpeg; surface that before Enter.
       if (is_audio_format(fmt) && !(fmt == "wav" || fmt == "raw" || fmt == "pcm") &&
           !ffmpeg_available_convert()) {
-        SearchResult r = card("Convert " + path_filename(p) + " to " + fmt,
-                              convert_install_hint("ffmpeg"), "", "convert", 9000,
-                              ResultAction::None);
+        SearchResult r =
+            card("Convert " + path_filename(p) + " to " + fmt, convert_install_hint("ffmpeg"), "",
+                 "convert", 9000, ResultAction::None);
         r.category = "convert";
         out.push_back(std::move(r));
         continue;
       }
       std::string label_fmt = fmt;
-      for (char& c : label_fmt) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-      SearchResult r =
-          card("Convert " + path_filename(p) + " to " + label_fmt,
-               "Enter converts · saves as " + path_filename(dst), encode_convert_payload(p, fmt, dst,
-                                                                                         req.sample_rate,
-                                                                                         req.channels),
-               "convert", 10000 - n * 10, ResultAction::Copy);
+      for (char& c : label_fmt)
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      SearchResult r = card("Convert " + path_filename(p) + " to " + label_fmt,
+                            "Enter converts · saves as " + path_filename(dst),
+                            encode_convert_payload(p, fmt, dst, req.sample_rate, req.channels),
+                            "convert", 10000 - n * 10, ResultAction::Copy);
       r.path = p;
       r.category = "convert";
       r.actions.clear();
@@ -3235,16 +3223,17 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::BgRemove) {
     auto target = trim_sv(intent.remainder);
     if (target.empty()) {
-      out.push_back(card("Remove image background",
-                         "Type bgremove <photo.png> [tolerance 0-100] [#rrggbb] · saves transparent PNG",
-                         "", "bgremove", 8000, ResultAction::None));
+      out.push_back(
+          card("Remove image background",
+               "Type bgremove <photo.png> [tolerance 0-100] [#rrggbb] · saves transparent PNG", "",
+               "bgremove", 8000, ResultAction::None));
       return out;
     }
     BgRemoveRequest req;
     if (!parse_bgremove_query(target, req) || req.src.empty()) {
       out.push_back(card("Can't parse that",
-                         "Try bgremove photo.png · bgremove photo.png 40 #ffffff", "",
-                         "bgremove", 8000, ResultAction::None));
+                         "Try bgremove photo.png · bgremove photo.png 40 #ffffff", "", "bgremove",
+                         8000, ResultAction::None));
       return out;
     }
     std::vector<std::string> paths;
@@ -3257,9 +3246,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     if (paths.empty()) {
       if (file_exists(req.src))
-        out.push_back(card("Not an image file",
-                           "Background removal works on png, bmp, ppm, tga (jpg/gif/webp via ffmpeg)",
-                           "", "bgremove", 8000, ResultAction::None));
+        out.push_back(
+            card("Not an image file",
+                 "Background removal works on png, bmp, ppm, tga (jpg/gif/webp via ffmpeg)", "",
+                 "bgremove", 8000, ResultAction::None));
       else
         out.push_back(card("No image found", "Try an absolute path or an indexed filename", "",
                            "bgremove", 8000, ResultAction::None));
@@ -3287,9 +3277,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto rl = to_lower_utf8(rest);
     auto& store = LayoutStore::instance();
     auto list_card = [&](const std::string& name, int entries, int score) {
-      SearchResult r = card("Layout · " + name,
-                            std::to_string(entries) + " windows · enter applies", "layout_apply:" + name,
-                            "layout", score, ResultAction::Copy);
+      SearchResult r =
+          card("Layout · " + name, std::to_string(entries) + " windows · enter applies",
+               "layout_apply:" + name, "layout", score, ResultAction::Copy);
       r.category = "layout";
       r.actions.clear();
       r.actions.push_back({"layout_apply:" + name, "Apply"});
@@ -3298,9 +3288,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (rest.empty() || rl == "list" || rl == "ls" || rl == "layouts") {
       auto names = store.list();
       if (names.empty()) {
-        out.push_back(card("No saved layouts",
-                           "Type layout save <name> to capture open windows", "", "layout", 8000,
-                           ResultAction::None));
+        out.push_back(card("No saved layouts", "Type layout save <name> to capture open windows",
+                           "", "layout", 8000, ResultAction::None));
         return out;
       }
       int n = 0;
@@ -3317,9 +3306,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (rl == "save" || rl.rfind("save ", 0) == 0) {
       auto name = trim_sv(rest.size() > 4 ? rest.substr(4) : "");
       if (!LayoutStore::valid_name(name)) {
-        out.push_back(card("Usage: layout save <name>",
-                           "Names use letters, digits, _ and -", "", "layout", 8000,
-                           ResultAction::None));
+        out.push_back(card("Usage: layout save <name>", "Names use letters, digits, _ and -", "",
+                           "layout", 8000, ResultAction::None));
         return out;
       }
       Layout lay;
@@ -3341,14 +3329,15 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       }
       std::string err;
       if (lay.entries.empty() || !store.save_layout(lay, err)) {
-        out.push_back(card(lay.entries.empty() ? "No open windows to save" : "Could not save layout",
-                           err, "", "layout", 8000, ResultAction::None));
+        out.push_back(
+            card(lay.entries.empty() ? "No open windows to save" : "Could not save layout", err, "",
+                 "layout", 8000, ResultAction::None));
         return out;
       }
-      out.push_back(card("Layout " + lay.name + " saved",
-                         std::to_string(lay.entries.size()) + " windows · type layout " + lay.name +
-                             " to apply",
-                         "layout_apply:" + lay.name, "layout", 10000, ResultAction::Copy));
+      out.push_back(card(
+          "Layout " + lay.name + " saved",
+          std::to_string(lay.entries.size()) + " windows · type layout " + lay.name + " to apply",
+          "layout_apply:" + lay.name, "layout", 10000, ResultAction::Copy));
       return out;
     }
     if (rl == "tile" || rl.rfind("tile ", 0) == 0) {
@@ -3373,11 +3362,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       return out;
     }
     if (rl == "delete" || rl.rfind("delete ", 0) == 0 || rl.rfind("rm ", 0) == 0 ||
-        rl.rfind("remove ", 0) == 0 || rl.rfind("del ", 0) == 0) {      auto sp = rest.find(' ');
-      auto name = sp == std::string::npos ? std::string() : to_lower_utf8(trim_sv(rest.substr(sp + 1)));
+        rl.rfind("remove ", 0) == 0 || rl.rfind("del ", 0) == 0) {
+      auto sp = rest.find(' ');
+      auto name =
+          sp == std::string::npos ? std::string() : to_lower_utf8(trim_sv(rest.substr(sp + 1)));
       if (store.delete_layout(name))
-        out.push_back(card("Layout " + name + " deleted", "", "", "layout", 10000,
-                           ResultAction::Copy));
+        out.push_back(
+            card("Layout " + name + " deleted", "", "", "layout", 10000, ResultAction::Copy));
       else
         out.push_back(card("No layout " + name, "Try layouts to list", "", "layout", 8000,
                            ResultAction::None));
@@ -3400,10 +3391,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     auto word = trim_sv(intent.remainder);
     // `define` alone lists usage; `define foo` looks up.
     if (word.empty()) {
-      out.push_back(card(tr("define.usage_title"), tr("define.usage_sub"),
-                         "define ", "define", 10000, ResultAction::Habit));
-      out.push_back(card(tr("define.thes_title"), tr("define.thes_sub"),
-                         "thesaurus ", "define", 9900, ResultAction::Habit));
+      out.push_back(card(tr("define.usage_title"), tr("define.usage_sub"), "define ", "define",
+                         10000, ResultAction::Habit));
+      out.push_back(card(tr("define.thes_title"), tr("define.thes_sub"), "thesaurus ", "define",
+                         9900, ResultAction::Habit));
       return out;
     }
     DefineHit hit;
@@ -3425,9 +3416,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     } else {
       auto sug = define_suggest(word, 6);
       if (sug.empty()) {
-        out.push_back(card(tr("define.no_entry_title", {{"word", word}}),
-                           tr("define.no_entry_sub"), word, "define", 9000,
-                           ResultAction::Copy));
+        out.push_back(card(tr("define.no_entry_title", {{"word", word}}), tr("define.no_entry_sub"),
+                           word, "define", 9000, ResultAction::Copy));
       } else {
         std::string joined;
         for (std::size_t i = 0; i < sug.size(); ++i) {
@@ -3438,8 +3428,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                            tr("define.no_exact_sub", {{"sug", joined}}), word, "define", 9000,
                            ResultAction::Copy));
         for (auto& s : sug)
-          out.push_back(card(s, tr("define.suggest_sub"), s, "define", 8900,
-                             ResultAction::Habit));
+          out.push_back(card(s, tr("define.suggest_sub"), s, "define", 8900, ResultAction::Habit));
       }
     }
     return out;
@@ -3448,12 +3437,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Pins) {
     auto pins = PinStore::instance().list();
     if (pins.empty())
-      out.push_back(card(tr("pins.empty_title"), tr("pins.empty_sub"),
-                         "pin ", "pins", 10000, ResultAction::Habit));
+      out.push_back(card(tr("pins.empty_title"), tr("pins.empty_sub"), "pin ", "pins", 10000,
+                         ResultAction::Habit));
     for (auto& p : pins) {
-      auto r = card(tr("pins.item_title", {{"pin", p}}),
-                    tr("pins.item_sub", {{"pin", p}}), "unpin " + p, "pins", 10050,
-                    ResultAction::Copy);
+      auto r = card(tr("pins.item_title", {{"pin", p}}), tr("pins.item_sub", {{"pin", p}}),
+                    "unpin " + p, "pins", 10050, ResultAction::Copy);
       r.category = "pins";
       r.actions.clear();
       r.actions.push_back({"copy_text", tr("action.copy_text")});
@@ -3465,7 +3453,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::PinOp) {
     auto rest = trim_sv(intent.remainder);
     bool unpin = rest.rfind("unpin ", 0) == 0;
-    auto target = trim_sv(unpin ? rest.substr(6) : (rest.rfind("pin ", 0) == 0 ? rest.substr(4) : rest));
+    auto target =
+        trim_sv(unpin ? rest.substr(6) : (rest.rfind("pin ", 0) == 0 ? rest.substr(4) : rest));
     if (target.empty()) {
       out.push_back(card(unpin ? tr("pins.unpin_usage") : tr("pins.pin_usage"),
                          unpin ? tr("pins.unpin_usage_sub") : tr("pins.pin_usage_sub"),
@@ -3480,10 +3469,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          10000, ResultAction::Copy));
     } else {
       bool ok = PinStore::instance().add(target);
-      out.push_back(card(ok ? tr("pins.pinned", {{"target", target}})
-                            : tr("pins.already", {{"target", target}}),
-                         ok ? tr("pins.pinned_sub") : tr("pins.already_sub"), target, "pins",
-                         10000, ResultAction::Copy));
+      out.push_back(card(
+          ok ? tr("pins.pinned", {{"target", target}}) : tr("pins.already", {{"target", target}}),
+          ok ? tr("pins.pinned_sub") : tr("pins.already_sub"), target, "pins", 10000,
+          ResultAction::Copy));
     }
     return out;
   }
@@ -3491,8 +3480,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::EventAdd) {
     auto rest = trim_sv(intent.remainder);
     if (rest.empty()) {
-      out.push_back(card(tr("event.usage_title"), tr("event.usage_sub"),
-                         "event add ", "event", 10000, ResultAction::Habit));
+      out.push_back(card(tr("event.usage_title"), tr("event.usage_sub"), "event add ", "event",
+                         10000, ResultAction::Habit));
       return out;
     }
     // Split on last '|' for optional when-hint.
@@ -3504,9 +3493,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     std::string dest, err;
     if (create_calendar_event(cfg, summary, when, dest, err)) {
-      auto r = card(tr("event.created", {{"summary", summary}}),
-                    tr("event.created_sub", {{"dest", dest}}),
-                    dest, "event", 10100, ResultAction::Open);
+      auto r =
+          card(tr("event.created", {{"summary", summary}}),
+               tr("event.created_sub", {{"dest", dest}}), dest, "event", 10100, ResultAction::Open);
       r.category = "calendar";
       out.push_back(std::move(r));
     } else {
@@ -3518,8 +3507,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::ContactAdd) {
     auto rest = trim_sv(intent.remainder);
     if (rest.empty()) {
-      out.push_back(card(tr("contact.usage_title"), tr("contact.usage_sub"),
-                         "contact add ", "contact", 10000, ResultAction::Habit));
+      out.push_back(card(tr("contact.usage_title"), tr("contact.usage_sub"), "contact add ",
+                         "contact", 10000, ResultAction::Habit));
       return out;
     }
     // Parse: name = leading non-email/non-phone tokens; email has '@'; phone has digit+dash.
@@ -3550,14 +3539,13 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     std::string dest, err;
     if (create_contact(cfg, name, email, phone, dest, err)) {
-      auto r = card(tr("contact.created", {{"name", name}}),
-                    tr("contact.created_sub", {{"dest", dest}}), dest, "contact",
-                    10100, ResultAction::Open);
+      auto r =
+          card(tr("contact.created", {{"name", name}}), tr("contact.created_sub", {{"dest", dest}}),
+               dest, "contact", 10100, ResultAction::Open);
       r.category = "contact";
       out.push_back(std::move(r));
     } else {
-      out.push_back(card(tr("contact.failed"), err, rest, "contact", 9000,
-                         ResultAction::Copy));
+      out.push_back(card(tr("contact.failed"), err, rest, "contact", 9000, ResultAction::Copy));
     }
     return out;
   }
@@ -3582,8 +3570,8 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         }
       }
       if (pattern.empty()) {
-        out.push_back(card(tr("fileop.rename_usage"), tr("fileop.rename_sub"),
-                           "rename ", "filerename", 10000, ResultAction::Habit));
+        out.push_back(card(tr("fileop.rename_usage"), tr("fileop.rename_sub"), "rename ",
+                           "filerename", 10000, ResultAction::Habit));
         return out;
       }
       if (dir.empty()) dir = ".";
@@ -3595,21 +3583,21 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                            renamed.empty() ? dir : renamed.front(), "filerename", 10100,
                            ResultAction::Copy));
       } else {
-        out.push_back(card(tr("fileop.rename_failed"), err, rest, "filerename", 9000,
-                           ResultAction::Copy));
+        out.push_back(
+            card(tr("fileop.rename_failed"), err, rest, "filerename", 9000, ResultAction::Copy));
       }
       return out;
     }
     if (rest.rfind("move ", 0) == 0) {
-      out.push_back(card(tr("fileop.move_title"), tr("fileop.move_sub"),
-                         rest, "filemove", 10000, ResultAction::Copy));
+      out.push_back(card(tr("fileop.move_title"), tr("fileop.move_sub"), rest, "filemove", 10000,
+                         ResultAction::Copy));
       return out;
     }
     // template
     auto args = rest.rfind("template ", 0) == 0 ? trim_sv(rest.substr(9)) : rest;
     if (args.empty()) {
-      out.push_back(card(tr("fileop.template_usage"), tr("fileop.template_sub"),
-                         "template ", "filetemplate", 10000, ResultAction::Habit));
+      out.push_back(card(tr("fileop.template_usage"), tr("fileop.template_sub"), "template ",
+                         "filetemplate", 10000, ResultAction::Habit));
       return out;
     }
     // Parse: `<kind> [name] [in <dir>]`.
@@ -3628,25 +3616,24 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     std::string created, err;
     if (create_from_template(dir, kind, name, created, err)) {
       auto r = card(tr("fileop.created", {{"path", created}}),
-                    tr("fileop.created_sub", {{"kind", kind}}), created,
-                    "filetemplate", 10100, ResultAction::Open);
+                    tr("fileop.created_sub", {{"kind", kind}}), created, "filetemplate", 10100,
+                    ResultAction::Open);
       out.push_back(std::move(r));
     } else {
-      out.push_back(card(tr("fileop.template_failed"), err, rest, "filetemplate", 9000,
-                         ResultAction::Copy));
+      out.push_back(
+          card(tr("fileop.template_failed"), err, rest, "filetemplate", 9000, ResultAction::Copy));
     }
     return out;
   }
 
   if (intent.kind == MiniKind::Help) {
     static const char* keys[] = {
-        "help.01", "help.02", "help.03", "help.04", "help.05", "help.06", "help.07",
-        "help.08", "help.09", "help.10", "help.11", "help.12", "help.13", "help.14",
-        "help.15", "help.16", "help.17", "help.18", "help.19", "help.20", "help.21",
-        "help.22", "help.23", "help.24", "help.25", "help.26", "help.27", "help.28",
-        "help.29", "help.30", "help.31", "help.32", "help.33", "help.34", "help.35",
-        "help.36", "help.37", "help.38", "help.39", "help.40", "help.41", "help.42",
-        "help.43", "help.44", "help.45", "help.46", "help.47", nullptr};
+        "help.01", "help.02", "help.03", "help.04", "help.05", "help.06", "help.07", "help.08",
+        "help.09", "help.10", "help.11", "help.12", "help.13", "help.14", "help.15", "help.16",
+        "help.17", "help.18", "help.19", "help.20", "help.21", "help.22", "help.23", "help.24",
+        "help.25", "help.26", "help.27", "help.28", "help.29", "help.30", "help.31", "help.32",
+        "help.33", "help.34", "help.35", "help.36", "help.37", "help.38", "help.39", "help.40",
+        "help.41", "help.42", "help.43", "help.44", "help.45", "help.46", "help.47", nullptr};
     // Order matches docs/query-language.md mini table (help.01..help.47);
     // keep the keys array and locale tables in sync when adding lines.
     for (auto** p = keys; *p; ++p) {

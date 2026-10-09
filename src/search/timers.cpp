@@ -15,7 +15,8 @@ bool parse_duration_ms(const std::string& s, std::int64_t& out_ms) {
     if (c != ' ' && c != '\t') t.push_back(c);
   }
   if (t.empty()) return false;
-  for (char& c : t) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (char& c : t)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   // mm:ss or hh:mm:ss
   auto colon = t.find(':');
   if (colon != std::string::npos) {
@@ -125,11 +126,9 @@ TimerStore& TimerStore::instance() {
 
 std::string TimerStore::start(const std::string& label, std::int64_t duration_ms, bool pomodoro) {
   std::lock_guard<std::mutex> lock(mu_);
-  timers_.erase(std::remove_if(timers_.begin(), timers_.end(),
-                               [](const TimerSpec& t) {
-                                 return !t.running;
-                               }),
-                timers_.end());
+  timers_.erase(
+      std::remove_if(timers_.begin(), timers_.end(), [](const TimerSpec& t) { return !t.running; }),
+      timers_.end());
   TimerSpec t;
   t.id = label.empty() ? "timer" : label;
   t.label = label.empty() ? (pomodoro ? "pomodoro" : "timer") : label;
@@ -150,10 +149,12 @@ std::string TimerStore::stop(const std::string& id_or_empty) {
     return "Timer stopped";
   }
   std::string want = id_or_empty;
-  for (char& c : want) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (char& c : want)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   for (auto it = timers_.begin(); it != timers_.end(); ++it) {
     std::string l = it->label;
-    for (char& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (char& c : l)
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     if (l.find(want) != std::string::npos) {
       std::string msg = it->label + " stopped";
       timers_.erase(it);
@@ -167,9 +168,7 @@ void TimerStore::clear_finished() {
   std::lock_guard<std::mutex> lock(mu_);
   auto now = unix_millis();
   timers_.erase(std::remove_if(timers_.begin(), timers_.end(),
-                               [now](const TimerSpec& t) {
-                                 return now >= t.ends_at_ms;
-                               }),
+                               [now](const TimerSpec& t) { return now >= t.ends_at_ms; }),
                 timers_.end());
 }
 
@@ -228,8 +227,7 @@ std::string Stopwatch::lap(const std::string& label) {
   auto el = g_sw_accum + (g_sw_running ? (unix_millis() - g_sw_start) : 0);
   char buf[128];
   std::snprintf(buf, sizeof(buf), "Lap %zu · %s%s%s", g_sw_laps.size() + 1,
-                format_duration_ms(el).c_str(), label.empty() ? "" : " · ",
-                label.c_str());
+                format_duration_ms(el).c_str(), label.empty() ? "" : " · ", label.c_str());
   g_sw_laps.emplace_back(buf);
   return g_sw_laps.back();
 }

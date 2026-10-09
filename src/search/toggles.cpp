@@ -13,8 +13,10 @@ namespace {
 
 std::string trim(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t')) o.erase(o.begin());
-  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r')) o.pop_back();
+  while (!o.empty() && (o.front() == ' ' || o.front() == '\t'))
+    o.erase(o.begin());
+  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r'))
+    o.pop_back();
   return o;
 }
 
@@ -37,9 +39,11 @@ SearchResult tcard(const std::string& title, const std::string& sub, const std::
 
 ToggleOp parse_toggle_arg(const std::string& remainder) {
   auto l = to_lower_utf8(trim(remainder));
-  if (l.empty() || l == "status" || l == "state" || l == "list" || l == "show") return ToggleOp::Status;
+  if (l.empty() || l == "status" || l == "state" || l == "list" || l == "show")
+    return ToggleOp::Status;
   if (l == "on" || l == "enable" || l == "enabled" || l == "1" || l == "yes") return ToggleOp::On;
-  if (l == "off" || l == "disable" || l == "disabled" || l == "0" || l == "no") return ToggleOp::Off;
+  if (l == "off" || l == "disable" || l == "disabled" || l == "0" || l == "no")
+    return ToggleOp::Off;
   if (l == "toggle" || l == "switch" || l == "flip") return ToggleOp::Toggle;
   return ToggleOp::Status;
 }
@@ -62,7 +66,8 @@ bool parse_volume_arg(const std::string& remainder, std::string& kind, int& leve
     kind = "toggle_mute";
     return true;
   }
-  if (l == "up" || l == "+" || l == "louder" || l == "increase" || l == "volup" || l == "volume up") {
+  if (l == "up" || l == "+" || l == "louder" || l == "increase" || l == "volup" ||
+      l == "volume up") {
     kind = "up";
     return true;
   }
@@ -159,10 +164,10 @@ std::string normalize_settings_page(const std::string& remainder) {
 }
 
 std::vector<std::pair<std::string, std::string>> settings_page_list() {
-  return {{"", "Main settings"},       {"wifi", "Wi-Fi"},   {"network", "Network"},
-          {"bluetooth", "Bluetooth"},  {"sound", "Sound"},  {"display", "Display"},
-          {"battery", "Battery"},      {"power", "Power"},  {"apps", "Apps"},
-          {"privacy", "Privacy"},      {"update", "Updates"}, {"about", "About"}};
+  return {{"", "Main settings"},      {"wifi", "Wi-Fi"},     {"network", "Network"},
+          {"bluetooth", "Bluetooth"}, {"sound", "Sound"},    {"display", "Display"},
+          {"battery", "Battery"},     {"power", "Power"},    {"apps", "Apps"},
+          {"privacy", "Privacy"},     {"update", "Updates"}, {"about", "About"}};
 }
 
 std::vector<SearchResult> wifi_results(const std::string& remainder, const Config&) {
@@ -184,13 +189,14 @@ std::vector<SearchResult> wifi_results(const std::string& remainder, const Confi
       for (std::size_t i = 0; i < nets.size() && i < 5; ++i)
         out.push_back(tcard(nets[i], "Nearby network", "toggle:wifi:toggle", "wifi", "toggle"));
     }
-    out.push_back(tcard("Open Wi-Fi settings", "settings wifi — enter opens",
-                        "settings:wifi", "settings", "settings"));
+    out.push_back(tcard("Open Wi-Fi settings", "settings wifi — enter opens", "settings:wifi",
+                        "settings", "settings"));
     return out;
   }
-  std::string payload =
-      op == ToggleOp::On ? "toggle:wifi:on" : op == ToggleOp::Off ? "toggle:wifi:off" : "toggle:wifi:toggle";
-  std::string label = op == ToggleOp::On ? "Turn Wi-Fi on"
+  std::string payload = op == ToggleOp::On    ? "toggle:wifi:on"
+                        : op == ToggleOp::Off ? "toggle:wifi:off"
+                                              : "toggle:wifi:toggle";
+  std::string label = op == ToggleOp::On    ? "Turn Wi-Fi on"
                       : op == ToggleOp::Off ? "Turn Wi-Fi off"
                                             : "Toggle Wi-Fi (now " + status + ")";
   out.push_back(tcard(label, "Wi-Fi · " + status + " — enter applies", payload, "wifi", "toggle"));
@@ -219,10 +225,10 @@ std::vector<SearchResult> bluetooth_results(const std::string& remainder, const 
                         "settings:bluetooth", "settings", "settings"));
     return out;
   }
-  std::string payload = op == ToggleOp::On ? "toggle:bluetooth:on"
+  std::string payload = op == ToggleOp::On    ? "toggle:bluetooth:on"
                         : op == ToggleOp::Off ? "toggle:bluetooth:off"
                                               : "toggle:bluetooth:toggle";
-  std::string label = op == ToggleOp::On ? "Turn Bluetooth on"
+  std::string label = op == ToggleOp::On    ? "Turn Bluetooth on"
                       : op == ToggleOp::Off ? "Turn Bluetooth off"
                                             : "Toggle Bluetooth (now " + status + ")";
   out.push_back(
@@ -241,7 +247,8 @@ std::vector<SearchResult> volume_results(const std::string& remainder, const Con
   bool ok = native_volume_status(cur, muted, err);
   char curbuf[96];
   if (!ok)
-    std::snprintf(curbuf, sizeof(curbuf), "Unavailable%s", err.empty() ? "" : (" · " + err).c_str());
+    std::snprintf(curbuf, sizeof(curbuf), "Unavailable%s",
+                  err.empty() ? "" : (" · " + err).c_str());
   else if (muted)
     std::snprintf(curbuf, sizeof(curbuf), "Muted (level %d%%)", cur);
   else
@@ -259,8 +266,8 @@ std::vector<SearchResult> volume_results(const std::string& remainder, const Con
                             "toggle:volume:set:" + std::to_string(v), "volume", "toggle", v));
       }
       out.push_back(tcard(muted ? "Unmute" : "Mute", muted ? "volume unmute" : "volume mute",
-                          muted ? "toggle:volume:unmute" : "toggle:volume:mute", "volume",
-                          "toggle", cur));
+                          muted ? "toggle:volume:unmute" : "toggle:volume:mute", "volume", "toggle",
+                          cur));
     }
     out.push_back(tcard("Open sound settings", "settings sound — enter opens", "settings:sound",
                         "settings", "settings"));
@@ -350,9 +357,10 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
     auto val = trim(rest.substr(sp + 1));
     std::string cur, err;
     bool known = config_get_value(cfg, to_lower_utf8(key), cur, err);
-    out.push_back(tcard("Set " + key + " to " + val,
-                        known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
-                        "config:set:" + key + "=" + val, "settings", "settings"));
+    out.push_back(
+        tcard("Set " + key + " to " + val,
+              known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
+              "config:set:" + key + "=" + val, "settings", "settings"));
     return out;
   }
   if (tl.rfind("get ", 0) == 0) {
@@ -395,8 +403,8 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
                         "settings", "settings"));
     out.push_back(tcard("Validate wilfred.yml", "settings config validate — enter checks",
                         "config:validate", "settings", "settings"));
-    out.push_back(tcard("First-run setup", "setup — check roots, hotkey, browser",
-                        "setup:wizard", "setup", "setup"));
+    out.push_back(tcard("First-run setup", "setup — check roots, hotkey, browser", "setup:wizard",
+                        "setup", "setup"));
     return out;
   }
   // `settings <page>` with empty normalized page = main settings.

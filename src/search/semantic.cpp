@@ -35,7 +35,8 @@ std::vector<std::uint32_t> trigrams_of(const std::string& folded) {
       ws = false;
     }
   }
-  while (!norm.empty() && norm.back() == ' ') norm.pop_back();
+  while (!norm.empty() && norm.back() == ' ')
+    norm.pop_back();
   std::string pad = "  " + norm + "  ";
   std::vector<std::uint32_t> out;
   if (pad.size() < 3) return out;
@@ -59,8 +60,10 @@ double cosine_sorted(const std::vector<std::uint32_t>& a, const std::vector<std:
     if (a[i] == b[j]) {
       // Count multiplicities on both sides.
       std::size_t i2 = i + 1, j2 = j + 1;
-      while (i2 < a.size() && a[i2] == a[i]) ++i2;
-      while (j2 < b.size() && b[j2] == b[j]) ++j2;
+      while (i2 < a.size() && a[i2] == a[i])
+        ++i2;
+      while (j2 < b.size() && b[j2] == b[j])
+        ++j2;
       dot += static_cast<double>((i2 - i) * (j2 - j));
       i = i2;
       j = j2;
@@ -99,7 +102,8 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
   bool use_vector = backend == "vector" || backend == "hybrid";
   bool use_trigram = backend == "trigram" || backend == "hybrid";
   std::size_t budget = limit;
-  if (limit > (std::size_t)cfg.providers.semantic_max_results && cfg.providers.semantic_max_results > 0)
+  if (limit > (std::size_t)cfg.providers.semantic_max_results &&
+      cfg.providers.semantic_max_results > 0)
     budget = (std::size_t)cfg.providers.semantic_max_results;
   if (budget == 0) budget = limit;
 
@@ -140,9 +144,8 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
 
   // 1) Vector path: HNSW over local embeddings (llama.cpp when configured).
   if (use_vector && index_.vectors().enabled()) {
-    float min_score = cfg.embedding.enabled
-                          ? (float)cfg.embedding.min_score
-                          : (float)cfg.providers.semantic_min_score;
+    float min_score = cfg.embedding.enabled ? (float)cfg.embedding.min_score
+                                            : (float)cfg.providers.semantic_min_score;
     int k = (int)budget * 2;
     if (k < (int)budget) k = (int)budget;
     if (k > 50) k = 50;
@@ -183,8 +186,8 @@ std::vector<SearchResult> SemanticProvider::query(const std::string& text, const
       auto cmp = [](const Hit& a, const Hit& b) { return a.sim > b.sim; };
       std::size_t keep = std::min<std::size_t>(hits.size(), budget);
       if (keep > 0) {
-        std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(keep),
-                         hits.end(), cmp);
+        std::nth_element(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(keep), hits.end(),
+                         cmp);
         std::sort(hits.begin(), hits.begin() + static_cast<std::ptrdiff_t>(keep), cmp);
         hits.resize(keep);
       }

@@ -24,8 +24,7 @@ std::uint32_t r32(const std::uint8_t*& p, const std::uint8_t* end, bool& ok) {
     ok = false;
     return 0;
   }
-  std::uint32_t v = static_cast<std::uint32_t>(p[0]) |
-                    (static_cast<std::uint32_t>(p[1]) << 8) |
+  std::uint32_t v = static_cast<std::uint32_t>(p[0]) | (static_cast<std::uint32_t>(p[1]) << 8) |
                     (static_cast<std::uint32_t>(p[2]) << 16) |
                     (static_cast<std::uint32_t>(p[3]) << 24);
   p += 4;
@@ -67,7 +66,8 @@ int HnswIndex::level_of(std::uint64_t counter) const {
 
 float HnswIndex::dot(const std::vector<float>& a, const std::vector<float>& b) {
   double d = 0;
-  for (std::size_t i = 0; i < a.size(); ++i) d += (double)a[i] * b[i];
+  for (std::size_t i = 0; i < a.size(); ++i)
+    d += (double)a[i] * b[i];
   return (float)d;
 }
 
@@ -194,8 +194,7 @@ bool HnswIndex::add(std::uint32_t id, const std::vector<float>& vec) {
             if (n >= vecs_.size()) continue;
             s2.emplace_back(dist2(nb, n), n);
           }
-          std::sort(s2.begin(), s2.end(),
-                    [](auto& a, auto& b) { return a.first < b.first; });
+          std::sort(s2.begin(), s2.end(), [](auto& a, auto& b) { return a.first < b.first; });
           lst.clear();
           for (std::size_t k = 0; k < s2.size() && k < (std::size_t)m_; ++k)
             lst.push_back(s2[k].second);
@@ -207,8 +206,7 @@ bool HnswIndex::add(std::uint32_t id, const std::vector<float>& vec) {
   return true;
 }
 
-std::vector<HnswHit> HnswIndex::search(const std::vector<float>& query, int k,
-                                       int ef) const {
+std::vector<HnswHit> HnswIndex::search(const std::vector<float>& query, int k, int ef) const {
   std::vector<HnswHit> out;
   if (vecs_.empty() || (int)query.size() != dim_ || k <= 0) return out;
   if (ef < k) ef = k;
@@ -219,7 +217,8 @@ std::vector<HnswHit> HnswIndex::search(const std::vector<float>& query, int k,
   if (cur >= vecs_.size()) cur = 0;
   auto dist_q = [&](std::uint32_t p) {
     double d = 0;
-    for (int i = 0; i < dim_; ++i) d += (double)query[i] * vecs_[p][i];
+    for (int i = 0; i < dim_; ++i)
+      d += (double)query[i] * vecs_[p][i];
     return 1.0f - (float)d;
   };
   int top = levels_[cur];

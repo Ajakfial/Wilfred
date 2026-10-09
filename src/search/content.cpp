@@ -11,13 +11,14 @@ bool looks_like_text_extension(std::string_view ext) {
   if (e.empty()) return false;
   if (e[0] != '.') e.insert(e.begin(), '.');
   static const char* extra[] = {
-      ".log",  ".csv",  ".json", ".xml",  ".html", ".htm",  ".md",   ".txt",  ".rst",
-      ".toml", ".yml",  ".yaml", ".ini",  ".cfg",  ".conf", ".cpp",  ".cc",   ".cxx",
-      ".c",    ".h",    ".hpp",  ".hh",   ".cs",   ".java", ".js",   ".jsx",  ".ts",
-      ".tsx",  ".py",   ".rb",   ".go",   ".rs",   ".php",  ".swift",".kt",   ".scala",
-      ".sql",  ".sh",   ".ps1",  ".bat",  ".css",  ".scss", ".less", ".vue",  ".svelte",
-      ".cmake",".gradle",".pl",  ".lua",  ".r",    ".tex",  ".bib",  ".org",  ".rtf",
-      ".svg",  ".gitignore", ".editorconfig", ".env", nullptr};
+      ".log",          ".csv",   ".json", ".xml",   ".html",   ".htm",   ".md",     ".txt",
+      ".rst",          ".toml",  ".yml",  ".yaml",  ".ini",    ".cfg",   ".conf",   ".cpp",
+      ".cc",           ".cxx",   ".c",    ".h",     ".hpp",    ".hh",    ".cs",     ".java",
+      ".js",           ".jsx",   ".ts",   ".tsx",   ".py",     ".rb",    ".go",     ".rs",
+      ".php",          ".swift", ".kt",   ".scala", ".sql",    ".sh",    ".ps1",    ".bat",
+      ".css",          ".scss",  ".less", ".vue",   ".svelte", ".cmake", ".gradle", ".pl",
+      ".lua",          ".r",     ".tex",  ".bib",   ".org",    ".rtf",   ".svg",    ".gitignore",
+      ".editorconfig", ".env",   nullptr};
   for (auto** p = extra; *p; ++p)
     if (e == *p) return true;
   return false;

@@ -45,13 +45,16 @@ std::unordered_map<std::string, std::string> builtin_macros() {
 
 std::unordered_map<std::string, std::string> merged_macros(const Config& cfg) {
   auto m = builtin_macros();
-  for (auto& [k, v] : cfg.macros) m[to_lower_utf8(k)] = v;
+  for (auto& [k, v] : cfg.macros)
+    m[to_lower_utf8(k)] = v;
   return m;
 }
 
 static void trim_copy(std::string& s) {
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+    s.pop_back();
 }
 
 MacroMatch match_macro(std::string_view query, const Config& cfg) {

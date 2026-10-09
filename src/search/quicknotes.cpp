@@ -26,15 +26,17 @@ std::string note_file(const std::string& dir, const std::string& id) {
 std::string note_title(const std::string& text) {
   auto nl = text.find('\n');
   std::string t = nl == std::string::npos ? text : text.substr(0, nl);
-  while (!t.empty() && (t.back() == ' ' || t.back() == '\t' || t.back() == '\r')) t.pop_back();
-  while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+  while (!t.empty() && (t.back() == ' ' || t.back() == '\t' || t.back() == '\r'))
+    t.pop_back();
+  while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+    t.erase(t.begin());
   if (t.size() > 80) t.resize(80);
   return t.empty() ? std::string("Note") : t;
 }
 
 std::string render_note(const QuickNote& n) {
-  return "# " + note_title(n.text) + "\n\n" + n.text + "\n\n" + kNoteFooterPrefix +
-         "id=" + n.id + " created=" + std::to_string(n.when) + " -->\n";
+  return "# " + note_title(n.text) + "\n\n" + n.text + "\n\n" + kNoteFooterPrefix + "id=" + n.id +
+         " created=" + std::to_string(n.when) + " -->\n";
 }
 
 // Split blob into lines without the trailing newline artifacts.
@@ -62,7 +64,8 @@ std::vector<std::string> split_lines(const std::string& blob) {
 // alone (it still shows up through the notes search provider).
 bool parse_note_file(const std::string& stem, const std::string& blob, QuickNote& out) {
   auto lines = split_lines(blob);
-  while (!lines.empty() && lines.back().empty()) lines.pop_back();
+  while (!lines.empty() && lines.back().empty())
+    lines.pop_back();
   if (lines.empty()) return false;
   auto& last = lines.back();
   if (last.rfind(kNoteFooterPrefix, 0) != 0 || last.size() < 4 ||
@@ -74,8 +77,8 @@ bool parse_note_file(const std::string& stem, const std::string& blob, QuickNote
   auto id_pos = last.find("id=");
   if (id_pos != std::string::npos) {
     auto id_end = last.find_first_of(" >", id_pos + 3);
-    auto fid = last.substr(id_pos + 3, id_end == std::string::npos ? std::string::npos
-                                                                  : id_end - id_pos - 3);
+    auto fid = last.substr(id_pos + 3,
+                           id_end == std::string::npos ? std::string::npos : id_end - id_pos - 3);
     if (!fid.empty()) n.id = fid;
   }
   auto created_pos = last.find("created=");
@@ -87,9 +90,11 @@ bool parse_note_file(const std::string& stem, const std::string& blob, QuickNote
     }
   }
   lines.pop_back();
-  while (!lines.empty() && lines.back().empty()) lines.pop_back();
+  while (!lines.empty() && lines.back().empty())
+    lines.pop_back();
   if (!lines.empty() && lines.front().rfind("# ", 0) == 0) lines.erase(lines.begin());
-  while (!lines.empty() && lines.front().empty()) lines.erase(lines.begin());
+  while (!lines.empty() && lines.front().empty())
+    lines.erase(lines.begin());
   std::string text;
   for (auto& ln : lines) {
     if (!text.empty()) text.push_back('\n');
@@ -419,8 +424,8 @@ bool TodoStore::save_now() {
     std::string text = t.text;
     for (char& c : text)
       if (c == '\n' || c == '\r' || c == '\t') c = ' ';
-    blob += std::to_string(t.id) + "\t" + (t.done ? "1" : "0") + "\t" +
-            std::to_string(t.when) + "\t" + text + "\n";
+    blob += std::to_string(t.id) + "\t" + (t.done ? "1" : "0") + "\t" + std::to_string(t.when) +
+            "\t" + text + "\n";
   }
   create_directories(path_parent(path));
   return write_file_atomic(path, blob.data(), blob.size());
@@ -475,9 +480,9 @@ bool TodoStore::remove(int id) {
 void TodoStore::clear_done() {
   {
     std::lock_guard<std::mutex> lock(mu_);
-    items_.erase(std::remove_if(items_.begin(), items_.end(),
-                                [](const TodoItem& t) { return t.done; }),
-                 items_.end());
+    items_.erase(
+        std::remove_if(items_.begin(), items_.end(), [](const TodoItem& t) { return t.done; }),
+        items_.end());
   }
   save_now();
 }

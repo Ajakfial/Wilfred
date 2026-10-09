@@ -24,30 +24,34 @@ namespace {
 
 std::string trim_c(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t' || o.front() == '\n' ||
-                        o.front() == '\r'))
+  while (!o.empty() &&
+         (o.front() == ' ' || o.front() == '\t' || o.front() == '\n' || o.front() == '\r'))
     o.erase(o.begin());
-  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\n' ||
-                        o.back() == '\r'))
+  while (!o.empty() &&
+         (o.back() == ' ' || o.back() == '\t' || o.back() == '\n' || o.back() == '\r'))
     o.pop_back();
   return o;
 }
 
 std::string strip_quotes(const std::string& s) {
   auto t = trim_c(s);
-  if (t.size() >= 2 && ((t.front() == '"' && t.back() == '"') ||
-                        (t.front() == '\'' && t.back() == '\'')))
+  if (t.size() >= 2 &&
+      ((t.front() == '"' && t.back() == '"') || (t.front() == '\'' && t.back() == '\'')))
     return t.substr(1, t.size() - 2);
   return t;
 }
 
-std::string lower_c(const std::string& s) { return to_lower_utf8(s); }
+std::string lower_c(const std::string& s) {
+  return to_lower_utf8(s);
+}
 
 std::string shell_quote_c(const std::string& s) {
   std::string o = "\"";
   for (char c : s) {
-    if (c == '"') o += "\\\"";
-    else o.push_back(c);
+    if (c == '"')
+      o += "\\\"";
+    else
+      o.push_back(c);
   }
   o.push_back('"');
   return o;
@@ -110,7 +114,8 @@ void wr_u16le_c(std::vector<std::uint8_t>& o, std::uint16_t v) {
   o.push_back(static_cast<std::uint8_t>((v >> 8) & 0xff));
 }
 void wr_u32le_c(std::vector<std::uint8_t>& o, std::uint32_t v) {
-  for (int i = 0; i < 4; ++i) o.push_back(static_cast<std::uint8_t>((v >> (i * 8)) & 0xff));
+  for (int i = 0; i < 4; ++i)
+    o.push_back(static_cast<std::uint8_t>((v >> (i * 8)) & 0xff));
 }
 void wr_u32be_c(std::vector<std::uint8_t>& o, std::uint32_t v) {
   o.push_back(static_cast<std::uint8_t>((v >> 24) & 0xff));
@@ -134,7 +139,8 @@ void png_put_chunk(std::vector<std::uint8_t>& o, const char type[4], const std::
   wr_u32be_c(o, static_cast<std::uint32_t>(n));
   std::uint32_t crc = crc32(type, 4);
   if (n) crc = crc32(data, n, crc);
-  for (int i = 0; i < 4; ++i) o.push_back(static_cast<std::uint8_t>(type[i]));
+  for (int i = 0; i < 4; ++i)
+    o.push_back(static_cast<std::uint8_t>(type[i]));
   if (n) o.insert(o.end(), data, data + n);
   wr_u32be_c(o, crc);
 }
@@ -206,11 +212,13 @@ std::uint8_t paeth_c(int a, int b, int c) {
 
 std::string normalize_format_token(std::string s) {
   s = trim_c(s);
-  while (!s.empty() && s.front() == '.') s.erase(s.begin());
+  while (!s.empty() && s.front() == '.')
+    s.erase(s.begin());
   s = trim_c(s);
   std::string o;
   for (char c : s) {
-    if ((c >= 'A' && c <= 'Z')) o.push_back(static_cast<char>(c + 32));
+    if ((c >= 'A' && c <= 'Z'))
+      o.push_back(static_cast<char>(c + 32));
     else if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '-')
       o.push_back(c);
     // drop other punctuation / whitespace
@@ -225,17 +233,17 @@ std::string normalize_format_token(std::string s) {
 
 bool is_audio_format(const std::string& fmt) {
   auto f = normalize_format_token(fmt);
-  return f == "mp3" || f == "wav" || f == "ogg" || f == "oga" || f == "opus" ||
-         f == "flac" || f == "m4a" || f == "aac" || f == "wma" || f == "aiff" ||
-         f == "aif" || f == "au" || f == "snd" || f == "raw" || f == "pcm" ||
-         f == "webm" || f == "mp4" || f == "mkv" || f == "caf";
+  return f == "mp3" || f == "wav" || f == "ogg" || f == "oga" || f == "opus" || f == "flac" ||
+         f == "m4a" || f == "aac" || f == "wma" || f == "aiff" || f == "aif" || f == "au" ||
+         f == "snd" || f == "raw" || f == "pcm" || f == "webm" || f == "mp4" || f == "mkv" ||
+         f == "caf";
 }
 
 bool is_image_format(const std::string& fmt) {
   auto f = normalize_format_token(fmt);
-  return f == "png" || f == "jpg" || f == "bmp" || f == "ppm" || f == "pgm" ||
-         f == "tga" || f == "gif" || f == "webp" || f == "tiff" || f == "heic" ||
-         f == "heif" || f == "avif" || f == "ico" || f == "qoi";
+  return f == "png" || f == "jpg" || f == "bmp" || f == "ppm" || f == "pgm" || f == "tga" ||
+         f == "gif" || f == "webp" || f == "tiff" || f == "heic" || f == "heif" || f == "avif" ||
+         f == "ico" || f == "qoi";
 }
 
 bool is_known_convert_format(const std::string& fmt) {
@@ -267,7 +275,9 @@ bool is_convertible(const std::string& path) {
   return is_audio_convertible(path) || is_image_convertible(path);
 }
 
-bool ffmpeg_available_convert() { return tool_available_c("ffmpeg"); }
+bool ffmpeg_available_convert() {
+  return tool_available_c("ffmpeg");
+}
 
 std::string convert_install_hint(const std::string& what) {
   (void)what;
@@ -309,7 +319,8 @@ std::string resolve_convert_output(const std::string& src, const std::string& fm
   auto parent = path_parent(src);
   auto stem = path_stem(src);
   if (stem.empty()) stem = "converted";
-  auto looks_like_path = want.find('/') != std::string::npos || want.find('\\') != std::string::npos;
+  auto looks_like_path =
+      want.find('/') != std::string::npos || want.find('\\') != std::string::npos;
   if (looks_like_path) {
     auto ext = lower_c(path_extension(want));
     std::string e = ext;
@@ -332,7 +343,8 @@ std::string resolve_convert_output(const std::string& src, const std::string& fm
     std::string lc = lower_c(cand), ls = lower_c(src);
     if (lc == ls) {
       for (int i = 2; i < 10000; ++i) {
-        std::string c2 = path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
+        std::string c2 =
+            path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
         if (parent.empty()) c2 = stem + " " + std::to_string(i) + default_ext_for_format(f);
         if (!file_exists(c2)) return c2;
       }
@@ -341,7 +353,8 @@ std::string resolve_convert_output(const std::string& src, const std::string& fm
     }
     if (file_exists(cand)) {
       for (int i = 2; i < 10000; ++i) {
-        std::string c2 = path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
+        std::string c2 =
+            path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
         if (parent.empty()) c2 = stem + " " + std::to_string(i) + default_ext_for_format(f);
         if (!file_exists(c2)) return c2;
       }
@@ -371,7 +384,8 @@ std::string resolve_convert_output(const std::string& src, const std::string& fm
   std::string lc = lower_c(cand), ls = lower_c(src);
   if (lc == ls || file_exists(cand)) {
     for (int i = 2; i < 10000; ++i) {
-      std::string c2 = path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
+      std::string c2 =
+          path_join(parent, stem + " " + std::to_string(i) + default_ext_for_format(f));
       if (parent.empty()) c2 = stem + " " + std::to_string(i) + default_ext_for_format(f);
       if (!file_exists(c2)) return c2;
     }
@@ -383,16 +397,15 @@ std::string resolve_convert_output(const std::string& src, const std::string& fm
 // WAV
 // ---------------------------------------------------------------------------
 
-bool decode_wav_bytes(const std::vector<std::uint8_t>& bytes, WavData& out,
-                      std::string& error) {
+bool decode_wav_bytes(const std::vector<std::uint8_t>& bytes, WavData& out, std::string& error) {
   error.clear();
   out = WavData{};
   if (bytes.size() < 44) {
     error = "not a wav file (too small)";
     return false;
   }
-  if (bytes[0] != 'R' || bytes[1] != 'I' || bytes[2] != 'F' || bytes[3] != 'F' ||
-      bytes[8] != 'W' || bytes[9] != 'A' || bytes[10] != 'V' || bytes[11] != 'E') {
+  if (bytes[0] != 'R' || bytes[1] != 'I' || bytes[2] != 'F' || bytes[3] != 'F' || bytes[8] != 'W' ||
+      bytes[9] != 'A' || bytes[10] != 'V' || bytes[11] != 'E') {
     error = "not a wav file (bad header)";
     return false;
   }
@@ -499,8 +512,8 @@ bool decode_wav_bytes(const std::vector<std::uint8_t>& bytes, WavData& out,
   return true;
 }
 
-bool encode_wav_bytes(const WavData& wav, int bits_per_sample,
-                      std::vector<std::uint8_t>& out, std::string& error) {
+bool encode_wav_bytes(const WavData& wav, int bits_per_sample, std::vector<std::uint8_t>& out,
+                      std::string& error) {
   error.clear();
   out.clear();
   if (wav.sample_rate < 1000 || wav.sample_rate > 384000) {
@@ -516,7 +529,8 @@ bool encode_wav_bytes(const WavData& wav, int bits_per_sample,
     error = "bad bit depth (need 8/16/24/32)";
     return false;
   }
-  std::size_t frames = wav.channels ? wav.samples.size() / static_cast<std::size_t>(wav.channels) : 0;
+  std::size_t frames =
+      wav.channels ? wav.samples.size() / static_cast<std::size_t>(wav.channels) : 0;
   if (wav.samples.size() % static_cast<std::size_t>(wav.channels) != 0) {
     error = "bad sample layout";
     return false;
@@ -525,7 +539,8 @@ bool encode_wav_bytes(const WavData& wav, int bits_per_sample,
     error = "audio too large to encode";
     return false;
   }
-  std::size_t frame_bytes = static_cast<std::size_t>(wav.channels) * static_cast<std::size_t>(bits_per_sample / 8);
+  std::size_t frame_bytes =
+      static_cast<std::size_t>(wav.channels) * static_cast<std::size_t>(bits_per_sample / 8);
   std::size_t data_bytes = frames * frame_bytes;
   if (data_bytes > 0xFFFFFFF0ull) {
     error = "audio too large to encode";
@@ -549,7 +564,8 @@ bool encode_wav_bytes(const WavData& wav, int bits_per_sample,
   wr_u16le_c(out, 1);
   wr_u16le_c(out, static_cast<std::uint16_t>(wav.channels));
   wr_u32le_c(out, static_cast<std::uint32_t>(wav.sample_rate));
-  wr_u32le_c(out, static_cast<std::uint32_t>(wav.sample_rate) * static_cast<std::uint32_t>(frame_bytes));
+  wr_u32le_c(out,
+             static_cast<std::uint32_t>(wav.sample_rate) * static_cast<std::uint32_t>(frame_bytes));
   wr_u16le_c(out, static_cast<std::uint16_t>(frame_bytes));
   wr_u16le_c(out, static_cast<std::uint16_t>(bits_per_sample));
   out.push_back('d');
@@ -593,7 +609,8 @@ WavData resample_remix_wav(const WavData& in, int target_rate, int target_channe
   if (rate > 384000) rate = 384000;
   if (ch < 1) ch = in.channels;
   if (ch > 32) ch = 32;
-  std::size_t in_frames = in.channels ? in.samples.size() / static_cast<std::size_t>(in.channels) : 0;
+  std::size_t in_frames =
+      in.channels ? in.samples.size() / static_cast<std::size_t>(in.channels) : 0;
   std::size_t out_frames = in_frames;
   if (rate != in.sample_rate && in_frames > 0) {
     double ratio = static_cast<double>(rate) / static_cast<double>(in.sample_rate);
@@ -607,14 +624,17 @@ WavData resample_remix_wav(const WavData& in, int target_rate, int target_channe
     resampled = in.samples;
   } else if (in_frames > 0) {
     for (std::size_t f = 0; f < out_frames; ++f) {
-      double pos = static_cast<double>(f) * static_cast<double>(in.sample_rate) / static_cast<double>(rate);
+      double pos =
+          static_cast<double>(f) * static_cast<double>(in.sample_rate) / static_cast<double>(rate);
       std::size_t i0 = static_cast<std::size_t>(pos);
       double frac = pos - static_cast<double>(i0);
       if (i0 >= in_frames) i0 = in_frames - 1;
       std::size_t i1 = i0 + 1 < in_frames ? i0 + 1 : i0;
       for (int c = 0; c < in.channels; ++c) {
-        float a = in.samples[i0 * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)];
-        float b = in.samples[i1 * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)];
+        float a =
+            in.samples[i0 * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)];
+        float b =
+            in.samples[i1 * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)];
         resampled.push_back(static_cast<float>(a + (b - a) * frac));
       }
     }
@@ -624,7 +644,8 @@ WavData resample_remix_wav(const WavData& in, int target_rate, int target_channe
   for (std::size_t f = 0; f < out_frames; ++f) {
     if (ch == in.channels) {
       for (int c = 0; c < ch; ++c)
-        remixed.push_back(resampled[f * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)]);
+        remixed.push_back(
+            resampled[f * static_cast<std::size_t>(in.channels) + static_cast<std::size_t>(c)]);
     } else if (ch == 1) {
       double sum = 0;
       for (int c = 0; c < in.channels; ++c)
@@ -632,7 +653,8 @@ WavData resample_remix_wav(const WavData& in, int target_rate, int target_channe
       remixed.push_back(static_cast<float>(sum / static_cast<double>(in.channels)));
     } else if (in.channels == 1) {
       float m = resampled[f];
-      for (int c = 0; c < ch; ++c) remixed.push_back(m);
+      for (int c = 0; c < ch; ++c)
+        remixed.push_back(m);
     } else {
       for (int c = 0; c < ch; ++c)
         remixed.push_back(resampled[f * static_cast<std::size_t>(in.channels) +
@@ -718,10 +740,12 @@ bool convert_audio_file(const std::string& src, const std::string& dst, int samp
       wav.samples.resize(frames * static_cast<std::size_t>(ch));
       for (std::size_t f = 0; f < frames; ++f)
         for (int c = 0; c < ch; ++c) {
-          const std::uint8_t* s = bytes.data() + (f * static_cast<std::size_t>(ch) + static_cast<std::size_t>(c)) *
-                                                     static_cast<std::size_t>(b / 8);
+          const std::uint8_t* s =
+              bytes.data() + (f * static_cast<std::size_t>(ch) + static_cast<std::size_t>(c)) *
+                                 static_cast<std::size_t>(b / 8);
           float v = 0;
-          if (b == 8) v = (static_cast<int>(s[0]) - 128) / 128.0f;
+          if (b == 8)
+            v = (static_cast<int>(s[0]) - 128) / 128.0f;
           else {
             std::int16_t iv = static_cast<std::int16_t>(s[0] | (s[1] << 8));
             v = iv / 32768.0f;
@@ -844,7 +868,8 @@ bool decode_bmp_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
   }
   int h = hi < 0 ? -hi : hi;
   bool top_down = hi < 0;
-  std::size_t stride = ((static_cast<std::size_t>(wi) * static_cast<std::size_t>(bpp) + 31) / 32) * 4;
+  std::size_t stride =
+      ((static_cast<std::size_t>(wi) * static_cast<std::size_t>(bpp) + 31) / 32) * 4;
   if (off + stride * static_cast<std::size_t>(h) > size) {
     error = "truncated bmp file";
     return false;
@@ -861,7 +886,8 @@ bool decode_bmp_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
     const std::uint8_t* row = data + off + static_cast<std::size_t>(src_y) * stride;
     for (int x = 0; x < wi; ++x) {
       std::uint8_t* d = &out.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(wi) +
-                                   static_cast<std::size_t>(x)) * 4];
+                                   static_cast<std::size_t>(x)) *
+                                  4];
       if (bpp == 24) {
         d[0] = row[x * 3 + 2];
         d[1] = row[x * 3 + 1];
@@ -882,7 +908,8 @@ bool decode_ppm_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
                       std::string& error) {
   error.clear();
   out = ImageRgba{};
-  if (size < 4 || data[0] != 'P' || (data[1] != '5' && data[1] != '6' && data[1] != '2' && data[1] != '3')) {
+  if (size < 4 || data[0] != 'P' ||
+      (data[1] != '5' && data[1] != '6' && data[1] != '2' && data[1] != '3')) {
     error = "not a ppm/pgm file";
     return false;
   }
@@ -892,10 +919,12 @@ bool decode_ppm_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
   auto skip_ws_comments = [&]() {
     while (pos < size) {
       if (data[pos] == '#') {
-        while (pos < size && data[pos] != '\n') ++pos;
+        while (pos < size && data[pos] != '\n')
+          ++pos;
       } else if (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\n' || data[pos] == '\r') {
         ++pos;
-      } else break;
+      } else
+        break;
     }
   };
   auto read_int = [&](int& v) -> bool {
@@ -958,7 +987,8 @@ bool decode_ppm_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
     return true;
   }
   // Single whitespace after maxval.
-  if (pos < size && (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\n' || data[pos] == '\r'))
+  if (pos < size &&
+      (data[pos] == ' ' || data[pos] == '\t' || data[pos] == '\n' || data[pos] == '\r'))
     ++pos;
   else {
     error = "bad ppm header";
@@ -1023,23 +1053,27 @@ bool decode_tga_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
   out.rgba.resize(static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * 4);
   auto put_px = [&](int x, int y, std::uint8_t b, std::uint8_t g, std::uint8_t r, std::uint8_t a) {
     int yy = top_left ? y : (h - 1 - y);
-    std::uint8_t* d =
-        &out.rgba[(static_cast<std::size_t>(yy) * static_cast<std::size_t>(w) + static_cast<std::size_t>(x)) * 4];
+    std::uint8_t* d = &out.rgba[(static_cast<std::size_t>(yy) * static_cast<std::size_t>(w) +
+                                 static_cast<std::size_t>(x)) *
+                                4];
     d[0] = r;
     d[1] = g;
     d[2] = b;
     d[3] = a;
   };
   if (img_type == 2) {
-    std::size_t need = static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * static_cast<std::size_t>(bpp);
+    std::size_t need =
+        static_cast<std::size_t>(w) * static_cast<std::size_t>(h) * static_cast<std::size_t>(bpp);
     if (pos + need > size) {
       error = "truncated tga file";
       return false;
     }
     for (int y = 0; y < h; ++y)
       for (int x = 0; x < w; ++x) {
-        const std::uint8_t* s = data + pos + (static_cast<std::size_t>(y) * static_cast<std::size_t>(w) +
-                                              static_cast<std::size_t>(x)) * static_cast<std::size_t>(bpp);
+        const std::uint8_t* s = data + pos +
+                                (static_cast<std::size_t>(y) * static_cast<std::size_t>(w) +
+                                 static_cast<std::size_t>(x)) *
+                                    static_cast<std::size_t>(bpp);
         put_px(x, y, s[0], s[1], s[2], bpp == 4 ? s[3] : 255);
       }
     return true;
@@ -1139,15 +1173,18 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
         error = "image too large";
         return false;
       }
-      bool ok_type = (color_type == 0 || color_type == 2 || color_type == 3 ||
-                      color_type == 4 || color_type == 6);
+      bool ok_type = (color_type == 0 || color_type == 2 || color_type == 3 || color_type == 4 ||
+                      color_type == 6);
       bool ok_depth = false;
-      if (color_type == 0) ok_depth = bit_depth == 1 || bit_depth == 2 || bit_depth == 4 ||
-                                     bit_depth == 8 || bit_depth == 16;
-      else if (color_type == 2) ok_depth = bit_depth == 8 || bit_depth == 16;
-      else if (color_type == 3) ok_depth = bit_depth == 1 || bit_depth == 2 || bit_depth == 4 ||
-                                            bit_depth == 8;
-      else ok_depth = bit_depth == 8 || bit_depth == 16;
+      if (color_type == 0)
+        ok_depth =
+            bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8 || bit_depth == 16;
+      else if (color_type == 2)
+        ok_depth = bit_depth == 8 || bit_depth == 16;
+      else if (color_type == 3)
+        ok_depth = bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8;
+      else
+        ok_depth = bit_depth == 8 || bit_depth == 16;
       if (!ok_type || !ok_depth) {
         error = "unsupported png color type/depth";
         return false;
@@ -1171,11 +1208,16 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
   if (!zlib_unwrap_to_deflate(idat, inflated, error)) return false;
 
   int channels = 0;
-  if (color_type == 0) channels = 1;
-  else if (color_type == 2) channels = 3;
-  else if (color_type == 3) channels = 1;
-  else if (color_type == 4) channels = 2;
-  else channels = 4;
+  if (color_type == 0)
+    channels = 1;
+  else if (color_type == 2)
+    channels = 3;
+  else if (color_type == 3)
+    channels = 1;
+  else if (color_type == 4)
+    channels = 2;
+  else
+    channels = 4;
   std::size_t row_bits = static_cast<std::size_t>(w) * static_cast<std::size_t>(channels) *
                          static_cast<std::size_t>(bit_depth);
   std::size_t row_bytes = (row_bits + 7) / 8;
@@ -1198,16 +1240,21 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
       error = "bad png filter";
       return false;
     }
-    const std::uint8_t* prior = y ? raw.data() + static_cast<std::size_t>(y - 1) * row_bytes : nullptr;
+    const std::uint8_t* prior =
+        y ? raw.data() + static_cast<std::size_t>(y - 1) * row_bytes : nullptr;
     for (std::size_t x = 0; x < row_bytes; ++x) {
       int a = x >= bpp ? dst[x - bpp] : 0;
       int b = prior ? prior[x] : 0;
       int c = (prior && x >= bpp) ? prior[x - bpp] : 0;
       int v = src[1 + x];
-      if (f == 1) v += a;
-      else if (f == 2) v += b;
-      else if (f == 3) v += (a + b) / 2;
-      else if (f == 4) v += paeth_c(a, b, c);
+      if (f == 1)
+        v += a;
+      else if (f == 2)
+        v += b;
+      else if (f == 3)
+        v += (a + b) / 2;
+      else if (f == 4)
+        v += paeth_c(a, b, c);
       dst[x] = static_cast<std::uint8_t>(v & 0xff);
     }
   }
@@ -1220,7 +1267,8 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
   }();
   auto rgb_trans = [&]() -> std::uint32_t {
     if (color_type == 2 && trns.size() == 6)
-      return (static_cast<std::uint32_t>(trns[0]) << 24) | (static_cast<std::uint32_t>(trns[1]) << 16) |
+      return (static_cast<std::uint32_t>(trns[0]) << 24) |
+             (static_cast<std::uint32_t>(trns[1]) << 16) |
              (static_cast<std::uint32_t>(trns[2]) << 8) | trns[3];
     return 0xFFFFFFFFu;
   }();
@@ -1229,17 +1277,22 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
     const std::uint8_t* row = raw.data() + static_cast<std::size_t>(y) * row_bytes;
     for (int x = 0; x < w; ++x) {
       std::uint8_t* d = &out.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(w) +
-                                   static_cast<std::size_t>(x)) * 4];
+                                   static_cast<std::size_t>(x)) *
+                                  4];
       if (color_type == 0) {
         int g = 0;
         if (bit_depth == 16) {
           g = row[x * 2];
-          if (gray_trans >= 0 && ((gray_trans >> 8) == g)) d[3] = 0;
-          else d[3] = 255;
+          if (gray_trans >= 0 && ((gray_trans >> 8) == g))
+            d[3] = 0;
+          else
+            d[3] = 255;
         } else if (bit_depth == 8) {
           g = row[x];
-          if (gray_trans >= 0 && (gray_trans & 0xff) == g) d[3] = 0;
-          else d[3] = 255;
+          if (gray_trans >= 0 && (gray_trans & 0xff) == g)
+            d[3] = 0;
+          else
+            d[3] = 255;
         } else {
           int per = 8 / bit_depth;
           int idx = x / per;
@@ -1258,18 +1311,21 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
               (static_cast<std::uint32_t>(d[0]) << 24 | static_cast<std::uint32_t>(d[1]) << 16 |
                static_cast<std::uint32_t>(d[2]) << 8) == (rgb_trans & 0xFFFFFF00u))
             d[3] = 0;
-          else d[3] = 255;
+          else
+            d[3] = 255;
         } else {
           d[0] = row[x * 3];
           d[1] = row[x * 3 + 1];
           d[2] = row[x * 3 + 2];
           if (rgb_trans != 0xFFFFFFFFu && d[0] == trns[1] && d[1] == trns[3] && d[2] == trns[5])
             d[3] = 0;
-          else d[3] = 255;
+          else
+            d[3] = 255;
         }
       } else if (color_type == 3) {
         int idx = 0;
-        if (bit_depth == 8) idx = row[x];
+        if (bit_depth == 8)
+          idx = row[x];
         else {
           int per = 8 / bit_depth;
           int bi = x / per;
@@ -1281,7 +1337,8 @@ bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out
           d[1] = plte[static_cast<std::size_t>(idx) * 3 + 1];
           d[2] = plte[static_cast<std::size_t>(idx) * 3 + 2];
         }
-        d[3] = static_cast<std::uint8_t>(static_cast<std::size_t>(idx) < trns.size() ? trns[idx] : 255);
+        d[3] = static_cast<std::uint8_t>(static_cast<std::size_t>(idx) < trns.size() ? trns[idx]
+                                                                                     : 255);
       } else if (color_type == 4) {
         if (bit_depth == 16) {
           d[0] = d[1] = d[2] = row[x * 4];
@@ -1318,7 +1375,8 @@ bool decode_image_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& o
   if (size >= 2 && data[0] == 'B' && data[1] == 'M') {
     return decode_bmp_bytes(data, size, out, error);
   }
-  if (size >= 2 && data[0] == 'P' && (data[1] == '5' || data[1] == '6' || data[1] == '2' || data[1] == '3')) {
+  if (size >= 2 && data[0] == 'P' &&
+      (data[1] == '5' || data[1] == '6' || data[1] == '2' || data[1] == '3')) {
     return decode_ppm_bytes(data, size, out, error);
   }
   // TGA has no magic: try it last.
@@ -1335,8 +1393,7 @@ bool decode_image_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& o
 // Images: encoders
 // ---------------------------------------------------------------------------
 
-bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                     std::string& error) {
+bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error) {
   error.clear();
   out.clear();
   if (img.w <= 0 || img.h <= 0 || img.w > 16383 || img.h > 16383) {
@@ -1365,8 +1422,7 @@ bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out,
   raw.reserve(static_cast<std::size_t>(img.w) * img.h * 4 + static_cast<std::size_t>(img.h));
   for (int y = 0; y < img.h; ++y) {
     raw.push_back(0);
-    raw.insert(raw.end(),
-               img.rgba.begin() + static_cast<std::ptrdiff_t>(y) * img.w * 4,
+    raw.insert(raw.end(), img.rgba.begin() + static_cast<std::ptrdiff_t>(y) * img.w * 4,
                img.rgba.begin() + static_cast<std::ptrdiff_t>(y + 1) * img.w * 4);
   }
   std::vector<std::uint8_t> zlib;
@@ -1376,8 +1432,7 @@ bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out,
   return true;
 }
 
-bool encode_png_rgb(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                    std::string& error) {
+bool encode_png_rgb(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error) {
   error.clear();
   out.clear();
   if (img.w <= 0 || img.h <= 0 || img.w > 16383 || img.h > 16383) {
@@ -1408,7 +1463,9 @@ bool encode_png_rgb(const ImageRgba& img, std::vector<std::uint8_t>& out,
     raw.push_back(0);
     for (int x = 0; x < img.w; ++x) {
       const std::uint8_t* s =
-          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(x)) * 4];
+          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) +
+                     static_cast<std::size_t>(x)) *
+                    4];
       raw.push_back(s[0]);
       raw.push_back(s[1]);
       raw.push_back(s[2]);
@@ -1432,7 +1489,8 @@ bool encode_bmp_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out) {
       break;
     }
   int bpp = has_alpha ? 32 : 24;
-  std::size_t stride = ((static_cast<std::size_t>(img.w) * static_cast<std::size_t>(bpp) + 31) / 32) * 4;
+  std::size_t stride =
+      ((static_cast<std::size_t>(img.w) * static_cast<std::size_t>(bpp) + 31) / 32) * 4;
   std::uint32_t img_size = static_cast<std::uint32_t>(stride * static_cast<std::size_t>(img.h));
   std::uint32_t file_size = 54 + img_size;
   out.reserve(file_size);
@@ -1457,7 +1515,9 @@ bool encode_bmp_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out) {
   for (int y = img.h - 1; y >= 0; --y) {
     for (int x = 0; x < img.w; ++x) {
       const std::uint8_t* s =
-          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(x)) * 4];
+          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) +
+                     static_cast<std::size_t>(x)) *
+                    4];
       out.push_back(s[2]);
       out.push_back(s[1]);
       out.push_back(s[0]);
@@ -1474,7 +1534,8 @@ bool encode_ppm_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out) {
   out.clear();
   if (img.w <= 0 || img.h <= 0 || img.w > 16383 || img.h > 16383) return false;
   if (img.rgba.size() < static_cast<std::size_t>(img.w) * img.h * 4) return false;
-  std::string hdr = "P6\n# Wilfred\n" + std::to_string(img.w) + " " + std::to_string(img.h) + "\n255\n";
+  std::string hdr =
+      "P6\n# Wilfred\n" + std::to_string(img.w) + " " + std::to_string(img.h) + "\n255\n";
   out.assign(hdr.begin(), hdr.end());
   for (int i = 0; i < img.w * img.h; ++i) {
     out.push_back(img.rgba[static_cast<std::size_t>(i) * 4]);
@@ -1484,8 +1545,7 @@ bool encode_ppm_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out) {
   return true;
 }
 
-bool encode_tga_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                      std::string& error) {
+bool encode_tga_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error) {
   error.clear();
   out.clear();
   if (img.w <= 0 || img.h <= 0 || img.w > 16383 || img.h > 16383) {
@@ -1514,7 +1574,9 @@ bool encode_tga_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out,
   for (int y = 0; y < img.h; ++y)
     for (int x = 0; x < img.w; ++x) {
       const std::uint8_t* s =
-          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) + static_cast<std::size_t>(x)) * 4];
+          &img.rgba[(static_cast<std::size_t>(y) * static_cast<std::size_t>(img.w) +
+                     static_cast<std::size_t>(x)) *
+                    4];
       out.push_back(s[2]);
       out.push_back(s[1]);
       out.push_back(s[0]);
@@ -1573,16 +1635,15 @@ bool decode_image_file(const std::string& path, ImageRgba& out, std::string& err
   std::string e = ext;
   if (!e.empty() && e[0] == '.') e = e.substr(1);
   e = normalize_format_token(e);
-  bool worth_ffmpeg = e == "jpg" || e == "gif" || e == "webp" || e == "tiff" ||
-                      e == "heic" || e == "heif" || e == "avif" || e == "ico" || e == "png" ||
-                      e == "bmp";
+  bool worth_ffmpeg = e == "jpg" || e == "gif" || e == "webp" || e == "tiff" || e == "heic" ||
+                      e == "heif" || e == "avif" || e == "ico" || e == "png" || e == "bmp";
   if (!worth_ffmpeg) {
     error = native_err.empty() ? ("Unsupported image: " + path) : native_err;
     return false;
   }
   if (!ffmpeg_available_convert()) {
-    if (e == "jpg" || e == "gif" || e == "webp" || e == "tiff" || e == "heic" ||
-        e == "heif" || e == "avif" || e == "ico") {
+    if (e == "jpg" || e == "gif" || e == "webp" || e == "tiff" || e == "heic" || e == "heif" ||
+        e == "avif" || e == "ico") {
       error = "Reading ." + e + " needs ffmpeg. " + convert_install_hint("ffmpeg");
       return false;
     }
@@ -1592,8 +1653,8 @@ bool decode_image_file(const std::string& path, ImageRgba& out, std::string& err
   std::string tmp = path_join(data_directory(), "wilfred-convert-tmp.png");
   create_directories(data_directory());
   remove_file(tmp);
-  std::string cmd = "ffmpeg -y -v error -i " + shell_quote_c(path) + " -frames:v 1 " +
-                    shell_quote_c(tmp);
+  std::string cmd =
+      "ffmpeg -y -v error -i " + shell_quote_c(path) + " -frames:v 1 " + shell_quote_c(tmp);
 #ifdef _WIN32
   cmd += " 2>NUL";
 #else
@@ -1615,8 +1676,8 @@ bool decode_image_file(const std::string& path, ImageRgba& out, std::string& err
   return true;
 }
 
-bool convert_image_file(const std::string& src, const std::string& dst,
-                        std::string& out_path, std::string& error) {
+bool convert_image_file(const std::string& src, const std::string& dst, std::string& out_path,
+                        std::string& error) {
   error.clear();
   out_path.clear();
   if (src.empty() || !file_exists(src)) {
@@ -1664,7 +1725,8 @@ bool convert_media_file(const std::string& src, const std::string& dst, int samp
   std::string de = dst_ext;
   if (!de.empty() && de[0] == '.') de = de.substr(1);
   de = normalize_format_token(de);
-  if (is_audio_format(de)) return convert_audio_file(src, dst, sample_rate, channels, bits, out_path, error);
+  if (is_audio_format(de))
+    return convert_audio_file(src, dst, sample_rate, channels, bits, out_path, error);
   if (is_image_format(de)) return convert_image_file(src, dst, out_path, error);
   error = "Unknown output format for " + dst;
   return false;
@@ -1674,8 +1736,7 @@ bool convert_media_file(const std::string& src, const std::string& dst, int samp
 // Background removal
 // ---------------------------------------------------------------------------
 
-bool parse_hex_color(const std::string& s, std::uint8_t& r, std::uint8_t& g,
-                     std::uint8_t& b) {
+bool parse_hex_color(const std::string& s, std::uint8_t& r, std::uint8_t& g, std::uint8_t& b) {
   std::string t = trim_c(s);
   if (!t.empty() && t[0] == '#') t = t.substr(1);
   if (t.size() == 3) {
@@ -1729,7 +1790,8 @@ bool remove_background(const ImageRgba& src, const BgRemoveOptions& opts, ImageR
     long sr = 0, sg = 0, sb = 0;
     long n = 0;
     int rad = std::min(5, std::min(src.w, src.h));
-    const int corners[4][2] = {{0, 0}, {src.w - rad, 0}, {0, src.h - rad}, {src.w - rad, src.h - rad}};
+    const int corners[4][2] = {
+        {0, 0}, {src.w - rad, 0}, {0, src.h - rad}, {src.w - rad, src.h - rad}};
     for (auto& cn : corners)
       for (int y = 0; y < rad; ++y)
         for (int x = 0; x < rad; ++x) {
@@ -1737,7 +1799,8 @@ bool remove_background(const ImageRgba& src, const BgRemoveOptions& opts, ImageR
           if (px < 0 || py < 0 || px >= src.w || py >= src.h) continue;
           const std::uint8_t* p =
               &src.rgba[(static_cast<std::size_t>(py) * static_cast<std::size_t>(src.w) +
-                         static_cast<std::size_t>(px)) * 4];
+                         static_cast<std::size_t>(px)) *
+                        4];
           if (p[3] < 128) continue;
           sr += p[0];
           sg += p[1];
@@ -1773,7 +1836,8 @@ bool remove_background(const ImageRgba& src, const BgRemoveOptions& opts, ImageR
       double d2 = dist2_at(i);
       std::uint8_t* d = &dst.rgba[static_cast<std::size_t>(i) * 4];
       double factor = 1.0;
-      if (d2 <= thr2) factor = 0.0;
+      if (d2 <= thr2)
+        factor = 0.0;
       else if (band > 0 && d2 <= far2) {
         double dist = std::sqrt(d2);
         factor = (dist - thr) / band;
@@ -1870,8 +1934,8 @@ bool remove_background(const ImageRgba& src, const BgRemoveOptions& opts, ImageR
   return true;
 }
 
-bool bgremove_file(const std::string& src, const std::string& dst,
-                   const BgRemoveOptions& opts, std::string& out_path, std::string& error) {
+bool bgremove_file(const std::string& src, const std::string& dst, const BgRemoveOptions& opts,
+                   std::string& out_path, std::string& error) {
   error.clear();
   out_path.clear();
   if (src.empty() || !file_exists(src)) {
@@ -1942,8 +2006,10 @@ std::vector<std::string> split_ws_quoted(const std::string& s) {
   char quote = 0;
   for (char c : s) {
     if (quote) {
-      if (c == quote) quote = 0;
-      else cur.push_back(c);
+      if (c == quote)
+        quote = 0;
+      else
+        cur.push_back(c);
     } else if (c == '"' || c == '\'') {
       quote = c;
     } else if (c == ' ' || c == '\t') {
@@ -2051,8 +2117,10 @@ bool parse_convert_query(const std::string& remainder, ConvertRequest& out) {
       for (std::size_t i = 0; i + 1 < toks.size(); ++i) {
         if (i) joined.push_back(' ');
         // Re-quote tokens with spaces so paths round-trip.
-        if (toks[i].find(' ') != std::string::npos) joined += "\"" + toks[i] + "\"";
-        else joined += toks[i];
+        if (toks[i].find(' ') != std::string::npos)
+          joined += "\"" + toks[i] + "\"";
+        else
+          joined += toks[i];
       }
       src = joined;
     } else {
@@ -2105,13 +2173,18 @@ bool parse_convert_query(const std::string& remainder, ConvertRequest& out) {
   if (!rest_opts.empty()) {
     for (auto& tok : split_ws_quoted(rest_opts)) {
       std::string l = lower_c(tok);
-      if (l == "mono") out.channels = 1;
-      else if (l == "stereo") out.channels = 2;
+      if (l == "mono")
+        out.channels = 1;
+      else if (l == "stereo")
+        out.channels = 2;
       else {
         int r = 0, b = 0;
-        if (token_is_rate(tok, r)) out.sample_rate = r;
-        else if (token_is_bits(tok, b)) out.bits = b;
-        else return false;  // unknown trailing token
+        if (token_is_rate(tok, r))
+          out.sample_rate = r;
+        else if (token_is_bits(tok, b))
+          out.bits = b;
+        else
+          return false;  // unknown trailing token
       }
     }
   }
@@ -2219,15 +2292,43 @@ bool parse_bgremove_query(const std::string& remainder, BgRemoveRequest& out) {
     if (!color_set &&
         (l == "white" || l == "black" || l == "red" || l == "green" || l == "blue" ||
          l == "yellow" || l == "magenta" || l == "cyan" || l == "gray" || l == "grey")) {
-      if (l == "white") { opts.r = 255; opts.g = 255; opts.b = 255; }
-      else if (l == "black") { opts.r = 0; opts.g = 0; opts.b = 0; }
-      else if (l == "red") { opts.r = 255; opts.g = 0; opts.b = 0; }
-      else if (l == "green") { opts.r = 0; opts.g = 128; opts.b = 0; }
-      else if (l == "blue") { opts.r = 0; opts.g = 0; opts.b = 255; }
-      else if (l == "yellow") { opts.r = 255; opts.g = 255; opts.b = 0; }
-      else if (l == "magenta") { opts.r = 255; opts.g = 0; opts.b = 255; }
-      else if (l == "cyan") { opts.r = 0; opts.g = 255; opts.b = 255; }
-      else { opts.r = 128; opts.g = 128; opts.b = 128; }
+      if (l == "white") {
+        opts.r = 255;
+        opts.g = 255;
+        opts.b = 255;
+      } else if (l == "black") {
+        opts.r = 0;
+        opts.g = 0;
+        opts.b = 0;
+      } else if (l == "red") {
+        opts.r = 255;
+        opts.g = 0;
+        opts.b = 0;
+      } else if (l == "green") {
+        opts.r = 0;
+        opts.g = 128;
+        opts.b = 0;
+      } else if (l == "blue") {
+        opts.r = 0;
+        opts.g = 0;
+        opts.b = 255;
+      } else if (l == "yellow") {
+        opts.r = 255;
+        opts.g = 255;
+        opts.b = 0;
+      } else if (l == "magenta") {
+        opts.r = 255;
+        opts.g = 0;
+        opts.b = 255;
+      } else if (l == "cyan") {
+        opts.r = 0;
+        opts.g = 255;
+        opts.b = 255;
+      } else {
+        opts.r = 128;
+        opts.g = 128;
+        opts.b = 128;
+      }
       opts.has_color = true;
       color_set = true;
       --end;
@@ -2314,8 +2415,8 @@ std::string encode_bgremove_payload(const std::string& src, const BgRemoveOption
          (opts.has_color ? "1" : "0") + "\n" + dst;
 }
 
-bool decode_bgremove_payload(const std::string& payload, std::string& src,
-                             BgRemoveOptions& opts, std::string& dst) {
+bool decode_bgremove_payload(const std::string& payload, std::string& src, BgRemoveOptions& opts,
+                             std::string& dst) {
   src.clear();
   dst.clear();
   opts = BgRemoveOptions{};
@@ -2357,8 +2458,8 @@ bool decode_bgremove_payload(const std::string& payload, std::string& src,
   return !src.empty();
 }
 
-std::vector<std::string> find_convertible_in_index(IndexEngine& index,
-                                                   const std::string& needle, int limit) {
+std::vector<std::string> find_convertible_in_index(IndexEngine& index, const std::string& needle,
+                                                   int limit) {
   std::vector<std::string> out;
   if (limit <= 0) limit = 8;
   auto q = lower_c(needle);

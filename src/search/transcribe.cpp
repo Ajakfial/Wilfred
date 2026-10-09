@@ -27,7 +27,8 @@ namespace {
 std::string shell_quote(const std::string& s) {
   std::string o = "\"";
   for (char c : s) {
-    if (c == '"') o += "\\\"";
+    if (c == '"')
+      o += "\\\"";
     else
       o.push_back(c);
   }
@@ -80,15 +81,15 @@ std::string collapse_ws(const std::string& s, std::size_t cap) {
       if (o.size() >= cap) break;
     }
   }
-  while (!o.empty() && o.back() == ' ') o.pop_back();
+  while (!o.empty() && o.back() == ' ')
+    o.pop_back();
   return o;
 }
 
 std::string safe_lang(const std::string& language) {
   std::string o;
   for (char c : language) {
-    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-')
-      o.push_back(c);
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-') o.push_back(c);
   }
   return o;
 }
@@ -97,12 +98,14 @@ std::string safe_lang(const std::string& language) {
 
 bool is_audio_extension(const std::string& path) {
   auto e = to_lower_utf8(path_extension(path));
-  return e == ".mp3" || e == ".wav" || e == ".m4a" || e == ".mp4" || e == ".ogg" ||
-         e == ".oga" || e == ".flac" || e == ".opus" || e == ".webm" || e == ".aac" ||
-         e == ".wma" || e == ".aiff" || e == ".aif";
+  return e == ".mp3" || e == ".wav" || e == ".m4a" || e == ".mp4" || e == ".ogg" || e == ".oga" ||
+         e == ".flac" || e == ".opus" || e == ".webm" || e == ".aac" || e == ".wma" ||
+         e == ".aiff" || e == ".aif";
 }
 
-bool is_transcribe_candidate(const std::string& path) { return is_audio_extension(path); }
+bool is_transcribe_candidate(const std::string& path) {
+  return is_audio_extension(path);
+}
 
 std::string probe_whisper_binary() {
   if (tool_available("whisper-cli")) return "whisper-cli";
@@ -110,7 +113,9 @@ std::string probe_whisper_binary() {
   return {};
 }
 
-bool ffmpeg_available() { return tool_available("ffmpeg"); }
+bool ffmpeg_available() {
+  return tool_available("ffmpeg");
+}
 
 std::string resolve_whisper_binary(const Config& cfg) {
   if (!cfg.transcription.binary.empty()) return cfg.transcription.binary;
@@ -133,9 +138,8 @@ std::string resolve_whisper_model(const Config& cfg) {
 std::string build_whisper_command(const std::string& binary, const std::string& model,
                                   const std::string& wav_path, const std::string& out_base,
                                   const std::string& language) {
-  std::string cmd =
-      shell_quote(binary) + " -m " + shell_quote(model) + " -f " + shell_quote(wav_path) +
-      " -otxt -of " + shell_quote(out_base);
+  std::string cmd = shell_quote(binary) + " -m " + shell_quote(model) + " -f " +
+                    shell_quote(wav_path) + " -otxt -of " + shell_quote(out_base);
   auto lang = safe_lang(language);
   if (!lang.empty() && to_lower_utf8(lang) != "auto") cmd += " -l " + lang;
   cmd += kNullRedir;
@@ -150,8 +154,8 @@ std::string build_ffmpeg_command(const std::string& wav_out, const std::string& 
 std::string build_mic_command(const std::string& wav_out, int seconds, const std::string& mic) {
   if (seconds < 1) seconds = 1;
   if (seconds > 120) seconds = 120;
-  std::string tail = " -t " + std::to_string(seconds) +
-                     " -ar 16000 -ac 1 -c:a pcm_s16le " + shell_quote(wav_out) + kNullRedir;
+  std::string tail = " -t " + std::to_string(seconds) + " -ar 16000 -ac 1 -c:a pcm_s16le " +
+                     shell_quote(wav_out) + kNullRedir;
 #ifdef _WIN32
   std::string dev = mic.empty() ? "Microphone" : mic;
   return "ffmpeg -y -v error -f dshow -i " + shell_quote("audio=" + dev) + tail;
@@ -178,11 +182,11 @@ bool record_microphone(const std::string& wav_out, int seconds, const std::strin
   }
   create_directories(path_parent(wav_out));
   remove_file(wav_out);
-  if (run_shell(build_mic_command(wav_out, seconds, mic).c_str()) != 0 ||
-      !file_exists(wav_out)) {
+  if (run_shell(build_mic_command(wav_out, seconds, mic).c_str()) != 0 || !file_exists(wav_out)) {
 #ifdef _WIN32
-    error = "Could not open the microphone. Set transcription.mic to your input device name "
-            "(see it with: ffmpeg -list_devices true -f dshow -i dummy)";
+    error =
+        "Could not open the microphone. Set transcription.mic to your input device name "
+        "(see it with: ffmpeg -list_devices true -f dshow -i dummy)";
 #else
     error = "Could not open the microphone. Set transcription.mic to your input device";
 #endif

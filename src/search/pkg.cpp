@@ -40,8 +40,8 @@ const char* kManagerExe(const std::string& mgr) {
 
 std::string trim_copy(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t' || o.front() == '\r' ||
-                        o.front() == '\n'))
+  while (!o.empty() &&
+         (o.front() == ' ' || o.front() == '\t' || o.front() == '\r' || o.front() == '\n'))
     o.erase(o.begin());
   while (!o.empty() &&
          (o.back() == ' ' || o.back() == '\t' || o.back() == '\r' || o.back() == '\n'))
@@ -146,8 +146,8 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
   si.hStdError = out_w;
   PROCESS_INFORMATION pi{};
   auto wcmd = utf8_to_wide(cmd);
-  BOOL ok = CreateProcessW(nullptr, wcmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-                           nullptr, nullptr, &si, &pi);
+  BOOL ok = CreateProcessW(nullptr, wcmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr,
+                           nullptr, &si, &pi);
   CloseHandle(out_w);
   if (nul) CloseHandle(nul);
   if (!ok) {
@@ -163,8 +163,7 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
     if (PeekNamedPipe(out_r, nullptr, 0, nullptr, &avail, nullptr) && avail) {
       DWORD n = 0;
       if (!ReadFile(out_r, buf, sizeof(buf), &n, nullptr) || n == 0) break;
-      if (out.size() < max_bytes)
-        out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
+      if (out.size() < max_bytes) out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
     } else {
       DWORD st = WaitForSingleObject(pi.hProcess, 10);
       if (st == WAIT_OBJECT_0) break;
@@ -181,8 +180,7 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
     if (!PeekNamedPipe(out_r, nullptr, 0, nullptr, &avail, nullptr) || !avail) break;
     DWORD n = 0;
     if (!ReadFile(out_r, buf, sizeof(buf), &n, nullptr) || n == 0) break;
-    if (out.size() < max_bytes)
-      out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
+    if (out.size() < max_bytes) out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
   }
   if (!timed_out && !GetExitCodeProcess(pi.hProcess, &exit_code)) exit_code = 1;
   CloseHandle(out_r);
@@ -209,7 +207,8 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
     close(out_pipe[1]);
     std::vector<std::string> store = argv;
     std::vector<char*> av;
-    for (auto& a : store) av.push_back(a.data());
+    for (auto& a : store)
+      av.push_back(a.data());
     av.push_back(nullptr);
     execvp(av[0], av.data());
     _exit(127);
@@ -226,7 +225,8 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
     auto got = read(out_pipe[0], buf, sizeof(buf));
     if (got > 0) {
       if (out.size() < max_bytes)
-        out.append(buf, std::min<std::size_t>(static_cast<std::size_t>(got), max_bytes - out.size()));
+        out.append(buf,
+                   std::min<std::size_t>(static_cast<std::size_t>(got), max_bytes - out.size()));
     } else {
       pid_t w = waitpid(pid, &status, WNOHANG);
       if (w == pid) {
@@ -265,7 +265,8 @@ int pkg_run_capture(const std::vector<std::string>& argv, int timeout_ms, std::s
 
 std::vector<std::string> allowed_managers(const Config& cfg) {
   std::vector<std::string> all;
-  for (auto** p = kManagers; *p; ++p) all.push_back(*p);
+  for (auto** p = kManagers; *p; ++p)
+    all.push_back(*p);
   if (cfg.packages.managers.empty()) {
 #ifdef _WIN32
     return {"winget", "choco"};
@@ -299,7 +300,8 @@ bool pkg_is_manager(const std::string& word) {
 
 std::vector<std::string> pkg_known_managers() {
   std::vector<std::string> out;
-  for (auto** p = kManagers; *p; ++p) out.push_back(*p);
+  for (auto** p = kManagers; *p; ++p)
+    out.push_back(*p);
   return out;
 }
 
@@ -445,7 +447,8 @@ std::vector<PkgHit> pkg_parse_flatpak(const std::string& out) {
     h.version = f.size() > 3 ? f[3] : "";
     std::string remotes = f.size() > 5 ? f[5] : (f.size() > 4 ? f[4] : "");
     auto comma = remotes.find(',');
-    h.source = comma == std::string::npos ? trim_copy(remotes) : trim_copy(remotes.substr(0, comma));
+    h.source =
+        comma == std::string::npos ? trim_copy(remotes) : trim_copy(remotes.substr(0, comma));
     hits.push_back(std::move(h));
     if (hits.size() >= 50) break;
   }
@@ -565,9 +568,12 @@ std::vector<SearchResult> pkg_managers_results(const std::string& remainder, con
       if (d == m) return true;
     return false;
   };
-  const char* hint[] = {"install via the Microsoft Store / App Installer", "install from brew.sh",
-                        "built into Debian/Ubuntu", "install from chocolatey.org",
-                        "needs a configured remote (e.g. flathub)", "built into Arch",
+  const char* hint[] = {"install via the Microsoft Store / App Installer",
+                        "install from brew.sh",
+                        "built into Debian/Ubuntu",
+                        "install from chocolatey.org",
+                        "needs a configured remote (e.g. flathub)",
+                        "built into Arch",
                         nullptr};
   int i = 0;
   for (auto** p = kManagers; *p; ++p, ++i) {
@@ -580,8 +586,8 @@ std::vector<SearchResult> pkg_managers_results(const std::string& remainder, con
     bool found = is_detected(mgr);
     SearchResult r;
     r.title = mgr + (found ? " — available" : " — not on PATH");
-    r.subtitle = found ? (std::string("e.g. `") + mgr + " firefox` — Enter copies an example")
-                       : hint[i];
+    r.subtitle =
+        found ? (std::string("e.g. `") + mgr + " firefox` — Enter copies an example") : hint[i];
     r.path = "";
     r.payload = mgr + " firefox";
     r.action = ResultAction::Mini;
@@ -616,8 +622,15 @@ bool pkg_install(const std::string& manager, const std::string& id, std::string&
   }
   std::vector<std::string> argv;
   if (manager == "winget") {
-    argv = {"winget",           "install", "--exact", "--id", id, "--silent",
-            "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"};
+    argv = {"winget",
+            "install",
+            "--exact",
+            "--id",
+            id,
+            "--silent",
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+            "--disable-interactivity"};
   } else if (manager == "brew") {
     argv = {"brew", "install", id};
   } else if (manager == "apt") {

@@ -18,17 +18,92 @@ namespace wilfred {
 
 std::vector<std::string> command_vocabulary(const Config& cfg) {
   std::vector<std::string> v = {
-      "weather", "time", "disk", "disku", "ram", "cpu", "process", "top", "proc", "ps",
-      "battery", "host", "hostname", "ip", "uptime", "user", "whoami", "clip", "clips",
-      "os", "cores", "screen", "swap", "help", "speedtest", "macros", "windows", "window",
-      "switch", "emoji", "symbol", "fx", "currency", "tz", "color", "colour", "uuid", "guid",
-      "base64", "sha256", "hash", "sha", "lorem", "json", "pretty", "lock", "sleep", "shutdown",
-      "restart", "reboot", "logout", "logoff", "signout", "empty trash", "screenshot", "screencap",
-      "screencapture", "printscreen", "bookmarks", "history", "tabs", "calendar", "contacts",
-      "notes", "ai", "ask", "content:", "type:", "size:", "intext", "scope:", "clips clear",
-      "speedtest again", "screenshot window", "screenshot region", "screen capture",
-      "transcribe", "transcription", "stt", "minimize", "maximize", "minimise",
-      "dictate", "dictation", "layout", "layouts",
+      "weather",
+      "time",
+      "disk",
+      "disku",
+      "ram",
+      "cpu",
+      "process",
+      "top",
+      "proc",
+      "ps",
+      "battery",
+      "host",
+      "hostname",
+      "ip",
+      "uptime",
+      "user",
+      "whoami",
+      "clip",
+      "clips",
+      "os",
+      "cores",
+      "screen",
+      "swap",
+      "help",
+      "speedtest",
+      "macros",
+      "windows",
+      "window",
+      "switch",
+      "emoji",
+      "symbol",
+      "fx",
+      "currency",
+      "tz",
+      "color",
+      "colour",
+      "uuid",
+      "guid",
+      "base64",
+      "sha256",
+      "hash",
+      "sha",
+      "lorem",
+      "json",
+      "pretty",
+      "lock",
+      "sleep",
+      "shutdown",
+      "restart",
+      "reboot",
+      "logout",
+      "logoff",
+      "signout",
+      "empty trash",
+      "screenshot",
+      "screencap",
+      "screencapture",
+      "printscreen",
+      "bookmarks",
+      "history",
+      "tabs",
+      "calendar",
+      "contacts",
+      "notes",
+      "ai",
+      "ask",
+      "content:",
+      "type:",
+      "size:",
+      "intext",
+      "scope:",
+      "clips clear",
+      "speedtest again",
+      "screenshot window",
+      "screenshot region",
+      "screen capture",
+      "transcribe",
+      "transcription",
+      "stt",
+      "minimize",
+      "maximize",
+      "minimise",
+      "dictate",
+      "dictation",
+      "layout",
+      "layouts",
   };
   // Built-in + custom macros.
   for (auto& [k, _] : builtin_macros()) {
@@ -40,7 +115,8 @@ std::vector<std::string> command_vocabulary(const Config& cfg) {
     v.push_back("!" + l);
     v.push_back(l);
   }
-  for (auto& [k, _] : cfg.aliases) v.push_back(to_lower_utf8(k));
+  for (auto& [k, _] : cfg.aliases)
+    v.push_back(to_lower_utf8(k));
   std::sort(v.begin(), v.end());
   v.erase(std::unique(v.begin(), v.end()), v.end());
   return v;
@@ -87,8 +163,7 @@ std::string correct_command_key(std::string_view key, const Config& cfg) {
   // key is long enough or shares a prefix.
   if (!best.empty()) {
     if (best_d == 1) return best;
-    if (best_d == 2 && k.size() >= 4 && !k.empty() && !best.empty() && k[0] == best[0])
-      return best;
+    if (best_d == 2 && k.size() >= 4 && !k.empty() && !best.empty() && k[0] == best[0]) return best;
   }
   return {};
 }
@@ -96,8 +171,10 @@ std::string correct_command_key(std::string_view key, const Config& cfg) {
 std::string correct_query_command(std::string_view query, const Config& cfg) {
   std::string s(query);
   // Trim.
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+    s.pop_back();
   if (s.empty()) return {};
   // Split off leading bang/slash for macros.
   bool bang = (!s.empty() && (s[0] == '!' || s[0] == '/'));
@@ -135,10 +212,10 @@ std::string correct_query_command(std::string_view query, const Config& cfg) {
   // happens to start with a command-like word (e.g. "time tracker.docx").
   // Only correct single-token queries or known multi-word commands.
   if (!rest.empty()) {
-    static const char* multi[] = {"empty trash", "log out", "log off", "sign out",
-                                  "screen capture", "screen shot", "capture screen",
-                                  "print screen", "speedtest again", "screenshot window",
-                                  "screenshot region", nullptr};
+    static const char* multi[] = {"empty trash",       "log out",           "log off",
+                                  "sign out",          "screen capture",    "screen shot",
+                                  "capture screen",    "print screen",      "speedtest again",
+                                  "screenshot window", "screenshot region", nullptr};
     std::string lowered = to_lower_utf8(out);
     bool is_multi = false;
     for (auto** p = multi; *p; ++p) {
@@ -149,11 +226,11 @@ std::string correct_query_command(std::string_view query, const Config& cfg) {
     }
     // Single-word mini commands with arguments (weather London, tz tokyo,
     // emoji smile, fx ..., screenshot ...) are safe to correct.
-    static const char* with_args[] = {"weather", "tz", "emoji", "symbol", "fx", "currency",
-                                      "color", "colour", "screenshot", "screencap", "process",
-                                      "proc", "window", "windows", "switch", "clip", "clips",
-                                      "json", "base64", "sha256", "hash", "sha", "lorem",
-                                      "time", "speedtest", nullptr};
+    static const char* with_args[] = {
+        "weather", "tz",         "emoji",     "symbol",    "fx",     "currency", "color",
+        "colour",  "screenshot", "screencap", "process",   "proc",   "window",   "windows",
+        "switch",  "clip",       "clips",     "json",      "base64", "sha256",   "hash",
+        "sha",     "lorem",      "time",      "speedtest", nullptr};
     bool takes_arg = false;
     for (auto** p = with_args; *p; ++p)
       if (fix == *p) {
@@ -166,8 +243,7 @@ std::string correct_query_command(std::string_view query, const Config& cfg) {
   return out;
 }
 
-std::string suggest_correction(const std::string& query, const Config& cfg,
-                               HistoryStore* history) {
+std::string suggest_correction(const std::string& query, const Config& cfg, HistoryStore* history) {
   std::string s = normalize_query(query);
   if (s.size() < 3) return {};
   // 1) Command typo ("weahter" -> "weather").
@@ -199,8 +275,7 @@ std::string suggest_correction(const std::string& query, const Config& cfg,
   return {};
 }
 
-std::string autocomplete_ghost(const std::string& query, const Config& cfg,
-                                HistoryStore* history) {
+std::string autocomplete_ghost(const std::string& query, const Config& cfg, HistoryStore* history) {
   if (query.empty()) return {};
   // Trailing space means the token is complete; don't ghost.
   if (!query.empty() && (query.back() == ' ' || query.back() == '\t')) return {};
@@ -263,8 +338,7 @@ std::vector<std::string> autocomplete_candidates(const std::string& query, const
   return out;
 }
 
-std::vector<std::string> index_autocomplete(const std::string& query, IndexEngine& index,
-                                            int n) {
+std::vector<std::string> index_autocomplete(const std::string& query, IndexEngine& index, int n) {
   std::vector<std::string> out;
   if (query.empty() || n <= 0) return out;
   std::string q = normalize_query(query);
@@ -388,7 +462,7 @@ std::string correct_index_name(const std::string& query, IndexEngine& index) {
         continue;
       }
       int diff = static_cast<int>(cand.size() > seg.size() ? cand.size() - seg.size()
-                                                            : seg.size() - cand.size());
+                                                           : seg.size() - cand.size());
       if (diff > thr) continue;
       if (!seg.empty() && !cand.empty() && seg[0] != cand[0]) continue;
       int d = damerau_bounded(seg, cand, thr);
@@ -423,7 +497,8 @@ AssistResult build_assist(const std::string& query, const Config& cfg, HistorySt
   std::string trimmed = query;
   while (!trimmed.empty() && (trimmed.front() == ' ' || trimmed.front() == '\t'))
     trimmed.erase(trimmed.begin());
-  while (!trimmed.empty() && (trimmed.back() == ' ' || trimmed.back() == '\t')) trimmed.pop_back();
+  while (!trimmed.empty() && (trimmed.back() == ' ' || trimmed.back() == '\t'))
+    trimmed.pop_back();
   if (trimmed.empty()) return a;
   // 1) Correction: command/history first (cheap, high precision), then index.
   a.correction = suggest_correction(trimmed, cfg, history);
@@ -438,7 +513,8 @@ AssistResult build_assist(const std::string& query, const Config& cfg, HistorySt
   if (index && (int)cands.size() < 6 && !trailing_space) {
     auto idx = index_autocomplete(query, *index, 6 - (int)cands.size());
     std::unordered_set<std::string> seen;
-    for (auto& c : cands) seen.insert(to_lower_utf8(c));
+    for (auto& c : cands)
+      seen.insert(to_lower_utf8(c));
     for (auto& c : idx) {
       auto k = to_lower_utf8(c);
       if (seen.count(k)) continue;

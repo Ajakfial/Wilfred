@@ -79,8 +79,7 @@ LRESULT CALLBACK ll_keyboard(int code, WPARAM wp, LPARAM lp) {
         g_ctx->buffer.clear();
       } else {
         // Keep a bounded rolling buffer.
-        if (g_ctx->buffer.size() > 128)
-          g_ctx->buffer.erase(0, g_ctx->buffer.size() - 128);
+        if (g_ctx->buffer.size() > 128) g_ctx->buffer.erase(0, g_ctx->buffer.size() - 128);
         // New word after delimiter: keep buffer for next match but cap it.
       }
     } else if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9')) {
@@ -90,8 +89,8 @@ LRESULT CALLBACK ll_keyboard(int code, WPARAM wp, LPARAM lp) {
       g_ctx->buffer.push_back(c);
       if (g_ctx->buffer.size() > 128) g_ctx->buffer.erase(0, 1);
     } else if (vk == VK_ESCAPE || vk == VK_LCONTROL || vk == VK_RCONTROL || vk == VK_LMENU ||
-               vk == VK_RMENU || vk == VK_LWIN || vk == VK_RWIN || vk == VK_LEFT || vk == VK_RIGHT ||
-               vk == VK_UP || vk == VK_DOWN) {
+               vk == VK_RMENU || vk == VK_LWIN || vk == VK_RWIN || vk == VK_LEFT ||
+               vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN) {
       g_ctx->buffer.clear();
     }
   }
@@ -372,8 +371,7 @@ bool GlobalExpander::start(const Config& cfg, SnippetStore* snippets) {
                 Window focus = None;
                 int rev = 0;
                 XGetInputFocus(ctx->dpy, &focus, &rev);
-                x11_send_keys(ctx->dpy, focus, XK_BackSpace,
-                              static_cast<int>(trig + 1));
+                x11_send_keys(ctx->dpy, focus, XK_BackSpace, static_cast<int>(trig + 1));
                 write_clipboard(body);
                 // Ctrl+V to the focused window.
                 x11_send_keys(ctx->dpy, focus, XK_Control_L, 0);
@@ -387,11 +385,9 @@ bool GlobalExpander::start(const Config& cfg, SnippetStore* snippets) {
                 cev.keycode = vkc;
                 cev.state = ControlMask;
                 cev.type = KeyPress;
-                XSendEvent(ctx->dpy, focus, True, KeyPressMask,
-                           reinterpret_cast<XEvent*>(&cev));
+                XSendEvent(ctx->dpy, focus, True, KeyPressMask, reinterpret_cast<XEvent*>(&cev));
                 cev.type = KeyRelease;
-                XSendEvent(ctx->dpy, focus, True, KeyReleaseMask,
-                           reinterpret_cast<XEvent*>(&cev));
+                XSendEvent(ctx->dpy, focus, True, KeyReleaseMask, reinterpret_cast<XEvent*>(&cev));
                 XFlush(ctx->dpy);
                 ctx->buffer.clear();
               } else if (ctx->buffer.size() > 128) {
@@ -417,8 +413,7 @@ bool GlobalExpander::start(const Config& cfg, SnippetStore* snippets) {
   // No X11 (Wayland-native, BSD console, mobile): there is no cross-desktop
   // key hook. Report unsupported so callers show overlay paste instead of
   // pretending the global hook is live.
-  log_warn("snippets",
-           "global expansion needs X11 (Wayland-native: use overlay paste)");
+  log_warn("snippets", "global expansion needs X11 (Wayland-native: use overlay paste)");
   return false;
 #endif
 }

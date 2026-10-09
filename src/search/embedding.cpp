@@ -59,10 +59,12 @@ std::vector<float> hash_embed_text(const std::string& text, int dim) {
   // Word unigrams stabilize longer texts.
   std::size_t s = 0;
   while (s < folded.size()) {
-    while (s < folded.size() && folded[s] == ' ') ++s;
+    while (s < folded.size() && folded[s] == ' ')
+      ++s;
     if (s >= folded.size()) break;
     std::size_t e = s;
-    while (e < folded.size() && folded[e] != ' ') ++e;
+    while (e < folded.size() && folded[e] != ' ')
+      ++e;
     if (e > s) {
       std::uint64_t h = fnv1a(folded.data() + s, e - s);
       v[h % static_cast<std::uint64_t>(dim)] += 1.5f;
@@ -75,10 +77,12 @@ std::vector<float> hash_embed_text(const std::string& text, int dim) {
   for (float& f : v)
     if (f > 0) f = std::sqrt(f);
   float norm = 0;
-  for (float f : v) norm += f * f;
+  for (float f : v)
+    norm += f * f;
   norm = std::sqrt(norm);
   if (norm > 1e-9f) {
-    for (float& f : v) f /= norm;
+    for (float& f : v)
+      f /= norm;
   }
   return v;
 }
@@ -86,7 +90,8 @@ std::vector<float> hash_embed_text(const std::string& text, int dim) {
 float embedding_cosine(const std::vector<float>& a, const std::vector<float>& b) {
   if (a.empty() || b.empty() || a.size() != b.size()) return 0;
   double dot = 0;
-  for (std::size_t i = 0; i < a.size(); ++i) dot += static_cast<double>(a[i]) * b[i];
+  for (std::size_t i = 0; i < a.size(); ++i)
+    dot += static_cast<double>(a[i]) * b[i];
   if (dot > 1) return 1;
   if (dot < -1) return -1;
   return static_cast<float>(dot);
@@ -124,8 +129,8 @@ bool LocalEmbedder::wants_llamacpp() const {
 bool LocalEmbedder::probe_server(const std::string& endpoint, int timeout_ms) {
   (void)timeout_ms;
   if (endpoint.empty()) return false;
-  // Minimal probe: try `GET <endpoint>/health` for llama.cpp server, or just
-  // check the endpoint string is a local URL. Full HTTP is done in embed().
+    // Minimal probe: try `GET <endpoint>/health` for llama.cpp server, or just
+    // check the endpoint string is a local URL. Full HTTP is done in embed().
 #ifdef _WIN32
   // Use a short WinHTTP GET for health; failure => false.
   std::string url = endpoint;
@@ -162,11 +167,11 @@ bool LocalEmbedder::probe_server(const std::string& endpoint, int timeout_ms) {
   }
   auto wpath = utf8_to_wide(path);
   HINTERNET req = WinHttpOpenRequest(con, L"GET", wpath.c_str(), nullptr, WINHTTP_NO_REFERER,
-                                    WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
   bool ok = false;
   if (req) {
-    if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0,
-                           0, 0) &&
+    if (WinHttpSendRequest(req, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0,
+                           0) &&
         WinHttpReceiveResponse(req, nullptr)) {
       DWORD code = 0, len = sizeof(code);
       if (WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
@@ -210,8 +215,7 @@ bool parse_embedding_array(const std::string& body, std::vector<float>& out, int
     }
     num.clear();
   };
-  for (std::size_t i = pos; i < body.size() && out.size() < static_cast<std::size_t>(dim);
-       ++i) {
+  for (std::size_t i = pos; i < body.size() && out.size() < static_cast<std::size_t>(dim); ++i) {
     char c = body[i];
     if ((c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E')
       num.push_back(c);
@@ -285,7 +289,7 @@ std::vector<float> LocalEmbedder::embed_via_server(const std::string& text) cons
   auto wpath = utf8_to_wide(path);
   DWORD flags = https ? WINHTTP_FLAG_SECURE : 0;
   HINTERNET req = WinHttpOpenRequest(con, L"POST", wpath.c_str(), nullptr, WINHTTP_NO_REFERER,
-                                    WINHTTP_DEFAULT_ACCEPT_TYPES, flags);
+                                     WINHTTP_DEFAULT_ACCEPT_TYPES, flags);
   std::vector<float> out;
   if (req) {
     std::wstring hdr = L"Content-Type: application/json\r\n";
@@ -360,10 +364,12 @@ std::vector<float> LocalEmbedder::embed(const std::string& text) const {
         v.resize(static_cast<std::size_t>(dim_), 0.0f);
       }
       float n = 0;
-      for (float f : v) n += f * f;
+      for (float f : v)
+        n += f * f;
       n = std::sqrt(n);
       if (n > 1e-9f)
-        for (float& f : v) f /= n;
+        for (float& f : v)
+          f /= n;
       return v;
     }
     // Server unreachable — fall back to hash so search keeps working offline.

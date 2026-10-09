@@ -12,8 +12,7 @@
 
 namespace wilfred {
 
-bool record_matches_filter(const SearchFilter& f, const IndexStore& store,
-                           const IndexRecord& rec) {
+bool record_matches_filter(const SearchFilter& f, const IndexStore& store, const IndexRecord& rec) {
   auto path = std::string(store.pool().get(rec.path_id));
   auto name = std::string(store.pool().get(rec.name_id));
   auto ext = std::string(store.pool().get(rec.ext_id));
@@ -59,8 +58,7 @@ bool record_matches_filter(const SearchFilter& f, const IndexStore& store,
   }
   if (f.content_only && *f.content_only) {
     if (!store.has_content_tokens(rec.id)) return false;
-    if (!f.content_contains.empty() &&
-        !store.content_covers_tokens(rec.id, f.content_contains))
+    if (!f.content_contains.empty() && !store.content_covers_tokens(rec.id, f.content_contains))
       return false;
   }
   if (f.min_size && rec.size < *f.min_size) return false;
@@ -215,7 +213,8 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
       if (key == "content" || key == "text" || key == "intext") {
         auto toks = tokenize_name(val);
         if (toks.empty() && !val.empty()) toks.push_back(to_lower_utf8(val));
-        for (auto& t : toks) f.content_contains.push_back(t);
+        for (auto& t : toks)
+          f.content_contains.push_back(t);
         f.content_only = true;
         continue;
       }
@@ -270,7 +269,8 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
     }
     if ((pl == "intext" || pl == "contents") && i + 1 < parts.size()) {
       auto toks = tokenize_name(parts[++i]);
-      for (auto& t : toks) f.content_contains.push_back(t);
+      for (auto& t : toks)
+        f.content_contains.push_back(t);
       f.content_only = true;
       continue;
     }
@@ -293,9 +293,10 @@ SearchFilter parse_filter_clauses(std::string& query_inout) {
         bool likely_ext = true;
         for (char c : pl)
           if (c != '.' && !std::isalnum(static_cast<unsigned char>(c))) likely_ext = false;
-        if (likely_ext && (pl == "pdf" || pl == "png" || pl == "jpg" || pl == "cpp" || pl == "h" ||
-                           pl == "hpp" || pl == "rs" || pl == "py" || pl == "mp4" || pl == "mp3" ||
-                           pl == "zip" || pl == "exe" || pl == "docx" || pl == "txt" || pl == "md")) {
+        if (likely_ext &&
+            (pl == "pdf" || pl == "png" || pl == "jpg" || pl == "cpp" || pl == "h" || pl == "hpp" ||
+             pl == "rs" || pl == "py" || pl == "mp4" || pl == "mp3" || pl == "zip" || pl == "exe" ||
+             pl == "docx" || pl == "txt" || pl == "md")) {
           f.extensions.push_back(dotted);
           continue;
         }
@@ -366,7 +367,8 @@ void apply_named_scopes(SearchFilter& f, const Config& cfg) {
   for (auto& name : f.scope_names) {
     auto it = cfg.scopes.find(to_lower_utf8(name));
     if (it == cfg.scopes.end()) continue;
-    for (auto& p : it->second) f.in_dirs.push_back(p);
+    for (auto& p : it->second)
+      f.in_dirs.push_back(p);
   }
 }
 

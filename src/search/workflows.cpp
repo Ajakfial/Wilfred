@@ -13,8 +13,10 @@ namespace {
 
 std::string trim_copy(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t')) o.erase(o.begin());
-  while (!o.empty() && (o.back() == ' ' || o.back() == '\t')) o.pop_back();
+  while (!o.empty() && (o.front() == ' ' || o.front() == '\t'))
+    o.erase(o.begin());
+  while (!o.empty() && (o.back() == ' ' || o.back() == '\t'))
+    o.pop_back();
   return o;
 }
 
@@ -85,10 +87,9 @@ QuicklinkMatch match_quicklink(const std::string& query, const Config& cfg) {
   // Bare single-word invocation without args and without explicit ql!/:/ prefix
   // only counts when the template needs no args (rare). Otherwise require an
   // explicit form so file search keeps working.
-  bool explicit_form = (!s.empty() && (s[0] == '!' || s[0] == '/')) ||
-                       l.rfind("ql ", 0) == 0 || l.rfind("quicklink ", 0) == 0 ||
-                       l.rfind("link ", 0) == 0 || colon != std::string::npos ||
-                       space != std::string::npos;
+  bool explicit_form = (!s.empty() && (s[0] == '!' || s[0] == '/')) || l.rfind("ql ", 0) == 0 ||
+                       l.rfind("quicklink ", 0) == 0 || l.rfind("link ", 0) == 0 ||
+                       colon != std::string::npos || space != std::string::npos;
   if (!explicit_form && args.empty()) {
     // Allow it: quicklink with no args still opens the template with empty query.
   }

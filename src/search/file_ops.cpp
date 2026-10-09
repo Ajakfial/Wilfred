@@ -22,8 +22,8 @@ std::string path_to_posix(const std::string& path) {
 }
 
 static bool is_uri_unreserved(unsigned char c) {
-  return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-         c == '-' || c == '.' || c == '_' || c == '~';
+  return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' ||
+         c == '.' || c == '_' || c == '~';
 }
 
 std::string path_to_file_uri(const std::string& path) {
@@ -230,7 +230,8 @@ static std::string fs_to_utf8(const fs::path& p) {
   return std::string(u8.begin(), u8.end());
 }
 
-void dos_datetime(std::uint16_t& dos_date, std::uint16_t& dos_time) {  std::time_t t = std::time(nullptr);
+void dos_datetime(std::uint16_t& dos_date, std::uint16_t& dos_time) {
+  std::time_t t = std::time(nullptr);
   std::tm tmv{};
 #ifdef _WIN32
   localtime_s(&tmv, &t);
@@ -239,9 +240,9 @@ void dos_datetime(std::uint16_t& dos_date, std::uint16_t& dos_time) {  std::time
 #endif
   int year = tmv.tm_year + 1900;
   if (year < 1980) year = 1980;
-  dos_date = static_cast<std::uint16_t>(((year - 1980) << 9) | ((tmv.tm_mon + 1) << 5) | tmv.tm_mday);
-  dos_time = static_cast<std::uint16_t>(
-      (tmv.tm_hour << 11) | (tmv.tm_min << 5) | (tmv.tm_sec / 2));
+  dos_date =
+      static_cast<std::uint16_t>(((year - 1980) << 9) | ((tmv.tm_mon + 1) << 5) | tmv.tm_mday);
+  dos_time = static_cast<std::uint16_t>((tmv.tm_hour << 11) | (tmv.tm_min << 5) | (tmv.tm_sec / 2));
 }
 
 struct ZipEntry {
@@ -358,9 +359,9 @@ bool zip_paths_to(const std::vector<std::string>& sources, const std::string& zi
     e.local_offset = blob.size();
     std::string local;
     put_le32(local, 0x04034b50u);
-    put_le16(local, 20);          // version needed
-    put_le16(local, 0x0800u);     // UTF-8 flag
-    put_le16(local, 0);           // stored
+    put_le16(local, 20);       // version needed
+    put_le16(local, 0x0800u);  // UTF-8 flag
+    put_le16(local, 0);        // stored
     put_le16(local, dos_time);
     put_le16(local, dos_date);
     if (!j.is_dir) {
@@ -390,8 +391,8 @@ bool zip_paths_to(const std::vector<std::string>& sources, const std::string& zi
   std::string central;
   for (auto& e : entries) {
     put_le32(central, 0x02014b50u);
-    put_le16(central, 20);      // version made by
-    put_le16(central, 20);      // version needed
+    put_le16(central, 20);       // version made by
+    put_le16(central, 20);       // version needed
     put_le16(central, 0x0800u);  // UTF-8 flag
     put_le16(central, 0);        // stored
     put_le16(central, dos_time);
@@ -482,8 +483,8 @@ bool create_new_folder_here(const std::string& dir, std::string& out_path, std::
   std::error_code ec;
   fs::create_directories(fs::u8path(dir), ec);
   for (int i = 1; i < 10000; ++i) {
-    auto p = i == 1 ? path_join(dir, "New folder")
-                    : path_join(dir, "New folder " + std::to_string(i));
+    auto p =
+        i == 1 ? path_join(dir, "New folder") : path_join(dir, "New folder " + std::to_string(i));
     ec.clear();
     bool created = fs::create_directory(fs::u8path(p), ec);
     if (created && !ec) {
@@ -519,8 +520,8 @@ bool bulk_rename_in_dir(const std::string& dir, const std::string& pattern,
     return false;
   }
   std::vector<std::string> files;
-  for (auto it = fs::directory_iterator(fs::u8path(dir), ec);
-       it != fs::directory_iterator(); it.increment(ec)) {
+  for (auto it = fs::directory_iterator(fs::u8path(dir), ec); it != fs::directory_iterator();
+       it.increment(ec)) {
     if (ec) break;
     std::error_code ec2;
     if (it->is_regular_file(ec2)) {
@@ -616,12 +617,12 @@ bool move_paths_to(const std::vector<std::string>& sources, const std::string& d
 }
 
 bool create_from_template(const std::string& dir, const std::string& template_name,
-                          const std::string& new_name, std::string& out_path,
-                          std::string& error) {
+                          const std::string& new_name, std::string& out_path, std::string& error) {
   out_path.clear();
   error.clear();
   std::string t = template_name;
-  for (char& c : t) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (char& c : t)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   std::string body;
   std::string ext = ".txt";
   if (t.empty() || t == "empty" || t == "txt" || t == "text") {
@@ -631,7 +632,9 @@ bool create_from_template(const std::string& dir, const std::string& template_na
     body = "# Title\n\n";
   } else if (t == "py" || t == "python") {
     ext = ".py";
-    body = "#!/usr/bin/env python3\n\"\"\"Module.\"\"\"\n\n\ndef main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n";
+    body =
+        "#!/usr/bin/env python3\n\"\"\"Module.\"\"\"\n\n\ndef main():\n    pass\n\n\nif __name__ "
+        "== \"__main__\":\n    main()\n";
   } else if (t == "cpp" || t == "c++") {
     ext = ".cpp";
     body = "#include <iostream>\n\nint main() {\n  std::cout << \"hi\\n\";\n}\n";
@@ -640,7 +643,9 @@ bool create_from_template(const std::string& dir, const std::string& template_na
     body = "#pragma once\n\n";
   } else if (t == "html") {
     ext = ".html";
-    body = "<!doctype html>\n<html>\n<head><meta charset=\"utf-8\"><title>Doc</title></head>\n<body></body>\n</html>\n";
+    body =
+        "<!doctype html>\n<html>\n<head><meta "
+        "charset=\"utf-8\"><title>Doc</title></head>\n<body></body>\n</html>\n";
   } else if (t == "json") {
     ext = ".json";
     body = "{\n  \"key\": \"value\"\n}\n";
@@ -656,7 +661,8 @@ bool create_from_template(const std::string& dir, const std::string& template_na
     return false;
   }
   std::string name = new_name.empty() ? "New file" : new_name;
-  if (t == "gitignore") name = ".gitignore";
+  if (t == "gitignore")
+    name = ".gitignore";
   else if (name.find('.') == std::string::npos)
     name += ext;
   std::error_code ec;

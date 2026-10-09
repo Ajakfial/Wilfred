@@ -3,9 +3,9 @@
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
-#include "wilfred/platform/platform.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/search/clip_history.hpp"
 
 #include <algorithm>
@@ -14,8 +14,8 @@
 #include <mutex>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shellapi.h>
+#include <windows.h>
 #elif defined(__APPLE__)
 #include <cstdio>
 #include <memory>
@@ -36,7 +36,8 @@ void remember_text(const std::string& text) {
 }
 
 void remember_paths(const std::vector<std::string>& paths) {
-  for (auto& p : paths) ClipStore::instance().record_path(p);
+  for (auto& p : paths)
+    ClipStore::instance().record_path(p);
 }
 
 #ifdef _WIN32
@@ -100,7 +101,8 @@ static std::string popen_read(const char* cmd) {
   FILE* f = popen(cmd, "r");
   if (!f) return out;
   char buf[1024];
-  while (fgets(buf, sizeof(buf), f)) out += buf;
+  while (fgets(buf, sizeof(buf), f))
+    out += buf;
   pclose(f);
   if (out.size() > 16384) out.resize(16384);
   return out;

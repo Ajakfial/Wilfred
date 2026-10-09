@@ -33,8 +33,8 @@ namespace {
 
 std::string trim_copy(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t' || o.front() == '\r' ||
-                        o.front() == '\n'))
+  while (!o.empty() &&
+         (o.front() == ' ' || o.front() == '\t' || o.front() == '\r' || o.front() == '\n'))
     o.erase(o.begin());
   while (!o.empty() &&
          (o.back() == ' ' || o.back() == '\t' || o.back() == '\r' || o.back() == '\n'))
@@ -71,7 +71,7 @@ bool have_tool(const std::string& exe) {
 // discarded on POSIX, merged on Windows so filters must ignore noise).
 // Returns exit code, -1 on spawn failure, -2 on timeout (child killed).
 [[maybe_unused]] int os_run_capture(const std::vector<std::string>& argv, int timeout_ms,
-                   std::size_t max_bytes, std::string& out) {
+                                    std::size_t max_bytes, std::string& out) {
   out.clear();
   if (argv.empty() || timeout_ms < 500) return -1;
 #ifdef _WIN32
@@ -106,8 +106,8 @@ bool have_tool(const std::string& exe) {
   si.hStdError = out_w;
   PROCESS_INFORMATION pi{};
   auto wcmd = utf8_to_wide(cmd);
-  BOOL ok = CreateProcessW(nullptr, wcmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-                           nullptr, nullptr, &si, &pi);
+  BOOL ok = CreateProcessW(nullptr, wcmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr,
+                           nullptr, &si, &pi);
   CloseHandle(out_w);
   if (nul) CloseHandle(nul);
   if (!ok) {
@@ -123,8 +123,7 @@ bool have_tool(const std::string& exe) {
     if (PeekNamedPipe(out_r, nullptr, 0, nullptr, &avail, nullptr) && avail) {
       DWORD n = 0;
       if (!ReadFile(out_r, buf, sizeof(buf), &n, nullptr) || n == 0) break;
-      if (out.size() < max_bytes)
-        out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
+      if (out.size() < max_bytes) out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
     } else {
       DWORD st = WaitForSingleObject(pi.hProcess, 10);
       if (st == WAIT_OBJECT_0) break;
@@ -140,8 +139,7 @@ bool have_tool(const std::string& exe) {
     if (!PeekNamedPipe(out_r, nullptr, 0, nullptr, &avail, nullptr) || !avail) break;
     DWORD n = 0;
     if (!ReadFile(out_r, buf, sizeof(buf), &n, nullptr) || n == 0) break;
-    if (out.size() < max_bytes)
-      out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
+    if (out.size() < max_bytes) out.append(buf, std::min<std::size_t>(n, max_bytes - out.size()));
   }
   if (!timed_out && !GetExitCodeProcess(pi.hProcess, &exit_code)) exit_code = 1;
   CloseHandle(out_r);
@@ -168,7 +166,8 @@ bool have_tool(const std::string& exe) {
     close(out_pipe[1]);
     std::vector<std::string> store = argv;
     std::vector<char*> av;
-    for (auto& a : store) av.push_back(a.data());
+    for (auto& a : store)
+      av.push_back(a.data());
     av.push_back(nullptr);
     execvp(av[0], av.data());
     _exit(127);
@@ -185,7 +184,8 @@ bool have_tool(const std::string& exe) {
     auto got = read(out_pipe[0], buf, sizeof(buf));
     if (got > 0) {
       if (out.size() < max_bytes)
-        out.append(buf, std::min<std::size_t>(static_cast<std::size_t>(got), max_bytes - out.size()));
+        out.append(buf,
+                   std::min<std::size_t>(static_cast<std::size_t>(got), max_bytes - out.size()));
     } else {
       pid_t w = waitpid(pid, &status, WNOHANG);
       if (w == pid) {
@@ -241,8 +241,7 @@ std::string url_decode(const std::string& s) {
   std::string o;
   o.reserve(s.size());
   for (std::size_t i = 0; i < s.size(); ++i) {
-    if (s[i] == '%' && i + 2 < s.size() &&
-        std::isxdigit(static_cast<unsigned char>(s[i + 1])) &&
+    if (s[i] == '%' && i + 2 < s.size() && std::isxdigit(static_cast<unsigned char>(s[i + 1])) &&
         std::isxdigit(static_cast<unsigned char>(s[i + 2]))) {
       auto hex = [](char c) -> int {
         if (c >= '0' && c <= '9') return c - '0';
@@ -324,8 +323,7 @@ std::string utf8_to_utf16le(const std::string& s) {
       push(cp);
       i += 2;
     } else if ((c >> 4) == 0xE && i + 2 < s.size()) {
-      std::uint32_t cp = ((c & 0x0F) << 12) |
-                         ((static_cast<unsigned char>(s[i + 1]) & 0x3F) << 6) |
+      std::uint32_t cp = ((c & 0x0F) << 12) | ((static_cast<unsigned char>(s[i + 1]) & 0x3F) << 6) |
                          (static_cast<unsigned char>(s[i + 2]) & 0x3F);
       push(cp);
       i += 3;
@@ -345,8 +343,7 @@ std::string utf8_to_utf16le(const std::string& s) {
 }
 
 std::string base64_encode(const std::string& bytes) {
-  static const char* k =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static const char* k = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string o;
   o.reserve((bytes.size() + 2) / 3 * 4);
   for (std::size_t i = 0; i < bytes.size(); i += 3) {
@@ -374,8 +371,8 @@ std::string sanitize_token(std::string s) {
   std::string o;
   for (unsigned char c : s) {
     char ch = static_cast<char>(c);
-    bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-              (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.';
+    bool ok = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
+              ch == '-' || ch == '_' || ch == '.';
     if (ok) o.push_back(ch);
     // Non-ASCII UTF-8 bytes pass through so CJK queries still match;
     // SQL string quotes are never produced from them.
@@ -445,8 +442,8 @@ bool dispatch_call(IDispatch* d, const wchar_t* name, WORD flags, VARIANT* resul
   dp.rgvarg = args;
   VARIANT tmp;
   VariantInit(&tmp);
-  HRESULT hr =
-      d->Invoke(id, IID_NULL, LOCALE_USER_DEFAULT, flags, &dp, result ? result : &tmp, nullptr, nullptr);
+  HRESULT hr = d->Invoke(id, IID_NULL, LOCALE_USER_DEFAULT, flags, &dp, result ? result : &tmp,
+                         nullptr, nullptr);
   if (!result) VariantClear(&tmp);
   return SUCCEEDED(hr);
 }
@@ -481,7 +478,8 @@ bool ado_run_sql(const wchar_t* sql, std::size_t cap, std::vector<std::string>& 
   arg.vt = VT_BSTR;
   arg.bstrVal =
       SysAllocString(L"Provider=Search.CollatorDSO;Extended Properties='Application=Windows';");
-  bool opened = arg.bstrVal && dispatch_call(conn.get(), L"Open", DISPATCH_METHOD, nullptr, &arg, 1);
+  bool opened =
+      arg.bstrVal && dispatch_call(conn.get(), L"Open", DISPATCH_METHOD, nullptr, &arg, 1);
   VariantClear(&arg);
   if (!opened) return false;
 
@@ -493,7 +491,8 @@ bool ado_run_sql(const wchar_t* sql, std::size_t cap, std::vector<std::string>& 
   // Recordset.Open(Source, ActiveConnection, CursorType, LockType, Options);
   // args reversed: adCmdText=1, adLockReadOnly=1, adOpenForwardOnly=0.
   VARIANT av[5];
-  for (auto& v : av) VariantInit(&v);
+  for (auto& v : av)
+    VariantInit(&v);
   av[4].vt = VT_BSTR;
   av[4].bstrVal = SysAllocString(sql);
   av[3].vt = VT_DISPATCH;
@@ -506,7 +505,8 @@ bool ado_run_sql(const wchar_t* sql, std::size_t cap, std::vector<std::string>& 
   av[0].vt = VT_I4;
   av[0].lVal = 1;
   bool ok = av[4].bstrVal && dispatch_call(rs.get(), L"Open", DISPATCH_METHOD, nullptr, av, 5);
-  for (auto& v : av) VariantClear(&v);
+  for (auto& v : av)
+    VariantClear(&v);
   if (!ok) return false;
 
   while (out.size() < cap) {
@@ -529,8 +529,8 @@ bool ado_run_sql(const wchar_t* sql, std::size_t cap, std::vector<std::string>& 
     name.bstrVal = SysAllocString(L"System.ItemPathDisplay");
     VARIANT field;
     VariantInit(&field);
-    bool got = name.bstrVal &&
-               dispatch_call(fields.pdispVal, L"Item", DISPATCH_METHOD, &field, &name, 1);
+    bool got =
+        name.bstrVal && dispatch_call(fields.pdispVal, L"Item", DISPATCH_METHOD, &field, &name, 1);
     VariantClear(&name);
     VariantClear(&fields);
     if (got && field.vt == VT_DISPATCH && field.pdispVal) {
@@ -567,8 +567,8 @@ bool os_windows_search_com(const std::string& query, int limit, std::vector<std:
     ComHolder<ISearchManager> mgr;
     // CSearchManager lives out-of-proc (Search service surrogate AppID),
     // so INPROC alone is never enough: ask for any server.
-    if (SUCCEEDED(CoCreateInstance(CLSID_CSearchManager, nullptr, CLSCTX_ALL,
-                                   IID_PPV_ARGS(mgr.out())))) {
+    if (SUCCEEDED(
+            CoCreateInstance(CLSID_CSearchManager, nullptr, CLSCTX_ALL, IID_PPV_ARGS(mgr.out())))) {
       ComHolder<ISearchCatalogManager> cat;
       if (SUCCEEDED(mgr.get()->GetCatalog(L"SystemIndex", cat.out()))) {
         ComHolder<ISearchQueryHelper> helper;
@@ -630,13 +630,14 @@ std::string os_search_normalize_backend(const std::string& backend) {
   for (char& c : b)
     if (c == '-') c = '_';
   if (b == "mdfind") return "spotlight";
-  if (b == "windows_search" || b == "windowssearch" || b == "win_search" ||
-      b == "systemindex" || b == "system_index")
+  if (b == "windows_search" || b == "windowssearch" || b == "win_search" || b == "systemindex" ||
+      b == "system_index")
     return "windows_search";
   if (b == "tracker3" || b == "tracker_3") return "tracker";
   if (b == "baloosearch" || b == "baloosearcher") return "baloo";
   if (b == "plocate" || b == "mlocate" || b == "bsd_locate") return "locate";
-  if (b == "es" || b == "es_exe" || b == "everything_search" || b == "voidtools") return "everything";
+  if (b == "es" || b == "es_exe" || b == "everything_search" || b == "voidtools")
+    return "everything";
   return b;
 }
 
@@ -656,7 +657,8 @@ bool os_search_should_query(const std::string& text) {
 
 bool os_search_strip_prefix(const std::string& text, std::string& remainder) {
   std::size_t i = 0;
-  while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) ++i;
+  while (i < text.size() && (text[i] == ' ' || text[i] == '\t'))
+    ++i;
   if (i + 2 >= text.size()) return false;
   if (std::tolower(static_cast<unsigned char>(text[i])) != 'o' ||
       std::tolower(static_cast<unsigned char>(text[i + 1])) != 's')
@@ -690,8 +692,8 @@ std::string os_search_windows_sql(const std::string& query, int top) {
     contains += "\"" + toks[i] + "*\"";
   }
   return "SELECT TOP " + std::to_string(top) +
-         " System.ItemPathDisplay FROM SystemIndex WHERE CONTAINS(System.FileName,'" +
-         contains + "')";
+         " System.ItemPathDisplay FROM SystemIndex WHERE CONTAINS(System.FileName,'" + contains +
+         "')";
 }
 
 std::vector<std::string> os_search_argv(const std::string& backend, const std::string& query,
@@ -734,7 +736,7 @@ std::vector<std::string> os_search_argv(const std::string& backend, const std::s
     auto script = windows_ps_script(q, limit);
     if (script.empty()) return {};
     std::string enc = base64_encode(utf8_to_utf16le(script));
-    return {"powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    return {"powershell",      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
             "-EncodedCommand", enc};
   }
   return {};

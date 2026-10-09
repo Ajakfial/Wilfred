@@ -30,8 +30,10 @@ SearchResult scard(const std::string& title, const std::string& sub, const std::
 
 std::string trim_ws(const std::string& s) {
   std::string o = s;
-  while (!o.empty() && (o.front() == ' ' || o.front() == '\t')) o.erase(o.begin());
-  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r')) o.pop_back();
+  while (!o.empty() && (o.front() == ' ' || o.front() == '\t'))
+    o.erase(o.begin());
+  while (!o.empty() && (o.back() == ' ' || o.back() == '\t' || o.back() == '\r'))
+    o.pop_back();
   return o;
 }
 
@@ -40,7 +42,8 @@ std::string fmt_num(double v) {
   char buf[32];
   std::snprintf(buf, sizeof(buf), "%.6f", v);
   std::string o = buf;
-  while (o.size() > 1 && o.back() == '0' && o.find('.') != std::string::npos) o.pop_back();
+  while (o.size() > 1 && o.back() == '0' && o.find('.') != std::string::npos)
+    o.pop_back();
   if (!o.empty() && o.back() == '.') o.pop_back();
   return o.empty() ? "0" : o;
 }
@@ -95,19 +98,15 @@ bool ranking_get(const RankingWeights& w, const std::string& name, std::string& 
 // Flat getter table for config_get_value (a ~150-branch if/else chain hits
 // MSVC's C1061 nesting limit — keep this table-driven).
 using CfgGet = std::string (*)(const Config&);
-static std::string g_bool(bool b) { return b ? "true" : "false"; }
-#define GB(m) \
-  [](const Config& c) -> std::string { return g_bool(c.m); }
-#define GI(m) \
-  [](const Config& c) -> std::string { return std::to_string(c.m); }
-#define GD(m) \
-  [](const Config& c) -> std::string { return fmt_num(c.m); }
-#define GS(m) \
-  [](const Config& c) -> std::string { return c.m; }
-#define GL(m) \
-  [](const Config& c) -> std::string { return join_csv_out(c.m); }
-#define G0 \
-  [](const Config&) -> std::string { return std::string(); }
+static std::string g_bool(bool b) {
+  return b ? "true" : "false";
+}
+#define GB(m) [](const Config& c) -> std::string { return g_bool(c.m); }
+#define GI(m) [](const Config& c) -> std::string { return std::to_string(c.m); }
+#define GD(m) [](const Config& c) -> std::string { return fmt_num(c.m); }
+#define GS(m) [](const Config& c) -> std::string { return c.m; }
+#define GL(m) [](const Config& c) -> std::string { return join_csv_out(c.m); }
+#define G0 [](const Config&) -> std::string { return std::string(); }
 
 static const struct {
   const char* key;
@@ -266,13 +265,14 @@ std::vector<SearchResult> setup_results(const std::string& remainder, const Conf
                         "setup"));
     out.push_back(scard("Hotkey: " + cfg.hotkey.key, "setup hotkey — edit hotkey: in wilfred.yml",
                         "config:open", "setup", "setup"));
-    out.push_back(
-        scard(browser_ok ? "Browser search: configured" : "Browser search: broken",
-              "setup browser — edit browser.search_template", "config:open", "setup", "setup"));
+    out.push_back(scard(browser_ok ? "Browser search: configured" : "Browser search: broken",
+                        "setup browser — edit browser.search_template", "config:open", "setup",
+                        "setup"));
     out.push_back(scard("Validate wilfred.yml", "setup validate — enter checks now",
                         "config:validate", "setup", "setup"));
-    out.push_back(scard("Run terminal setup", "run: wilfred setup — prompts for roots/hotkey/browser",
-                        "setup:run", "setup", "setup"));
+    out.push_back(scard("Run terminal setup",
+                        "run: wilfred setup — prompts for roots/hotkey/browser", "setup:run",
+                        "setup", "setup"));
     (void)hotkey_ok;
     return out;
   }
@@ -344,15 +344,15 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
   if (l.empty() || l == "open" || l == "edit" || l == "show") {
     out.push_back(scard("Edit wilfred.yml", path + " — enter opens in editor", "config:open",
                         "config", "config"));
-    out.push_back(scard("Show in folder", path + " — enter reveals", "config:reveal", "config",
-                        "config"));
+    out.push_back(
+        scard("Show in folder", path + " — enter reveals", "config:reveal", "config", "config"));
     out.push_back(scard("Validate wilfred.yml", "enter checks syntax + schema", "config:validate",
                         "config", "config"));
     out.push_back(scard("Copy config path", path, "config:copy", "config", "config"));
     out.push_back(scard("Set a setting", "config set search.max_results 40 — enter applies",
                         "config:open", "config", "config"));
-    out.push_back(scard("Reset to defaults", "backs up to .pre-reset.bak", "config:reset",
-                        "config", "config"));
+    out.push_back(scard("Reset to defaults", "backs up to .pre-reset.bak", "config:reset", "config",
+                        "config"));
     return out;
   }
   if (l == "validate" || l == "check" || l == "verify" || l == "lint") {
@@ -397,9 +397,10 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
       ConfigError cerr;
       Config live = cfg;
       bool known = config_get_value(live, to_lower_utf8(key), cur, err);
-      out.push_back(scard("Set " + key + " to " + val,
-                          known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
-                          "config:set:" + key + "=" + val, "config", "config"));
+      out.push_back(
+          scard("Set " + key + " to " + val,
+                known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
+                "config:set:" + key + "=" + val, "config", "config"));
       return out;
     }
     if (low.rfind("get ", 0) == 0) {
@@ -413,8 +414,8 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
       return out;
     }
   }
-  out.push_back(scard("Edit wilfred.yml", path + " — enter opens", "config:open", "config",
-                      "config"));
+  out.push_back(
+      scard("Edit wilfred.yml", path + " — enter opens", "config:open", "config", "config"));
   return out;
 }
 
@@ -691,10 +692,12 @@ bool yaml_set_key(std::string& text, const std::string& section, const std::stri
     }
     // Match `  key:` with any leading indent.
     std::size_t i = 0;
-    while (i < line.size() && (line[i] == ' ' || line[i] == '\t')) ++i;
+    while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
+      ++i;
     if (line.compare(i, key.size(), key) == 0) {
       std::size_t j = i + key.size();
-      while (j < line.size() && (line[j] == ' ' || line[j] == '\t')) ++j;
+      while (j < line.size() && (line[j] == ' ' || line[j] == '\t'))
+        ++j;
       if (j < line.size() && line[j] == ':') {
         std::string indent = line.substr(0, i);
         std::string replacement = indent + key + ": " + rendered;
@@ -753,8 +756,10 @@ bool config_set_value(const std::string& dotted, const std::string& value, std::
   std::string rendered;
   if (spec.type == SetType::Bool) {
     auto l = to_lower_utf8(trim_ws(value));
-    if (l == "true" || l == "1" || l == "yes" || l == "on") rendered = "true";
-    else if (l == "false" || l == "0" || l == "no" || l == "off") rendered = "false";
+    if (l == "true" || l == "1" || l == "yes" || l == "on")
+      rendered = "true";
+    else if (l == "false" || l == "0" || l == "no" || l == "off")
+      rendered = "false";
     else {
       error = "'" + dotted + "' wants true/false";
       return false;
