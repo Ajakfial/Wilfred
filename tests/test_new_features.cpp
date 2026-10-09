@@ -36,7 +36,7 @@ snippets:
   prefix: ";"
   global_expansion: true
 )",
-                            cfg, err));
+                           cfg, err));
     CHECK(cfg.providers.semantic);
     CHECK_EQ(cfg.providers.semantic_backend, "hybrid");
     CHECK(cfg.embedding.enabled);

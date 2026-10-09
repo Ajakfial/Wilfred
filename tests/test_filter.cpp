@@ -1,6 +1,6 @@
 #include "test.hpp"
-#include "wilfred/search/filter.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/filter.hpp"
 
 void test_filter() {
   using namespace wilfred;

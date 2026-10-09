@@ -42,16 +42,16 @@ void test_bsd() {
 #else
   // On other hosts the BSD macro is off and detection is unchanged.
   CHECK(!is_bsd());
-  CHECK(platform_name() == "windows" || platform_name() == "macos" ||
-        platform_name() == "linux" || platform_name() == "android" ||
-        platform_name() == "ios");
+  CHECK(platform_name() == "windows" || platform_name() == "macos" || platform_name() == "linux" ||
+        platform_name() == "android" || platform_name() == "ios");
 #endif
 
   // Volume enumeration must never crash and every entry needs a path.
   // (Content varies by machine: containers may only report root.)
   {
     auto vols = list_volumes();
-    for (auto& v : vols) CHECK(!v.path.empty());
+    for (auto& v : vols)
+      CHECK(!v.path.empty());
   }
 
   // Watcher contract shared by every backend (inotify/kqueue/FSEvents):
@@ -102,13 +102,21 @@ void test_bsd() {
       return hits.size();
     };
 
-    { std::FILE* f = std::fopen(file.c_str(), "w"); CHECK(f != nullptr); if (f) { std::fputs("one", f); std::fclose(f); } }
+    {
+      std::FILE* f = std::fopen(file.c_str(), "w");
+      CHECK(f != nullptr);
+      if (f) {
+        std::fputs("one", f);
+        std::fclose(f);
+      }
+    }
     CHECK(saw("note.txt"));
 
     // Drain so the modify below is observed as a fresh event, not coalesced.
     {
       auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(300);
-      while (std::chrono::steady_clock::now() < until) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      while (std::chrono::steady_clock::now() < until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     {
       std::lock_guard<std::mutex> lock(mu);
@@ -117,7 +125,14 @@ void test_bsd() {
     // Sleep past the 50ms debounce window so the modify is observed as a
     // fresh event even on fast CI runners.
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
-    { std::FILE* f = std::fopen(file.c_str(), "a"); CHECK(f != nullptr); if (f) { std::fputs("two", f); std::fclose(f); } }
+    {
+      std::FILE* f = std::fopen(file.c_str(), "a");
+      CHECK(f != nullptr);
+      if (f) {
+        std::fputs("two", f);
+        std::fclose(f);
+      }
+    }
     CHECK(saw("note.txt"));
     CHECK(count() >= 1);
 

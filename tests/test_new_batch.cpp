@@ -24,12 +24,12 @@ void test_new_batch() {
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text(
-        "ui:\n  theme: dark\n  accent: \"#7f8cff\"\n  font_size: 16\n"
-        "sync:\n  enabled: false\n  encrypt: true\n  password: s3cret\n"
-        "pins:\n  - firefox\n  - /home/user/docs\n"
-        "ranking:\n  pinned: 900\n",
-        cfg, err));
+    CHECK(
+        load_config_text("ui:\n  theme: dark\n  accent: \"#7f8cff\"\n  font_size: 16\n"
+                         "sync:\n  enabled: false\n  encrypt: true\n  password: s3cret\n"
+                         "pins:\n  - firefox\n  - /home/user/docs\n"
+                         "ranking:\n  pinned: 900\n",
+                         cfg, err));
     CHECK_EQ(cfg.ui.accent, "#7f8cff");
     CHECK_EQ(cfg.ui.font_size, 16);
     CHECK(cfg.sync.encrypt);

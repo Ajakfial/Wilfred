@@ -13,7 +13,8 @@ void test_os_search() {
   CHECK_EQ(os_search_normalize_backend("baloosearch"), "baloo");
   CHECK_EQ(os_search_normalize_backend("plocate"), "locate");
   CHECK_EQ(os_search_normalize_backend("es"), "everything");
-  for (auto& b : os_search_backends()) CHECK(!b.empty());
+  for (auto& b : os_search_backends())
+    CHECK(!b.empty());
   CHECK(!os_search_backend_label("spotlight").empty());
   CHECK(!os_search_backend_label("windows_search").empty());
   CHECK_EQ(os_search_backend_label("spotlight"), "Spotlight");
@@ -103,8 +104,8 @@ void test_os_search() {
 
   // Parsers: headers/noise skipped, file:// URIs decoded.
   {
-    auto hits = os_search_parse_output(
-        "spotlight", "/Users/a/Documents/report.pdf\n/Users/a/notes.txt\n", 8);
+    auto hits = os_search_parse_output("spotlight",
+                                       "/Users/a/Documents/report.pdf\n/Users/a/notes.txt\n", 8);
     CHECK_EQ(hits.size(), 2u);
     CHECK_EQ(hits[0], "/Users/a/Documents/report.pdf");
   }
@@ -121,32 +122,30 @@ void test_os_search() {
     CHECK_EQ(hits[1], "/home/u/notes.txt");
   }
   {
-    auto hits = os_search_parse_output(
-        "tracker", "Results:\nNo results were found\n", 8);
+    auto hits = os_search_parse_output("tracker", "Results:\nNo results were found\n", 8);
     CHECK(hits.empty());
   }
   {
-    auto hits = os_search_parse_output(
-        "baloo", "/home/u/a.txt\n/home/u/b.txt\n", 1);
+    auto hits = os_search_parse_output("baloo", "/home/u/a.txt\n/home/u/b.txt\n", 1);
     CHECK_EQ(hits.size(), 1u);
   }
   {
-    auto hits = os_search_parse_output(
-        "windows_search", "C:\\Users\\a\\report.pdf\r\nC:\\tmp\\x.txt\r\n", 8);
+    auto hits = os_search_parse_output("windows_search",
+                                       "C:\\Users\\a\\report.pdf\r\nC:\\tmp\\x.txt\r\n", 8);
     CHECK_EQ(hits.size(), 2u);
     CHECK_EQ(hits[0], "C:\\Users\\a\\report.pdf");
   }
   {
     // Noise from merged stderr must not become results.
-    auto hits = os_search_parse_output(
-        "windows_search", "ERROR: something failed\nC:\\a\\b.txt\n", 8);
+    auto hits =
+        os_search_parse_output("windows_search", "ERROR: something failed\nC:\\a\\b.txt\n", 8);
     CHECK_EQ(hits.size(), 1u);
   }
 
   // Result cards: deduped, labeled, capped, Open action.
   {
-    auto cards = os_search_results_from_paths(
-        {"/a/report.pdf", "/a/report.pdf", "/b/notes.txt"}, "spotlight", 8);
+    auto cards = os_search_results_from_paths({"/a/report.pdf", "/a/report.pdf", "/b/notes.txt"},
+                                              "spotlight", 8);
     CHECK_EQ(cards.size(), 2u);
     CHECK_EQ(cards[0].title, "report.pdf");
     CHECK(cards[0].subtitle.find("Spotlight") != std::string::npos);
@@ -181,7 +180,8 @@ void test_os_search() {
     }
     if (ok) {
       CHECK(paths.size() <= 5u);
-      for (auto& p : paths) CHECK(!p.empty());
+      for (auto& p : paths)
+        CHECK(!p.empty());
     }
     // Degenerate input never reaches COM.
     CHECK(!os_windows_search_com("", 5, paths));
@@ -203,8 +203,8 @@ void test_os_search() {
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text("os_search:\n  enabled: true\n  backend: auto\n  max_results: 5\n",
-                           cfg, err));
+    CHECK(load_config_text("os_search:\n  enabled: true\n  backend: auto\n  max_results: 5\n", cfg,
+                           err));
     CHECK(cfg.os_search.enabled);
     CHECK_EQ(cfg.os_search.backend, "auto");
     CHECK_EQ(cfg.os_search.max_results, 5);

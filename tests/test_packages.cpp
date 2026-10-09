@@ -84,8 +84,10 @@ void test_packages() {
   // flatpak table.
   {
     std::string out =
-        "Name                 Description            Application ID          Version   Branch   Remotes\n"
-        "Firefox Web Browser  Safe and easy browser  org.mozilla.firefox  131.0     stable   flathub\n";
+        "Name                 Description            Application ID          Version   Branch   "
+        "Remotes\n"
+        "Firefox Web Browser  Safe and easy browser  org.mozilla.firefox  131.0     stable   "
+        "flathub\n";
     auto hits = pkg_parse_flatpak(out);
     CHECK_EQ(hits.size(), 1u);
     CHECK_EQ(hits[0].id, "org.mozilla.firefox");
@@ -102,7 +104,8 @@ void test_packages() {
   }
 
   // Install command rendering.
-  CHECK_EQ(pkg_install_command("winget", "Mozilla.Firefox"), "winget install --exact --id Mozilla.Firefox");
+  CHECK_EQ(pkg_install_command("winget", "Mozilla.Firefox"),
+           "winget install --exact --id Mozilla.Firefox");
   CHECK_EQ(pkg_install_command("brew", "firefox"), "brew install firefox");
   CHECK_EQ(pkg_install_command("apt", "vlc"), "sudo apt install -y vlc");
   CHECK_EQ(pkg_install_command("flatpak", "org.mozilla.firefox", "flathub"),
@@ -117,9 +120,10 @@ void test_packages() {
   {
     wilfred::Config cfg;
     wilfred::ConfigError err;
-    CHECK(load_config_text("packages:\n  enabled: true\n  max_results: 5\n  timeout_ms: 3000\n"
-                           "  managers: [brew, apt]\n",
-                           cfg, err));
+    CHECK(
+        load_config_text("packages:\n  enabled: true\n  max_results: 5\n  timeout_ms: 3000\n"
+                         "  managers: [brew, apt]\n",
+                         cfg, err));
     CHECK(cfg.packages.enabled);
     CHECK_EQ(cfg.packages.max_results, 5);
     CHECK_EQ(cfg.packages.timeout_ms, 3000);

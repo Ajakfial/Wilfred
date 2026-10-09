@@ -48,7 +48,8 @@ void test_extensibility() {
   CHECK(action_hides_overlay("open"));
   CHECK(!action_hides_overlay("copy_path"));
 
-  auto json = std::string("{\"results\":[{\"title\":\"Ping\",\"path\":\"x\",\"score\":42,\"action\":\"open\"}]}");
+  auto json = std::string(
+      "{\"results\":[{\"title\":\"Ping\",\"path\":\"x\",\"score\":42,\"action\":\"open\"}]}");
   auto plug = parse_plugin_results_json(json, "demo");
   CHECK_EQ(plug.size(), 1u);
   CHECK_EQ(plug[0].plugin_id, "demo");

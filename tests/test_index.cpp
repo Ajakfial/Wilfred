@@ -1,10 +1,10 @@
 #include "test.hpp"
+#include "wilfred/core/mmap.hpp"
+#include "wilfred/core/paths.hpp"
 #include "wilfred/index/engine.hpp"
 #include "wilfred/index/store.hpp"
 #include "wilfred/index/wal.hpp"
 #include "wilfred/search/engine.hpp"
-#include "wilfred/core/mmap.hpp"
-#include "wilfred/core/paths.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -160,7 +160,8 @@ void test_index() {
   }
 
   StringPool pool;
-  for (int i = 0; i < 20000; ++i) pool.intern("token_" + std::to_string(i));
+  for (int i = 0; i < 20000; ++i)
+    pool.intern("token_" + std::to_string(i));
   CHECK_EQ(pool.find("token_123"), pool.intern("token_123"));
   CHECK(pool.find("missing_token") == StringPool::kInvalid);
 
@@ -240,7 +241,8 @@ void test_index() {
       const auto& pa = a.posting(ta);
       const auto& pb = b.posting(tb);
       CHECK_EQ(pa.size(), pb.size());
-      for (std::size_t i = 0; i < pa.size(); ++i) CHECK_EQ(pa[i], pb[i]);
+      for (std::size_t i = 0; i < pa.size(); ++i)
+        CHECK_EQ(pa[i], pb[i]);
     }
     {
       auto ta = a.pool().find("ile");

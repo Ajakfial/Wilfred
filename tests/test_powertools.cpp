@@ -11,6 +11,7 @@
 #include "wilfred/search/clip_history.hpp"
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/engine.hpp"
+#include "wilfred/search/layouts.hpp"
 #include "wilfred/search/media.hpp"
 #include "wilfred/search/minis.hpp"
 #include "wilfred/search/mpris_dbus.hpp"
@@ -18,8 +19,6 @@
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/transcribe.hpp"
-#include "wilfred/search/layouts.hpp"
-#include "wilfred/ai/vision.hpp"
 #include "wilfred/search/workflows.hpp"
 
 void test_powertools() {
@@ -326,17 +325,16 @@ app_actions:
     CHECK(mpris_method_for("bogus").empty());
 
     // Message framing: LE header, METHOD_CALL, serial echo, member present.
-    auto msg = mpris_build_method_call(42, "org.mpris.MediaPlayer2.spotify",
-                                       "/org/mpris/MediaPlayer2",
-                                       "org.mpris.MediaPlayer2.Player", "PlayPause");
+    auto msg =
+        mpris_build_method_call(42, "org.mpris.MediaPlayer2.spotify", "/org/mpris/MediaPlayer2",
+                                "org.mpris.MediaPlayer2.Player", "PlayPause");
     CHECK(msg.size() >= 16 && msg.size() % 8 == 0);
     CHECK_EQ(msg[0], static_cast<unsigned char>('l'));
     CHECK_EQ(msg[1], static_cast<unsigned char>(1));
     CHECK_EQ(msg[3], static_cast<unsigned char>(1));
-    std::uint32_t serial = static_cast<std::uint32_t>(msg[8]) |
-                           (static_cast<std::uint32_t>(msg[9]) << 8) |
-                           (static_cast<std::uint32_t>(msg[10]) << 16) |
-                           (static_cast<std::uint32_t>(msg[11]) << 24);
+    std::uint32_t serial =
+        static_cast<std::uint32_t>(msg[8]) | (static_cast<std::uint32_t>(msg[9]) << 8) |
+        (static_cast<std::uint32_t>(msg[10]) << 16) | (static_cast<std::uint32_t>(msg[11]) << 24);
     CHECK_EQ(serial, 42u);
     std::string blob(reinterpret_cast<const char*>(msg.data()), msg.size());
     CHECK(blob.find("PlayPause") != std::string::npos);
@@ -347,9 +345,8 @@ app_actions:
       std::vector<std::string> names;
       unsigned char bad[4] = {0, 0, 0, 0};
       CHECK(!mpris_parse_names_reply(bad, sizeof(bad), names));
-      auto err_msg = mpris_build_method_call(1, "org.freedesktop.DBus",
-                                             "/org/freedesktop/DBus", "org.freedesktop.DBus",
-                                             "ListNames");
+      auto err_msg = mpris_build_method_call(1, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                                             "org.freedesktop.DBus", "ListNames");
       err_msg[1] = 3;  // force ERROR type
       CHECK(!mpris_parse_names_reply(err_msg.data(), err_msg.size(), names));
       CHECK(!mpris_parse_names_reply(msg.data(), msg.size(), names));  // CALL, not RETURN
@@ -393,8 +390,8 @@ app_actions:
     CHECK(parse_mini_intent("stt lecture").kind == MiniKind::Transcribe);
     CHECK(parse_mini_intent("transcription").kind == MiniKind::Transcribe);
 
-    auto cmd = build_whisper_command("whisper-cli", "/m/ggml.bin", "/a/in.wav",
-                                     "/tmp/w-out", "auto");
+    auto cmd =
+        build_whisper_command("whisper-cli", "/m/ggml.bin", "/a/in.wav", "/tmp/w-out", "auto");
     CHECK(cmd.find("whisper-cli") != std::string::npos);
     CHECK(cmd.find("-m") != std::string::npos);
     CHECK(cmd.find("-otxt") != std::string::npos);
@@ -662,9 +659,10 @@ app_actions:
     CHECK(!ll.empty());
     Config wcfg;
     ConfigError werr;
-    CHECK(load_config_text("workflows:\n  w: [window_snap_left, layout_apply:work, focus_window:code, "
-                           "dictate_run:5]\n",
-                           wcfg, werr));
+    CHECK(load_config_text(
+        "workflows:\n  w: [window_snap_left, layout_apply:work, focus_window:code, "
+        "dictate_run:5]\n",
+        wcfg, werr));
     CHECK_EQ(wcfg.workflows["w"].size(), 4u);
     Config wbad;
     CHECK(!load_config_text("workflows:\n  w: [window_bogus]\n", wbad, werr));
@@ -674,9 +672,10 @@ app_actions:
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text("hotkeys:\n  google-clip:\n    modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip\n"
-                           "  lock-it:\n    key: L\n    run: system:lock\n",
-                           cfg, err));
+    CHECK(load_config_text(
+        "hotkeys:\n  google-clip:\n    modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip\n"
+        "  lock-it:\n    key: L\n    run: system:lock\n",
+        cfg, err));
     CHECK_EQ(cfg.hotkeys.size(), 2u);
     CHECK_EQ(cfg.hotkeys[0].name, "google-clip");
     CHECK_EQ(cfg.hotkeys[0].key, "G");

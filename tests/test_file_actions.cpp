@@ -107,9 +107,8 @@ void test_file_actions() {
   file.title = "abc.txt";
   file.kind = FileKind::File;
   attach_result_actions(file);
-  for (auto want :
-       {"open", "reveal", "copy_path", "copy_name", "copy_file_uri", "hash_file", "compress_zip",
-        "open_terminal", "open_editor"})
+  for (auto want : {"open", "reveal", "copy_path", "copy_name", "copy_file_uri", "hash_file",
+                    "compress_zip", "open_terminal", "open_editor"})
     CHECK(has_action(file, want));
   (void)native_apps_for_file(abc, 4);  // must not crash; may be empty on CI
 

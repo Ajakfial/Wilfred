@@ -41,9 +41,11 @@ void test_plugins() {
     CHECK(os == "windows" || os == "macos" || os == "linux");
     std::string url, sha;
     CHECK(plugin_registry_resolve(*dice, url, sha));
-    CHECK(url == "https://x/dice-" + (os == "windows" ? std::string("win")
-                                      : os == "macos" ? std::string("mac")
-                                                      : std::string("lin")) + ".zip");
+    CHECK(url == "https://x/dice-" +
+                     (os == "windows" ? std::string("win")
+                      : os == "macos" ? std::string("mac")
+                                      : std::string("lin")) +
+                     ".zip");
     CHECK(plugin_registry_resolve(*legacy, url, sha));
     CHECK_EQ(url, "https://x/legacy.sh");
     CHECK_EQ(sha, "dd");
@@ -115,7 +117,8 @@ void test_plugins() {
     flat.providers.semantic_trigram_weight = 0.0;  // mutes the only active backend
     auto muted = prov.query("visual studio", flat, 10);
     CHECK(!muted.empty());
-    for (auto& h : muted) CHECK_EQ(h.score, 500);
+    for (auto& h : muted)
+      CHECK_EQ(h.score, 500);
     Config loud;
     loud.providers.semantic = true;
     loud.providers.semantic_min_score = 0.2;
@@ -131,7 +134,8 @@ void test_plugins() {
     auto a = hash_embed_text("visual studio code", 128);
     auto b = hash_embed_text("visual studio code", 128);
     CHECK_EQ(a.size(), 128u);
-    for (std::size_t i = 0; i < a.size(); ++i) CHECK_EQ(a[i], b[i]);  // deterministic
+    for (std::size_t i = 0; i < a.size(); ++i)
+      CHECK_EQ(a[i], b[i]);  // deterministic
     CHECK_NEAR(embedding_cosine(a, a), 1.0, 1e-5);
     auto rel = hash_embed_text("visual studio code editor", 128);
     auto far = hash_embed_text("zebra xylophone quantum", 128);

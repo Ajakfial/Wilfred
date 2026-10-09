@@ -209,16 +209,14 @@ void test_async_providers() {
     ProviderRegistry reg;
     struct Slow : SearchProvider {
       std::string id() const override { return "slow"; }
-      std::vector<SearchResult> query(const std::string&, const Config&,
-                                      std::size_t) override {
+      std::vector<SearchResult> query(const std::string&, const Config&, std::size_t) override {
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         return {card("s", "/s", "stub")};
       }
     };
     struct Boom : SearchProvider {
       std::string id() const override { return "boom"; }
-      std::vector<SearchResult> query(const std::string&, const Config&,
-                                      std::size_t) override {
+      std::vector<SearchResult> query(const std::string&, const Config&, std::size_t) override {
         throw 1;
       }
     };

@@ -25,10 +25,9 @@ void test_ios() {
   // On desktop hosts the iOS macro is off and platform detection is
   // unchanged (macOS stays macOS, Linux stays Linux, BSD stays BSD).
   CHECK(!is_ios());
-  CHECK(platform_name() == "windows" || platform_name() == "macos" ||
-        platform_name() == "linux" || platform_name() == "freebsd" ||
-        platform_name() == "openbsd" || platform_name() == "netbsd" ||
-        platform_name() == "dragonfly");
+  CHECK(platform_name() == "windows" || platform_name() == "macos" || platform_name() == "linux" ||
+        platform_name() == "freebsd" || platform_name() == "openbsd" ||
+        platform_name() == "netbsd" || platform_name() == "dragonfly");
 #endif
 
   // The iOS Swift UI talks to the shared mobile core (MobileCore, aliased

@@ -1,6 +1,6 @@
 #include "test.hpp"
-#include "wilfred/search/fuzzy.hpp"
 #include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/fuzzy.hpp"
 
 void test_fuzzy() {
   using namespace wilfred;

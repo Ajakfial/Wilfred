@@ -1,7 +1,7 @@
 #include "test.hpp"
-#include "wilfred/search/rank.hpp"
-#include "wilfred/index/tokenizer.hpp"
 #include "wilfred/core/time_util.hpp"
+#include "wilfred/index/tokenizer.hpp"
+#include "wilfred/search/rank.hpp"
 
 void test_rank() {
   using namespace wilfred;

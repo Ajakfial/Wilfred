@@ -24,7 +24,9 @@ std::string jstring_to_utf8(JNIEnv* env, jstring s) {
   return out;
 }
 
-jstring utf8_to_jstring(JNIEnv* env, const std::string& s) { return env->NewStringUTF(s.c_str()); }
+jstring utf8_to_jstring(JNIEnv* env, const std::string& s) {
+  return env->NewStringUTF(s.c_str());
+}
 
 }  // namespace
 
@@ -40,9 +42,9 @@ JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeInit(JN
 }
 
 JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeSearch(JNIEnv* env,
-                                                                                jobject /*thiz*/,
-                                                                                jstring query,
-                                                                                jint limit) {
+                                                                               jobject /*thiz*/,
+                                                                               jstring query,
+                                                                               jint limit) {
   std::lock_guard<std::mutex> lock(g_mu);
   std::string q = jstring_to_utf8(env, query);
   return utf8_to_jstring(env, g_core.search_json(q, static_cast<int>(limit)));
@@ -54,8 +56,8 @@ JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeStatus(J
   return utf8_to_jstring(env, g_core.status_json());
 }
 
-JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeIndexNow(JNIEnv*,
-                                                                                   jobject /*thiz*/) {
+JNIEXPORT jboolean JNICALL
+Java_com_wilfred_launcher_WilfredBridge_nativeIndexNow(JNIEnv*, jobject /*thiz*/) {
   std::lock_guard<std::mutex> lock(g_mu);
   std::string error;
   return g_core.index_now(error) ? JNI_TRUE : JNI_FALSE;
@@ -78,8 +80,8 @@ JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeRecordC
 }
 
 JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeAssist(JNIEnv* env,
-                                                                                jobject /*thiz*/,
-                                                                                jstring query) {
+                                                                               jobject /*thiz*/,
+                                                                               jstring query) {
   std::lock_guard<std::mutex> lock(g_mu);
   return utf8_to_jstring(env, g_core.assist_json(jstring_to_utf8(env, query)));
 }
@@ -91,8 +93,10 @@ JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeActions(
   return utf8_to_jstring(env, g_core.actions_json(static_cast<std::size_t>(index)));
 }
 
-JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeExecute(
-    JNIEnv* env, jobject /*thiz*/, jint index, jstring actionId) {
+JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeExecute(JNIEnv* env,
+                                                                                 jobject /*thiz*/,
+                                                                                 jint index,
+                                                                                 jstring actionId) {
   std::lock_guard<std::mutex> lock(g_mu);
   std::string error;
   return g_core.execute_action(static_cast<std::size_t>(index), jstring_to_utf8(env, actionId),
@@ -101,14 +105,16 @@ JNIEXPORT jboolean JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeExecute
              : JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeSetClipboard(
-    JNIEnv* env, jobject /*thiz*/, jstring text) {
+JNIEXPORT void JNICALL Java_com_wilfred_launcher_WilfredBridge_nativeSetClipboard(JNIEnv* env,
+                                                                                  jobject /*thiz*/,
+                                                                                  jstring text) {
   std::lock_guard<std::mutex> lock(g_mu);
   g_core.set_clipboard(jstring_to_utf8(env, text));
 }
 
-JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativePreview(
-    JNIEnv* env, jobject /*thiz*/, jstring path) {
+JNIEXPORT jstring JNICALL Java_com_wilfred_launcher_WilfredBridge_nativePreview(JNIEnv* env,
+                                                                                jobject /*thiz*/,
+                                                                                jstring path) {
   std::lock_guard<std::mutex> lock(g_mu);
   return utf8_to_jstring(env, g_core.preview_json(jstring_to_utf8(env, path)));
 }

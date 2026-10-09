@@ -22,11 +22,9 @@ inline void check(bool cond, const char* expr, const char* file, int line) {
 }  // namespace wilfred::test
 
 #define CHECK(expr) ::wilfred::test::check(static_cast<bool>(expr), #expr, __FILE__, __LINE__)
-#define CHECK_EQ(a, b) \
-  ::wilfred::test::check((a) == (b), #a " == " #b, __FILE__, __LINE__)
-#define CHECK_NEAR(a, b, eps)                                                       \
-  ::wilfred::test::check(std::abs(static_cast<double>(a) - static_cast<double>(b)) < \
-                             (eps),                                                 \
+#define CHECK_EQ(a, b) ::wilfred::test::check((a) == (b), #a " == " #b, __FILE__, __LINE__)
+#define CHECK_NEAR(a, b, eps)                                                               \
+  ::wilfred::test::check(std::abs(static_cast<double>(a) - static_cast<double>(b)) < (eps), \
                          #a " ~= " #b, __FILE__, __LINE__)
 
 void test_yaml();

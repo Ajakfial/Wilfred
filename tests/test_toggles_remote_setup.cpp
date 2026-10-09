@@ -87,14 +87,16 @@ void test_toggles_remote_setup() {
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text("remotes:\n  enabled: true\n  timeout_ms: 3000\n  sources:\n    - name: wiki\n      url: \"https://example.com/s?q={query_enc}\"\n",
-                           cfg, err));
+    CHECK(
+        load_config_text("remotes:\n  enabled: true\n  timeout_ms: 3000\n  sources:\n    - name: "
+                         "wiki\n      url: \"https://example.com/s?q={query_enc}\"\n",
+                         cfg, err));
     CHECK(cfg.remotes.enabled);
     CHECK_EQ(cfg.remotes.sources.size(), 1u);
     CHECK_EQ(cfg.remotes.timeout_ms, 3000);
     Config bad;
-    CHECK(!load_config_text("remotes:\n  enabled: true\n  sources:\n    - name: x\n      url: ftp://bad\n",
-                            bad, err));
+    CHECK(!load_config_text(
+        "remotes:\n  enabled: true\n  sources:\n    - name: x\n      url: ftp://bad\n", bad, err));
     // Disabled by default.
     Config def;
     CHECK(load_config_text("search:\n  max_results: 40\n", def, err));
@@ -135,23 +137,23 @@ void test_toggles_remote_setup() {
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text(
-        "remotes:\n  enabled: true\n  sources:\n    - name: wiki\n"
-        "      url: \"https://example.com/s?q={query_enc}\"\n"
-        "      max_results: 3\n"
-        "      headers:\n"
-        "        Authorization: \"Bearer abc\"\n",
-        cfg, err));
+    CHECK(
+        load_config_text("remotes:\n  enabled: true\n  sources:\n    - name: wiki\n"
+                         "      url: \"https://example.com/s?q={query_enc}\"\n"
+                         "      max_results: 3\n"
+                         "      headers:\n"
+                         "        Authorization: \"Bearer abc\"\n",
+                         cfg, err));
     CHECK(cfg.remotes.enabled);
     CHECK_EQ(cfg.remotes.sources.size(), 1u);
     CHECK_EQ(cfg.remotes.sources[0].max_results, 3);
     CHECK_EQ(cfg.remotes.sources[0].headers.count("Authorization"), 1u);
     Config bad;
-    CHECK(!load_config_text(
-        "remotes:\n  enabled: true\n  sources:\n    - name: x\n"
-        "      url: \"https://example.com/s\"\n"
-        "      headers: not-a-map\n",
-        bad, err));
+    CHECK(
+        !load_config_text("remotes:\n  enabled: true\n  sources:\n    - name: x\n"
+                          "      url: \"https://example.com/s\"\n"
+                          "      headers: not-a-map\n",
+                          bad, err));
   }
   // Plugins: registry/trust config + pure trust logic (no file writes).
   {
@@ -190,10 +192,10 @@ void test_toggles_remote_setup() {
   {
     Config cfg;
     ConfigError err;
-    CHECK(load_config_text(
-        "search:\n  max_results: 12\nbrowser:\n  search_template: "
-        "\"https://example.com/q={query}\"\n",
-        cfg, err));
+    CHECK(
+        load_config_text("search:\n  max_results: 12\nbrowser:\n  search_template: "
+                         "\"https://example.com/q={query}\"\n",
+                         cfg, err));
     std::string out, msg;
     CHECK(config_get_value(cfg, "search.max_results", out, msg) && out == "12");
     CHECK(config_get_value(cfg, "browser.search_template", out, msg) &&

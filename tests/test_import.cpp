@@ -13,8 +13,7 @@ void test_import() {
   CHECK(normalize_url_template("https://www.google.com/search?q=%s") ==
         "https://www.google.com/search?q={query}");
   CHECK(normalize_url_template("https://x.test/?q={q}") == "https://x.test/?q={query}");
-  CHECK(normalize_url_template("https://x.test/?q={searchTerms}") ==
-        "https://x.test/?q={query}");
+  CHECK(normalize_url_template("https://x.test/?q={searchTerms}") == "https://x.test/?q={query}");
   CHECK(normalize_url_template("https://x.test/search?q=\\{@}") ==
         "https://x.test/search?q={query}");
   CHECK(looks_like_search_url("https://www.google.com/search?q=%s"));
@@ -68,8 +67,7 @@ void test_import() {
 
   // detect by path
   CHECK_EQ(detect_id_for_path("Settings.json", "{\"SearchSources\":[]}"), "flowlauncher");
-  CHECK_EQ(detect_id_for_path("Alfred.alfredpreferences/prefs.plist", "<plist></plist>"),
-           "alfred");
+  CHECK_EQ(detect_id_for_path("Alfred.alfredpreferences/prefs.plist", "<plist></plist>"), "alfred");
   CHECK_EQ(detect_id_for_path("config.rasi", "configuration {}"), "rofi");
 
   std::vector<std::string> w;
@@ -122,7 +120,8 @@ void test_import() {
   // PowerToys current format: {"alt":true,...,"code":32,"key":""}
   {
     w.clear();
-    std::string pt = R"({"properties":{"open_powerlauncher":{"win":false,"ctrl":false,"alt":true,"shift":false,"code":32,"key":""}}})";
+    std::string pt =
+        R"({"properties":{"open_powerlauncher":{"win":false,"ctrl":false,"alt":true,"shift":false,"code":32,"key":""}}})";
     auto s = parse_text("powertoys", pt, "settings.json", w);
     CHECK(s.hotkey.has);
     CHECK_EQ(s.hotkey.key, "Space");
@@ -195,8 +194,9 @@ void test_import() {
   // Keypirinha INI
   {
     w.clear();
-    std::string ini = "[app]\nhotkey_run = Ctrl+Space\n[profile/Google]\n"
-                      "url = https://www.google.com/search?q={q}\nkeyword = g\n";
+    std::string ini =
+        "[app]\nhotkey_run = Ctrl+Space\n[profile/Google]\n"
+        "url = https://www.google.com/search?q={q}\nkeyword = g\n";
     auto s = parse_text("keypirinha", ini, "Keypirinha.ini", w);
     CHECK(s.hotkey.has);
     CHECK_EQ(s.searches.size(), 1u);
@@ -216,7 +216,8 @@ void test_import() {
   // Albert engines
   {
     w.clear();
-    std::string eng = R"([{"name":"Google","trigger":"g ","url":"https://www.google.com/search?q={query}"}])";
+    std::string eng =
+        R"([{"name":"Google","trigger":"g ","url":"https://www.google.com/search?q={query}"}])";
     auto s = parse_text("albert", eng, "engines.json", w);
     CHECK_EQ(s.searches.size(), 1u);
     CHECK_EQ(s.searches[0].keyword, "g");
@@ -225,8 +226,9 @@ void test_import() {
   // KRunner
   {
     w.clear();
-    std::string kr = "[Google]\nQuery=https://www.google.com/search?q=\\{@}\n"
-                     "Keyword=g\n";
+    std::string kr =
+        "[Google]\nQuery=https://www.google.com/search?q=\\{@}\n"
+        "Keyword=g\n";
     auto s = parse_text("krunner", kr, "kuriikwsfilterrc", w);
     CHECK_EQ(s.searches.size(), 1u);
     CHECK(s.searches[0].url.find("{query}") != std::string::npos);

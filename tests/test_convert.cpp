@@ -123,7 +123,7 @@ void test_convert() {
     img.w = 3;
     img.h = 2;
     img.rgba = {
-        255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255,
+        255, 0,   0, 255, 0, 255, 0,   255, 0,   0, 255, 255,
         255, 255, 0, 255, 0, 255, 255, 255, 255, 0, 255, 128,
     };
     std::string err;
@@ -142,7 +142,8 @@ void test_convert() {
     CHECK(decode_png_bytes(png_rgb.data(), png_rgb.size(), back_rgb, err));
     CHECK_EQ(back_rgb.w, 3);
     for (int i = 0; i < 6; ++i) {
-      CHECK_EQ(back_rgb.rgba[static_cast<std::size_t>(i) * 4], img.rgba[static_cast<std::size_t>(i) * 4]);
+      CHECK_EQ(back_rgb.rgba[static_cast<std::size_t>(i) * 4],
+               img.rgba[static_cast<std::size_t>(i) * 4]);
       CHECK_EQ(back_rgb.rgba[static_cast<std::size_t>(i) * 4 + 1],
                img.rgba[static_cast<std::size_t>(i) * 4 + 1]);
       CHECK_EQ(back_rgb.rgba[static_cast<std::size_t>(i) * 4 + 2],

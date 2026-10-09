@@ -131,14 +131,16 @@ void test_power() {
 
     // RTF + HTML.
     auto rtf = root / "hello.rtf";
-    write_bytes(rtf, "{\\rtf1\\ansi{\\fonttbl{\\f0\\fswiss Helvetica;}}\\f0\\par Hello "
-                     "{\\b bold} world\\par}");
+    write_bytes(rtf,
+                "{\\rtf1\\ansi{\\fonttbl{\\f0\\fswiss Helvetica;}}\\f0\\par Hello "
+                "{\\b bold} world\\par}");
     CHECK(extract_document_text(rtf.string(), out, 65536));
     CHECK(out.find("Hello") != std::string::npos);
     CHECK(out.find("fonttbl") == std::string::npos);
     auto html = root / "hello.html";
-    write_bytes(html, "<html><head><script>var secret=1;</script></head><body><p>Hello "
-                      "<b>Html</b> World</p></body></html>");
+    write_bytes(html,
+                "<html><head><script>var secret=1;</script></head><body><p>Hello "
+                "<b>Html</b> World</p></body></html>");
     CHECK(extract_document_text(html.string(), out, 65536));
     CHECK(out.find("Html") != std::string::npos);
     CHECK(out.find("secret") == std::string::npos);
@@ -269,10 +271,11 @@ void test_power() {
   {
     Config c;
     ConfigError e;
-    CHECK(load_config_text("clipboard:\n  max_entries: 50\nproviders:\n  semantic: true\n  "
-                           "semantic_min_score: 0.5\nbrowser:\n  library: false\nindex:\n  "
-                           "usn_scan: false\n",
-                           c, e));
+    CHECK(
+        load_config_text("clipboard:\n  max_entries: 50\nproviders:\n  semantic: true\n  "
+                         "semantic_min_score: 0.5\nbrowser:\n  library: false\nindex:\n  "
+                         "usn_scan: false\n",
+                         c, e));
     CHECK_EQ(c.clipboard.max_entries, 50);
     CHECK(c.providers.semantic);
     CHECK_NEAR(c.providers.semantic_min_score, 0.5, 1e-9);
