@@ -19,6 +19,9 @@ search:
   macros: true
   snippets: true
   plugins: true
+  # Overlay only: answer from the local index first, then merge providers
+  # (subprocesses/network) in the background. CLI/IPC/API stay synchronous.
+  async_providers: true
 
 index:
   # Empty paths means platform defaults (home, applications, common data).

@@ -13,5 +13,9 @@ std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
 // pump_native_events() links on Android like on every other backend.
 void overlay_pump() {}
 
+// No overlay to push to; async provider merges never run on mobile
+// (MobileCore stays fully synchronous).
+void overlay_push_results(const OverlayResponse&) {}
+
 #endif
 }  // namespace wilfred

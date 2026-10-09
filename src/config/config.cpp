@@ -367,11 +367,13 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                       "minis",
                                       "macros",
                                       "snippets",
-                                      "plugins"};
+                                      "plugins",
+                                      "async_providers"};
     if (!check_unknown_keys(*search, valid, "search", err)) return false;
     for (auto* k : {"include_system_files", "include_hidden_files", "show_system_in_results",
                     "web_search_fallback", "treat_urls_as_open", "fuzzy", "acronyms",
-                    "context_aware", "clipboard", "minis", "macros", "snippets", "plugins"})
+                    "context_aware", "clipboard", "minis", "macros", "snippets", "plugins",
+                    "async_providers"})
       if (!expect_bool(search, k, "search", err)) return false;
     for (auto* k : {"max_results", "debounce_ms", "min_query_length"})
       if (!expect_int(search, k, "search", err)) return false;
@@ -391,6 +393,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.search.macros = search->boolean("macros", true);
     c.search.snippets = search->boolean("snippets", true);
     c.search.plugins = search->boolean("plugins", true);
+    c.search.async_providers = search->boolean("async_providers", true);
     if (c.search.max_results < 1 || c.search.max_results > 500) {
       err.message = "search.max_results must be between 1 and 500";
       return false;

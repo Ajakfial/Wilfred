@@ -60,6 +60,7 @@ the editor covers the ~70 scalar/list keys, not the whole schema.
 | `macros` | `true` | Enable macro expansion (`!yt`, `gh`, ...) |
 | `snippets` | `true` | Enable text-expansion snippet matching |
 | `plugins` | `true` | Enable querying loaded plugins |
+| `async_providers` | `true` | Overlay only: answer from the local index first, then merge providers (subprocesses/network) in the background; CLI/IPC/API stay synchronous |
 
 ## `index:` — what gets scanned and how
 

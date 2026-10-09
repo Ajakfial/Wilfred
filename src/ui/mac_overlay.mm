@@ -6,6 +6,7 @@
 
 #import <AppKit/AppKit.h>
 #import <WebKit/WebKit.h>
+#include <dispatch/dispatch.h>
 #include <vector>
 
 #ifdef __APPLE__
@@ -272,6 +273,21 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
 }
 
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+
+void overlay_push_results(const OverlayResponse& resp) {
+  WilfredCtl* ctl = g_ctl;
+  if (!ctl) return;
+  // evaluateJavaScript must run on the main thread; the provider worker
+  // never does, so hop there and share no state across the hop.
+  auto snapshot = resp;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    g_results = snapshot.results;
+    g_resp = snapshot;
+    [ctl sendJson:wilfred::overlay_results_json(snapshot.results, {}, snapshot.correction,
+                                                snapshot.ghost, snapshot.candidates,
+                                                snapshot.query, true)];
+  });
+}
 
 void overlay_pump() {}
 

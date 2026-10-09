@@ -437,6 +437,7 @@ export function App() {
           ghost?: string;
           candidates?: string[];
           query?: string;
+          update?: boolean;
         };
         const items = Array.isArray(m.items) ? m.items : [];
         const correction = typeof m.correction === "string" ? m.correction : "";
@@ -450,7 +451,10 @@ export function App() {
         const q = inputRef.current?.value ?? "";
         const stale = typeof m.query === "string" && m.query !== q && !isSpeedtestQuery(q);
         void stale;
-        dispatch({ type: "RESULTS", items, resetSel: !isSpeedtestQuery(q), correction, ghost, candidates });
+        // Late provider merge for the displayed query: replace the list but
+        // keep the keyboard selection where it is.
+        const update = m.update === true;
+        dispatch({ type: "RESULTS", items, resetSel: !update && !isSpeedtestQuery(q), correction, ghost, candidates });
       }
     };
     (window as unknown as { __wilfredNative?: (m: NativeInMsg) => void }).__wilfredNative = onNative;

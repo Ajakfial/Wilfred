@@ -31,4 +31,10 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s);
 void overlay_set_quit(std::function<void()> fn);
 void overlay_pump();
 
+// Late provider results for the async overlay path: replaces the displayed
+// result list for resp.query without disturbing anything else. Each backend
+// marshals to its own UI thread; backends without a visible overlay may
+// leave it unimplemented. Thread-safe: callable from any thread.
+void overlay_push_results(const OverlayResponse& resp);
+
 }  // namespace wilfred

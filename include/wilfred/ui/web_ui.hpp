@@ -22,7 +22,7 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
                                  const std::vector<std::string>& habits,
                                  const std::string& correction, const std::string& ghost,
                                  const std::vector<std::string>& candidates,
-                                 const std::string& query = {});
+                                 const std::string& query = {}, bool update = false);
 bool overlay_json_field(const std::string& json, const char* key, std::string& out);
 
 struct FilePreview {

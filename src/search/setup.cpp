@@ -129,6 +129,7 @@ static const struct {
     {"search.macros", GB(search.macros)},
     {"search.snippets", GB(search.snippets)},
     {"search.plugins", GB(search.plugins)},
+    {"search.async_providers", GB(search.async_providers)},
     {"browser.provider", GS(browser.provider)},
     {"browser.search_template", GS(browser.search_template)},
     {"browser.library", GB(browser.library)},

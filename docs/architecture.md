@@ -208,7 +208,13 @@ Two different extension points exist:
   (official OS index federation — Windows Search, Spotlight,
   Tracker/Baloo, `locate`; `os_search:`, on by default, deduped against
   the Wilfred index). Providers are compile-time except
-  `remotes:`, which end users configure without recompiling.
+  `remotes:`, which end users configure without recompiling. In the
+  overlay (only), providers resolve asynchronously behind
+  `search.async_providers`: `interpret_fast()` answers from the local
+  index immediately while `search/async_providers.hpp` (single-flight
+  worker, latest generation wins, short-TTL cache) merges hits in via
+  `overlay_push_results()` without resetting the keyboard selection;
+  CLI/IPC/API stay fully synchronous.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native
   `.dll`/`.so`/`.dylib` implementing the small C ABI in `plugin/abi.hpp`, or

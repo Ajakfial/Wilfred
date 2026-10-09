@@ -43,6 +43,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <thread>
 #include <vector>
@@ -171,6 +172,7 @@ bool Service::boot() {
     interpreter_.providers().add(std::make_unique<PkgProvider>());
   if (cfg_.os_search.enabled && os_search_available())
     interpreter_.providers().add(std::make_unique<OsSearchProvider>());
+  if (cfg_.search.async_providers) async_providers_ = std::make_unique<AsyncProviders>();
   return true;
 }
 
@@ -180,6 +182,26 @@ void Service::on_hotkey() {
       ui_->hide();
     else
       ui_->show();
+  }
+}
+
+// Late provider hits for the overlay async path: merge into the latest
+// displayed response and push it, unless the user already typed on.
+void Service::on_provider_results(std::uint64_t gen, std::vector<SearchResult> extra) {
+  if (gen != overlay_gen_.load()) return;  // stale: a newer query is showing
+  if (!running_) return;
+  if (extra.empty()) return;
+  OverlayResponse snap;
+  {
+    std::lock_guard<std::mutex> lock(last_resp_mu_);
+    merge_provider_results(last_resp_.results, std::move(extra));
+    attach_result_actions(last_resp_.results, cfg_);
+    snap = last_resp_;
+  }
+  if (snap.query.empty() || !ui_) return;
+  try {
+    overlay_push_results(snap);
+  } catch (...) {
   }
 }
 
@@ -1026,16 +1048,65 @@ int Service::run_daemon() {
   overlay_bind(
       [this](const std::string& q) {
         last_overlay_query_ = q;
-        auto iq = interpreter_.interpret(q, cfg_, &history_);
+        // Async providers: answer from the local index first so keystrokes
+        // render instantly; subprocess/network providers merge in the
+        // background (see on_provider_results). Fully synchronous when
+        // search.async_providers is off, like CLI/IPC/API always are.
+        const bool async = async_providers_ != nullptr;
         OverlayResponse resp;
-        resp.results = std::move(iq.results);
         resp.query = q;
+        // Async providers: answer from the local index first so keystrokes
+        // render instantly; subprocess/network providers merge in the
+        // background (see on_provider_results). Fully synchronous when
+        // search.async_providers is off, like CLI/IPC/API always are.
+        std::string provider_text;
+        bool providers_apply = false;
+        if (async) {
+          auto fast = interpreter_.interpret_fast(q, cfg_, &history_);
+          resp.results = std::move(fast.iq.results);
+          provider_text = std::move(fast.effective);
+          providers_apply = fast.providers_apply;
+        } else {
+          auto iq = interpreter_.interpret(q, cfg_, &history_);
+          resp.results = std::move(iq.results);
+        }
         try {
           auto assist = build_assist(q, cfg_, &history_, &index_);
           resp.correction = std::move(assist.correction);
           resp.ghost = std::move(assist.ghost);
           resp.candidates = std::move(assist.candidates);
         } catch (...) {
+        }
+        if (async) {
+          // Generation moves on every keystroke so a late push for a
+          // superseded query is dropped even when the new query needs no
+          // providers itself (e.g. file results followed by a calculator
+          // card must never be clobbered by the file query's late hits).
+          auto limit = static_cast<std::size_t>(cfg_.search.max_results);
+          if (providers_apply) {
+            // Instant attach of fresh background results (no flicker when
+            // the worker already resolved this query).
+            std::vector<SearchResult> hit;
+            if (async_providers_->cached(provider_text, limit, hit)) {
+              merge_provider_results(resp.results, std::move(hit));
+              attach_result_actions(resp.results, cfg_);
+            }
+          }
+          std::uint64_t gen = ++overlay_gen_;
+          {
+            std::lock_guard<std::mutex> lock(last_resp_mu_);
+            last_resp_ = resp;
+          }
+          if (providers_apply) {
+            async_providers_->request(
+                gen, provider_text, limit,
+                [this, eff = provider_text, limit] {
+                  return interpreter_.query_providers(eff, cfg_, limit);
+                },
+                [this](std::uint64_t g, std::vector<SearchResult> r) {
+                  on_provider_results(g, std::move(r));
+                });
+          }
         }
         return resp;
       },

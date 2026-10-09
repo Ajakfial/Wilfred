@@ -101,7 +101,7 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
                                  const std::vector<std::string>& habits,
                                  const std::string& correction, const std::string& ghost,
                                  const std::vector<std::string>& candidates,
-                                 const std::string& query) {
+                                 const std::string& query, bool update) {
   std::string o = "{\"type\":\"results\",\"items\":[";
   bool first = true;
   for (auto& it : items) {
@@ -193,6 +193,9 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     o += overlay_json_escape(query);
     o += "\"";
   }
+  // Late provider merge for an already-displayed query: the UI replaces the
+  // list without resetting the keyboard selection.
+  if (update) o += ",\"update\":true";
   o += "}";
   return o;
 }

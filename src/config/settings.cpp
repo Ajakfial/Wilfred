@@ -23,6 +23,7 @@ const SettingMeta kTable[] = {
     B("search.treat_urls_as_open"), B("search.fuzzy"), B("search.acronyms"),
     B("search.context_aware"), B("search.clipboard"), B("search.minis"),
     B("search.macros"), B("search.snippets"), B("search.plugins"),
+    B("search.async_providers"),
     I("search.max_results"), I("search.debounce_ms"), I("search.min_query_length"),
     // index
     L("index.paths"), S("index.format"), B("index.follow_symlinks"),

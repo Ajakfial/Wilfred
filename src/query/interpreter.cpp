@@ -21,6 +21,77 @@ QueryInterpreter::QueryInterpreter(IndexEngine& index, SearchEngine& search, Sni
 
 InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Config& cfg,
                                              HistoryStore* history) {
+  return interpret_impl(query, cfg, history, true, nullptr, nullptr);
+}
+
+QueryInterpreter::FastResult QueryInterpreter::interpret_fast(const std::string& query,
+                                                             const Config& cfg,
+                                                             HistoryStore* history) {
+  FastResult out;
+  out.effective = query;
+  out.iq = interpret_impl(query, cfg, history, false, &out.effective, &out.providers_apply);
+  return out;
+}
+
+std::vector<SearchResult> QueryInterpreter::query_providers(const std::string& query,
+                                                            const Config& cfg,
+                                                            std::size_t limit) {
+  return providers_.query_all(query, cfg, limit);
+}
+
+void merge_provider_results(std::vector<SearchResult>& base, std::vector<SearchResult> extra) {
+  // OS-index federation fills gaps: drop `os` hits whose path is already
+  // listed (Wilfred's own index ranks first) and collapse repeats.
+  if (extra.empty()) return;
+  auto norm_path = [](const std::string& p) {
+    std::string o = to_lower_utf8(p);
+    for (char& c : o)
+      if (c == '\\') c = '/';
+    while (o.size() > 1 && o.back() == '/') o.pop_back();
+    return o;
+  };
+  std::vector<std::string> seen;
+  seen.reserve(base.size());
+  for (auto& r : base) {
+    auto key = r.path.empty() ? r.payload : r.path;
+    if (!key.empty()) seen.push_back(norm_path(key));
+  }
+  for (auto& r : extra) {
+    auto key = r.path.empty() ? r.payload : r.path;
+    if (r.category != "os") {
+      // Exact repeats (same card twice, e.g. a cached attach racing its own
+      // background push) collapse; distinct hits always pass through.
+      bool dup = false;
+      if (!key.empty()) {
+        for (auto& s : base) {
+          auto sk = s.path.empty() ? s.payload : s.path;
+          if (s.category == r.category && s.title == r.title && sk == key) {
+            dup = true;
+            break;
+          }
+        }
+      }
+      if (!dup) base.push_back(std::move(r));
+      continue;
+    }
+    if (key.empty()) continue;
+    auto n = norm_path(key);
+    bool dup = false;
+    for (auto& s : seen)
+      if (s == n) {
+        dup = true;
+        break;
+      }
+    if (dup) continue;
+    seen.push_back(n);
+    base.push_back(std::move(r));
+  }
+}
+
+InterpretedQuery QueryInterpreter::interpret_impl(const std::string& query, const Config& cfg,
+                                                 HistoryStore* history, bool include_providers,
+                                                 std::string* effective_out,
+                                                 bool* providers_apply_out) {
   InterpretedQuery iq;
   iq.classification = classify_query(query);
   auto finish = [&]() -> InterpretedQuery {
@@ -45,6 +116,7 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
       return finish();
     }
   }
+  if (effective_out) *effective_out = effective;
 
   auto add_habits = [&](const std::string& prefix, int n) {
     if (!history || !history->enabled()) return;
@@ -330,41 +402,10 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
     iq.results.push_back(web);
   }
 
-  auto extra = providers_.query_all(effective, cfg, limit);
-  // OS-index federation fills gaps: drop `os` hits whose path is already
-  // listed (Wilfred's own index ranks first) and collapse repeats.
-  if (!extra.empty()) {
-    auto norm_path = [](const std::string& p) {
-      std::string o = to_lower_utf8(p);
-      for (char& c : o)
-        if (c == '\\') c = '/';
-      while (o.size() > 1 && o.back() == '/') o.pop_back();
-      return o;
-    };
-    std::vector<std::string> seen;
-    seen.reserve(iq.results.size());
-    for (auto& r : iq.results) {
-      auto key = r.path.empty() ? r.payload : r.path;
-      if (!key.empty()) seen.push_back(norm_path(key));
-    }
-    for (auto& r : extra) {
-      if (r.category != "os") {
-        iq.results.push_back(std::move(r));
-        continue;
-      }
-      auto key = r.path.empty() ? r.payload : r.path;
-      if (key.empty()) continue;
-      auto n = norm_path(key);
-      bool dup = false;
-      for (auto& s : seen)
-        if (s == n) {
-          dup = true;
-          break;
-        }
-      if (dup) continue;
-      seen.push_back(n);
-      iq.results.push_back(std::move(r));
-    }
+  if (providers_apply_out) *providers_apply_out = true;
+  if (include_providers) {
+    auto extra = query_providers(effective, cfg, limit);
+    merge_provider_results(iq.results, std::move(extra));
   }
 
   if (plugins_ && cfg.search.plugins && cfg.plugins.enabled) {

@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -290,6 +292,23 @@ static void wk_on_script_message(WebKitUserContentManager*, JSCValue* value, gpo
   wk_handle_json(json);
 }
 
+// Async provider push: runs on the GTK main loop (g_idle_add callbacks do),
+// so webkit_web_view_run_javascript stays on its home thread.
+static gboolean wk_push_idle(gpointer data) {
+  std::unique_ptr<OverlayResponse> resp(static_cast<OverlayResponse*>(data));
+  if (!resp || !g_wk.web) return G_SOURCE_REMOVE;
+  g_wk.results = resp->results;
+  g_wk.last = *resp;
+  wk_send_json(overlay_results_json(resp->results, {}, resp->correction, resp->ghost,
+                                    resp->candidates, resp->query, true));
+  return G_SOURCE_REMOVE;
+}
+
+static void wk_push_results(const OverlayResponse& resp) {
+  if (!g_wk.web) return;
+  g_idle_add(wk_push_idle, new OverlayResponse(resp));
+}
+
 }  // namespace
 
 class LinuxWebkitOverlay final : public OverlayUi {
@@ -385,6 +404,26 @@ class LinuxWebkitOverlay final : public OverlayUi {
 // Esc back/dismiss, Tab fix/complete, Ctrl+K actions, Ctrl+U clear,
 // arrows/Home/End/PgUp/PgDn move, Ctrl+N/P move, Ctrl+1-9 quick open,
 // Enter submit (Shift/Alt secondary), F3 details.
+
+// Async provider inbox: the worker thread deposits late results here;
+// X11Overlay::pump() (UI thread) merges them into the live query.
+static std::mutex g_push_mu;
+static OverlayResponse g_push_inbox;
+static bool g_push_pending = false;
+
+static void push_inbox_store(const OverlayResponse& resp) {
+  std::lock_guard<std::mutex> lock(g_push_mu);
+  g_push_inbox = resp;
+  g_push_pending = true;
+}
+
+static bool push_inbox_take(OverlayResponse& out) {
+  std::lock_guard<std::mutex> lock(g_push_mu);
+  if (!g_push_pending) return false;
+  g_push_pending = false;
+  out = std::move(g_push_inbox);
+  return true;
+}
 
 class X11Overlay final : public OverlayUi {
  public:
@@ -703,6 +742,19 @@ class X11Overlay final : public OverlayUi {
 
   void pump() {
     if (!dpy) return;
+    // Late provider results: same query still showing → swap in place and
+    // keep the keyboard selection (clamped); anything else is stale.
+    OverlayResponse inbox;
+    if (push_inbox_take(inbox) && inbox.query == text) {
+      last = inbox;
+      if (last.results.empty()) {
+        sel = 0;
+      } else {
+        sel = std::clamp(sel, 0, static_cast<int>(last.results.size()) - 1);
+      }
+      if (preview_open) rebuild_preview();
+      if (vis) draw();
+    }
     while (XPending(dpy)) {
       XEvent e;
       XNextEvent(dpy, &e);
@@ -934,6 +986,13 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   }
 }
 
+void overlay_push_results(const OverlayResponse& resp) {
+  // Backend is chosen at create() time; fan out to both sinks guarded at
+  // delivery (webkit nil-guards, canvas checks the live query at drain).
+  wk_push_results(resp);
+  push_inbox_store(resp);
+}
+
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 
 void overlay_pump() {
@@ -962,6 +1021,8 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   }
 }
 
+void overlay_push_results(const OverlayResponse& resp) { wk_push_results(resp); }
+
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 
 void overlay_pump() {
@@ -985,6 +1046,8 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   g_ov->submit = std::move(s);
 }
 
+void overlay_push_results(const OverlayResponse& resp) { push_inbox_store(resp); }
+
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 
 void overlay_pump() {
@@ -997,6 +1060,8 @@ void overlay_pump() {
 std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
 
 void overlay_bind(OverlayQuery, OverlaySubmit) {}
+
+void overlay_push_results(const OverlayResponse&) {}
 
 void overlay_set_quit(std::function<void()>) {}
 

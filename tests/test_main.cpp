@@ -36,6 +36,7 @@ int main() {
   test_toggles_remote_setup();
   test_packages();
   test_os_search();
+  test_async_providers();
   test_new_batch();
   test_locale();
   test_plugins();

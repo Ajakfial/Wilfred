@@ -51,6 +51,10 @@ struct Config {
     bool macros{true};
     bool snippets{true};
     bool plugins{true};
+    // Overlay only: answer from the local index first, then merge search
+    // providers (subprocesses/network) in the background. CLI/IPC/API stay
+    // fully synchronous regardless.
+    bool async_providers{true};
   } search;
 
   struct Index {

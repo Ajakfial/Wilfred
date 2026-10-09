@@ -42,6 +42,7 @@ static std::atomic<std::uint64_t> g_qid{0};
 static std::mutex g_res_mu;
 static std::vector<SearchResult> g_results;
 static OverlayResponse g_resp;
+static bool g_resp_is_update = false;
 static constexpr UINT WM_WILFRED_RESULTS = WM_APP + 7;
 static constexpr UINT WM_WILFRED_READY = WM_APP + 8;
 static constexpr UINT WM_WILFRED_TRAY = WM_APP + 9;
@@ -131,6 +132,7 @@ static void do_query(const std::string& q) {
       std::lock_guard<std::mutex> lock(g_res_mu);
       g_results = r.results;
       g_resp = std::move(r);
+      g_resp_is_update = false;
     }
     if (g_hwnd) PostMessageW(g_hwnd, WM_WILFRED_RESULTS, 0, 0);
   }).detach();
@@ -367,12 +369,14 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
       return 0;
     case WM_WILFRED_RESULTS: {
       OverlayResponse snap;
+      bool update = false;
       {
         std::lock_guard<std::mutex> lock(g_res_mu);
         snap = g_resp;
+        update = g_resp_is_update;
       }
       post_json(overlay_results_json(snap.results, {}, snap.correction, snap.ghost,
-                                     snap.candidates, snap.query));
+                                     snap.candidates, snap.query, update));
       return 0;
     }
     case WM_WILFRED_READY:
@@ -486,6 +490,17 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
 }
 
 void overlay_set_quit(std::function<void()> fn) { g_quit = std::move(fn); }
+
+void overlay_push_results(const OverlayResponse& resp) {
+  {
+    std::lock_guard<std::mutex> lock(g_res_mu);
+    g_resp = resp;
+    g_results = resp.results;
+    g_resp_is_update = true;
+  }
+  // Same channel as a fresh query: the window thread serializes the post.
+  if (g_hwnd) PostMessageW(g_hwnd, WM_WILFRED_RESULTS, 0, 0);
+}
 
 void overlay_pump() {}
 

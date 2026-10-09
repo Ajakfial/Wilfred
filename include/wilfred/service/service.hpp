@@ -5,12 +5,15 @@
 #include "wilfred/index/engine.hpp"
 #include "wilfred/plugin/host.hpp"
 #include "wilfred/query/interpreter.hpp"
+#include "wilfred/search/async_providers.hpp"
 #include "wilfred/search/engine.hpp"
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/snippets.hpp"
+#include "wilfred/ui/overlay.hpp"
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -86,6 +89,17 @@ private:
   std::unique_ptr<OverlayUi> ui_;
   std::atomic<bool> running_{false};
   std::string last_overlay_query_;
+  // Async overlay providers (search.async_providers): latest displayed fast
+  // response plus the generation that produced it. Late provider hits merge
+  // into last_resp_ and push to the overlay; stale generations are dropped.
+  // async_providers_ is last: its worker joins before anything a push
+  // touches is destroyed.
+  std::mutex last_resp_mu_;
+  OverlayResponse last_resp_;
+  std::atomic<std::uint64_t> overlay_gen_{0};
+  std::unique_ptr<AsyncProviders> async_providers_;
+
+  void on_provider_results(std::uint64_t gen, std::vector<SearchResult> extra);
 };
 
 }  // namespace wilfred
