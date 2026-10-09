@@ -333,7 +333,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "macros",   "scopes",  "custom_metadata", "history",
                                           "clipboard", "hotkey", "browser", "logging",
                                           "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "remotes", "packages", "layouts",
+                                          "ai",       "sources", "remotes", "packages", "os_search",
+                                          "layouts",
                                           "transcription", "api",
                                           "sync",     "snippets", "workflows", "quicklinks",
                                           "app_actions", "hotkeys", "pins", "favorites"};
@@ -1040,6 +1041,58 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       }
       c.packages.managers.push_back(l);
     }
+  }
+
+  if (auto* os = root.get("os_search")) {
+    if (!os->is_map()) {
+      err.message =
+          "os_search: must be a mapping, e.g.\nos_search:\n  enabled: true\n  backend: auto";
+      return false;
+    }
+    std::vector<std::string> valid = {"enabled", "max_results", "timeout_ms", "backend"};
+    if (!check_unknown_keys(*os, valid, "os_search", err)) return false;
+    if (!expect_bool(os, "enabled", "os_search", err)) return false;
+    for (auto* k : {"max_results", "timeout_ms"})
+      if (!expect_int(os, k, "os_search", err)) return false;
+    c.os_search.enabled = os->boolean("enabled", true);
+    c.os_search.max_results = static_cast<int>(os->integer("max_results", 8));
+    c.os_search.timeout_ms = static_cast<int>(os->integer("timeout_ms", 3000));
+    if (c.os_search.max_results < 1 || c.os_search.max_results > 20) {
+      err.message = "os_search.max_results must be between 1 and 20";
+      return false;
+    }
+    if (c.os_search.timeout_ms < 1000 || c.os_search.timeout_ms > 15000) {
+      err.message = "os_search.timeout_ms must be between 1000 and 15000";
+      return false;
+    }
+    auto backend = to_lower_utf8(os->str("backend", "auto"));
+    for (char& ch : backend)
+      if (ch == '-') ch = '_';
+    // Accept common aliases (mdfind, tracker3, plocate, es, ...).
+    std::string canon = backend;
+    if (canon == "mdfind") canon = "spotlight";
+    if (canon == "windowssearch" || canon == "win_search" || canon == "systemindex" ||
+        canon == "system_index")
+      canon = "windows_search";
+    if (canon == "tracker3" || canon == "tracker_3") canon = "tracker";
+    if (canon == "baloosearch" || canon == "baloosearcher") canon = "baloo";
+    if (canon == "plocate" || canon == "mlocate" || canon == "bsd_locate") canon = "locate";
+    if (canon == "es" || canon == "es_exe" || canon == "everything_search" ||
+        canon == "voidtools")
+      canon = "everything";
+    static const char* known[] = {"auto",       "spotlight", "windows_search", "tracker",
+                                  "baloo",      "locate",    "everything",
+                                  nullptr};
+    bool ok = false;
+    for (auto** p = known; *p; ++p)
+      if (canon == *p) ok = true;
+    if (!ok) {
+      err.message = "os_search.backend has unknown backend '" + backend +
+                    "' (try: auto, spotlight, windows_search, tracker, baloo, locate, "
+                    "everything)";
+      return false;
+    }
+    c.os_search.backend = canon;
   }
 
   if (auto* lo = root.get("layouts")) {

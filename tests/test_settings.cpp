@@ -56,6 +56,7 @@ void test_settings() {
         if (m.key == "remotes.timeout_ms") return scalar("5000");
         if (m.key == "ai.timeout_ms") return scalar("30000");
         if (m.key == "packages.timeout_ms") return scalar("8000");
+        if (m.key == "os_search.timeout_ms") return scalar("3000");
         return scalar("8");
       }
       if (m.key == "logging.level") return scalar("info");
@@ -67,6 +68,7 @@ void test_settings() {
       if (m.key == "embedding.backend") return scalar("hash");
       if (m.key == "ai.provider") return scalar("openai");
       if (m.key == "providers.semantic_backend") return scalar("hybrid");
+      if (m.key == "os_search.backend") return scalar("auto");
       if (m.key == "hotkey.key") return scalar("G");
       return scalar("x");
     };

@@ -343,6 +343,7 @@ are stripped out is used as the plain-text fuzzy query. Quoted phrases
 | `in <dir>` / `inside <dir>` | Same as `in:<dir>`, as two words |
 | `containing <text>` | Same as `name:<text>` |
 | `intext <text>` / `contents <text>` | Same as `content:<text>` |
+| `os <text>` | Force the official OS index for this query (Windows Search / Spotlight / Tracker), in addition to Wilfred's own results |
 | `applications` / `apps` | Applications only |
 | `folders` / `directories` | Directories only |
 | `images` / `photos` | Image kind |

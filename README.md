@@ -33,6 +33,9 @@ single summonable search bar.
 * Cross-platform overlay (Windows WebView2 topmost, macOS floating panel, Linux WebKitGTK with automatic X11 canvas fallback, layer-shell anchored on Wayland compositors, all above/skip-taskbar) with `Ctrl`/`⌘`+`K` actions popover and matching shortcuts in both Linux backends
 * Browser bookmarks, history, and open tabs (`bm`, provider-backed)
 * Instant NTFS full-disk enumeration via the USN journal on Windows
+* Official OS index federation (`os_search:`): Windows Search, Spotlight,
+  Tracker/Baloo, `locate` fill gaps Wilfred's index misses (`os <query>`
+  forces it, duplicates dropped)
 * Preview pane in the overlay (`F3`) plus `wilfred preview`, and chained result actions (`open+copy_path`) + named multi-step workflows (`workflows:`)
 * Mini results for weather, time, disk, RAM, CPU, processes, battery, windows, timers, notes, media, network, layouts, and more
 * Window management (`windows`, `minimize`/`maximize`/`close window`, snap) plus saved window layouts (`layout save`, `layout`)

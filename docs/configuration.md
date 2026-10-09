@@ -384,6 +384,43 @@ packages:
 | `timeout_ms` | `8000` | Per-tool search timeout, hard kill past it (2000–30000) |
 | `managers` | `[]` | Allowed ids from `winget, brew, apt, choco, flatpak, pacman`; empty = per-OS defaults |
 
+## `os_search:` — official OS index federation (desktop)
+
+On by default and local-only: every file-ish query also asks the
+platform's own index, so Wilfred cooperates with it instead of
+competing — files the OS knows about but Wilfred hasn't indexed yet
+still surface. Hits Wilfred already lists are dropped (no duplicate
+cards); Wilfred's own index always ranks first. Missing tools fail
+silent per query (no blocking, bounded by `timeout_ms`).
+
+| OS | Official index used (`backend: auto`) |
+|---|---|
+| Windows | Windows Search (`SystemIndex`); Everything CLI (`es`) first when installed |
+| macOS | Spotlight (`mdfind`) |
+| Linux | Tracker (`tracker3`/`tracker`), then Baloo (`baloosearch`), then `locate`/`plocate` |
+| BSD | `locate` |
+| Android / iOS | none (sandboxed, no subprocesses) |
+
+```yaml
+os_search:
+  enabled: true
+  max_results: 8
+  timeout_ms: 3000
+  backend: auto  # auto | spotlight | windows_search | tracker | baloo | locate | everything
+```
+
+Prefix any query with `os ` to force the OS index
+(`os quarterly report`). Force one backend with
+`backend: windows_search` (official only) or `backend: everything`.
+Turn the federation off with `enabled: false`.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master switch |
+| `max_results` | `8` | Cap per query (1–20) |
+| `timeout_ms` | `3000` | Per-tool timeout, hard kill past it (1000–15000) |
+| `backend` | `auto` | Which OS index; `auto` = platform default above |
+
 ## `layouts:` — saved layouts, tiling, monitor auto-apply (desktop)
 
 | Key | Default | Meaning |

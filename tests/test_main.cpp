@@ -35,6 +35,7 @@ int main() {
   test_bsd();
   test_toggles_remote_setup();
   test_packages();
+  test_os_search();
   test_new_batch();
   test_locale();
   test_plugins();

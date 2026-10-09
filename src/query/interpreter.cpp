@@ -331,7 +331,41 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
   }
 
   auto extra = providers_.query_all(effective, cfg, limit);
-  iq.results.insert(iq.results.end(), extra.begin(), extra.end());
+  // OS-index federation fills gaps: drop `os` hits whose path is already
+  // listed (Wilfred's own index ranks first) and collapse repeats.
+  if (!extra.empty()) {
+    auto norm_path = [](const std::string& p) {
+      std::string o = to_lower_utf8(p);
+      for (char& c : o)
+        if (c == '\\') c = '/';
+      while (o.size() > 1 && o.back() == '/') o.pop_back();
+      return o;
+    };
+    std::vector<std::string> seen;
+    seen.reserve(iq.results.size());
+    for (auto& r : iq.results) {
+      auto key = r.path.empty() ? r.payload : r.path;
+      if (!key.empty()) seen.push_back(norm_path(key));
+    }
+    for (auto& r : extra) {
+      if (r.category != "os") {
+        iq.results.push_back(std::move(r));
+        continue;
+      }
+      auto key = r.path.empty() ? r.payload : r.path;
+      if (key.empty()) continue;
+      auto n = norm_path(key);
+      bool dup = false;
+      for (auto& s : seen)
+        if (s == n) {
+          dup = true;
+          break;
+        }
+      if (dup) continue;
+      seen.push_back(n);
+      iq.results.push_back(std::move(r));
+    }
+  }
 
   if (plugins_ && cfg.search.plugins && cfg.plugins.enabled) {
     auto plug = plugins_->query(effective, cfg, limit);

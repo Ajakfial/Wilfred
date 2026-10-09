@@ -202,9 +202,12 @@ Two different extension points exist:
   `browser/library.hpp` (bookmarks, history, open tabs,
   `browser.library`), `sources/sources.hpp` (calendar, contacts, notes
   files), `search/remote.hpp` (opt-in `remotes:` HTTP endpoints with
-  per-source headers and caps) and `search/pkg.hpp` (system package
+  per-source headers and caps), `search/pkg.hpp` (system package
   managers — `winget`/`brew`/`apt`/`choco`/`flatpak`/`pacman`, explicit
-  `<manager> <query>` only, `packages:`). Providers are compile-time except
+  `<manager> <query>` only, `packages:`) and `search/os_search.hpp`
+  (official OS index federation — Windows Search, Spotlight,
+  Tracker/Baloo, `locate`; `os_search:`, on by default, deduped against
+  the Wilfred index). Providers are compile-time except
   `remotes:`, which end users configure without recompiling.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native

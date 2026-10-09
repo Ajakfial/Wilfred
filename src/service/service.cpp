@@ -26,6 +26,7 @@
 #include "wilfred/search/expander.hpp"
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/macros.hpp"
+#include "wilfred/search/os_search.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
@@ -168,6 +169,8 @@ bool Service::boot() {
     interpreter_.providers().add(std::make_unique<RemoteProvider>());
   if (cfg_.packages.enabled)
     interpreter_.providers().add(std::make_unique<PkgProvider>());
+  if (cfg_.os_search.enabled && os_search_available())
+    interpreter_.providers().add(std::make_unique<OsSearchProvider>());
   return true;
 }
 
@@ -630,6 +633,11 @@ int Service::run_status() {  if (!boot()) return 1;
     if (mgrs.empty()) std::cout << "none on PATH";
   }
   std::cout << ")\n"
+            << "os_search: " << (cfg_.os_search.enabled ? "on" : "off") << " ("
+            << os_search_backend_label(cfg_.os_search.backend.empty()
+                                           ? os_search_default_backend()
+                                           : cfg_.os_search.backend)
+            << ")\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
   return 0;
 }

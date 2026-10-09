@@ -256,6 +256,18 @@ packages:
   timeout_ms: 8000
   managers: []
 
+# Official OS index federation (Windows Search, Spotlight, Tracker/Baloo).
+# Local-only and on by default: fills gaps Wilfred's own index misses.
+# Duplicates already listed by Wilfred are dropped. `os <query>` forces
+# the OS index. Empty backend = auto (platform default; Everything CLI
+# first on Windows when installed, else Windows Search).
+os_search:
+  enabled: true
+  max_results: 8
+  timeout_ms: 3000
+  # auto | spotlight | windows_search | tracker | baloo | locate | everything
+  backend: auto
+
 # Saved window layouts + tiling (desktop only).
 layouts:
   # Auto-apply a layout when the monitor set changes (daemon polls).

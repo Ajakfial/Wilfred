@@ -95,6 +95,7 @@ set(WILFRED_CORE_SOURCES
   src/search/remote.cpp
   src/search/setup.cpp
   src/search/pkg.cpp
+  src/search/os_search.cpp
   src/sources/sources.cpp
   src/ai/assistant.cpp
   src/ai/vision.cpp
@@ -190,6 +191,7 @@ set(WILFRED_CORE_HEADERS
   include/wilfred/search/remote.hpp
   include/wilfred/search/setup.hpp
   include/wilfred/search/pkg.hpp
+  include/wilfred/search/os_search.hpp
   include/wilfred/sources/sources.hpp
   include/wilfred/ai/assistant.hpp
   include/wilfred/ai/vision.hpp
@@ -534,6 +536,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_bsd.cpp
   tests/test_toggles_remote_setup.cpp
   tests/test_packages.cpp
+  tests/test_os_search.cpp
   tests/test_new_batch.cpp
   tests/test_locale.cpp
   tests/test_plugins.cpp

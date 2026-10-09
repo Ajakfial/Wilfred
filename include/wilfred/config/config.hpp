@@ -243,6 +243,19 @@ struct Config {
     std::vector<std::string> managers;
   } packages;
 
+  struct OsSearch {
+    // Federated search against the official OS index (Windows Search,
+    // Spotlight, Tracker/Baloo, locate). Local-only, on by default: fills
+    // gaps Wilfred's own index misses; duplicates are dropped.
+    bool enabled{true};
+    int max_results{8};
+    int timeout_ms{3000};
+    // auto | spotlight | windows_search | tracker | baloo | locate |
+    // everything. `auto` picks the platform default (Everything CLI first
+    // on Windows when installed, else Windows Search).
+    std::string backend{"auto"};
+  } os_search;
+
   struct Transcription {
     // On-demand speech-to-text for audio files (`transcribe ...`).
     // Optional CLIs like OCR: whisper.cpp (`whisper-cli`) for recognition,

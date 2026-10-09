@@ -72,6 +72,9 @@ const SettingMeta kTable[] = {
     B("remotes.enabled"), I("remotes.timeout_ms"), I("remotes.max_results"),
     // packages
     B("packages.enabled"), I("packages.max_results"), I("packages.timeout_ms"),
+    // os_search (official OS index federation)
+    B("os_search.enabled"), I("os_search.max_results"), I("os_search.timeout_ms"),
+    S("os_search.backend"),
     // transcription
     B("transcription.enabled"), S("transcription.binary"), S("transcription.model"),
     S("transcription.language"), B("transcription.save_txt"), S("transcription.mic"),
@@ -104,6 +107,9 @@ void apply_options(SettingMeta& m) {
     m.options = {"auto", "openai", "anthropic", "gemini", "groq"};
   else if (k == "providers.semantic_backend")
     m.options = {"hybrid", "vector", "trigram"};
+  else if (k == "os_search.backend")
+    m.options = {"auto", "spotlight", "windows_search", "tracker",
+                 "baloo", "locate", "everything"};
   else if (k == "index.format")
     m.options = {"auto", "v2", "v3"};
 }
