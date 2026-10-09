@@ -19,9 +19,13 @@
 namespace wilfred {
 namespace fs = std::filesystem;
 
-MappedFile::~MappedFile() { close(); }
+MappedFile::~MappedFile() {
+  close();
+}
 
-MappedFile::MappedFile(MappedFile&& other) noexcept { *this = std::move(other); }
+MappedFile::MappedFile(MappedFile&& other) noexcept {
+  *this = std::move(other);
+}
 
 MappedFile& MappedFile::operator=(MappedFile&& other) noexcept {
   if (this == &other) return *this;

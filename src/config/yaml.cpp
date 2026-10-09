@@ -38,12 +38,14 @@ struct Parser {
   }
 
   void skip_ws_inline() {
-    while (peek() == ' ' || peek() == '\t') get();
+    while (peek() == ' ' || peek() == '\t')
+      get();
   }
 
   void skip_comment() {
     if (peek() == '#')
-      while (peek() && peek() != '\n') get();
+      while (peek() && peek() != '\n')
+        get();
   }
 
   int skip_blank_and_comments() {
@@ -72,7 +74,8 @@ struct Parser {
     std::size_t j = i;
     // look back to line start
     std::size_t k = i;
-    while (k > 0 && t[k - 1] != '\n') --k;
+    while (k > 0 && t[k - 1] != '\n')
+      --k;
     while (k < t.size() && t[k] == ' ') {
       ++ind;
       ++k;
@@ -92,7 +95,8 @@ struct Parser {
       char c = get();
       if (c == '\\') {
         char n = get();
-        if (n == 'n') s.push_back('\n');
+        if (n == 'n')
+          s.push_back('\n');
         else if (n == 't')
           s.push_back('\t');
         else if (n == 'r')
@@ -112,7 +116,8 @@ struct Parser {
     while (peek() && peek() != '\n' && peek() != '#' && peek() != '\r') {
       s.push_back(get());
     }
-    while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+    while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+      s.pop_back();
     return s;
   }
 
@@ -146,7 +151,8 @@ struct Parser {
           // rewind spaces? we already consumed. For robustness, stop.
           break;
         }
-        while (peek() && peek() != '\n' && peek() != '\r') s.push_back(get());
+        while (peek() && peek() != '\n' && peek() != '\r')
+          s.push_back(get());
         if (peek() == '\r') get();
         if (peek() == '\n') {
           get();
@@ -189,8 +195,10 @@ struct Parser {
       if (peek() == '"' || peek() == '\'')
         key = parse_quoted(peek());
       else {
-        while (peek() && peek() != ':' && peek() != '\n') key.push_back(get());
-        while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+        while (peek() && peek() != ':' && peek() != '\n')
+          key.push_back(get());
+        while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+          key.pop_back();
       }
       skip_ws_inline();
       if (peek() != ':') {
@@ -244,8 +252,10 @@ struct Parser {
         item.data = YamlMap{};
         auto& im = std::get<YamlMap>(item.data);
         std::string key;
-        while (peek() && peek() != ':' && peek() != '\n') key.push_back(get());
-        while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+        while (peek() && peek() != ':' && peek() != '\n')
+          key.push_back(get());
+        while (!key.empty() && (key.back() == ' ' || key.back() == '\t'))
+          key.pop_back();
         if (peek() == ':') get();
         skip_ws_inline();
         if (peek() == '\n' || peek() == '\0') {
@@ -296,8 +306,10 @@ struct Parser {
           if (peek() == '"' || peek() == '\'') {
             ckey = parse_quoted(peek());
           } else {
-            while (peek() && peek() != ':' && peek() != '\n') ckey.push_back(get());
-            while (!ckey.empty() && (ckey.back() == ' ' || ckey.back() == '\t')) ckey.pop_back();
+            while (peek() && peek() != ':' && peek() != '\n')
+              ckey.push_back(get());
+            while (!ckey.empty() && (ckey.back() == ' ' || ckey.back() == '\t'))
+              ckey.pop_back();
           }
           skip_ws_inline();
           if (peek() != ':') {
@@ -406,7 +418,8 @@ YamlValue Parser::parse_value(int indent) {
 std::string dump(const YamlValue& v, int indent) {
   std::ostringstream os;
   auto pad = [&](int n) {
-    for (int i = 0; i < n; ++i) os << ' ';
+    for (int i = 0; i < n; ++i)
+      os << ' ';
   };
   if (v.is_null()) {
     os << "null";
@@ -461,7 +474,8 @@ std::string YamlValue::str(std::string_view key, std::string_view def) const {
 static bool parse_bool_str(const std::string& s, bool& out) {
   std::string l;
   l.reserve(s.size());
-  for (char c : s) l.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+  for (char c : s)
+    l.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
   if (l == "true" || l == "yes" || l == "on" || l == "1") {
     out = true;
     return true;
@@ -524,6 +538,8 @@ bool parse_yaml(std::string_view text, YamlValue& out, YamlError& err) {
   return err.message.empty();
 }
 
-std::string yaml_to_string(const YamlValue& v) { return dump(v, 0); }
+std::string yaml_to_string(const YamlValue& v) {
+  return dump(v, 0);
+}
 
 }  // namespace wilfred

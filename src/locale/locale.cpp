@@ -203,21 +203,22 @@ constexpr Entry kEnglish[] = {
     {"event.created_sub", "{dest} \u00b7 enter opens"},
     {"event.failed", "Cannot create event"},
     {"contact.usage_title", "contact add <name> [email] [phone]"},
-    {"contact.usage_sub",
-     "Create a contact \u00b7 e.g. contact add Jane Doe jane@x.com 555-0100"},
+    {"contact.usage_sub", "Create a contact \u00b7 e.g. contact add Jane Doe jane@x.com 555-0100"},
     {"contact.created", "Contact created: {name}"},
     {"contact.created_sub", "{dest} \u00b7 enter opens"},
     {"contact.failed", "Cannot create contact"},
     // --- Bulk file ops mini ---
     {"fileop.rename_usage", "rename <dir> <pattern>"},
-    {"fileop.rename_sub", "Bulk rename with {n} {name} {ext} \u00b7 e.g. rename ./photos photo-{n}.jpg"},
+    {"fileop.rename_sub",
+     "Bulk rename with {n} {name} {ext} \u00b7 e.g. rename ./photos photo-{n}.jpg"},
     {"fileop.renamed", "Renamed {n} files"},
     {"fileop.renamed_sub", "{dir} \u00b7 {pattern} \u00b7 enter copies first path"},
     {"fileop.rename_failed", "Cannot rename"},
     {"fileop.move_title", "move <file> to <dir>"},
     {"fileop.move_sub", "Move files via result actions (open a file \u2192 move_to) or CLI"},
     {"fileop.template_usage", "template <kind> [name] [in <dir>]"},
-    {"fileop.template_sub", "New from template \u00b7 empty, md, python, cpp, html, json, gitignore"},
+    {"fileop.template_sub",
+     "New from template \u00b7 empty, md, python, cpp, html, json, gitignore"},
     {"fileop.created", "Created {path}"},
     {"fileop.created_sub", "{kind} template \u00b7 enter opens"},
     {"fileop.template_failed", "Cannot create from template"},
@@ -237,41 +238,25 @@ constexpr Entry kEnglish[] = {
 };
 
 const char* kOverlayKeys[] = {
-    "overlay.search_placeholder",
-    "overlay.empty_title_idle",
-    "overlay.empty_sub_idle",
-    "overlay.empty_title_none",
-    "overlay.empty_sub_none",
-    "overlay.empty_sub_none_correction",
-    "overlay.correct_prefix",
-    "overlay.bar_results_one",
-    "overlay.bar_results_other",
-    "overlay.bar_fix",
-    "overlay.bar_complete",
-    "overlay.bar_details",
-    "overlay.bar_actions",
-    "overlay.primary_open",
-    "overlay.primary_copy_result",
-    "overlay.primary_paste",
-    "overlay.primary_open_browser",
-    "overlay.primary_copy",
-    "overlay.primary_run",
-    "overlay.primary_apply",
-    "overlay.primary_open_settings",
-    "overlay.primary_install",
-    "overlay.primary_open_app",
-    "overlay.primary_open_folder",
-    "overlay.settings_title",
-    "overlay.settings_search",
-    "overlay.settings_saved",
-    "overlay.settings_restart",
-    "overlay.settings_live",
-    "overlay.settings_back",
+    "overlay.search_placeholder",    "overlay.empty_title_idle",
+    "overlay.empty_sub_idle",        "overlay.empty_title_none",
+    "overlay.empty_sub_none",        "overlay.empty_sub_none_correction",
+    "overlay.correct_prefix",        "overlay.bar_results_one",
+    "overlay.bar_results_other",     "overlay.bar_fix",
+    "overlay.bar_complete",          "overlay.bar_details",
+    "overlay.bar_actions",           "overlay.primary_open",
+    "overlay.primary_copy_result",   "overlay.primary_paste",
+    "overlay.primary_open_browser",  "overlay.primary_copy",
+    "overlay.primary_run",           "overlay.primary_apply",
+    "overlay.primary_open_settings", "overlay.primary_install",
+    "overlay.primary_open_app",      "overlay.primary_open_folder",
+    "overlay.settings_title",        "overlay.settings_search",
+    "overlay.settings_saved",        "overlay.settings_restart",
+    "overlay.settings_live",         "overlay.settings_back",
     "overlay.settings_note",
 };
 
-std::string substitute(std::string text,
-                       const std::unordered_map<std::string, std::string>& args) {
+std::string substitute(std::string text, const std::unordered_map<std::string, std::string>& args) {
   for (auto& [k, v] : args) {
     std::string ph = "{" + k + "}";
     std::size_t pos = 0;
@@ -294,12 +279,14 @@ bool LocaleStore::valid_code_syntax(const std::string& code) {
   if (code == "auto") return true;
   // "en", "pt-BR", "zh-Hans" (script part is ignored at runtime).
   std::size_t i = 0;
-  while (i < code.size() && std::isalpha(static_cast<unsigned char>(code[i]))) ++i;
+  while (i < code.size() && std::isalpha(static_cast<unsigned char>(code[i])))
+    ++i;
   if (i < 2 || i > 3) return false;
   if (i == code.size()) return true;
   if (code[i] != '-' && code[i] != '_') return false;
   std::size_t j = i + 1;
-  while (j < code.size() && std::isalnum(static_cast<unsigned char>(code[j]))) ++j;
+  while (j < code.size() && std::isalnum(static_cast<unsigned char>(code[j])))
+    ++j;
   return j > i + 1 && j == code.size();
 }
 
@@ -309,7 +296,8 @@ std::vector<std::string> LocaleStore::shipped_codes() {
 
 std::vector<std::string> LocaleStore::english_keys() {
   std::vector<std::string> out;
-  for (auto& e : kEnglish) out.emplace_back(e.key);
+  for (auto& e : kEnglish)
+    out.emplace_back(e.key);
   return out;
 }
 
@@ -409,14 +397,14 @@ bool LocaleStore::load() {
   if (requested_ != "auto") {
     std::string raw;
     for (char c : requested_) {
-      if (c == '_') raw.push_back('-');
+      if (c == '_')
+        raw.push_back('-');
       else
         raw.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     }
     if (raw.size() > 2) cands.push_back(raw);
   }
-  cands.push_back(requested_ == "auto" ? system_language_code()
-                                      : normalize_lang_code(requested_));
+  cands.push_back(requested_ == "auto" ? system_language_code() : normalize_lang_code(requested_));
   std::string exe = exe_directory();
   std::vector<std::string> search;
   search.push_back(path_join(config_directory(), "lang"));

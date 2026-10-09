@@ -3,16 +3,11 @@
 namespace wilfred {
 namespace {
 
-#define B(k) \
-  { k, SettingType::Bool }
-#define I(k) \
-  { k, SettingType::Int }
-#define D(k) \
-  { k, SettingType::Double }
-#define S(k) \
-  { k, SettingType::Str }
-#define L(k) \
-  { k, SettingType::List }
+#define B(k) {k, SettingType::Bool}
+#define I(k) {k, SettingType::Int}
+#define D(k) {k, SettingType::Double}
+#define S(k) {k, SettingType::Str}
+#define L(k) {k, SettingType::List}
 
 // Keep in sync with config/config.cpp validation ranges. Enum options drive
 // select editors; free-text otherwise.
@@ -192,7 +187,7 @@ void apply_options(SettingMeta& m) {
     m.options = {"dark", "light"};
   else if (k == "ui.language")
     m.options = {"auto", "en", "de", "fr", "es", "pt", "it", "nl",
-                 "ja", "ko", "zh", "ru", "pl", "tr", "uk"};
+                 "ja",   "ko", "zh", "ru", "pl", "tr", "uk"};
   else if (k == "logging.level")
     m.options = {"error", "warn", "info", "debug"};
   else if (k == "embedding.backend")
@@ -202,8 +197,7 @@ void apply_options(SettingMeta& m) {
   else if (k == "providers.semantic_backend")
     m.options = {"hybrid", "vector", "trigram"};
   else if (k == "os_search.backend")
-    m.options = {"auto", "spotlight", "windows_search", "tracker",
-                 "baloo", "locate", "everything"};
+    m.options = {"auto", "spotlight", "windows_search", "tracker", "baloo", "locate", "everything"};
   else if (k == "index.format")
     m.options = {"auto", "v2", "v3"};
 }

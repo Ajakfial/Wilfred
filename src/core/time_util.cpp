@@ -16,7 +16,9 @@ std::int64_t unix_millis() {
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
 
-std::int64_t unix_seconds() { return unix_millis() / 1000; }
+std::int64_t unix_seconds() {
+  return unix_millis() / 1000;
+}
 
 std::string format_iso8601(std::int64_t secs) {
   std::time_t t = static_cast<std::time_t>(secs);

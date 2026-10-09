@@ -46,7 +46,8 @@ void Logger::rotate_if_needed() {
 void Logger::log(LogLevel level, std::string_view component, std::string_view message) {
   if (static_cast<int>(level) > static_cast<int>(level_)) return;
   const char* ls = "INFO";
-  if (level == LogLevel::Error) ls = "ERROR";
+  if (level == LogLevel::Error)
+    ls = "ERROR";
   else if (level == LogLevel::Warn)
     ls = "WARN";
   else if (level == LogLevel::Debug)
@@ -70,8 +71,7 @@ void Logger::log(LogLevel level, std::string_view component, std::string_view me
 
   std::lock_guard<std::mutex> lock(mu_);
 #ifdef _WIN32
-  if (_isatty(_fileno(stderr)))
-    std::fputs(line, stderr);
+  if (_isatty(_fileno(stderr))) std::fputs(line, stderr);
 #else
   std::fputs(line, stderr);
 #endif

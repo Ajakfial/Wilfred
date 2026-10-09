@@ -3,8 +3,8 @@
 #include "wilfred/core/log.hpp"
 
 #include <algorithm>
-#include <thread>
 #include <exception>
+#include <thread>
 
 namespace wilfred {
 
@@ -13,7 +13,9 @@ ThreadPool::ThreadPool(std::size_t workers) {
   spawn_to(target_);
 }
 
-ThreadPool::~ThreadPool() { stop(); }
+ThreadPool::~ThreadPool() {
+  stop();
+}
 
 void ThreadPool::spawn_to(std::size_t n) {
   while (workers_.size() < n) {

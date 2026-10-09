@@ -9,7 +9,9 @@
 
 namespace wilfred {
 
-void HistoryStore::bump() { ++generation_; }
+void HistoryStore::bump() {
+  ++generation_;
+}
 
 void HistoryStore::record_query(const std::string& query) {
   if (!enabled_ || query.empty()) return;
@@ -85,7 +87,8 @@ std::vector<std::string> HistoryStore::suggest_queries(const std::string& prefix
     scored.push_back({c, q});
   }
   if (scored.empty() && pre.empty()) {
-    for (auto& q : queries_) scored.push_back({1, q});
+    for (auto& q : queries_)
+      scored.push_back({1, q});
   }
   std::sort(scored.begin(), scored.end(), [](auto& a, auto& b) {
     if (a.first != b.first) return a.first > b.first;
@@ -116,7 +119,8 @@ std::unordered_map<std::string, int> HistoryStore::choices_for(const std::string
   if (key.size() < 2) return blended;
   for (auto& [q, paths] : choices_) {
     if (q.rfind(key, 0) == 0 || key.rfind(q, 0) == 0) {
-      for (auto& [p, c] : paths) blended[p] += c;
+      for (auto& [p, c] : paths)
+        blended[p] += c;
     }
   }
   return blended;
@@ -177,7 +181,8 @@ bool HistoryStore::load(const std::string& path) {
   std::string mode;
   std::string line;
   auto flush = [&] {
-    while (!line.empty() && line.back() == '\r') line.pop_back();
+    while (!line.empty() && line.back() == '\r')
+      line.pop_back();
     if (line.empty()) return;
     if (mode == "Q")
       queries_.push_back(line);

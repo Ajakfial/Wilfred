@@ -12,7 +12,8 @@ namespace wilfred {
 std::string fold_ascii(std::string_view s) {
   std::string o;
   o.reserve(s.size());
-  for (unsigned char c : s) o.push_back(static_cast<char>(std::tolower(c)));
+  for (unsigned char c : s)
+    o.push_back(static_cast<char>(std::tolower(c)));
   return o;
 }
 
@@ -112,8 +113,8 @@ std::wstring utf8_to_wide(std::string_view s) {
 
 std::string wide_to_utf8(std::wstring_view s) {
   if (s.empty()) return {};
-  int n = WideCharToMultiByte(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0,
-                              nullptr, nullptr);
+  int n = WideCharToMultiByte(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0, nullptr,
+                              nullptr);
   std::string o(static_cast<std::size_t>(n), '\0');
   WideCharToMultiByte(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), o.data(), n, nullptr,
                       nullptr);

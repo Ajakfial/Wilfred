@@ -31,7 +31,8 @@ std::string json_get_string(const std::string& s, const char* key) {
   pos = s.find(':', pos + k.size());
   if (pos == std::string::npos) return {};
   ++pos;
-  while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t')) ++pos;
+  while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t'))
+    ++pos;
   if (pos >= s.size()) return {};
   if (s[pos] == '"') {
     ++pos;

@@ -15,80 +15,78 @@
 #include <vector>
 
 #ifdef _WIN32
-#include "wilfred/core/utf8.hpp"
-#include <windows.h>
 #include <shellapi.h>
+#include <windows.h>
+#include "wilfred/core/utf8.hpp"
 #endif
 
 static void print_help() {
-  std::cout
-      << "Wilfred — cross-platform desktop search and launcher\n\n"
-      << "Usage:\n"
-      << "  wilfred                 Run the background daemon (overlay + indexer)\n"
-      << "  wilfred daemon          Same as above\n"
-      << "  wilfred search <query>  Search the local index and print results\n"
-      << "  wilfred launch <query>  Search and open the top result\n"
-      << "  wilfred workflow <name> [target]  Run a named workflow on a search target\n"
-      << "  wilfred exec <action> [target]    Run any result action (copy_path+reveal,\n"
-      << "                                    workflow:name, media:play, ...)\n"
-  << "  wilfred preview <path>  Show a file preview (text head / listing)\n"
-      << "  wilfred convert <src> [--to <fmt>] [--out <dst>]  Convert audio/image files\n"
-      << "  wilfred bgremove <src> [--out <dst>] [--tolerance N]  Remove image background\n"
-      << "  wilfred index           Scan configured roots and persist the index\n"
-      << "  wilfred status          Print index statistics\n"
-      << "  wilfred backup [path]   Write config/snippets/index archive\n"
-      << "  wilfred restore [path]  Restore from a backup archive\n"
-      << "  wilfred sync-push       Upload backup to sync.url\n"
-      << "  wilfred sync-pull       Download backup from sync.url\n"
-      << "  wilfred import --list   List importable launchers (Alfred, Raycast,\n"
-      << "                          PowerToys Run, Flow Launcher, ...)\n"
-      << "  wilfred import --detect Scan default locations for other launchers\n"
-      << "  wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]\n"
-      << "                          Import hotkey, web searches, snippets, ...\n"
-      << "  wilfred history-clear   Erase local search history\n"
-      << "  wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)\n"
-      << "  wilfred config-validate      Validate wilfred.yml schema\n"
-      << "  wilfred config-get <key>     Print one setting (section.key)\n"
-      << "  wilfred config-set <key> <value>  Update one setting (validated)\n"
-      << "  wilfred config-reset         Restore defaults (backs up first)\n"
-      << "  wilfred config-open          Open wilfred.yml in the editor\n"
-      << "  wilfred config-path          Print wilfred.yml path\n"
-      << "  wilfred plugin <list|pending|install|approve|revoke>  Plugin registry + trust\n"
-      << "  wilfred tile <halves|thirds|grid|columns N|rows N|stack>  Tile open windows\n"
-      << "  wilfred update [--check] Check for and install updates\n"
-      << "  wilfred help            Show this message\n\n"
-      << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
-      << "On Windows the daemon has no console; quit from the tray icon.\n";
+  std::cout << "Wilfred — cross-platform desktop search and launcher\n\n"
+            << "Usage:\n"
+            << "  wilfred                 Run the background daemon (overlay + indexer)\n"
+            << "  wilfred daemon          Same as above\n"
+            << "  wilfred search <query>  Search the local index and print results\n"
+            << "  wilfred launch <query>  Search and open the top result\n"
+            << "  wilfred workflow <name> [target]  Run a named workflow on a search target\n"
+            << "  wilfred exec <action> [target]    Run any result action (copy_path+reveal,\n"
+            << "                                    workflow:name, media:play, ...)\n"
+            << "  wilfred preview <path>  Show a file preview (text head / listing)\n"
+            << "  wilfred convert <src> [--to <fmt>] [--out <dst>]  Convert audio/image files\n"
+            << "  wilfred bgremove <src> [--out <dst>] [--tolerance N]  Remove image background\n"
+            << "  wilfred index           Scan configured roots and persist the index\n"
+            << "  wilfred status          Print index statistics\n"
+            << "  wilfred backup [path]   Write config/snippets/index archive\n"
+            << "  wilfred restore [path]  Restore from a backup archive\n"
+            << "  wilfred sync-push       Upload backup to sync.url\n"
+            << "  wilfred sync-pull       Download backup from sync.url\n"
+            << "  wilfred import --list   List importable launchers (Alfred, Raycast,\n"
+            << "                          PowerToys Run, Flow Launcher, ...)\n"
+            << "  wilfred import --detect Scan default locations for other launchers\n"
+            << "  wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]\n"
+            << "                          Import hotkey, web searches, snippets, ...\n"
+            << "  wilfred history-clear   Erase local search history\n"
+            << "  wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)\n"
+            << "  wilfred config-validate      Validate wilfred.yml schema\n"
+            << "  wilfred config-get <key>     Print one setting (section.key)\n"
+            << "  wilfred config-set <key> <value>  Update one setting (validated)\n"
+            << "  wilfred config-reset         Restore defaults (backs up first)\n"
+            << "  wilfred config-open          Open wilfred.yml in the editor\n"
+            << "  wilfred config-path          Print wilfred.yml path\n"
+            << "  wilfred plugin <list|pending|install|approve|revoke>  Plugin registry + trust\n"
+            << "  wilfred tile <halves|thirds|grid|columns N|rows N|stack>  Tile open windows\n"
+            << "  wilfred update [--check] Check for and install updates\n"
+            << "  wilfred help            Show this message\n\n"
+            << "Default hotkey: Ctrl+Alt+W (Command+Option+W on macOS)\n"
+            << "On Windows the daemon has no console; quit from the tray icon.\n";
 }
 
 static void print_import_help() {
-  std::cout
-      << "Usage: wilfred import [launcher] [options]\n\n"
-      << "Import settings from other launchers into wilfred.yml.\n\n"
-      << "Launchers (see `wilfred import --list`):\n"
-      << "  alfred, raycast (macOS) | powertoys, flowlauncher, wox, keypirinha,\n"
-      << "  listary (Windows) | ulauncher, albert, krunner, rofi (Linux)\n"
-      << "  auto (default): import from every detected launcher.\n\n"
-      << "Examples:\n"
-      << "  wilfred import --list\n"
-      << "  wilfred import --detect\n"
-      << "  wilfred import auto --dry-run\n"
-      << "  wilfred import alfred --from ~/Alfred.alfredpreferences --dry-run\n"
-      << "  wilfred import flowlauncher --from Settings.json --overwrite\n"
-      << "  wilfred import --from ./shortcuts.json\n\n"
-      << "Options:\n"
-      << "  --from <path>      File or directory to import (auto-detects format).\n"
-      << "                     Without it, default locations are scanned.\n"
-      << "  --dry-run, -n      Preview without writing wilfred.yml.\n"
-      << "  --overwrite        Replace conflicting macros/quicklinks/snippets.\n"
-      << "                     Default is merge (keep existing, add new).\n"
-      << "  --no-hotkey        Skip the global hotkey.\n"
-      << "  --no-searches      Skip custom web searches (macros).\n"
-      << "  --no-snippets      Skip snippets.\n"
-      << "  --no-aliases       Skip aliases.\n"
-      << "  --no-quicklinks    Skip quicklinks.\n"
-      << "  --no-theme         Skip theme.\n"
-      << "  --no-browser       Skip the default search template.\n";
+  std::cout << "Usage: wilfred import [launcher] [options]\n\n"
+            << "Import settings from other launchers into wilfred.yml.\n\n"
+            << "Launchers (see `wilfred import --list`):\n"
+            << "  alfred, raycast (macOS) | powertoys, flowlauncher, wox, keypirinha,\n"
+            << "  listary (Windows) | ulauncher, albert, krunner, rofi (Linux)\n"
+            << "  auto (default): import from every detected launcher.\n\n"
+            << "Examples:\n"
+            << "  wilfred import --list\n"
+            << "  wilfred import --detect\n"
+            << "  wilfred import auto --dry-run\n"
+            << "  wilfred import alfred --from ~/Alfred.alfredpreferences --dry-run\n"
+            << "  wilfred import flowlauncher --from Settings.json --overwrite\n"
+            << "  wilfred import --from ./shortcuts.json\n\n"
+            << "Options:\n"
+            << "  --from <path>      File or directory to import (auto-detects format).\n"
+            << "                     Without it, default locations are scanned.\n"
+            << "  --dry-run, -n      Preview without writing wilfred.yml.\n"
+            << "  --overwrite        Replace conflicting macros/quicklinks/snippets.\n"
+            << "                     Default is merge (keep existing, add new).\n"
+            << "  --no-hotkey        Skip the global hotkey.\n"
+            << "  --no-searches      Skip custom web searches (macros).\n"
+            << "  --no-snippets      Skip snippets.\n"
+            << "  --no-aliases       Skip aliases.\n"
+            << "  --no-quicklinks    Skip quicklinks.\n"
+            << "  --no-theme         Skip theme.\n"
+            << "  --no-browser       Skip the default search template.\n";
 }
 
 #ifdef _WIN32
@@ -235,7 +233,8 @@ static int wilfred_main(int argc, char** argv) {
         }
         return wilfred::run_plugin_revoke(arg);
       }
-      std::cerr << "usage: wilfred plugin <list|pending|install <id>|approve [id|--all]|revoke <id>>\n";
+      std::cerr
+          << "usage: wilfred plugin <list|pending|install <id>|approve [id|--all]|revoke <id>>\n";
       return 2;
     }
     if (cmd == "tile" || cmd == "tiling") {
@@ -255,12 +254,14 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "convert") {
       std::vector<std::string> args;
-      for (int i = 2; i < argc; ++i) args.push_back(argv[i]);
+      for (int i = 2; i < argc; ++i)
+        args.push_back(argv[i]);
       return svc.run_convert(args);
     }
     if (cmd == "bgremove" || cmd == "bg-remove" || cmd == "removebg" || cmd == "rmbg") {
       std::vector<std::string> args;
-      for (int i = 2; i < argc; ++i) args.push_back(argv[i]);
+      for (int i = 2; i < argc; ++i)
+        args.push_back(argv[i]);
       return svc.run_bgremove(args);
     }
     if (cmd == "preview") {
@@ -319,7 +320,8 @@ static int wilfred_main(int argc, char** argv) {
     if (cmd == "pins" || cmd == "favorites") {
       wilfred::PinStore::instance().configure(wilfred::default_pins_path(), {});
       wilfred::PinStore::instance().load();
-      for (auto& p : wilfred::PinStore::instance().list()) std::cout << p << "\n";
+      for (auto& p : wilfred::PinStore::instance().list())
+        std::cout << p << "\n";
       return 0;
     }
     if (cmd == "define" || cmd == "def" || cmd == "thesaurus" || cmd == "synonym") {
@@ -341,8 +343,10 @@ static int wilfred_main(int argc, char** argv) {
       bool auto_yes = false;
       for (int i = 2; i < argc; ++i) {
         std::string a = argv[i];
-        if (a == "--check" || a == "-c") check_only = true;
-        else if (a == "--yes" || a == "-y") auto_yes = true;
+        if (a == "--check" || a == "-c")
+          check_only = true;
+        else if (a == "--yes" || a == "-y")
+          auto_yes = true;
       }
       return wilfred::run_update_command(check_only, auto_yes);
     }
@@ -452,5 +456,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   return wilfred_main(argc, argv.data());
 }
 #else
-int main(int argc, char** argv) { return wilfred_main(argc, argv); }
+int main(int argc, char** argv) {
+  return wilfred_main(argc, argv);
+}
 #endif

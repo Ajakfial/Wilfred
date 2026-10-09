@@ -31,7 +31,8 @@ namespace {
 // inputs are already lowercased by callers in most cases.
 int edit_distance(const std::string& a, const std::string& b) {
   std::vector<int> prev(b.size() + 1), cur(b.size() + 1);
-  for (std::size_t j = 0; j <= b.size(); ++j) prev[j] = static_cast<int>(j);
+  for (std::size_t j = 0; j <= b.size(); ++j)
+    prev[j] = static_cast<int>(j);
   for (std::size_t i = 1; i <= a.size(); ++i) {
     cur[0] = static_cast<int>(i);
     for (std::size_t j = 1; j <= b.size(); ++j) {
@@ -106,20 +107,23 @@ bool is_bool_string(const std::string& s) {
 
 bool is_int_string(const std::string& s) {
   std::size_t i = 0;
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+    ++i;
   if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
   bool any = false;
   while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
     ++i;
     any = true;
   }
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+    ++i;
   return any && i == s.size();
 }
 
 bool is_number_string(const std::string& s) {
   std::size_t i = 0;
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+    ++i;
   if (i < s.size() && (s[i] == '+' || s[i] == '-')) ++i;
   bool any = false;
   while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
@@ -143,7 +147,8 @@ bool is_number_string(const std::string& s) {
     }
     if (!exp) return false;
   }
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+    ++i;
   return any && i == s.size();
 }
 
@@ -157,8 +162,8 @@ bool expect_bool(const YamlValue* section, const char* key, const std::string& s
   auto* v = section->get(key);
   if (!v || !v->is_string()) {
     if (v && !v->is_string()) {
-      err.message = std::string("'") + sect + "." + key +
-                    "' must be true/false. Example: " + key + ": true";
+      err.message =
+          std::string("'") + sect + "." + key + "' must be true/false. Example: " + key + ": true";
       return false;
     }
     return true;
@@ -177,8 +182,8 @@ bool expect_int(const YamlValue* section, const char* key, const std::string& se
   auto* v = section->get(key);
   if (!v || !v->is_string()) {
     if (v && !v->is_string()) {
-      err.message = std::string("'") + sect + "." + key +
-                    "' must be an integer. Example: " + key + ": 40";
+      err.message =
+          std::string("'") + sect + "." + key + "' must be an integer. Example: " + key + ": 40";
       return false;
     }
     return true;
@@ -191,14 +196,14 @@ bool expect_int(const YamlValue* section, const char* key, const std::string& se
   return true;
 }
 
-[[maybe_unused]] bool expect_number(const YamlValue* section, const char* key, const std::string& sect,
-                   ConfigError& err) {
+[[maybe_unused]] bool expect_number(const YamlValue* section, const char* key,
+                                    const std::string& sect, ConfigError& err) {
   if (!section) return true;
   auto* v = section->get(key);
   if (!v || !v->is_string()) {
     if (v && !v->is_string()) {
-      err.message = std::string("'") + sect + "." + key +
-                    "' must be a number. Example: " + key + ": 0.5";
+      err.message =
+          std::string("'") + sect + "." + key + "' must be a number. Example: " + key + ": 0.5";
       return false;
     }
     return true;
@@ -212,8 +217,10 @@ bool expect_int(const YamlValue* section, const char* key, const std::string& se
 }
 
 std::string trim_flow(std::string s) {
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.pop_back();
+  while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+    s.erase(s.begin());
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r'))
+    s.pop_back();
   return s;
 }
 
@@ -235,9 +242,8 @@ std::vector<std::string> split_flow_or_plus(const std::string& s) {
       if (ch == ',') {
         auto item = trim_flow(cur);
         // Strip surrounding quotes.
-        if (item.size() >= 2 &&
-            ((item.front() == '"' && item.back() == '"') ||
-             (item.front() == '\'' && item.back() == '\'')))
+        if (item.size() >= 2 && ((item.front() == '"' && item.back() == '"') ||
+                                 (item.front() == '\'' && item.back() == '\'')))
           item = item.substr(1, item.size() - 2);
         item = trim_flow(item);
         if (!item.empty()) {
@@ -283,27 +289,55 @@ bool is_valid_action_step(const std::string& s) {
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') has_alpha = true;
   }
   if (!has_alpha) return false;
-  static const char* known[] = {"open",        "reveal",       "copy_path",  "copy_name",
-                                "copy_posix",  "copy_file_uri", "copy_wsl",   "copy_text",
-                                "copy",        "hash_file",    "compress_zip", "open_terminal",
-                                "open_editor", "new_file",     "new_folder", "kill_process",
-                                "timer_stop",  "paste",        "expand",     "clip_pin",
-                                "clip_unpin",  "clip_clear",   "copy_name",  "transcribe_run",
-                                "dictate_run", "convert_run", "bgremove_run",
-                                "bulk_rename", "move_to",      "new_from_template",
-                                "pin_add",     "pin_remove",
-                                "window_minimize", "window_maximize", "window_restore",
-                                "window_close", "window_snap_left", "window_snap_right",
+  static const char* known[] = {"open",
+                                "reveal",
+                                "copy_path",
+                                "copy_name",
+                                "copy_posix",
+                                "copy_file_uri",
+                                "copy_wsl",
+                                "copy_text",
+                                "copy",
+                                "hash_file",
+                                "compress_zip",
+                                "open_terminal",
+                                "open_editor",
+                                "new_file",
+                                "new_folder",
+                                "kill_process",
+                                "timer_stop",
+                                "paste",
+                                "expand",
+                                "clip_pin",
+                                "clip_unpin",
+                                "clip_clear",
+                                "copy_name",
+                                "transcribe_run",
+                                "dictate_run",
+                                "convert_run",
+                                "bgremove_run",
+                                "bulk_rename",
+                                "move_to",
+                                "new_from_template",
+                                "pin_add",
+                                "pin_remove",
+                                "window_minimize",
+                                "window_maximize",
+                                "window_restore",
+                                "window_close",
+                                "window_snap_left",
+                                "window_snap_right",
                                 nullptr};
   std::string low;
-  for (char c : s) low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+  for (char c : s)
+    low.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
   // Allow prefixed families.
   if (low.rfind("open_with:", 0) == 0 || low.rfind("workflow:", 0) == 0 ||
       low.rfind("media:", 0) == 0 || low.rfind("note_delete:", 0) == 0 ||
       low.rfind("todo_done:", 0) == 0 || low.rfind("todo_undo:", 0) == 0 ||
       low.rfind("todo_delete:", 0) == 0 || low.rfind("layout_apply:", 0) == 0 ||
-      low.rfind("tile:", 0) == 0 ||
-      low.rfind("focus_window:", 0) == 0 || low.rfind("dictate_run:", 0) == 0)
+      low.rfind("tile:", 0) == 0 || low.rfind("focus_window:", 0) == 0 ||
+      low.rfind("dictate_run:", 0) == 0)
     return true;
   for (auto** p = known; *p; ++p)
     if (low == *p) return true;
@@ -329,19 +363,42 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   Config c;
 
   {
-    std::vector<std::string> top_valid = {"search",   "index",   "ranking",  "aliases",
-                                          "macros",   "scopes",  "custom_metadata", "history",
-                                          "clipboard", "hotkey", "browser", "logging",
-                                          "ui",       "plugins", "providers", "embedding",
-                                          "ai",       "sources", "remotes", "packages", "os_search",
+    std::vector<std::string> top_valid = {"search",
+                                          "index",
+                                          "ranking",
+                                          "aliases",
+                                          "macros",
+                                          "scopes",
+                                          "custom_metadata",
+                                          "history",
+                                          "clipboard",
+                                          "hotkey",
+                                          "browser",
+                                          "logging",
+                                          "ui",
+                                          "plugins",
+                                          "providers",
+                                          "embedding",
+                                          "ai",
+                                          "sources",
+                                          "remotes",
+                                          "packages",
+                                          "os_search",
                                           "layouts",
-                                          "transcription", "api",
-                                          "sync",     "snippets", "workflows", "quicklinks",
-                                          "app_actions", "hotkeys", "pins", "favorites"};
+                                          "transcription",
+                                          "api",
+                                          "sync",
+                                          "snippets",
+                                          "workflows",
+                                          "quicklinks",
+                                          "app_actions",
+                                          "hotkeys",
+                                          "pins",
+                                          "favorites"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
       if (!err.message.empty()) {
-        err.message += " (in " +
-                       std::string(c.source_path.empty() ? "wilfred.yml" : c.source_path) + ")";
+        err.message +=
+            " (in " + std::string(c.source_path.empty() ? "wilfred.yml" : c.source_path) + ")";
       }
       return false;
     }
@@ -406,7 +463,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
 
   if (auto* index = root.get("index")) {
     if (!index->is_map()) {
-      err.message = "index: must be a mapping, e.g.\nindex:\n  paths: []\n  exclude: [node_modules]";
+      err.message =
+          "index: must be a mapping, e.g.\nindex:\n  paths: []\n  exclude: [node_modules]";
       return false;
     }
     std::vector<std::string> valid = {"paths",
@@ -432,8 +490,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                       "wal_compact_bytes",
                                       "extensions"};
     if (!check_unknown_keys(*index, valid, "index", err)) return false;
-    for (auto* k : {"follow_symlinks", "index_hidden", "index_system", "usn_scan",
-                    "content_indexing"})
+    for (auto* k :
+         {"follow_symlinks", "index_hidden", "index_system", "usn_scan", "content_indexing"})
       if (!expect_bool(index, k, "index", err)) return false;
     for (auto* k : {"max_file_size_bytes", "content_max_bytes", "content_max_tokens", "workers",
                     "cpu_percent_limit", "memory_limit_mb", "batch_size", "debounce_fs_ms",
@@ -453,8 +511,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
           "index.format must be auto, v2, or v3 (got '" + index->str("format", "auto") + "')";
       return false;
     }
-    c.index.max_file_size_bytes =
-        static_cast<std::uint64_t>(std::max<std::int64_t>(0, index->integer("max_file_size_bytes", 0)));
+    c.index.max_file_size_bytes = static_cast<std::uint64_t>(
+        std::max<std::int64_t>(0, index->integer("max_file_size_bytes", 0)));
     c.index.content_indexing = index->boolean("content_indexing", true);
     c.index.content_max_bytes =
         static_cast<std::uint64_t>(index->integer("content_max_bytes", 131072));
@@ -478,8 +536,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       c.index.ext_include = ext->string_list("include");
       c.index.ext_exclude = ext->string_list("exclude");
     }
-    for (auto& e : c.index.ext_include) e = norm_ext(e);
-    for (auto& e : c.index.ext_exclude) e = norm_ext(e);
+    for (auto& e : c.index.ext_include)
+      e = norm_ext(e);
+    for (auto& e : c.index.ext_exclude)
+      e = norm_ext(e);
     if (c.index.cpu_percent_limit < 5 || c.index.cpu_percent_limit > 100) {
       err.message = "index.cpu_percent_limit must be between 5 and 100";
       return false;
@@ -650,7 +710,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* hks = root.get("hotkeys")) {
     if (!hks->is_map()) {
       err.message =
-          "hotkeys: must be a mapping of name -> binding, e.g.\nhotkeys:\n  google-clip:\n    modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip";
+          "hotkeys: must be a mapping of name -> binding, e.g.\nhotkeys:\n  google-clip:\n    "
+          "modifiers: [ctrl, alt]\n    key: G\n    run: macro:gclip";
       return false;
     }
     for (auto& [k, v] : hks->as_map()) {
@@ -724,10 +785,9 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "ui: must be a mapping";
       return false;
     }
-    std::vector<std::string> ui_valid = {"theme",       "max_visible", "width",
-                                         "accent",      "font_size",   "fontSize",
-                                         "language",    "transparent", "opacity",
-                                         "blur"};
+    std::vector<std::string> ui_valid = {"theme",     "max_visible", "width",    "accent",
+                                         "font_size", "fontSize",    "language", "transparent",
+                                         "opacity",   "blur"};
     if (!check_unknown_keys(*ui, ui_valid, "ui", err)) return false;
     c.ui.theme = ui->str("theme", "dark");
     c.ui.max_visible = static_cast<int>(ui->integer("max_visible", 9));
@@ -780,8 +840,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       return false;
     }
     c.plugins.registry = pl->str("registry", "");
-    if (!c.plugins.registry.empty() &&
-        c.plugins.registry.rfind("http://", 0) != 0 &&
+    if (!c.plugins.registry.empty() && c.plugins.registry.rfind("http://", 0) != 0 &&
         c.plugins.registry.rfind("https://", 0) != 0) {
       err.message = "plugins.registry must start with http:// or https://";
       return false;
@@ -804,12 +863,12 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.providers.semantic_trigram_weight = pr->number("semantic_trigram_weight", 1.0);
     if (c.providers.semantic_vector_weight < 0 || c.providers.semantic_vector_weight > 4 ||
         c.providers.semantic_trigram_weight < 0 || c.providers.semantic_trigram_weight > 4) {
-      err.message = "providers.semantic_vector_weight and semantic_trigram_weight must be between 0 and 4";
+      err.message =
+          "providers.semantic_vector_weight and semantic_trigram_weight must be between 0 and 4";
       return false;
     }
     c.providers.semantic_backend = pr->str("semantic_backend", "hybrid");
-    c.providers.semantic_max_results =
-        static_cast<int>(pr->integer("semantic_max_results", 10));
+    c.providers.semantic_max_results = static_cast<int>(pr->integer("semantic_max_results", 10));
     if (c.providers.semantic_max_results < 1 || c.providers.semantic_max_results > 100) {
       err.message = "providers.semantic_max_results must be between 1 and 100";
       return false;
@@ -892,7 +951,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* rm = root.get("remotes")) {
     if (!rm->is_map()) {
       err.message =
-          "remotes: must be a mapping, e.g.\nremotes:\n  enabled: true\n  sources:\n    - name: wiki\n      url: \"https://example.com/search?q={query_enc}\"";
+          "remotes: must be a mapping, e.g.\nremotes:\n  enabled: true\n  sources:\n    - name: "
+          "wiki\n      url: \"https://example.com/search?q={query_enc}\"";
       return false;
     }
     std::vector<std::string> valid = {"enabled", "timeout_ms", "max_results", "sources"};
@@ -918,8 +978,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
           return false;
         }
         if (s.url.rfind("http://", 0) != 0 && s.url.rfind("https://", 0) != 0) {
-          err.message = "remotes.sources url must start with http:// or https:// (got '" + s.url +
-                        "')";
+          err.message =
+              "remotes.sources url must start with http:// or https:// (got '" + s.url + "')";
           return false;
         }
         if (s.url.size() > 2048) {
@@ -988,8 +1048,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
             }
             for (auto& [hk, hv] : hdrs->as_map()) {
               if (!hv.is_string()) {
-                err.message = "remotes.sources '" + s.name + "' header '" + hk +
-                              "' must be a string";
+                err.message =
+                    "remotes.sources '" + s.name + "' header '" + hk + "' must be a string";
                 return false;
               }
               s.headers[hk] = hv.as_string();
@@ -1027,8 +1087,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       return false;
     }
     // Must match pkg_known_managers() in search/pkg.hpp.
-    static const char* known[] = {"winget", "brew", "apt", "choco", "flatpak", "pacman",
-                                  nullptr};
+    static const char* known[] = {"winget", "brew", "apt", "choco", "flatpak", "pacman", nullptr};
     auto managers = pk->string_list("managers");
     if (managers.size() == 1 && !managers[0].empty() && managers[0].front() == '[')
       managers = split_flow_or_plus(managers[0]);  // inline [brew, apt] form
@@ -1080,12 +1139,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     if (canon == "tracker3" || canon == "tracker_3") canon = "tracker";
     if (canon == "baloosearch" || canon == "baloosearcher") canon = "baloo";
     if (canon == "plocate" || canon == "mlocate" || canon == "bsd_locate") canon = "locate";
-    if (canon == "es" || canon == "es_exe" || canon == "everything_search" ||
-        canon == "voidtools")
+    if (canon == "es" || canon == "es_exe" || canon == "everything_search" || canon == "voidtools")
       canon = "everything";
-    static const char* known[] = {"auto",       "spotlight", "windows_search", "tracker",
-                                  "baloo",      "locate",    "everything",
-                                  nullptr};
+    static const char* known[] = {"auto",  "spotlight", "windows_search", "tracker",
+                                  "baloo", "locate",    "everything",     nullptr};
     bool ok = false;
     for (auto** p = known; *p; ++p)
       if (canon == *p) ok = true;
@@ -1101,7 +1158,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* lo = root.get("layouts")) {
     if (!lo->is_map()) {
       err.message =
-          "layouts: must be a mapping, e.g.\nlayouts:\n  auto_apply: true\n  auto_layout: work\n  monitor_layouts:\n    docked: work";
+          "layouts: must be a mapping, e.g.\nlayouts:\n  auto_apply: true\n  auto_layout: work\n  "
+          "monitor_layouts:\n    docked: work";
       return false;
     }
     std::vector<std::string> valid = {"auto_apply", "auto_layout", "monitor_layouts"};
@@ -1141,8 +1199,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "transcription: must be a mapping";
       return false;
     }
-    std::vector<std::string> valid = {"enabled", "binary", "model",
-                                      "language", "save_txt", "mic"};
+    std::vector<std::string> valid = {"enabled", "binary", "model", "language", "save_txt", "mic"};
     if (!check_unknown_keys(*tr, valid, "transcription", err)) return false;
     if (!expect_bool(tr, "enabled", "transcription", err) ||
         !expect_bool(tr, "save_txt", "transcription", err))
@@ -1179,9 +1236,9 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "sync: must be a mapping";
       return false;
     }
-    std::vector<std::string> sync_valid = {"enabled", "url",       "token",
-                                           "interval_seconds", "include_index",
-                                           "encrypt", "password",  "key_file"};
+    std::vector<std::string> sync_valid = {"enabled",          "url",           "token",
+                                           "interval_seconds", "include_index", "encrypt",
+                                           "password",         "key_file"};
     if (!check_unknown_keys(*sy, sync_valid, "sync", err)) return false;
     c.sync.enabled = sy->boolean("enabled", false);
     c.sync.url = sy->str("url", "");
@@ -1240,7 +1297,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* wf = root.get("workflows")) {
     if (!wf->is_map()) {
       err.message =
-          "workflows: must be a mapping of name -> steps, e.g.\nworkflows:\n  review:\n    - copy_path\n    - reveal";
+          "workflows: must be a mapping of name -> steps, e.g.\nworkflows:\n  review:\n    - "
+          "copy_path\n    - reveal";
       return false;
     }
     for (auto& [k, v] : wf->as_map()) {
@@ -1254,7 +1312,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         // "copy_path+reveal" or flow "[copy_path, reveal]" form.
         steps = split_flow_or_plus(v.as_string());
         if (steps.empty()) {
-          err.message = "workflows.'" + k + "' must list at least one action, e.g. 'copy_path+reveal'";
+          err.message =
+              "workflows.'" + k + "' must list at least one action, e.g. 'copy_path+reveal'";
           return false;
         }
       } else if (v.is_list()) {
@@ -1312,7 +1371,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       for (auto& st : steps) {
         if (!is_valid_action_step(st)) {
           err.message = "workflows.'" + k + "' has unknown action '" + st +
-                        "'. Valid actions include: open, reveal, copy_path, copy_text, hash_file, compress_zip, open_terminal, kill_process, media:play, timer_stop, ...";
+                        "'. Valid actions include: open, reveal, copy_path, copy_text, hash_file, "
+                        "compress_zip, open_terminal, kill_process, media:play, timer_stop, ...";
           return false;
         }
       }
@@ -1323,7 +1383,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* ql = root.get("quicklinks")) {
     if (!ql->is_map()) {
       err.message =
-          "quicklinks: must be a mapping of name -> template, e.g.\nquicklinks:\n  docs: \"https://example.com/{query}\"";
+          "quicklinks: must be a mapping of name -> template, e.g.\nquicklinks:\n  docs: "
+          "\"https://example.com/{query}\"";
       return false;
     }
     for (auto& [k, v] : ql->as_map()) {
@@ -1336,9 +1397,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       if (tmpl.find("{query}") == std::string::npos && tmpl.find("{1}") == std::string::npos &&
           tmpl.find("{*}") == std::string::npos && tmpl.find("{q}") == std::string::npos &&
           tmpl.find("{clipboard}") == std::string::npos) {
-        err.message = "quicklinks.'" + k +
-                      "' should contain a placeholder like {query}, {1}, {*} or {clipboard}. Got '" +
-                      tmpl + "'";
+        err.message =
+            "quicklinks.'" + k +
+            "' should contain a placeholder like {query}, {1}, {*} or {clipboard}. Got '" + tmpl +
+            "'";
         return false;
       }
       c.quicklinks[to_lower_utf8(k)] = tmpl;
@@ -1348,7 +1410,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   if (auto* aa = root.get("app_actions")) {
     if (!aa->is_map()) {
       err.message =
-          "app_actions: must be a mapping of app-name -> action list, e.g.\napp_actions:\n  code:\n    - copy_path\n    - open_terminal";
+          "app_actions: must be a mapping of app-name -> action list, e.g.\napp_actions:\n  "
+          "code:\n    - copy_path\n    - open_terminal";
       return false;
     }
     for (auto& [k, v] : aa->as_map()) {
@@ -1448,8 +1511,7 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     }
   }
 
-  if (c.index.system_directories.empty())
-    c.index.system_directories = default_system_directories();
+  if (c.index.system_directories.empty()) c.index.system_directories = default_system_directories();
 
   out = std::move(c);
   return true;

@@ -10,18 +10,18 @@
 #include <filesystem>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shlobj.h>
+#include <windows.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <pwd.h>
+#include <unistd.h>
 #include <climits>
 #include <cstdlib>
-#include <pwd.h>
-#include <unistd.h>
 #else
-#include <climits>
 #include <pwd.h>
 #include <unistd.h>
+#include <climits>
 #if defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -187,11 +187,21 @@ std::string data_directory() {
 #endif
 }
 
-std::string default_config_path() { return path_join(config_directory(), "wilfred.yml"); }
-std::string default_index_path() { return path_join(data_directory(), "index"); }
-std::string default_history_path() { return path_join(data_directory(), "history.bin"); }
-std::string default_clips_path() { return path_join(data_directory(), "clips.bin"); }
-std::string default_log_path() { return path_join(data_directory(), "wilfred.log"); }
+std::string default_config_path() {
+  return path_join(config_directory(), "wilfred.yml");
+}
+std::string default_index_path() {
+  return path_join(data_directory(), "index");
+}
+std::string default_history_path() {
+  return path_join(data_directory(), "history.bin");
+}
+std::string default_clips_path() {
+  return path_join(data_directory(), "clips.bin");
+}
+std::string default_log_path() {
+  return path_join(data_directory(), "wilfred.log");
+}
 
 std::string exe_directory() {
 #ifdef _WIN32
@@ -324,6 +334,8 @@ bool path_is_under(std::string_view path, std::string_view root) {
 #endif
 }
 
-std::string native_path(std::string_view utf8) { return replace_slashes(std::string(utf8)); }
+std::string native_path(std::string_view utf8) {
+  return replace_slashes(std::string(utf8));
+}
 
 }  // namespace wilfred
