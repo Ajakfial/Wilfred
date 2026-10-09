@@ -17,6 +17,9 @@
 
 #ifdef _WIN32
 #include <windows.h>
+// Windows Search native API (ISearchManager -> catalog -> query helper).
+// ole32/oleaut32 are already linked on Windows (see CMakeLists).
+#include <searchapi.h>
 #else
 #include <fcntl.h>
 #include <signal.h>
@@ -409,6 +412,184 @@ std::string windows_ps_script(const std::string& query, int top) {
 
 }  // namespace
 
+#ifdef _WIN32
+namespace {
+
+// Minimal COM RAII (no ATL dependency).
+template <typename T>
+struct ComHolder {
+  T* p{nullptr};
+  ComHolder() = default;
+  ~ComHolder() { reset(); }
+  void reset(T* q = nullptr) {
+    if (p) p->Release();
+    p = q;
+  }
+  T* get() const { return p; }
+  T** out() {
+    reset();
+    return &p;
+  }
+  ComHolder(const ComHolder&) = delete;
+  ComHolder& operator=(const ComHolder&) = delete;
+};
+
+bool dispatch_call(IDispatch* d, const wchar_t* name, WORD flags, VARIANT* result, VARIANT* args,
+                   unsigned nargs) {
+  if (!d) return false;
+  DISPID id = 0;
+  LPOLESTR nm = const_cast<LPOLESTR>(name);
+  if (FAILED(d->GetIDsOfNames(IID_NULL, &nm, 1, LOCALE_USER_DEFAULT, &id))) return false;
+  DISPPARAMS dp{};
+  dp.cArgs = nargs;
+  dp.rgvarg = args;
+  VARIANT tmp;
+  VariantInit(&tmp);
+  HRESULT hr =
+      d->Invoke(id, IID_NULL, LOCALE_USER_DEFAULT, flags, &dp, result ? result : &tmp, nullptr, nullptr);
+  if (!result) VariantClear(&tmp);
+  return SUCCEEDED(hr);
+}
+
+bool dispatch_string_prop(IDispatch* d, const wchar_t* name, std::wstring& out) {
+  VARIANT v;
+  VariantInit(&v);
+  if (!dispatch_call(d, name, DISPATCH_PROPERTYGET, &v, nullptr, 0)) {
+    VariantClear(&v);
+    return false;
+  }
+  bool ok = false;
+  if (v.vt == VT_BSTR && v.bstrVal) {
+    out.assign(v.bstrVal, SysStringLen(v.bstrVal));
+    ok = true;
+  }
+  VariantClear(&v);
+  return ok;
+}
+
+// Executes SystemIndex SQL via late-bound ADO (no #import, no new link
+// deps). Returns true once the recordset opened; rows are best-effort.
+bool ado_run_sql(const wchar_t* sql, std::size_t cap, std::vector<std::string>& out) {
+  CLSID cls{};
+  ComHolder<IDispatch> conn;
+  if (FAILED(CLSIDFromProgID(L"ADODB.Connection", &cls))) return false;
+  if (FAILED(CoCreateInstance(cls, nullptr, CLSCTX_INPROC_SERVER, IID_IDispatch,
+                              reinterpret_cast<void**>(conn.out()))))
+    return false;
+  VARIANT arg;
+  VariantInit(&arg);
+  arg.vt = VT_BSTR;
+  arg.bstrVal =
+      SysAllocString(L"Provider=Search.CollatorDSO;Extended Properties='Application=Windows';");
+  bool opened = arg.bstrVal && dispatch_call(conn.get(), L"Open", DISPATCH_METHOD, nullptr, &arg, 1);
+  VariantClear(&arg);
+  if (!opened) return false;
+
+  ComHolder<IDispatch> rs;
+  if (FAILED(CLSIDFromProgID(L"ADODB.Recordset", &cls))) return false;
+  if (FAILED(CoCreateInstance(cls, nullptr, CLSCTX_INPROC_SERVER, IID_IDispatch,
+                              reinterpret_cast<void**>(rs.out()))))
+    return false;
+  // Recordset.Open(Source, ActiveConnection, CursorType, LockType, Options);
+  // args reversed: adCmdText=1, adLockReadOnly=1, adOpenForwardOnly=0.
+  VARIANT av[5];
+  for (auto& v : av) VariantInit(&v);
+  av[4].vt = VT_BSTR;
+  av[4].bstrVal = SysAllocString(sql);
+  av[3].vt = VT_DISPATCH;
+  av[3].pdispVal = conn.get();
+  if (av[3].pdispVal) av[3].pdispVal->AddRef();
+  av[2].vt = VT_I4;
+  av[2].lVal = 0;
+  av[1].vt = VT_I4;
+  av[1].lVal = 1;
+  av[0].vt = VT_I4;
+  av[0].lVal = 1;
+  bool ok = av[4].bstrVal && dispatch_call(rs.get(), L"Open", DISPATCH_METHOD, nullptr, av, 5);
+  for (auto& v : av) VariantClear(&v);
+  if (!ok) return false;
+
+  while (out.size() < cap) {
+    VARIANT eof;
+    VariantInit(&eof);
+    bool eof_ok = dispatch_call(rs.get(), L"EOF", DISPATCH_PROPERTYGET, &eof, nullptr, 0);
+    bool done = !eof_ok || (eof.vt == VT_BOOL && eof.boolVal != VARIANT_FALSE);
+    VariantClear(&eof);
+    if (done) break;
+    VARIANT fields;
+    VariantInit(&fields);
+    if (!dispatch_call(rs.get(), L"Fields", DISPATCH_PROPERTYGET, &fields, nullptr, 0) ||
+        fields.vt != VT_DISPATCH || !fields.pdispVal) {
+      VariantClear(&fields);
+      break;
+    }
+    VARIANT name;
+    VariantInit(&name);
+    name.vt = VT_BSTR;
+    name.bstrVal = SysAllocString(L"System.ItemPathDisplay");
+    VARIANT field;
+    VariantInit(&field);
+    bool got = name.bstrVal &&
+               dispatch_call(fields.pdispVal, L"Item", DISPATCH_METHOD, &field, &name, 1);
+    VariantClear(&name);
+    VariantClear(&fields);
+    if (got && field.vt == VT_DISPATCH && field.pdispVal) {
+      std::wstring ws;
+      if (dispatch_string_prop(field.pdispVal, L"Value", ws) && !ws.empty())
+        out.push_back(wide_to_utf8(ws));
+    }
+    VariantClear(&field);
+    if (!dispatch_call(rs.get(), L"MoveNext", DISPATCH_METHOD, nullptr, nullptr, 0)) break;
+  }
+  dispatch_call(rs.get(), L"Close", DISPATCH_METHOD, nullptr, nullptr, 0);
+  dispatch_call(conn.get(), L"Close", DISPATCH_METHOD, nullptr, nullptr, 0);
+  return true;
+}
+
+}  // namespace
+
+// Native SystemIndex query: ISearchQueryHelper builds locale-correct SQL
+// from the raw user text (quoting/escaping handled per locale, better than
+// hand-built CONTAINS), executed in-process via late-bound ADO. Returns
+// true when the index answered (hits may be empty); false when SystemIndex
+// is unavailable so callers can fall back to Everything CLI / PowerShell.
+bool os_windows_search_com(const std::string& query, int limit, std::vector<std::string>& out) {
+  out.clear();
+  std::string q = trim_copy(query);
+  if (q.empty() || q.size() > 256) return false;
+  if (limit < 1) limit = 1;
+  if (limit > 20) limit = 20;
+
+  HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  bool uninit = SUCCEEDED(hr) && hr != S_FALSE;
+  bool ok = false;
+  if (SUCCEEDED(hr) || hr == RPC_E_CHANGED_MODE) {
+    ComHolder<ISearchManager> mgr;
+    // CSearchManager lives out-of-proc (Search service surrogate AppID),
+    // so INPROC alone is never enough: ask for any server.
+    if (SUCCEEDED(CoCreateInstance(CLSID_CSearchManager, nullptr, CLSCTX_ALL,
+                                   IID_PPV_ARGS(mgr.out())))) {
+      ComHolder<ISearchCatalogManager> cat;
+      if (SUCCEEDED(mgr.get()->GetCatalog(L"SystemIndex", cat.out()))) {
+        ComHolder<ISearchQueryHelper> helper;
+        if (SUCCEEDED(cat.get()->GetQueryHelper(helper.out())) &&
+            SUCCEEDED(helper.get()->put_QuerySelectColumns(L"System.ItemPathDisplay")) &&
+            SUCCEEDED(helper.get()->put_QueryMaxResults(limit))) {
+          auto wq = utf8_to_wide(q);
+          LPWSTR sql = nullptr;
+          if (SUCCEEDED(helper.get()->GenerateSQLFromUserQuery(wq.c_str(), &sql)) && sql) {
+            ok = ado_run_sql(sql, static_cast<std::size_t>(limit), out);
+            CoTaskMemFree(sql);
+          }
+        }
+      }
+    }
+  }
+  if (uninit) CoUninitialize();
+  return ok;
+}
+#endif
+
 bool os_search_available() {
 #if defined(__ANDROID__) || defined(WILFRED_IOS)
   return false;
@@ -668,8 +849,14 @@ std::vector<SearchResult> OsSearchProvider::query(const std::string& text, const
 
   if (be == "auto") {
 #ifdef _WIN32
-    // Fast path first: Everything's CLI answers in ms when installed,
-    // otherwise fall back to the official Windows Search index.
+    // Native SystemIndex first (official, in-process, ~10ms); Everything's
+    // CLI when installed; PowerShell ADODB last.
+    {
+      std::vector<std::string> com_paths;
+      if (os_windows_search_com(q, budget, com_paths))
+        return os_search_results_from_paths(com_paths, "windows_search",
+                                            static_cast<std::size_t>(budget));
+    }
     if (have_tool_cached("es") && try_argv("everything_posix", "es")) {
       use = "everything";
     } else {
@@ -715,6 +902,14 @@ std::vector<SearchResult> OsSearchProvider::query(const std::string& text, const
 #endif
   } else if (be == "windows_search") {
 #ifdef _WIN32
+    // Native SystemIndex first; PowerShell ADODB when COM is unavailable
+    // (service off). Skips Everything: explicit means official only.
+    {
+      std::vector<std::string> com_paths;
+      if (os_windows_search_com(q, budget, com_paths))
+        return os_search_results_from_paths(com_paths, "windows_search",
+                                            static_cast<std::size_t>(budget));
+    }
     if (!try_argv("windows_search", "powershell")) return out;
     use = "windows_search";
 #else

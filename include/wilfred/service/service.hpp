@@ -100,6 +100,7 @@ private:
   std::unique_ptr<AsyncProviders> async_providers_;
 
   void on_provider_results(std::uint64_t gen, std::vector<SearchResult> extra);
+  void print_provider_probe();
 };
 
 }  // namespace wilfred

@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <mutex>
@@ -661,7 +662,51 @@ int Service::run_status() {  if (!boot()) return 1;
                                            : cfg_.os_search.backend)
             << ")\n"
             << "api: " << (cfg_.api.enabled ? "on" : "off") << "\n";
+  print_provider_probe();
   return 0;
+}
+
+// Live provider probe for `wilfred status`: runs the user's most recent
+// query (or nothing when history is empty) through the real provider
+// registry once, then reports cumulative per-provider timing. Runs
+// synchronously with clamped timeouts so a wedged provider cannot stall
+// status (a detached thread would outlive this one-shot process).
+void Service::print_provider_probe() {
+  std::string probe;
+  for (auto it = history_.recent_queries().rbegin(); it != history_.recent_queries().rend();
+       ++it) {
+    if (it->empty() || it->size() > 64) continue;
+    bool sane = true;
+    for (unsigned char c : *it) {
+      if (c < 0x20 || c == 0x7f) {
+        sane = false;
+        break;
+      }
+    }
+    if (sane) {
+      probe = *it;
+      break;
+    }
+  }
+  if (!probe.empty()) {
+    Config probe_cfg = cfg_;
+    probe_cfg.os_search.timeout_ms = 1500;
+    probe_cfg.remotes.timeout_ms = 1500;
+    probe_cfg.packages.timeout_ms = 2000;
+    interpreter_.query_providers(probe, probe_cfg, 5);
+    std::cout << "providers: probe \"" << probe << "\"\n";
+  } else {
+    std::cout << "providers: no queries recorded yet\n";
+  }
+  for (auto& [id, s] : interpreter_.providers().stats()) {
+    double avg_ms = s.calls ? static_cast<double>(s.total_us) / s.calls / 1000.0 : 0.0;
+    double last_ms = static_cast<double>(s.last_us) / 1000.0;
+    char avg[32], last[32];
+    std::snprintf(avg, sizeof(avg), "%.1f", avg_ms);
+    std::snprintf(last, sizeof(last), "%.1f", last_ms);
+    std::cout << "  " << id << ": " << s.calls << " calls, avg " << avg << "ms, last " << last
+              << "ms (" << s.last_hits << " hits)\n";
+  }
 }
 
 int Service::run_backup(const std::string& dest, bool include_index) {
@@ -1313,10 +1358,25 @@ int Service::run_daemon() {
       }
       if (path == "/status" && req.method == "GET") {
         auto st = index_.stats();
+        std::string prov = "\"providers\":[";
+        bool first = true;
+        for (auto& [id, s] : interpreter_.providers().stats()) {
+          if (!first) prov += ",";
+          first = false;
+          double avg_ms = s.calls ? static_cast<double>(s.total_us) / s.calls / 1000.0 : 0.0;
+          char buf[128];
+          std::snprintf(buf, sizeof(buf),
+                        "{\"id\":\"%s\",\"calls\":%llu,\"avg_ms\":%.1f,\"last_ms\":%.1f,\"last_hits\":%zu}",
+                        json_escape(id).c_str(), (unsigned long long)s.calls, avg_ms,
+                        static_cast<double>(s.last_us) / 1000.0, s.last_hits);
+          prov += buf;
+        }
+        prov += "]";
         out.body = json_ok(true, "\"files\":" + std::to_string(st.files) + ",\"dirs\":" +
-                                     std::to_string(st.dirs) + ",\"apps\":" + std::to_string(st.apps) +
-                                     ",\"plugins\":" + std::to_string(plugins_.manifests().size()) +
-                                     ",\"snippets\":" + std::to_string(snippets_.all().size()));
+                                   std::to_string(st.dirs) + ",\"apps\":" +
+                                   std::to_string(st.apps) + ",\"plugins\":" +
+                                   std::to_string(plugins_.manifests().size()) + ",\"snippets\":" +
+                                   std::to_string(snippets_.all().size()) + "," + prov);
         return out;
       }
       if (path == "/show" && req.method == "POST") {

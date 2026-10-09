@@ -262,8 +262,8 @@ packages:
 # Official OS index federation (Windows Search, Spotlight, Tracker/Baloo).
 # Local-only and on by default: fills gaps Wilfred's own index misses.
 # Duplicates already listed by Wilfred are dropped. `os <query>` forces
-# the OS index. Empty backend = auto (platform default; Everything CLI
-# first on Windows when installed, else Windows Search).
+# the OS index. Empty backend = auto (platform default; native SystemIndex
+# first on Windows, then Everything CLI when installed, else PowerShell).
 os_search:
   enabled: true
   max_results: 8

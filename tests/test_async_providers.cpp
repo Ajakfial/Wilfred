@@ -203,4 +203,40 @@ void test_async_providers() {
     ap.request(2, "qd", 8, run, push);
     CHECK(wait_for([&] { return runs.load() >= 2; }));
   }
+
+  // --- registry stats: per-provider calls, timing, hits ---
+  {
+    ProviderRegistry reg;
+    struct Slow : SearchProvider {
+      std::string id() const override { return "slow"; }
+      std::vector<SearchResult> query(const std::string&, const Config&,
+                                      std::size_t) override {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        return {card("s", "/s", "stub")};
+      }
+    };
+    struct Boom : SearchProvider {
+      std::string id() const override { return "boom"; }
+      std::vector<SearchResult> query(const std::string&, const Config&,
+                                      std::size_t) override {
+        throw 1;
+      }
+    };
+    reg.add(std::make_unique<Slow>());
+    reg.add(std::make_unique<Boom>());
+    Config cfg;
+    auto hits = reg.query_all("firefox", cfg, 8);
+    CHECK_EQ(hits.size(), 1u);  // throwing provider contributes nothing, nothing propagates
+    auto st = reg.stats();
+    CHECK_EQ(st.size(), 2u);
+    CHECK_EQ(st["slow"].calls, 1u);
+    CHECK_EQ(st["slow"].last_hits, 1u);
+    CHECK(st["slow"].total_us >= 20000u);  // sleep guarantees the floor
+    CHECK_EQ(st["boom"].calls, 1u);
+    CHECK_EQ(st["boom"].last_hits, 0u);
+    reg.query_all("firefox", cfg, 8);
+    CHECK_EQ(reg.stats()["slow"].calls, 2u);
+    reg.reset_stats();
+    CHECK(reg.stats().empty());
+  }
 }

@@ -330,8 +330,10 @@ configure_file(
 target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 if(WIN32)
+  # SearchSDK.lib provides the Windows Search CLSIDs (CLSID_CSearchManager)
+  # for the native SystemIndex provider (search/os_search.hpp).
   target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version
-    winhttp psapi iphlpapi ws2_32 powrprof)
+    winhttp psapi iphlpapi ws2_32 powrprof SearchSDK)
 
   include(FetchContent)
   if(POLICY CMP0169)

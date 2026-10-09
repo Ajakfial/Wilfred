@@ -12,7 +12,8 @@ namespace wilfred {
 // Federated search against the official OS index so Wilfred cooperates with
 // the platform instead of competing with it:
 //
-//   Windows -> Windows Search (SystemIndex via PowerShell ADODB)
+//   Windows -> Windows Search (native SystemIndex COM, Everything CLI,
+//             PowerShell ADODB fallback)
 //   macOS   -> Spotlight (mdfind)
 //   Linux   -> Tracker (GNOME) / Baloo (KDE), locate/plocate fallback
 //   BSD     -> locate
@@ -41,6 +42,12 @@ std::vector<std::string> os_search_parse_output(const std::string& backend,
                                                 std::size_t max_results);
 // Pure Windows Search SQL builder (TOP n over SystemIndex).
 std::string os_search_windows_sql(const std::string& query, int top);
+#ifdef _WIN32
+// Native in-process SystemIndex query (ISearchQueryHelper + ADO). True when
+// the index answered (hits may be empty); false when unavailable so the
+// caller can fall back to Everything CLI / PowerShell.
+bool os_windows_search_com(const std::string& query, int limit, std::vector<std::string>& out);
+#endif
 std::vector<SearchResult> os_search_results_from_paths(
     const std::vector<std::string>& paths, const std::string& backend,
     std::size_t limit);

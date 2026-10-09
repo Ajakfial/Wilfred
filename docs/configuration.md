@@ -396,7 +396,7 @@ silent per query (no blocking, bounded by `timeout_ms`).
 
 | OS | Official index used (`backend: auto`) |
 |---|---|
-| Windows | Windows Search (`SystemIndex`); Everything CLI (`es`) first when installed |
+| Windows | Native SystemIndex via COM (`ISearchQueryHelper` + ADO, ~15ms); Everything CLI (`es`) when installed; PowerShell ADODB fallback |
 | macOS | Spotlight (`mdfind`) |
 | Linux | Tracker (`tracker3`/`tracker`), then Baloo (`baloosearch`), then `locate`/`plocate` |
 | BSD | `locate` |

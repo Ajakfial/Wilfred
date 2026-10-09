@@ -123,6 +123,21 @@ Prints `IndexStats` — file/directory/application counts, error count, total
 indexed bytes, whether a scan is currently in progress, and the duration of
 the last scan.
 
+It ends with a `providers:` section: a one-shot live probe (your most
+recent query, clamped provider timeouts) through the real search-provider
+registry, then cumulative per-provider timing (`calls`, average and last
+latency in ms, hit count) — the quickest way to see whether the OS index
+is answering and which backend is slow:
+
+```
+providers: probe "quarterly report"
+  os: 1 calls, avg 14.2ms, last 14.2ms (5 hits)
+  remote: 1 calls, avg 210.5ms, last 210.5ms (0 hits)
+```
+
+The same numbers accumulate over the daemon's lifetime and appear as a
+`providers` array on the authenticated HTTP `GET /status` endpoint.
+
 ## `wilfred preview <path>`
 
 Prints a bounded preview of a file or directory without opening it: kind,

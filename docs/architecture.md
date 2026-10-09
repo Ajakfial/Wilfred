@@ -214,7 +214,9 @@ Two different extension points exist:
   index immediately while `search/async_providers.hpp` (single-flight
   worker, latest generation wins, short-TTL cache) merges hits in via
   `overlay_push_results()` without resetting the keyboard selection;
-  CLI/IPC/API stay fully synchronous.
+  CLI/IPC/API stay fully synchronous. `ProviderRegistry` times every
+  backend (calls, average/last latency, hit counts) for `wilfred status`
+  and HTTP `GET /status`, so a slow provider is visible instead of silent.
 * **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native
   `.dll`/`.so`/`.dylib` implementing the small C ABI in `plugin/abi.hpp`, or

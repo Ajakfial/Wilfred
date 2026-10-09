@@ -167,6 +167,27 @@ void test_os_search() {
     CHECK(p.query("firefox", cfg, 8).empty());
     CHECK_EQ(p.id(), "os");
   }
+#ifdef _WIN32
+  {
+    // Native SystemIndex smoke: must not throw or crash. Hit counts depend
+    // on the machine's index (CI runners may index nothing), so only the
+    // contract is asserted: success implies bounded, path-shaped output.
+    std::vector<std::string> paths;
+    bool ok = false;
+    try {
+      ok = os_windows_search_com("firefox", 5, paths);
+    } catch (...) {
+      CHECK(false);
+    }
+    if (ok) {
+      CHECK(paths.size() <= 5u);
+      for (auto& p : paths) CHECK(!p.empty());
+    }
+    // Degenerate input never reaches COM.
+    CHECK(!os_windows_search_com("", 5, paths));
+    CHECK(!os_windows_search_com(std::string(300, 'x'), 5, paths));
+  }
+#endif
   {
     // Cross-OS backends are unsupported here and fail gracefully.
     Config cfg;
