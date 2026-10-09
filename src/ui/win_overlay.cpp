@@ -375,8 +375,8 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
         snap = g_resp;
         update = g_resp_is_update;
       }
-      post_json(overlay_results_json(snap.results, {}, snap.correction, snap.ghost,
-                                     snap.candidates, snap.query, update));
+      post_json(overlay_results_json(snap.results, {}, snap.correction, snap.ghost, snap.candidates,
+                                     snap.query, update));
       return 0;
     }
     case WM_WILFRED_READY:

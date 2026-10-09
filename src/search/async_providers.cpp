@@ -8,7 +8,8 @@ constexpr std::size_t kMaxEntries = 32;
 
 }  // namespace
 
-AsyncProviders::AsyncProviders(std::chrono::seconds ttl) : ttl_(ttl), worker_(&AsyncProviders::loop, this) {}
+AsyncProviders::AsyncProviders(std::chrono::seconds ttl)
+    : ttl_(ttl), worker_(&AsyncProviders::loop, this) {}
 
 AsyncProviders::~AsyncProviders() {
   {

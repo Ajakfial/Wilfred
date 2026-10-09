@@ -1021,7 +1021,9 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   }
 }
 
-void overlay_push_results(const OverlayResponse& resp) { wk_push_results(resp); }
+void overlay_push_results(const OverlayResponse& resp) {
+  wk_push_results(resp);
+}
 
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 
@@ -1046,7 +1048,9 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   g_ov->submit = std::move(s);
 }
 
-void overlay_push_results(const OverlayResponse& resp) { push_inbox_store(resp); }
+void overlay_push_results(const OverlayResponse& resp) {
+  push_inbox_store(resp);
+}
 
 void overlay_set_quit(std::function<void()> fn) { (void)fn; }
 

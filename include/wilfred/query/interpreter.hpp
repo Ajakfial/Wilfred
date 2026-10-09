@@ -38,8 +38,7 @@ public:
     std::string effective;
     bool providers_apply{false};
   };
-  FastResult interpret_fast(const std::string& query, const Config& cfg,
-                            HistoryStore* history);
+  FastResult interpret_fast(const std::string& query, const Config& cfg, HistoryStore* history);
   // Runs the registered providers for an already-interpreted query.
   std::vector<SearchResult> query_providers(const std::string& query, const Config& cfg,
                                             std::size_t limit);

@@ -284,8 +284,8 @@ void overlay_push_results(const OverlayResponse& resp) {
     g_results = snapshot.results;
     g_resp = snapshot;
     [ctl sendJson:wilfred::overlay_results_json(snapshot.results, {}, snapshot.correction,
-                                                snapshot.ghost, snapshot.candidates,
-                                                snapshot.query, true)];
+                                                snapshot.ghost, snapshot.candidates, snapshot.query,
+                                                true)];
   });
 }
 

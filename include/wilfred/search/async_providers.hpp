@@ -27,7 +27,7 @@ namespace wilfred {
 // launch flows) skip the subprocesses entirely. Thread-safe; the worker
 // is joined on destruction (declare after everything PushFn touches).
 class AsyncProviders {
- public:
+public:
   using RunFn = std::function<std::vector<SearchResult>()>;
   using PushFn = std::function<void(std::uint64_t gen, std::vector<SearchResult>)>;
 
@@ -43,12 +43,11 @@ class AsyncProviders {
 
   // Instant synchronous lookup for the overlay fast path. Hit only when a
   // fresh entry covers at least `limit` results.
-  bool cached(const std::string& query, std::size_t limit,
-              std::vector<SearchResult>& out) const;
+  bool cached(const std::string& query, std::size_t limit, std::vector<SearchResult>& out) const;
 
   void clear();
 
- private:
+private:
   struct Entry {
     std::vector<SearchResult> results;
     std::size_t limit{0};

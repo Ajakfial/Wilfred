@@ -31,8 +31,7 @@ SearchResult card(const std::string& title, const std::string& path, const std::
 
 struct StubProvider : SearchProvider {
   std::string id() const override { return "stub"; }
-  std::vector<SearchResult> query(const std::string&, const Config&,
-                                  std::size_t) override {
+  std::vector<SearchResult> query(const std::string&, const Config&, std::size_t) override {
     return {card("stub-marker", "stub:path", "stub", 10)};
   }
 };
@@ -41,8 +40,8 @@ template <typename Pred>
 bool wait_for(Pred p, int timeout_ms = 5000) {
   auto start = std::chrono::steady_clock::now();
   while (!p()) {
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - start)
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                              start)
             .count() > timeout_ms)
       return false;
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -58,13 +57,13 @@ void test_async_providers() {
   {
     std::vector<SearchResult> base = {card("a.txt", "/x/a.txt", "file", 900)};
     std::vector<SearchResult> extra = {
-        card("a.txt", "/x/a.txt", "os"),                       // dup of base
-        card("a.txt", "/X/A.TXT", "os"),                       // case-insensitive dup
-        card("b.txt", "C:\\y\\b.txt", "os"),                   // new
-        card("b.txt", "C:/y/b.txt", "os"),                     // separator-insensitive dup
-        card("web hit", "https://example.com", "remote"),      // passthrough
-        card("web hit", "https://example.com", "remote"),      // exact repeat collapses
-        card("other", "https://example.com", "remote"),        // same path, other card passes
+        card("a.txt", "/x/a.txt", "os"),                   // dup of base
+        card("a.txt", "/X/A.TXT", "os"),                   // case-insensitive dup
+        card("b.txt", "C:\\y\\b.txt", "os"),               // new
+        card("b.txt", "C:/y/b.txt", "os"),                 // separator-insensitive dup
+        card("web hit", "https://example.com", "remote"),  // passthrough
+        card("web hit", "https://example.com", "remote"),  // exact repeat collapses
+        card("other", "https://example.com", "remote"),    // same path, other card passes
     };
     merge_provider_results(base, std::move(extra));
     CHECK_EQ(base.size(), 4u);  // a.txt + b.txt + web hit + other
@@ -91,7 +90,8 @@ void test_async_providers() {
     for (auto& r : full.results)
       if (r.title == "stub-marker") full_has_stub = true;
     CHECK(full_has_stub);
-    for (auto& r : fast.iq.results) CHECK(r.title != "stub-marker");
+    for (auto& r : fast.iq.results)
+      CHECK(r.title != "stub-marker");
     CHECK(fast.providers_apply);
     CHECK_EQ(fast.effective, "zzqxjv-kittens");
     // Everything else identical: fast + marker == full.
@@ -123,16 +123,18 @@ void test_async_providers() {
       std::lock_guard<std::mutex> l(mu);
       pushed.push_back(g);
     };
-    ap.request(1, "qa-blocking", 8,
-               [&] {
-                 ++started;
-                 while (!release.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                 return std::vector<SearchResult>{card("A", "/a", "stub")};
-               },
-               push);
+    ap.request(
+        1, "qa-blocking", 8,
+        [&] {
+          ++started;
+          while (!release.load())
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          return std::vector<SearchResult>{card("A", "/a", "stub")};
+        },
+        push);
     CHECK(wait_for([&] { return started.load() >= 1; }));
-    ap.request(2, "qb-quick", 8, [&] { return std::vector<SearchResult>{card("B", "/b", "stub")}; },
-               push);
+    ap.request(
+        2, "qb-quick", 8, [&] { return std::vector<SearchResult>{card("B", "/b", "stub")}; }, push);
     release = true;
     CHECK(wait_for([&] {
       std::lock_guard<std::mutex> l(mu);

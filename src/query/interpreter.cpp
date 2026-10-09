@@ -25,8 +25,8 @@ InterpretedQuery QueryInterpreter::interpret(const std::string& query, const Con
 }
 
 QueryInterpreter::FastResult QueryInterpreter::interpret_fast(const std::string& query,
-                                                             const Config& cfg,
-                                                             HistoryStore* history) {
+                                                              const Config& cfg,
+                                                              HistoryStore* history) {
   FastResult out;
   out.effective = query;
   out.iq = interpret_impl(query, cfg, history, false, &out.effective, &out.providers_apply);
@@ -34,8 +34,7 @@ QueryInterpreter::FastResult QueryInterpreter::interpret_fast(const std::string&
 }
 
 std::vector<SearchResult> QueryInterpreter::query_providers(const std::string& query,
-                                                            const Config& cfg,
-                                                            std::size_t limit) {
+                                                            const Config& cfg, std::size_t limit) {
   return providers_.query_all(query, cfg, limit);
 }
 
@@ -47,7 +46,8 @@ void merge_provider_results(std::vector<SearchResult>& base, std::vector<SearchR
     std::string o = to_lower_utf8(p);
     for (char& c : o)
       if (c == '\\') c = '/';
-    while (o.size() > 1 && o.back() == '/') o.pop_back();
+    while (o.size() > 1 && o.back() == '/')
+      o.pop_back();
     return o;
   };
   std::vector<std::string> seen;
@@ -89,9 +89,9 @@ void merge_provider_results(std::vector<SearchResult>& base, std::vector<SearchR
 }
 
 InterpretedQuery QueryInterpreter::interpret_impl(const std::string& query, const Config& cfg,
-                                                 HistoryStore* history, bool include_providers,
-                                                 std::string* effective_out,
-                                                 bool* providers_apply_out) {
+                                                  HistoryStore* history, bool include_providers,
+                                                  std::string* effective_out,
+                                                  bool* providers_apply_out) {
   InterpretedQuery iq;
   iq.classification = classify_query(query);
   auto finish = [&]() -> InterpretedQuery {

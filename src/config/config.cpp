@@ -370,10 +370,10 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                       "plugins",
                                       "async_providers"};
     if (!check_unknown_keys(*search, valid, "search", err)) return false;
-    for (auto* k : {"include_system_files", "include_hidden_files", "show_system_in_results",
-                    "web_search_fallback", "treat_urls_as_open", "fuzzy", "acronyms",
-                    "context_aware", "clipboard", "minis", "macros", "snippets", "plugins",
-                    "async_providers"})
+    for (auto* k :
+         {"include_system_files", "include_hidden_files", "show_system_in_results",
+          "web_search_fallback", "treat_urls_as_open", "fuzzy", "acronyms", "context_aware",
+          "clipboard", "minis", "macros", "snippets", "plugins", "async_providers"})
       if (!expect_bool(search, k, "search", err)) return false;
     for (auto* k : {"max_results", "debounce_ms", "min_query_length"})
       if (!expect_int(search, k, "search", err)) return false;
