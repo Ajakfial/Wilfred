@@ -129,6 +129,12 @@ opening a PR — see ROADMAP.md for the plan to add it to CI too.
   `.clang-tidy`. If you land a formatting-only commit (no logic change),
   add its hash to `.git-blame-ignore-revs` in the same PR so `git blame`
   keeps pointing at the commit that actually changed behavior.
+* **Include order**: `.clang-format` sorts `#include`s alphabetically, which
+  breaks order-dependent system headers. `windows.h` (and `winsock2.h`
+  where used) must come first, and followers such as `shellapi.h`,
+  `WebView2.h`, or BSD socket headers keep their dependency order — put
+  each in its own blank-line-separated block so the sorter can never
+  reorder them (see `src/ui/win_overlay.cpp`, `src/search/minis.cpp`).
 * **Warnings**: the build treats warnings as informative, not fatal, but PRs
   that introduce new `-Wall -Wextra -Wpedantic` (or `/W4`) warnings will be
   asked to fix them.

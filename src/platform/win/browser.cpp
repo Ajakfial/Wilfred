@@ -3,8 +3,10 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <shlwapi.h>
+// windows.h first: shlwapi.h needs its types.
 #include <windows.h>
+
+#include <shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 #endif
 

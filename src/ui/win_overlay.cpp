@@ -7,12 +7,19 @@
 #include "wilfred/ui/web_ui.hpp"
 
 #ifdef _WIN32
-#include <WebView2.h>
-#include <dwmapi.h>
-#include <shellapi.h>
+// DO NOT SORT: order-dependent Windows/COM headers (WebView2.h needs the
+// COM types pulled in by the headers above it). One block per header so
+// automatic include sorting can never reorder these.
 #include <windows.h>
+
+#include <dwmapi.h>
+
+#include <shellapi.h>
+
 #include <wrl.h>
 #include <wrl/event.h>
+
+#include <WebView2.h>
 #endif
 
 #include <algorithm>

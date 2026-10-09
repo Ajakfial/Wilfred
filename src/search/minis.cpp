@@ -90,12 +90,17 @@
 #include <uvm/uvm_extern.h>
 #endif
 #if defined(WILFRED_BSD)
-// Order matters: socket types precede interface and address headers.
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <netinet/in.h>
+// Original dependency order, one include per block so sorting can never
+// reorder these: socket types precede interface and address headers.
 #include <sys/socket.h>
+
+#include <net/if.h>
+
+#include <netinet/in.h>
+
+#include <arpa/inet.h>
+
+#include <ifaddrs.h>
 #endif
 #endif
 

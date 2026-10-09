@@ -10,8 +10,10 @@
 #include <filesystem>
 
 #ifdef _WIN32
-#include <shlobj.h>
+// windows.h first: shlobj.h needs its types.
 #include <windows.h>
+
+#include <shlobj.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #include <pwd.h>

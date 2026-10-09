@@ -13,3 +13,20 @@
 
 # Example (remove once a real formatting commit lands):
 # 0000000000000000000000000000000000000000
+
+# clang-format changed-lines fix (async/provider/overlay/test hunks)
+b49e5d626e5423c2edec73d9f0e54c4b647cdf93
+# clang-format rollout: include/ headers
+e750ebfa05946ebee86dfc60b81bb4ea93bb5ed2
+# clang-format rollout: core/config/history/locale/main
+6ab91aae24c06e00d6388ce4d54b7ff04aef734b
+# clang-format rollout: index/fs/apps/browser/ipc
+5913861a34a2990c0a1ba4a52f17b42b9e015ef2
+# clang-format rollout: src/search
+8bd8f45e5c66c6e40dae2a255782a659024fdc1e
+# clang-format rollout: query/service/math/sync/sources/updater/ai/plugin/import/hotkey
+fbc456fed674148607335c6c84586cdcf8534e0f
+# clang-format rollout: platform/ui
+632940c3c6d6c0a2c5290bc54dd1d6c37694304f
+# clang-format rollout: tests/benches/android/ios
+a665db3c4f86721ec1fc153b205fd611e31f5899

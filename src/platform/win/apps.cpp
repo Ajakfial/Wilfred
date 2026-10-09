@@ -4,8 +4,10 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <shlobj.h>
+// windows.h first: shlobj.h needs its types.
 #include <windows.h>
+
+#include <shlobj.h>
 #endif
 
 #include <filesystem>

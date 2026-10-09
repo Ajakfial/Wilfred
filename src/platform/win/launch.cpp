@@ -4,12 +4,14 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
+// windows.h first: every header below needs its types.
+#include <windows.h>
+
 #include <endpointvolume.h>
 #include <mmdeviceapi.h>
 #include <powrprof.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#include <windows.h>
 #include <winver.h>
 
 #include <cctype>

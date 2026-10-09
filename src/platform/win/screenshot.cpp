@@ -4,9 +4,11 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
+// windows.h first: shellapi.h/shlobj.h need its types.
+#include <windows.h>
+
 #include <shellapi.h>
 #include <shlobj.h>
-#include <windows.h>
 
 #include <cstdio>
 #include <ctime>

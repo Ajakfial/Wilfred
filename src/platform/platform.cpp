@@ -2,8 +2,10 @@
 #include "wilfred/ui/overlay.hpp"
 
 #ifdef _WIN32
-#include <objbase.h>
+// windows.h first: objbase.h builds on its COM types.
 #include <windows.h>
+
+#include <objbase.h>
 #elif defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #endif

@@ -14,8 +14,10 @@
 #include <mutex>
 
 #ifdef _WIN32
-#include <shellapi.h>
+// windows.h first: shellapi.h needs its types.
 #include <windows.h>
+
+#include <shellapi.h>
 #elif defined(__APPLE__)
 #include <cstdio>
 #include <memory>

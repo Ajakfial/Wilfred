@@ -15,8 +15,10 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <shellapi.h>
+// windows.h first: shellapi.h needs its types.
 #include <windows.h>
+
+#include <shellapi.h>
 #include "wilfred/core/utf8.hpp"
 #endif
 

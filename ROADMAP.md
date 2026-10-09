@@ -104,9 +104,12 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   `key_file` (dependency-free SHA-256 KDF + keystream, `WILFEK1`) encrypts
   `sync-push` archives; `sync-pull`/`restore` auto-detect plain vs encrypted
   (see [docs/sync-and-backup.md](docs/sync-and-backup.md)).
-* **`.clang-format` rollout to existing files.** Land in small,
-  reviewable chunks per module rather than one large reformat, to keep
-  diffs reviewable (see CONTRIBUTING.md's guidance on focused PRs).
+* ~~**`.clang-format` rollout to existing files.**~~ Done — the full
+  C++ tree is clang-format-18 clean (per-module commits, `plugins/`
+  excluded: its zips are sha256-pinned in `plugins/registry.json`;
+  order-dependent system headers stay pinned via blank-line-separated
+  blocks, see CONTRIBUTING.md). Formatting-only commits are listed in
+  `.git-blame-ignore-revs` so blame still points at behavior changes.
 
 ## Long-term / exploratory
 
