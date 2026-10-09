@@ -9,5 +9,9 @@ namespace wilfred {
 
 std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
 
+// Headless (Kotlin owns the UI and its own event loop): pump is a no-op so
+// pump_native_events() links on Android like on every other backend.
+void overlay_pump() {}
+
 #endif
 }  // namespace wilfred

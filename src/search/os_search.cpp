@@ -3,6 +3,7 @@
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/classify.hpp"
+#include "wilfred/platform/platform.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -50,7 +51,7 @@ bool have_tool(const std::string& exe) {
 }
 
 // 60s TTL so per-keystroke provider queries stay cheap (same idea as pkg).
-bool have_tool_cached(const std::string& exe) {
+[[maybe_unused]] bool have_tool_cached(const std::string& exe) {
   static std::mutex mu;
   static std::map<std::string, std::pair<bool, std::chrono::steady_clock::time_point>> cache;
   std::lock_guard<std::mutex> lock(mu);
@@ -66,7 +67,7 @@ bool have_tool_cached(const std::string& exe) {
 // Run argv with a hard timeout; stdout captured up to max_bytes (stderr
 // discarded on POSIX, merged on Windows so filters must ignore noise).
 // Returns exit code, -1 on spawn failure, -2 on timeout (child killed).
-int os_run_capture(const std::vector<std::string>& argv, int timeout_ms,
+[[maybe_unused]] int os_run_capture(const std::vector<std::string>& argv, int timeout_ms,
                    std::size_t max_bytes, std::string& out) {
   out.clear();
   if (argv.empty() || timeout_ms < 500) return -1;
