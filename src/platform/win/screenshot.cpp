@@ -4,9 +4,9 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <windows.h>
 
 #include <cstdio>
 #include <ctime>
@@ -61,8 +61,7 @@ bool save_hbitmap_bmp(HBITMAP hbmp, HDC hdc, const std::string& path) {
   std::vector<unsigned char> bits(static_cast<std::size_t>(stride) * bm.bmHeight);
   BITMAPINFO info{};
   info.bmiHeader = bi;
-  if (!GetDIBits(hdc, hbmp, 0, static_cast<UINT>(bm.bmHeight), bits.data(), &info,
-                 DIB_RGB_COLORS))
+  if (!GetDIBits(hdc, hbmp, 0, static_cast<UINT>(bm.bmHeight), bits.data(), &info, DIB_RGB_COLORS))
     return false;
   BITMAPFILEHEADER fh{};
   fh.bfType = 0x4D42;
@@ -77,8 +76,7 @@ bool save_hbitmap_bmp(HBITMAP hbmp, HDC hdc, const std::string& path) {
   return ok;
 }
 
-bool capture_rect_to_bmp(int x, int y, int w, int h, const std::string& path,
-                         std::string& error) {
+bool capture_rect_to_bmp(int x, int y, int w, int h, const std::string& path, std::string& error) {
   if (w <= 0 || h <= 0) {
     error = "Nothing to capture";
     return false;
@@ -123,7 +121,9 @@ bool launch_snipping_ui() {
 
 }  // namespace
 
-std::string native_screenshot_save_directory() { return screenshot_dir_win(); }
+std::string native_screenshot_save_directory() {
+  return screenshot_dir_win();
+}
 
 bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path, std::string& error) {
   out_path.clear();

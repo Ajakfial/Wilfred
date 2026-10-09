@@ -7,7 +7,9 @@ namespace wilfred {
 // The native service therefore runs headless; null is a valid OverlayUi
 // state throughout Service (every use is guarded by `if (ui_)`).
 
-std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
+std::unique_ptr<OverlayUi> create_overlay() {
+  return nullptr;
+}
 
 // Headless (Kotlin owns the UI and its own event loop): pump is a no-op so
 // pump_native_events() links on Android like on every other backend.

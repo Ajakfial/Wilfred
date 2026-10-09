@@ -10,7 +10,9 @@ namespace wilfred {
 // statically-discovered apps. URLs and files still open from Swift via
 // UIApplication / UIActivityViewController based on the result payload.
 
-std::vector<AppInfo> native_discover_apps() { return {}; }
+std::vector<AppInfo> native_discover_apps() {
+  return {};
+}
 
 #endif
 }  // namespace wilfred

@@ -8,9 +8,15 @@ namespace wilfred {
 // WebSearch results; launching is performed from Kotlin based on the JNI
 // result payload, so these stay as explicit stubs.
 
-std::string native_default_browser_id() { return "android-system"; }
-std::string native_default_browser_executable() { return {}; }
-std::vector<BrowserInfo> native_list_browsers() { return {}; }
+std::string native_default_browser_id() {
+  return "android-system";
+}
+std::string native_default_browser_executable() {
+  return {};
+}
+std::vector<BrowserInfo> native_list_browsers() {
+  return {};
+}
 bool native_open_url(const std::string&) {
   // Handled in Kotlin (WilfredBridge.openResult -> ACTION_VIEW).
   return false;

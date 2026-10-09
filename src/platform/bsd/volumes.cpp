@@ -1,11 +1,11 @@
 #include "wilfred/platform/native.hpp"
 #include "wilfred/platform/platform.hpp"
 
+#include <sys/mount.h>
+#include <sys/param.h>
+#include <sys/ucred.h>
 #include <string>
 #include <vector>
-#include <sys/param.h>
-#include <sys/mount.h>
-#include <sys/ucred.h>
 #if defined(__NetBSD__)
 // NetBSD has no getmntinfo(2): same snapshot via getvfsstat(2).
 #include <sys/statvfs.h>
@@ -21,8 +21,8 @@ namespace wilfred {
 std::vector<VolumeInfo> native_list_volumes() {
   std::vector<VolumeInfo> out;
   auto skip_pseudo = [](const std::string& type) {
-    return type == "devfs" || type == "procfs" || type == "linprocfs" ||
-           type == "fdescfs" || type == "tmpfs" || type == "kernfs" || type == "ptyfs";
+    return type == "devfs" || type == "procfs" || type == "linprocfs" || type == "fdescfs" ||
+           type == "tmpfs" || type == "kernfs" || type == "ptyfs";
   };
 #if defined(__NetBSD__)
   // getvfsstat(2) instead of getmntinfo(2); statvfs carries the same

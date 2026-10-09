@@ -9,7 +9,9 @@ namespace wilfred {
 // statically-discovered apps; this keeps the C++ core portable and avoids
 // depending on JNI from every call site.
 
-std::vector<AppInfo> native_discover_apps() { return {}; }
+std::vector<AppInfo> native_discover_apps() {
+  return {};
+}
 
 #endif
 }  // namespace wilfred

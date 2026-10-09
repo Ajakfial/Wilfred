@@ -20,7 +20,7 @@ namespace fs = std::filesystem;
 // Android backend; iOS file providers and shared containers are outside
 // the sandbox and therefore never watched.
 class IosWatcher final : public WatcherBackend {
- public:
+public:
   ~IosWatcher() override { stop(); }
 
   bool start(const std::vector<std::string>& roots, int debounce_ms, FsEventFn cb) override {
@@ -50,10 +50,11 @@ class IosWatcher final : public WatcherBackend {
     snapshot_locked();
   }
 
- private:
+private:
   void snapshot_locked() {
     mtimes_.clear();
-    for (auto& r : roots_) scan_tree(r, mtimes_);
+    for (auto& r : roots_)
+      scan_tree(r, mtimes_);
   }
 
   static void scan_tree(const std::string& root,
@@ -80,7 +81,8 @@ class IosWatcher final : public WatcherBackend {
         std::lock_guard<std::mutex> lock(mu_);
         roots = roots_;
       }
-      for (auto& r : roots) scan_tree(r, cur);
+      for (auto& r : roots)
+        scan_tree(r, cur);
       std::vector<FsEvent> events;
       {
         std::lock_guard<std::mutex> lock(mu_);

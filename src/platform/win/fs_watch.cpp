@@ -6,12 +6,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <deque>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -37,7 +37,8 @@ public:
     debounce_ms_ = debounce_ms;
     running_ = true;
     if (!iocp_) iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
-    for (auto& r : roots) add_root(r);
+    for (auto& r : roots)
+      add_root(r);
     th_ = std::thread([this] { loop(); });
     return iocp_ != nullptr && iocp_ != INVALID_HANDLE_VALUE;
   }
@@ -148,8 +149,7 @@ private:
     // Key on kind as well as path: a Modified must not suppress an
     // immediately following Deleted for the same file (the test
     // create → modify → delete sequence runs faster than the window).
-    std::string key =
-        ev.path + "|" + ev.new_path + "|" + std::to_string(static_cast<int>(ev.kind));
+    std::string key = ev.path + "|" + ev.new_path + "|" + std::to_string(static_cast<int>(ev.kind));
     auto& last = last_emit_[key];
     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last).count() < debounce_ms_)
       return;

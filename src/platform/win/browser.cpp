@@ -3,8 +3,8 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shlwapi.h>
+#include <windows.h>
 #pragma comment(lib, "Shlwapi.lib")
 #endif
 
@@ -24,9 +24,10 @@ static std::string reg_sz(HKEY root, const wchar_t* path, const wchar_t* name) {
 }
 
 std::string native_default_browser_id() {
-  auto prog = reg_sz(HKEY_CURRENT_USER,
-                     L"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice",
-                     L"ProgId");
+  auto prog = reg_sz(
+      HKEY_CURRENT_USER,
+      L"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice",
+      L"ProgId");
   auto l = to_lower_utf8(prog);
   if (l.find("chrome") != std::string::npos) return "chrome";
   if (l.find("firefox") != std::string::npos) return "firefox";
@@ -38,9 +39,10 @@ std::string native_default_browser_id() {
 }
 
 std::string native_default_browser_executable() {
-  auto prog = reg_sz(HKEY_CURRENT_USER,
-                     L"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice",
-                     L"ProgId");
+  auto prog = reg_sz(
+      HKEY_CURRENT_USER,
+      L"Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice",
+      L"ProgId");
   if (prog.empty()) prog = "http";
   std::wstring cmdkey = utf8_to_wide(prog) + L"\\shell\\open\\command";
   auto cmd = reg_sz(HKEY_CLASSES_ROOT, cmdkey.c_str(), nullptr);
@@ -77,7 +79,8 @@ std::vector<BrowserInfo> native_list_browsers() {
     b.id = wide_to_utf8(c.id);
     b.name = wide_to_utf8(c.name);
     b.executable = exe;
-    b.is_default = to_lower_utf8(exe) == defl || defl.find(to_lower_utf8(b.id)) != std::string::npos;
+    b.is_default =
+        to_lower_utf8(exe) == defl || defl.find(to_lower_utf8(b.id)) != std::string::npos;
     out.push_back(std::move(b));
   }
   if (out.empty()) {

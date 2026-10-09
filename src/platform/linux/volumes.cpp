@@ -34,8 +34,8 @@ std::vector<VolumeInfo> native_list_volumes() {
     v.fs_type = type;
     v.network = type.find("nfs") != std::string::npos || type.find("cifs") != std::string::npos ||
                 type.find("smb") != std::string::npos;
-    v.removable = mp.rfind("/media/", 0) == 0 || mp.rfind("/run/media/", 0) == 0 ||
-                  mp.rfind("/mnt/", 0) == 0;
+    v.removable =
+        mp.rfind("/media/", 0) == 0 || mp.rfind("/run/media/", 0) == 0 || mp.rfind("/mnt/", 0) == 0;
     out.push_back(std::move(v));
   }
   return out;

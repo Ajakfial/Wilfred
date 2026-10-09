@@ -2,9 +2,9 @@
 
 #include "wilfred/core/utf8.hpp"
 
-#include <cstdlib>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -200,7 +200,8 @@ static std::string mac_exec(const std::string& cmd) {
 }
 
 static std::string mac_lower(std::string s) {
-  for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (auto& c : s)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   return s;
 }
 
@@ -211,14 +212,16 @@ static std::string mac_wifi_dev() {
   for (char c : out + "\n") {
     if (c == '\n') {
       auto t = cur;
-      while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+      while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+        t.erase(t.begin());
       auto low = mac_lower(t);
       if (low.rfind("hardware port:", 0) == 0) {
         want = low.find("wi-fi") != std::string::npos || low.find("wifi") != std::string::npos ||
                low.find("airport") != std::string::npos;
       } else if (want && low.rfind("device:", 0) == 0) {
         auto v = t.substr(7);
-        while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+        while (!v.empty() && (v.front() == ' ' || v.front() == '\t'))
+          v.erase(v.begin());
         while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
           v.pop_back();
         if (!v.empty()) return v;
@@ -304,12 +307,14 @@ bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) 
   auto ssid = mac_exec("networksetup -getairportnetwork " + dev);
   // "Current Wi-Fi Network: MyNet" or "You are not associated...".
   std::string s = ssid;
-  while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+  while (!s.empty() && (s.back() == '\n' || s.back() == '\r'))
+    s.pop_back();
   auto p = s.find(':');
   std::string net;
   if (p != std::string::npos) {
     net = s.substr(p + 1);
-    while (!net.empty() && (net.front() == ' ' || net.front() == '\t')) net.erase(net.begin());
+    while (!net.empty() && (net.front() == ' ' || net.front() == '\t'))
+      net.erase(net.begin());
   }
   detail = dev;
   if (!net.empty() && mac_lower(net).find("not associated") == std::string::npos)
@@ -343,7 +348,8 @@ std::vector<std::string> native_wifi_list(std::string& error) {
   for (char c : txt + "\n") {
     if (c == '\n') {
       auto t = cur;
-      while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+      while (!t.empty() && (t.front() == ' ' || t.front() == '\t'))
+        t.erase(t.begin());
       while (!t.empty() && (t.back() == ' ' || t.back() == '\r' || t.back() == '\t'))
         t.pop_back();
       if (!t.empty() && t[0] != '-' && mac_lower(t).find("preferred") == std::string::npos)
@@ -375,7 +381,8 @@ bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& er
       return true;
     }
   }
-  auto out = mac_exec("defaults read /Library/Preferences/com.apple.Bluetooth ControllerPowerState");
+  auto out =
+      mac_exec("defaults read /Library/Preferences/com.apple.Bluetooth ControllerPowerState");
   auto t = mac_lower(out);
   while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ' || t.back() == ';'))
     t.pop_back();

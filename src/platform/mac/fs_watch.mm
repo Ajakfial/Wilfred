@@ -25,7 +25,8 @@ public:
     ctx.info = this;
     CFMutableArrayRef paths = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
     for (auto& r : roots_) {
-      CFStringRef s = CFStringCreateWithCString(kCFAllocatorDefault, r.c_str(), kCFStringEncodingUTF8);
+      CFStringRef s =
+          CFStringCreateWithCString(kCFAllocatorDefault, r.c_str(), kCFStringEncodingUTF8);
       CFArrayAppendValue(paths, s);
       CFRelease(s);
     }
@@ -83,7 +84,9 @@ private:
   std::atomic<bool> running_{false};
 };
 
-std::unique_ptr<WatcherBackend> create_watcher_backend() { return std::make_unique<MacWatcher>(); }
+std::unique_ptr<WatcherBackend> create_watcher_backend() {
+  return std::make_unique<MacWatcher>();
+}
 
 #endif
 }  // namespace wilfred

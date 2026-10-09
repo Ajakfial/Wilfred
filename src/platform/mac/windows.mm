@@ -3,9 +3,9 @@
 #ifdef __APPLE__
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
+#include <unistd.h>
 #include <cstdio>
 #include <string>
-#include <unistd.h>
 #endif
 
 namespace wilfred {
@@ -168,7 +168,9 @@ static std::string ax_error(const char* what, AXError err) {
   return buf;
 }
 
-static CGRect main_display_bounds() { return CGDisplayBounds(kCGDirectMainDisplay); }
+static CGRect main_display_bounds() {
+  return CGDisplayBounds(kCGDirectMainDisplay);
+}
 
 // Set an AX window frame. Returns true only if both position and size stuck.
 static bool ax_set_frame(AXUIElementRef win, CGFloat x, CGFloat y, CGFloat w, CGFloat h,
@@ -177,10 +179,10 @@ static bool ax_set_frame(AXUIElementRef win, CGFloat x, CGFloat y, CGFloat w, CG
   CGSize size = CGSizeMake(w, h);
   AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
   AXValueRef size_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
-  AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
-                     : kAXErrorFailure;
-  AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
-                      : kAXErrorFailure;
+  AXError pe =
+      pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v) : kAXErrorFailure;
+  AXError se =
+      size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v) : kAXErrorFailure;
   if (pos_v) CFRelease(pos_v);
   if (size_v) CFRelease(size_v);
   err_out = pe != kAXErrorSuccess ? pe : se;
@@ -258,9 +260,9 @@ bool native_window_rect(std::uint64_t id, NativeWindowRect& rect, std::string& e
     CGSize size = CGSizeZero;
     CFTypeRef pos_ref = nullptr;
     CFTypeRef size_ref = nullptr;
-    bool ok = AXUIElementCopyAttributeValue(win, kAXPositionAttribute, &pos_ref) ==
-                  kAXErrorSuccess &&
-              AXUIElementCopyAttributeValue(win, kAXSizeAttribute, &size_ref) == kAXErrorSuccess;
+    bool ok =
+        AXUIElementCopyAttributeValue(win, kAXPositionAttribute, &pos_ref) == kAXErrorSuccess &&
+        AXUIElementCopyAttributeValue(win, kAXSizeAttribute, &size_ref) == kAXErrorSuccess;
     if (ok && pos_ref && size_ref) {
       AXValueGetValue((AXValueRef)pos_ref, static_cast<AXValueType>(kAXValueCGPointType), &pos);
       AXValueGetValue((AXValueRef)size_ref, static_cast<AXValueType>(kAXValueCGSizeType), &size);
@@ -300,15 +302,15 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
     ax_set_bool(win, kAXMinimizedAttribute, false);
     CGPoint pos = CGPointMake(x, y);
     AXValueRef pos_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGPointType), &pos);
-    AXError pe = pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v)
-                       : kAXErrorFailure;
+    AXError pe =
+        pos_v ? AXUIElementSetAttributeValue(win, kAXPositionAttribute, pos_v) : kAXErrorFailure;
     if (pos_v) CFRelease(pos_v);
     bool ok = pe == kAXErrorSuccess;
     if (ok && w > 0 && h > 0) {
       CGSize size = CGSizeMake(w, h);
       AXValueRef size_v = AXValueCreate(static_cast<AXValueType>(kAXValueCGSizeType), &size);
-      AXError se = size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v)
-                          : kAXErrorFailure;
+      AXError se =
+          size_v ? AXUIElementSetAttributeValue(win, kAXSizeAttribute, size_v) : kAXErrorFailure;
       if (size_v) CFRelease(size_v);
       ok = se == kAXErrorSuccess;
     }

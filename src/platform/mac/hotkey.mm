@@ -108,8 +108,8 @@ public:
     // Unique id per instance so extra bindings coexist with the primary one.
     UInt32 slot = s_next_id.fetch_add(1);
     EventHotKeyID hid{static_cast<OSType>('WLFD'), slot};
-    OSStatus st = RegisterEventHotKey(mac_vk(key), mods, hid, GetApplicationEventTarget(),
-                                      0, &hotkey_);
+    OSStatus st =
+        RegisterEventHotKey(mac_vk(key), mods, hid, GetApplicationEventTarget(), 0, &hotkey_);
     running_ = st == noErr;
     return running_;
   }
@@ -142,7 +142,9 @@ private:
 
 std::atomic<UInt32> MacHotkey::s_next_id{2};
 
-std::unique_ptr<HotkeyBackend> create_hotkey_backend() { return std::make_unique<MacHotkey>(); }
+std::unique_ptr<HotkeyBackend> create_hotkey_backend() {
+  return std::make_unique<MacHotkey>();
+}
 
 #endif
 }  // namespace wilfred

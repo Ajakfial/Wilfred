@@ -11,8 +11,8 @@
 #include <vector>
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shellapi.h>
+#include <windows.h>
 #endif
 
 namespace wilfred {
@@ -24,8 +24,7 @@ std::mutex g_mu;
 std::unordered_map<std::string, std::string> g_cache;
 
 std::string base64_encode(const unsigned char* data, std::size_t len) {
-  static const char tbl[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string o;
   o.reserve(((len + 2) / 3) * 4);
   std::size_t i = 0;
@@ -154,7 +153,8 @@ std::string file_to_data_url(const std::string& path) {
   if (!read_file_all(path, bytes) || bytes.empty() || bytes.size() > 96 * 1024) return {};
   auto ext = to_lower_utf8(path_extension(path));
   const char* mime = "image/png";
-  if (ext == ".svg") mime = "image/svg+xml";
+  if (ext == ".svg")
+    mime = "image/svg+xml";
   else if (ext == ".jpg" || ext == ".jpeg")
     mime = "image/jpeg";
   else if (ext == ".ico")
@@ -170,8 +170,8 @@ std::string file_to_data_url(const std::string& path) {
 
 std::string file_icon_data_url(const std::string& path, FileKind kind) {
   if (path.empty()) return {};
-  if (kind != FileKind::Application && kind != FileKind::Executable &&
-      kind != FileKind::Shortcut && kind != FileKind::Directory) {
+  if (kind != FileKind::Application && kind != FileKind::Executable && kind != FileKind::Shortcut &&
+      kind != FileKind::Directory) {
     auto ext = to_lower_utf8(path_extension(path));
     if (ext != ".exe" && ext != ".lnk" && ext != ".app" && ext != ".desktop") return {};
   }
@@ -199,7 +199,8 @@ std::string file_icon_data_url(const std::string& path, FileKind kind) {
           pos += 6;
         auto end = text.find('\n', pos);
         auto icon = text.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
-        while (!icon.empty() && (icon.back() == '\r' || icon.back() == ' ')) icon.pop_back();
+        while (!icon.empty() && (icon.back() == '\r' || icon.back() == ' '))
+          icon.pop_back();
         auto file = linux_icon_file(icon);
         if (!file.empty()) url = file_to_data_url(file);
       }

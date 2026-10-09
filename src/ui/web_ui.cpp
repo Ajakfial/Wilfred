@@ -1,17 +1,17 @@
 #include "wilfred/ui/web_ui.hpp"
 
+#include "wilfred/config/settings.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/classify.hpp"
 #include "wilfred/index/record.hpp"
 #include "wilfred/index/tokenizer.hpp"
-#include "wilfred/search/doctext.hpp"
-#include "wilfred/search/ocr.hpp"
-#include "wilfred/config/settings.hpp"
-#include "wilfred/search/setup.hpp"
 #include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/platform.hpp"
+#include "wilfred/search/doctext.hpp"
+#include "wilfred/search/ocr.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/ui/icon.hpp"
 
 #include <algorithm>
@@ -24,12 +24,12 @@
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <unistd.h>
 #include <climits>
 #include <cstdlib>
-#include <unistd.h>
 #else
-#include <climits>
 #include <unistd.h>
+#include <climits>
 #if defined(WILFRED_BSD)
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -114,7 +114,8 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
     o += "\",\"path\":\"";
     o += overlay_json_escape(it.path);
     o += "\",\"kind\":\"";
-    o += overlay_json_escape(it.kind_label.empty() ? std::string(kind_name(it.kind)) : it.kind_label);
+    o += overlay_json_escape(it.kind_label.empty() ? std::string(kind_name(it.kind))
+                                                   : it.kind_label);
     o += "\",\"action\":\"";
     o += overlay_action_name(it.action);
     o += "\",\"category\":\"";
@@ -200,13 +201,15 @@ std::string overlay_results_json(const std::vector<SearchResult>& items,
   return o;
 }
 
-bool overlay_json_field(const std::string& json, const char* key, std::string& out) {  std::string k = std::string("\"") + key + "\"";
+bool overlay_json_field(const std::string& json, const char* key, std::string& out) {
+  std::string k = std::string("\"") + key + "\"";
   auto pos = json.find(k);
   if (pos == std::string::npos) return false;
   pos = json.find(':', pos + k.size());
   if (pos == std::string::npos) return false;
   ++pos;
-  while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t')) ++pos;
+  while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t'))
+    ++pos;
   if (pos >= json.size()) return false;
   if (json[pos] == '"') {
     ++pos;
@@ -249,15 +252,14 @@ std::string overlay_ui_dir() {
 namespace {
 
 std::string preview_b64(const std::string& bytes) {
-  static const char tbl[] =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static const char tbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string o;
   o.reserve(((bytes.size() + 2) / 3) * 4);
   std::size_t i = 0;
   auto* d = reinterpret_cast<const unsigned char*>(bytes.data());
   while (i + 2 < bytes.size()) {
-    unsigned n = (static_cast<unsigned>(d[i]) << 16) | (static_cast<unsigned>(d[i + 1]) << 8) |
-                 d[i + 2];
+    unsigned n =
+        (static_cast<unsigned>(d[i]) << 16) | (static_cast<unsigned>(d[i + 1]) << 8) | d[i + 2];
     o.push_back(tbl[(n >> 18) & 63]);
     o.push_back(tbl[(n >> 12) & 63]);
     o.push_back(tbl[(n >> 6) & 63]);
@@ -374,8 +376,8 @@ FilePreview build_file_preview(const std::string& path, std::size_t max_text,
     std::size_t shown = 0, total = 0;
     std::string list;
     std::vector<std::pair<std::string, bool>> entries;
-    for (auto it = fs::directory_iterator(fs::u8path(path), ec);
-         it != fs::directory_iterator(); it.increment(ec)) {
+    for (auto it = fs::directory_iterator(fs::u8path(path), ec); it != fs::directory_iterator();
+         it.increment(ec)) {
       if (ec) break;
       ++total;
       if (entries.size() < 24) {

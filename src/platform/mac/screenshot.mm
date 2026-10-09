@@ -48,7 +48,9 @@ std::string shell_quote(const std::string& s) {
 
 }  // namespace
 
-std::string native_screenshot_save_directory() { return screenshot_dir_mac(); }
+std::string native_screenshot_save_directory() {
+  return screenshot_dir_mac();
+}
 
 bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path, std::string& error) {
   out_path.clear();
@@ -74,8 +76,7 @@ bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path, st
     out_path = path;
     return true;
   }
-  error =
-      "screencapture failed (grant Screen Recording permission in System Settings, then retry)";
+  error = "screencapture failed (grant Screen Recording permission in System Settings, then retry)";
   return false;
 }
 

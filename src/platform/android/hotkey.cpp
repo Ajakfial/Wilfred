@@ -8,10 +8,9 @@ namespace wilfred {
 // point and launches the search UI on tap.
 
 class AndroidHotkey final : public HotkeyBackend {
- public:
+public:
   bool start(const Config&, HotkeyFn) override { return false; }
-  bool start_binding(const std::vector<std::string>&, const std::string&, bool,
-                     HotkeyFn) override {
+  bool start_binding(const std::vector<std::string>&, const std::string&, bool, HotkeyFn) override {
     return false;
   }
   void stop() override {}

@@ -28,7 +28,8 @@ std::string popen_line(const char* cmd) {
   char buf[1024];
   if (fgets(buf, sizeof(buf), f)) out = buf;
   pclose(f);
-  while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
+  while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+    out.pop_back();
   return out;
 }
 
@@ -146,8 +147,7 @@ bool x11_fullscreen_bmp(const std::string& path) {
         for (int x = 0; x < w; ++x) {
           unsigned long px = XGetPixel(img, x, y);
           unsigned char r = static_cast<unsigned char>(((px & img->red_mask) >> r_shift) & 0xFF);
-          unsigned char g =
-              static_cast<unsigned char>(((px & img->green_mask) >> g_shift) & 0xFF);
+          unsigned char g = static_cast<unsigned char>(((px & img->green_mask) >> g_shift) & 0xFF);
           unsigned char b = static_cast<unsigned char>(((px & img->blue_mask) >> b_shift) & 0xFF);
           auto* dst = &rows[static_cast<std::size_t>(h - 1 - y) * stride + x * 3];
           dst[0] = b;
@@ -177,29 +177,23 @@ bool x11_fullscreen_bmp(const std::string& path) {
 
 bool try_tool_fullscreen(const std::string& path) {
   auto q = shell_quote(path);
-  if (have_tool("gnome-screenshot") &&
-      run_and_check("gnome-screenshot -f " + q, path))
-    return true;
+  if (have_tool("gnome-screenshot") && run_and_check("gnome-screenshot -f " + q, path)) return true;
   if (have_tool("scrot") && run_and_check("scrot " + q, path)) return true;
   if (have_tool("spectacle") && run_and_check("spectacle -b -n -o " + q, path)) return true;
   if (have_tool("maim") && run_and_check("maim " + q, path)) return true;
   if (have_tool("grim") && run_and_check("grim " + q, path)) return true;
   if (have_tool("import") && run_and_check("import -window root " + q, path)) return true;
-  if (have_tool("xfce4-screenshooter") &&
-      run_and_check("xfce4-screenshooter -f -s " + q, path))
+  if (have_tool("xfce4-screenshooter") && run_and_check("xfce4-screenshooter -f -s " + q, path))
     return true;
   return false;
 }
 
 bool try_tool_window(const std::string& path) {
   auto q = shell_quote(path);
-  if (have_tool("gnome-screenshot") &&
-      run_and_check("gnome-screenshot -w -f " + q, path))
+  if (have_tool("gnome-screenshot") && run_and_check("gnome-screenshot -w -f " + q, path))
     return true;
   if (have_tool("scrot") && run_and_check("scrot -u " + q, path)) return true;
-  if (have_tool("spectacle") &&
-      run_and_check("spectacle -a -b -n -o " + q, path))
-    return true;
+  if (have_tool("spectacle") && run_and_check("spectacle -a -b -n -o " + q, path)) return true;
   if (have_tool("maim")) {
     // Focused-window capture needs the window id; fall back to interactive pick.
     if (have_tool("xdotool")) {
@@ -209,36 +203,33 @@ bool try_tool_window(const std::string& path) {
     if (run_and_check("maim -i root " + q, path)) return true;
   }
   if (have_tool("import") && run_and_check("import " + q, path)) return true;
-  if (have_tool("xfce4-screenshooter") &&
-      run_and_check("xfce4-screenshooter -w -s " + q, path))
+  if (have_tool("xfce4-screenshooter") && run_and_check("xfce4-screenshooter -w -s " + q, path))
     return true;
   return false;
 }
 
 bool try_tool_region(const std::string& path) {
   auto q = shell_quote(path);
-  if (have_tool("gnome-screenshot") &&
-      run_and_check("gnome-screenshot -a -f " + q, path))
+  if (have_tool("gnome-screenshot") && run_and_check("gnome-screenshot -a -f " + q, path))
     return true;
   if (have_tool("scrot") && run_and_check("scrot -s " + q, path)) return true;
-  if (have_tool("spectacle") &&
-      run_and_check("spectacle -r -b -n -o " + q, path))
-    return true;
+  if (have_tool("spectacle") && run_and_check("spectacle -r -b -n -o " + q, path)) return true;
   if (have_tool("maim") && run_and_check("maim -s " + q, path)) return true;
   if (have_tool("grim") && have_tool("slurp")) {
     std::string geo = popen_line("slurp 2>/dev/null");
     if (!geo.empty() && run_and_check("grim -g " + shell_quote(geo) + " " + q, path)) return true;
   }
   if (have_tool("import") && run_and_check("import " + q, path)) return true;
-  if (have_tool("xfce4-screenshooter") &&
-      run_and_check("xfce4-screenshooter -r -s " + q, path))
+  if (have_tool("xfce4-screenshooter") && run_and_check("xfce4-screenshooter -r -s " + q, path))
     return true;
   return false;
 }
 
 }  // namespace
 
-std::string native_screenshot_save_directory() { return screenshot_dir_linux(); }
+std::string native_screenshot_save_directory() {
+  return screenshot_dir_linux();
+}
 
 bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path, std::string& error) {
   out_path.clear();

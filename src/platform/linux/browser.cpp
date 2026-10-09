@@ -15,9 +15,11 @@ static std::string run_cmd(const char* cmd) {
   if (!f) return {};
   char buf[1024];
   std::string o;
-  while (fgets(buf, sizeof(buf), f)) o += buf;
+  while (fgets(buf, sizeof(buf), f))
+    o += buf;
   pclose(f);
-  while (!o.empty() && (o.back() == '\n' || o.back() == '\r')) o.pop_back();
+  while (!o.empty() && (o.back() == '\n' || o.back() == '\r'))
+    o.pop_back();
   return o;
 }
 

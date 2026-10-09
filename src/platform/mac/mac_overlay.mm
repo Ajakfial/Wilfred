@@ -1,6 +1,6 @@
+#include "wilfred/core/utf8.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/ui/overlay.hpp"
-#include "wilfred/core/utf8.hpp"
 
 #import <AppKit/AppKit.h>
 #include <vector>

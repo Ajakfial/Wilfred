@@ -38,7 +38,8 @@ public:
     UINT mods = 0;
     for (auto& m : modifiers) {
       auto l = to_lower_utf8(m);
-      if (l == "ctrl" || l == "control") mods |= MOD_CONTROL;
+      if (l == "ctrl" || l == "control")
+        mods |= MOD_CONTROL;
       else if (l == "alt")
         mods |= MOD_ALT;
       else if (l == "shift")
@@ -101,7 +102,9 @@ private:
   HWND hwnd_{nullptr};
 };
 
-std::unique_ptr<HotkeyBackend> create_hotkey_backend() { return std::make_unique<WinHotkey>(); }
+std::unique_ptr<HotkeyBackend> create_hotkey_backend() {
+  return std::make_unique<WinHotkey>();
+}
 
 #else
 std::unique_ptr<HotkeyBackend> create_hotkey_backend();

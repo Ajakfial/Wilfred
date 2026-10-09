@@ -81,9 +81,11 @@ struct DesktopEntry {
 };
 
 std::string trim_ws(std::string s) {
-  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r')) s.pop_back();
+  while (!s.empty() && (s.back() == ' ' || s.back() == '\t' || s.back() == '\r'))
+    s.pop_back();
   std::size_t i = 0;
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+  while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+    ++i;
   return s.substr(i);
 }
 
@@ -118,8 +120,8 @@ const std::vector<DesktopEntry>& desktop_db() {
     for (auto& dir : xdg_app_dirs()) {
       std::error_code ec;
       if (!fs::is_directory(fs::u8path(dir), ec)) continue;
-      for (auto it = fs::directory_iterator(fs::u8path(dir), ec);
-           it != fs::directory_iterator(); it.increment(ec)) {
+      for (auto it = fs::directory_iterator(fs::u8path(dir), ec); it != fs::directory_iterator();
+           it.increment(ec)) {
         if (ec) break;
         auto p = it->path();
         if (p.extension() != fs::path(".desktop")) continue;
@@ -240,7 +242,9 @@ std::string expand_exec(const std::string& exec, const std::string& file) {
 
 }  // namespace
 
-static bool sys(const std::string& cmd) { return std::system(cmd.c_str()) == 0; }
+static bool sys(const std::string& cmd) {
+  return std::system(cmd.c_str()) == 0;
+}
 
 bool native_launch(const std::string& path) {
   std::string cmd = "xdg-open \"" + path + "\" >/dev/null 2>&1 &";
@@ -290,7 +294,7 @@ bool native_system_action(const std::string& id) {
            sys("mate-session-save --logout >/dev/null 2>&1 &") ||
            sys("qdbus org.kde.ksmserver /KSMServer logout 0 0 0 >/dev/null 2>&1 &") ||
            sys("loginctl terminate-session \"$XDG_SESSION_ID\" >/dev/null 2>&1 &");
-  // empty_trash falls through to the shared gio/rm implementation below.
+    // empty_trash falls through to the shared gio/rm implementation below.
 #endif
   if (id == "lock") {
     return sys("loginctl lock-session >/dev/null 2>&1") ||
@@ -299,8 +303,8 @@ bool native_system_action(const std::string& id) {
            sys("gnome-screensaver-command -l >/dev/null 2>&1") ||
            sys("dm-tool lock >/dev/null 2>&1");
   }
-  if (id == "sleep") return sys("systemctl suspend >/dev/null 2>&1 &") ||
-                            sys("loginctl suspend >/dev/null 2>&1 &");
+  if (id == "sleep")
+    return sys("systemctl suspend >/dev/null 2>&1 &") || sys("loginctl suspend >/dev/null 2>&1 &");
   if (id == "shutdown") return sys("systemctl poweroff >/dev/null 2>&1 &");
   if (id == "restart") return sys("systemctl reboot >/dev/null 2>&1 &");
   if (id == "logout")
@@ -438,13 +442,14 @@ std::string lin_exec(const std::string& cmd) {
 }
 
 std::string lin_lower(std::string s) {
-  for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (auto& c : s)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   return s;
 }
 
 std::string lin_trim(std::string s) {
-  while (!s.empty() && (s.front() == ' ' || s.front() == '\t' || s.front() == '\n' ||
-                        s.front() == '\r'))
+  while (!s.empty() &&
+         (s.front() == ' ' || s.front() == '\t' || s.front() == '\n' || s.front() == '\r'))
     s.erase(s.begin());
   while (!s.empty() &&
          (s.back() == ' ' || s.back() == '\t' || s.back() == '\n' || s.back() == '\r'))
@@ -471,7 +476,8 @@ bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) 
       error = "nmcli did not report Wi-Fi state";
       return false;
     }
-    std::string ssid = lin_trim(lin_exec("nmcli -t -f ACTIVE,SSID dev wifi | grep '^yes:' | cut -d: -f2 | head -n 1"));
+    std::string ssid = lin_trim(
+        lin_exec("nmcli -t -f ACTIVE,SSID dev wifi | grep '^yes:' | cut -d: -f2 | head -n 1"));
     if (ssid.empty()) ssid = lin_trim(lin_exec("iwgetid -r"));
     detail = ssid.empty() ? "nmcli" : ssid;
     return true;
@@ -569,8 +575,7 @@ bool native_bluetooth_set(bool enabled, std::string& error) {
   return false;
 #else
   if (have_tool("bluetoothctl")) {
-    if (sys(std::string("bluetoothctl power ") + (enabled ? "on" : "off") +
-            " >/dev/null 2>&1")) {
+    if (sys(std::string("bluetoothctl power ") + (enabled ? "on" : "off") + " >/dev/null 2>&1")) {
       // Verify best-effort.
       bool cur = false;
       std::string detail;
@@ -580,7 +585,8 @@ bool native_bluetooth_set(bool enabled, std::string& error) {
     }
   }
   if (have_tool("rfkill")) {
-    if (sys(std::string("rfkill ") + (enabled ? "unblock" : "block") + " bluetooth >/dev/null 2>&1"))
+    if (sys(std::string("rfkill ") + (enabled ? "unblock" : "block") +
+            " bluetooth >/dev/null 2>&1"))
       return true;
   }
   error = "cannot change Bluetooth (need bluetoothctl/rfkill + permissions)";
@@ -631,8 +637,7 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
     for (std::size_t i = 0; i + 1 < vol.size(); ++i) {
       if (vol[i] == '%' && i > 0) {
         std::size_t j = i;
-        while (j > 0 && (std::isdigit(static_cast<unsigned char>(vol[j - 1])) ||
-                         vol[j - 1] == ' '))
+        while (j > 0 && (std::isdigit(static_cast<unsigned char>(vol[j - 1])) || vol[j - 1] == ' '))
           --j;
         std::string num;
         for (std::size_t k = j; k < i; ++k)
@@ -657,9 +662,10 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
     int pct = -1;
     bool off = false;
     for (std::size_t i = 0; i + 1 < out.size(); ++i) {
-      if (out[i] == '%' ) {
+      if (out[i] == '%') {
         std::size_t j = i;
-        while (j > 0 && std::isdigit(static_cast<unsigned char>(out[j - 1]))) --j;
+        while (j > 0 && std::isdigit(static_cast<unsigned char>(out[j - 1])))
+          --j;
         try {
           pct = std::stoi(out.substr(j, i - j));
         } catch (...) {
@@ -868,17 +874,28 @@ bool native_open_settings(const std::string& page, std::string& error) {
   // GNOME.
   if (have_tool("gnome-control-center")) {
     std::string arg;
-    if (page.empty()) arg = "";
-    else if (page == "wifi") arg = " wifi";
-    else if (page == "network") arg = " network";
-    else if (page == "bluetooth") arg = " bluetooth";
-    else if (page == "sound") arg = " sound";
-    else if (page == "display") arg = " display";
-    else if (page == "battery" || page == "power") arg = " power";
-    else if (page == "apps") arg = " applications";
-    else if (page == "privacy") arg = " privacy";
-    else if (page == "update") arg = " info-overview";
-    else if (page == "about") arg = " info-overview";
+    if (page.empty())
+      arg = "";
+    else if (page == "wifi")
+      arg = " wifi";
+    else if (page == "network")
+      arg = " network";
+    else if (page == "bluetooth")
+      arg = " bluetooth";
+    else if (page == "sound")
+      arg = " sound";
+    else if (page == "display")
+      arg = " display";
+    else if (page == "battery" || page == "power")
+      arg = " power";
+    else if (page == "apps")
+      arg = " applications";
+    else if (page == "privacy")
+      arg = " privacy";
+    else if (page == "update")
+      arg = " info-overview";
+    else if (page == "about")
+      arg = " info-overview";
     else {
       error = "unknown settings page '" + page + "'";
       return false;
@@ -894,7 +911,9 @@ bool native_open_settings(const std::string& page, std::string& error) {
   if (have_tool("xfce4-settings-manager")) {
     if (try_cmd("xfce4-settings-manager")) return true;
   }
-  error = "no settings app found (need gnome-control-center, systemsettings, or xfce4-settings-manager)";
+  error =
+      "no settings app found (need gnome-control-center, systemsettings, or "
+      "xfce4-settings-manager)";
   return false;
 }
 

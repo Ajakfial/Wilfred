@@ -8,9 +8,11 @@ namespace wilfred {
 std::vector<VolumeInfo> native_list_volumes() {
   std::vector<VolumeInfo> out;
   @autoreleasepool {
-    NSArray* urls = [[NSFileManager defaultManager]
-        mountedVolumeURLsIncludingResourceValuesForKeys:@[ NSURLVolumeNameKey, NSURLVolumeIsRemovableKey ]
-                                                options:0];
+    NSArray* urls =
+        [[NSFileManager defaultManager] mountedVolumeURLsIncludingResourceValuesForKeys:@[
+          NSURLVolumeNameKey, NSURLVolumeIsRemovableKey
+        ]
+                                                                                options:0];
     for (NSURL* url in urls) {
       VolumeInfo v;
       v.path = std::string([[url path] UTF8String] ? [[url path] UTF8String] : "");

@@ -7,8 +7,12 @@ namespace wilfred {
 // iOS has no desktop window manager visible to native code; window
 // listing/management is intentionally unsupported.
 
-std::vector<NativeWindowInfo> native_list_windows() { return {}; }
-bool native_focus_window(std::uint64_t) { return false; }
+std::vector<NativeWindowInfo> native_list_windows() {
+  return {};
+}
+bool native_focus_window(std::uint64_t) {
+  return false;
+}
 
 bool native_window_action(std::uint64_t, NativeWindowOp, std::string& error) {
   error = "window management is not available on iOS";

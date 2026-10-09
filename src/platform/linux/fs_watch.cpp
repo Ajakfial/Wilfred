@@ -16,9 +16,9 @@
 #ifndef __APPLE__
 #include <dirent.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/inotify.h>
 #include <unistd.h>
-#include <poll.h>
 #endif
 #endif
 
@@ -39,7 +39,8 @@ public:
       return false;
     }
     running_ = true;
-    for (auto& r : roots) add_root(r);
+    for (auto& r : roots)
+      add_root(r);
     th_ = std::thread([this] { loop(); });
     return true;
   }
@@ -55,14 +56,18 @@ public:
       close(fd_);
       fd_ = -1;
     }
-    if (wakeup_fd_[0] >= 0) { close(wakeup_fd_[0]); wakeup_fd_[0] = -1; }
-    if (wakeup_fd_[1] >= 0) { close(wakeup_fd_[1]); wakeup_fd_[1] = -1; }
+    if (wakeup_fd_[0] >= 0) {
+      close(wakeup_fd_[0]);
+      wakeup_fd_[0] = -1;
+    }
+    if (wakeup_fd_[1] >= 0) {
+      close(wakeup_fd_[1]);
+      wakeup_fd_[1] = -1;
+    }
     wd_.clear();
   }
 
-  void add_root(const std::string& root) override {
-    watch_tree(root);
-  }
+  void add_root(const std::string& root) override { watch_tree(root); }
 
 private:
   void watch_tree(const std::string& dir) {
@@ -94,18 +99,18 @@ private:
     pfd[0].events = POLLIN;
     pfd[1].fd = wakeup_fd_[0];
     pfd[1].events = POLLIN;
-    
+
     while (running_) {
       int ret = poll(pfd, 2, -1);
       if (ret < 0) continue;
-      
+
       if (pfd[1].revents & POLLIN) {
         char c;
         auto _ = read(wakeup_fd_[0], &c, 1);
       }
-      
+
       if (!(pfd[0].revents & POLLIN)) continue;
-      
+
       auto n = read(fd_, buf, sizeof(buf));
       if (n <= 0) continue;
       std::size_t i = 0;

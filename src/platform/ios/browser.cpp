@@ -9,9 +9,15 @@ namespace wilfred {
 // WebSearch results; launching is performed from Swift based on the bridge
 // result payload, so these stay as explicit stubs.
 
-std::string native_default_browser_id() { return "ios-system"; }
-std::string native_default_browser_executable() { return {}; }
-std::vector<BrowserInfo> native_list_browsers() { return {}; }
+std::string native_default_browser_id() {
+  return "ios-system";
+}
+std::string native_default_browser_executable() {
+  return {};
+}
+std::vector<BrowserInfo> native_list_browsers() {
+  return {};
+}
 bool native_open_url(const std::string&) {
   // Handled in Swift (WilfredActions.openResult -> UIApplication.open).
   return false;

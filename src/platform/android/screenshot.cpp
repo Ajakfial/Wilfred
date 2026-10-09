@@ -8,7 +8,9 @@ bool native_take_screenshot(NativeScreenshotMode, std::string&, std::string& err
   return false;
 }
 
-std::string native_screenshot_save_directory() { return "/sdcard/Pictures/Wilfred"; }
+std::string native_screenshot_save_directory() {
+  return "/sdcard/Pictures/Wilfred";
+}
 
 #endif
 }  // namespace wilfred

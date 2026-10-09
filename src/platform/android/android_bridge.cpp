@@ -59,7 +59,9 @@ struct MobileCore::Impl {
 };
 
 MobileCore::MobileCore() : impl_(new Impl()) {}
-MobileCore::~MobileCore() { delete impl_; }
+MobileCore::~MobileCore() {
+  delete impl_;
+}
 
 bool MobileCore::boot(const std::string& files_dir, std::string& error) {
   if (files_dir.empty()) {
@@ -122,8 +124,7 @@ bool MobileCore::boot(const std::string& files_dir, std::string& error) {
     st.interpreter.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (st.cfg.remotes.enabled && !st.cfg.remotes.sources.empty())
     st.interpreter.providers().add(std::make_unique<RemoteProvider>());
-  if (st.cfg.packages.enabled)
-    st.interpreter.providers().add(std::make_unique<PkgProvider>());
+  if (st.cfg.packages.enabled) st.interpreter.providers().add(std::make_unique<PkgProvider>());
   st.booted = true;
   return true;
 }
@@ -131,26 +132,40 @@ bool MobileCore::boot(const std::string& files_dir, std::string& error) {
 std::string MobileCore::action_to_string(int action_value) {
   auto a = static_cast<ResultAction>(action_value);
   switch (a) {
-    case ResultAction::Open: return "open";
-    case ResultAction::Reveal: return "reveal";
-    case ResultAction::Copy: return "copy";
-    case ResultAction::WebSearch: return "web";
-    case ResultAction::Calculate: return "calc";
-    case ResultAction::Convert: return "convert";
-    case ResultAction::None: return "none";
-    case ResultAction::Habit: return "habit";
-    case ResultAction::Mini: return "mini";
-    case ResultAction::Expand: return "expand";
-    case ResultAction::Plugin: return "plugin";
-    case ResultAction::SwitchWindow: return "window";
-    case ResultAction::System: return "system";
-    case ResultAction::Screenshot: return "screenshot";
+    case ResultAction::Open:
+      return "open";
+    case ResultAction::Reveal:
+      return "reveal";
+    case ResultAction::Copy:
+      return "copy";
+    case ResultAction::WebSearch:
+      return "web";
+    case ResultAction::Calculate:
+      return "calc";
+    case ResultAction::Convert:
+      return "convert";
+    case ResultAction::None:
+      return "none";
+    case ResultAction::Habit:
+      return "habit";
+    case ResultAction::Mini:
+      return "mini";
+    case ResultAction::Expand:
+      return "expand";
+    case ResultAction::Plugin:
+      return "plugin";
+    case ResultAction::SwitchWindow:
+      return "window";
+    case ResultAction::System:
+      return "system";
+    case ResultAction::Screenshot:
+      return "screenshot";
   }
   return "open";
 }
 
 std::string MobileCore::results_to_json(const std::vector<SearchResult>& results,
-                                         std::size_t limit) {
+                                        std::size_t limit) {
   std::string out = "[";
   bool first = true;
   std::size_t n = 0;
@@ -159,10 +174,9 @@ std::string MobileCore::results_to_json(const std::vector<SearchResult>& results
     ++n;
     if (!first) out.push_back(',');
     first = false;
-    out += "{\"title\":\"" + json_escape(r.title) + "\",\"subtitle\":\"" +
-           json_escape(r.subtitle) + "\",\"path\":\"" + json_escape(r.path) +
-           "\",\"payload\":\"" + json_escape(r.payload) + "\",\"score\":" +
-           std::to_string(r.score) + ",\"action\":\"" +
+    out += "{\"title\":\"" + json_escape(r.title) + "\",\"subtitle\":\"" + json_escape(r.subtitle) +
+           "\",\"path\":\"" + json_escape(r.path) + "\",\"payload\":\"" + json_escape(r.payload) +
+           "\",\"score\":" + std::to_string(r.score) + ",\"action\":\"" +
            action_to_string(static_cast<int>(r.action)) + "\",\"category\":\"" +
            json_escape(r.category) + "\",\"kind\":\"" + json_escape(r.kind_label) +
            "\",\"actions\":[";
@@ -170,8 +184,7 @@ std::string MobileCore::results_to_json(const std::vector<SearchResult>& results
     for (auto& a : r.actions) {
       if (!afirst) out.push_back(',');
       afirst = false;
-      out += "{\"id\":\"" + json_escape(a.id) + "\",\"label\":\"" + json_escape(a.label) +
-             "\"}";
+      out += "{\"id\":\"" + json_escape(a.id) + "\",\"label\":\"" + json_escape(a.label) + "\"}";
     }
     out += "]}";
   }
@@ -202,8 +215,8 @@ std::string MobileCore::status_json() {
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) return "{\"ok\":false}";
   auto s = st.index.stats();
-  return "{\"ok\":true,\"records\":" + std::to_string(s.files) + ",\"dirs\":" +
-         std::to_string(s.dirs) + ",\"apps\":" + std::to_string(s.apps) + "}";
+  return "{\"ok\":true,\"records\":" + std::to_string(s.files) +
+         ",\"dirs\":" + std::to_string(s.dirs) + ",\"apps\":" + std::to_string(s.apps) + "}";
 }
 
 bool MobileCore::index_now(std::string& error) {
@@ -226,7 +239,7 @@ bool MobileCore::index_now(std::string& error) {
 }
 
 bool MobileCore::register_app(const std::string& name, const std::string& package_id,
-                               const std::string& label) {
+                              const std::string& label) {
   if (name.empty() || package_id.empty()) return false;
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
@@ -317,8 +330,7 @@ std::string MobileCore::actions_json(std::size_t result_index) {
     for (auto& a : r.actions) {
       if (!first) out.push_back(',');
       first = false;
-      out += "{\"id\":\"" + json_escape(a.id) + "\",\"label\":\"" + json_escape(a.label) +
-             "\"}";
+      out += "{\"id\":\"" + json_escape(a.id) + "\",\"label\":\"" + json_escape(a.label) + "\"}";
     }
     out.push_back(']');
     return out;
@@ -328,7 +340,7 @@ std::string MobileCore::actions_json(std::size_t result_index) {
 }
 
 bool MobileCore::execute_action(std::size_t result_index, const std::string& action_id,
-                                 std::string& error) {
+                                std::string& error) {
   Impl& st = *impl_;
   std::lock_guard<std::mutex> lock(st.mu);
   if (!st.booted) {
@@ -376,8 +388,8 @@ std::string MobileCore::preview_json(const std::string& path) {
     std::string preview;
     if (is_dir) {
       int n = 0;
-      for (auto it = fs::directory_iterator(p, ec);
-           it != fs::directory_iterator() && n < 12; it.increment(ec)) {
+      for (auto it = fs::directory_iterator(p, ec); it != fs::directory_iterator() && n < 12;
+           it.increment(ec)) {
         if (ec) break;
         if (n) preview += "\n";
         preview += it->path().filename().string();

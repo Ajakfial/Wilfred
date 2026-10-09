@@ -4,8 +4,8 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shlobj.h>
+#include <windows.h>
 #endif
 
 #include <filesystem>
@@ -90,9 +90,8 @@ std::vector<AppInfo> native_discover_apps() {
   if (!desk.empty()) scan_dir_apps(desk, apps, false);
   // App Paths registry
   HKEY k{};
-  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths", 0, KEY_READ,
-                    &k) == ERROR_SUCCESS) {
+  if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+                    0, KEY_READ, &k) == ERROR_SUCCESS) {
     wchar_t name[256];
     for (DWORD i = 0;; ++i) {
       DWORD nlen = 256;

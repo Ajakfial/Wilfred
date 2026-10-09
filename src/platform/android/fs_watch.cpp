@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 // Polling watcher: light on battery (2s cadence, mtime-only), needs no
 // inotify permissions and works inside app-private dirs and /sdcard.
 class AndroidWatcher final : public WatcherBackend {
- public:
+public:
   ~AndroidWatcher() override { stop(); }
 
   bool start(const std::vector<std::string>& roots, int debounce_ms, FsEventFn cb) override {
@@ -47,10 +47,11 @@ class AndroidWatcher final : public WatcherBackend {
     snapshot_locked();
   }
 
- private:
+private:
   void snapshot_locked() {
     mtimes_.clear();
-    for (auto& r : roots_) scan_tree(r, mtimes_);
+    for (auto& r : roots_)
+      scan_tree(r, mtimes_);
   }
 
   static void scan_tree(const std::string& root,
@@ -77,7 +78,8 @@ class AndroidWatcher final : public WatcherBackend {
         std::lock_guard<std::mutex> lock(mu_);
         roots = roots_;
       }
-      for (auto& r : roots) scan_tree(r, cur);
+      for (auto& r : roots)
+        scan_tree(r, cur);
       std::vector<FsEvent> events;
       {
         std::lock_guard<std::mutex> lock(mu_);

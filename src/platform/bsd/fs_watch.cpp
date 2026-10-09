@@ -3,21 +3,21 @@
 
 #include "wilfred/core/log.hpp"
 
-#include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
-#include <filesystem>
-#include <mutex>
-#include <string>
 #include <sys/event.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <thread>
 #include <unistd.h>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <cstring>
+#include <filesystem>
+#include <mutex>
+#include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -32,7 +32,7 @@ namespace fs = std::filesystem;
 // backends. Rename pairing is impossible with kqueue, so moves surface as
 // Deleted+Created pairs; consumers already handle both shapes.
 class BsdWatcher final : public WatcherBackend {
- public:
+public:
   ~BsdWatcher() override { stop(); }
 
   bool start(const std::vector<std::string>& roots, int debounce_ms, FsEventFn cb) override {
@@ -51,8 +51,7 @@ class BsdWatcher final : public WatcherBackend {
     {
       // Wake pipe readable event so stop() unblocks kevent immediately.
       struct kevent ev;
-      EV_SET(&ev, static_cast<uintptr_t>(wake_[0]), EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0,
-             nullptr);
+      EV_SET(&ev, static_cast<uintptr_t>(wake_[0]), EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, nullptr);
       if (kevent(kq_, &ev, 1, nullptr, 0, nullptr) < 0) {
         close(wake_[0]);
         close(wake_[1]);
@@ -64,7 +63,8 @@ class BsdWatcher final : public WatcherBackend {
       std::lock_guard<std::mutex> lock(mu_);
       roots_ = roots;
       snapshot_locked();
-      for (auto& r : roots_) watch_tree_locked(r);
+      for (auto& r : roots_)
+        watch_tree_locked(r);
     }
     running_ = true;
     th_ = std::thread([this] { loop(); });
@@ -109,10 +109,11 @@ class BsdWatcher final : public WatcherBackend {
     watch_tree_locked(root);
   }
 
- private:
+private:
   void snapshot_locked() {
     snapshot_.clear();
-    for (auto& r : roots_) scan_tree(r, snapshot_);
+    for (auto& r : roots_)
+      scan_tree(r, snapshot_);
   }
 
   static void scan_tree(const std::string& root,
@@ -155,7 +156,8 @@ class BsdWatcher final : public WatcherBackend {
       if (ent->d_type == DT_DIR) subdirs.push_back(dir + "/" + ent->d_name);
     }
     closedir(d);
-    for (auto& sub : subdirs) watch_tree_locked(sub);
+    for (auto& sub : subdirs)
+      watch_tree_locked(sub);
   }
 
   // Drop watches whose paths are gone (or stopped being directories) and
@@ -192,12 +194,14 @@ class BsdWatcher final : public WatcherBackend {
 
   void loop() {
     struct kevent events[64];
-    const struct timespec quantum{2, 0};
+    const struct timespec quantum {
+      2, 0
+    };
     while (running_) {
       int n = kevent(kq_, nullptr, 0, events, 64, &quantum);
       if (!running_) break;
       if (n < 0) continue;
-      bool dirty = (n == 0);  // 2s timeout: safety-net rescan, same cadence
+      bool dirty = (n == 0);         // 2s timeout: safety-net rescan, same cadence
       for (int i = 0; i < n; ++i) {  // as the polling backends.
         if (static_cast<int>(events[i].ident) == wake_[0]) {
           char c;
@@ -212,7 +216,8 @@ class BsdWatcher final : public WatcherBackend {
       std::unordered_map<std::string, fs::file_time_type> cur;
       {
         std::lock_guard<std::mutex> lock(mu_);
-        for (auto& r : roots_) scan_tree(r, cur);
+        for (auto& r : roots_)
+          scan_tree(r, cur);
       }
       std::vector<FsEvent> out;
       {

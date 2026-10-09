@@ -1,18 +1,18 @@
-#include "wilfred/service/service.hpp"
-#include "wilfred/ui/overlay.hpp"
-#include "wilfred/ui/web_ui.hpp"
 #include "wilfred/core/log.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
+#include "wilfred/service/service.hpp"
+#include "wilfred/ui/overlay.hpp"
+#include "wilfred/ui/web_ui.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
+#include <WebView2.h>
 #include <dwmapi.h>
 #include <shellapi.h>
+#include <windows.h>
 #include <wrl.h>
 #include <wrl/event.h>
-#include <WebView2.h>
 #endif
 
 #include <algorithm>
@@ -66,9 +66,9 @@ static void post_json(const std::string& json) {
 // which can then report resize hit-tests. The strip is transparent.
 static constexpr int kGrip = 8;
 static constexpr int kMinW = 420;
-static constexpr int kMinH = 100;     // auto-size (content-hugging) minimum
-static constexpr int kMinDragH = 220; // minimum when the user drags the window
-static bool g_fit = false;            // user has taken over sizing
+static constexpr int kMinH = 100;      // auto-size (content-hugging) minimum
+static constexpr int kMinDragH = 220;  // minimum when the user drags the window
+static bool g_fit = false;             // user has taken over sizing
 
 static void layout_webview() {
   if (!g_ctrl || !g_hwnd) return;
@@ -200,7 +200,8 @@ static void tray_popup() {
   UINT cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, g_hwnd, nullptr);
   PostMessageW(g_hwnd, WM_NULL, 0, 0);
   DestroyMenu(menu);
-  if (cmd == ID_TRAY_SHOW) show_now();
+  if (cmd == ID_TRAY_SHOW)
+    show_now();
   else if (cmd == ID_TRAY_QUIT)
     request_quit();
 }
@@ -383,7 +384,8 @@ static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l) {
       if (g_want_show) show_now();
       return 0;
     case WM_WILFRED_TRAY:
-      if (l == WM_RBUTTONUP || l == WM_CONTEXTMENU) tray_popup();
+      if (l == WM_RBUTTONUP || l == WM_CONTEXTMENU)
+        tray_popup();
       else if (l == WM_LBUTTONUP || l == WM_LBUTTONDBLCLK)
         show_now();
       return 0;
@@ -418,10 +420,9 @@ public:
     int width = 704, height = 140;
     int sx = GetSystemMetrics(SM_CXSCREEN);
     int sy = GetSystemMetrics(SM_CYSCREEN);
-    g_hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOREDIRECTIONBITMAP, wc.lpszClassName, L"",
-        WS_POPUP | WS_THICKFRAME, (sx - width) / 2, sy / 6, width, height, nullptr, nullptr,
-        wc.hInstance, nullptr);
+    g_hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOREDIRECTIONBITMAP,
+                             wc.lpszClassName, L"", WS_POPUP | WS_THICKFRAME, (sx - width) / 2,
+                             sy / 6, width, height, nullptr, nullptr, wc.hInstance, nullptr);
     if (!g_hwnd) return false;
     SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     MARGINS margins{-1, -1, -1, -1};
@@ -489,7 +490,9 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   }
 }
 
-void overlay_set_quit(std::function<void()> fn) { g_quit = std::move(fn); }
+void overlay_set_quit(std::function<void()> fn) {
+  g_quit = std::move(fn);
+}
 
 void overlay_push_results(const OverlayResponse& resp) {
   {

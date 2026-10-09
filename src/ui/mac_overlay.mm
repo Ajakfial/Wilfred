@@ -1,8 +1,8 @@
+#include "wilfred/core/paths.hpp"
+#include "wilfred/core/utf8.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/ui/overlay.hpp"
 #include "wilfred/ui/web_ui.hpp"
-#include "wilfred/core/paths.hpp"
-#include "wilfred/core/utf8.hpp"
 
 #import <AppKit/AppKit.h>
 #import <WebKit/WebKit.h>
@@ -50,8 +50,8 @@ static WilfredCtl* g_ctl = nil;
 @implementation WilfredCtl
 - (void)sendJson:(const std::string&)json {
   if (!self.web) return;
-  NSString* js =
-      [NSString stringWithFormat:@"window.__wilfredNative && window.__wilfredNative(%s);", json.c_str()];
+  NSString* js = [NSString
+      stringWithFormat:@"window.__wilfredNative && window.__wilfredNative(%s);", json.c_str()];
   [self.web evaluateJavaScript:js completionHandler:nil];
 }
 - (void)placeWidth:(int)w height:(int)h {
@@ -63,7 +63,8 @@ static WilfredCtl* g_ctl = nil;
   CGFloat y = NSMaxY(screen) - screen.size.height / 5.0 - h;
   [self.window setFrame:NSMakeRect(x, y, w, h) display:YES];
 }
-- (void)userContentController:(WKUserContentController*)ucc didReceiveScriptMessage:(WKScriptMessage*)msg {
+- (void)userContentController:(WKUserContentController*)ucc
+      didReceiveScriptMessage:(WKScriptMessage*)msg {
   (void)ucc;
   std::string json;
   if ([msg.body isKindOfClass:[NSString class]]) {
@@ -178,11 +179,11 @@ public:
       [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
       g_ctl = [WilfredCtl new];
       NSRect frame = NSMakeRect(0, 0, 704, 140);
-      WilfredPanel* w =
-          [[WilfredPanel alloc] initWithContentRect:frame
-                                          styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskResizable
-                                            backing:NSBackingStoreBuffered
-                                              defer:NO];
+      WilfredPanel* w = [[WilfredPanel alloc]
+          initWithContentRect:frame
+                    styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskResizable
+                      backing:NSBackingStoreBuffered
+                        defer:NO];
       // Borderless + Resizable: no chrome, but the edges can still be dragged.
       // The web UI notices the size change and switches to its fill layout.
       [w setOpaque:NO];
@@ -272,7 +273,9 @@ void overlay_bind(OverlayQuery q, OverlaySubmit s) {
   }
 }
 
-void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+void overlay_set_quit(std::function<void()> fn) {
+  (void)fn;
+}
 
 void overlay_push_results(const OverlayResponse& resp) {
   WilfredCtl* ctl = g_ctl;

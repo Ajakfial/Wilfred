@@ -12,8 +12,7 @@
 #include <string>
 #include <vector>
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
-    defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #endif
@@ -83,9 +82,10 @@ std::string owner_from_pid(unsigned long pid) {
   return std::string(kp.p_comm, strnlen(kp.p_comm, sizeof(kp.p_comm)));
 #elif defined(__NetBSD__)
   // KERN_PROC2 with element size + count trailing the op.
-  int mib[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast<int>(pid),
-                (int)sizeof(struct kinfo_proc2), 0};
-  struct kinfo_proc2 kp{};
+  int mib[6] = {
+      CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast<int>(pid), (int)sizeof(struct kinfo_proc2),
+      0};
+  struct kinfo_proc2 kp {};
   std::size_t len = sizeof(kp);
   if (sysctl(mib, 6, &kp, &len, nullptr, 0) != 0 || len == 0) return {};
   return std::string(kp.p_comm, strnlen(kp.p_comm, sizeof(kp.p_comm)));
@@ -254,13 +254,14 @@ bool native_window_action(std::uint64_t id, NativeWindowOp op, std::string& erro
       if (!ok) error = "could not minimize window";
       break;
     case NativeWindowOp::Maximize:
-      ok = x_send_root_msg(dpy, win, "_NET_WM_STATE", 1,
-                           static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False)),
-                           static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)));
+      ok = x_send_root_msg(
+          dpy, win, "_NET_WM_STATE", 1,
+          static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False)),
+          static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)));
       if (ok)
-        ok = x_send_root_msg(dpy, win, "_NET_WM_STATE", 1,
-                             static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)),
-                             0);
+        ok = x_send_root_msg(
+            dpy, win, "_NET_WM_STATE", 1,
+            static_cast<long>(XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False)), 0);
       if (!ok) error = "could not maximize window";
       break;
     case NativeWindowOp::Restore: {
@@ -349,7 +350,7 @@ bool native_window_move(std::uint64_t id, int x, int y, int w, int h, std::strin
   }
   XRaiseWindow(dpy, win);
   bool ok = XMoveResizeWindow(dpy, win, x, y, static_cast<unsigned>(use_w),
-                             static_cast<unsigned>(use_h)) != 0;
+                              static_cast<unsigned>(use_h)) != 0;
   XFlush(dpy);
   XCloseDisplay(dpy);
   if (!ok) {
@@ -393,7 +394,8 @@ bool native_monitor_signature(std::string& sig, std::string& error) {
       if (geom == std::string::npos) continue;
       auto end = s.find_first_of(" (", geom);
       std::string g = s.substr(geom, end == std::string::npos ? std::string::npos : end - geom);
-      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r')) g.pop_back();
+      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r'))
+        g.pop_back();
       if (!g.empty()) parts.push_back(g);
     }
     pclose(f);
@@ -406,8 +408,7 @@ bool native_monitor_signature(std::string& sig, std::string& error) {
     }
     int scr = DefaultScreen(dpy);
     char buf[64];
-    std::snprintf(buf, sizeof(buf), "%dx%d@0,0", DisplayWidth(dpy, scr),
-                  DisplayHeight(dpy, scr));
+    std::snprintf(buf, sizeof(buf), "%dx%d@0,0", DisplayWidth(dpy, scr), DisplayHeight(dpy, scr));
     XCloseDisplay(dpy);
     sig = buf;
     return true;
@@ -443,7 +444,8 @@ bool swaymsg_signature(std::string& sig) {
   if (!f) return false;
   std::string out;
   char buf[1024];
-  while (fgets(buf, sizeof(buf), f)) out += buf;
+  while (fgets(buf, sizeof(buf), f))
+    out += buf;
   pclose(f);
   // Minimal scan for {"name":"..","rect":{"x":..,"y":..,"width":..,"height":..},...,"active":true}
   // without a full JSON parse: collect WxH@X,Y for entries marked active.
@@ -478,9 +480,13 @@ bool swaymsg_signature(std::string& sig) {
 }
 }  // namespace
 
-std::vector<NativeWindowInfo> native_list_windows() { return {}; }
+std::vector<NativeWindowInfo> native_list_windows() {
+  return {};
+}
 
-bool native_focus_window(std::uint64_t) { return false; }
+bool native_focus_window(std::uint64_t) {
+  return false;
+}
 
 bool native_window_action(std::uint64_t, NativeWindowOp, std::string& error) {
   error = kWaylandWindowErr;
@@ -517,7 +523,8 @@ bool native_monitor_signature(std::string& sig, std::string& error) {
       if (geom == std::string::npos) continue;
       auto end = s.find_first_of(" (", geom);
       std::string g = s.substr(geom, end == std::string::npos ? std::string::npos : end - geom);
-      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r')) g.pop_back();
+      while (!g.empty() && (g.back() == ' ' || g.back() == '\n' || g.back() == '\r'))
+        g.pop_back();
       if (!g.empty()) parts.push_back(g);
     }
     pclose(f);

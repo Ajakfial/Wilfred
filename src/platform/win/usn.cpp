@@ -136,9 +136,8 @@ bool win_usn_enumerate_tree(const std::string& root, const Config& cfg, WalkFn o
   if (_wcsicmp(fsname, L"NTFS") != 0) return false;
 
   std::wstring vol = L"\\\\.\\" + std::wstring(mount.begin(), mount.end() - 1);  // \\.\C:
-  HANDLE h =
-      CreateFileW(vol.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                  OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+  HANDLE h = CreateFileW(vol.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                         OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (h == INVALID_HANDLE_VALUE) {
     log_debug("walk", "USN unavailable, falling back to directory walk");
     return false;

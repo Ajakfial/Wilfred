@@ -4,13 +4,13 @@
 #include "wilfred/core/utf8.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
+#include <endpointvolume.h>
+#include <mmdeviceapi.h>
+#include <powrprof.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#include <powrprof.h>
+#include <windows.h>
 #include <winver.h>
-#include <mmdeviceapi.h>
-#include <endpointvolume.h>
 
 #include <cctype>
 #include <cstdio>
@@ -25,18 +25,12 @@ namespace wilfred {
 // Portable COM IDs for the audio endpoint API. __uuidof() is MSVC-only, so
 // MinGW builds use explicit GUIDs — same objects, all compilers.
 namespace {
-const GUID kClsidMMDeviceEnumerator = {0xBCDE0395,
-                                       0xE52F,
-                                       0x467C,
-                                       {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
-const GUID kIidMMDeviceEnumerator = {0xA95664D2,
-                                     0x9614,
-                                     0x4F35,
-                                     {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};
-const GUID kIidAudioEndpointVolume = {0x5CDF2C82,
-                                      0x841E,
-                                      0x4546,
-                                      {0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A}};
+const GUID kClsidMMDeviceEnumerator = {
+    0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
+const GUID kIidMMDeviceEnumerator = {
+    0xA95664D2, 0x9614, 0x4F35, {0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}};
+const GUID kIidAudioEndpointVolume = {
+    0x5CDF2C82, 0x841E, 0x4546, {0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A}};
 }  // namespace
 
 bool native_launch(const std::string& path) {
@@ -62,15 +56,13 @@ bool native_open_url(const std::string& url) {
 }
 
 static bool run_hidden(const wchar_t* exe, const wchar_t* args) {
-  auto rc = reinterpret_cast<INT_PTR>(
-      ShellExecuteW(nullptr, L"open", exe, args, nullptr, SW_HIDE));
+  auto rc = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", exe, args, nullptr, SW_HIDE));
   return rc > 32;
 }
 
 static void enable_shutdown_privilege() {
   HANDLE tok = nullptr;
-  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &tok))
-    return;
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &tok)) return;
   TOKEN_PRIVILEGES tp{};
   tp.PrivilegeCount = 1;
   tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
@@ -106,7 +98,8 @@ bool has_exe_ext(const std::wstring& n) {
 }
 
 std::wstring win_lower(std::wstring s) {
-  for (auto& c : s) c = static_cast<wchar_t>(towlower(c));
+  for (auto& c : s)
+    c = static_cast<wchar_t>(towlower(c));
   return s;
 }
 
@@ -127,9 +120,8 @@ std::wstring resolve_exe_name(const std::wstring& name) {
   if (n > 0 && n < MAX_PATH) return full;
   for (HKEY base : {HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE}) {
     for (int t = 0; t < 2; ++t) {
-      std::wstring key =
-          L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name +
-          ((t == 1 && !has_exe_ext(name)) ? L".exe" : L"");
+      std::wstring key = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" + name +
+                         ((t == 1 && !has_exe_ext(name)) ? L".exe" : L"");
       HKEY h = nullptr;
       if (RegOpenKeyExW(base, key.c_str(), 0, KEY_READ, &h) != ERROR_SUCCESS) continue;
       WCHAR data[MAX_PATH]{};
@@ -159,20 +151,19 @@ std::string exe_display_name(const std::wstring& exe) {
       auto query_desc = [&](const wchar_t* sub) -> std::string {
         WCHAR* val = nullptr;
         UINT vl = 0;
-        if (VerQueryValueW(buf.data(), sub, reinterpret_cast<void**>(&val), &vl) && vl &&
-            val && val[0])
+        if (VerQueryValueW(buf.data(), sub, reinterpret_cast<void**>(&val), &vl) && vl && val &&
+            val[0])
           return wide_to_utf8(val);
         return {};
       };
-      if (VerQueryValueW(buf.data(), L"\\VarFileInfo\\Translation",
-                         reinterpret_cast<void**>(&tc), &tl) &&
+      if (VerQueryValueW(buf.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&tc),
+                         &tl) &&
           tl >= sizeof(LangCp)) {
         WCHAR sub[64]{};
         swprintf(sub, 64, L"\\StringFileInfo\\%04x%04x\\FileDescription", tc[0].lang, tc[0].cp);
         if (auto d = query_desc(sub); !d.empty()) return d;
       }
-      if (auto d = query_desc(L"\\StringFileInfo\\040904E4\\FileDescription"); !d.empty())
-        return d;
+      if (auto d = query_desc(L"\\StringFileInfo\\040904E4\\FileDescription"); !d.empty()) return d;
     }
   }
   auto u = wide_to_utf8(exe);
@@ -186,7 +177,8 @@ std::string exe_display_name(const std::wstring& exe) {
 // "\"C:\App\app.exe\" \"%1\"" or "C:\App\app.exe %1".
 std::wstring exe_from_command(const std::wstring& cmd) {
   std::size_t i = 0;
-  while (i < cmd.size() && iswspace(cmd[i])) ++i;
+  while (i < cmd.size() && iswspace(cmd[i]))
+    ++i;
   if (i >= cmd.size()) return {};
   std::wstring cand;
   if (cmd[i] == L'"') {
@@ -216,9 +208,8 @@ std::wstring reg_default_string(HKEY root, const std::wstring& subkey) {
 
 void collect_openwith_candidates(const std::wstring& ext, std::vector<std::wstring>& exes) {
   for (HKEY base : {HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE}) {
-    std::wstring key =
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\" + ext +
-        L"\\OpenWithList";
+    std::wstring key = L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\" + ext +
+                       L"\\OpenWithList";
     HKEY h = nullptr;
     if (RegOpenKeyExW(base, key.c_str(), 0, KEY_READ, &h) != ERROR_SUCCESS) continue;
     for (DWORD i = 0;; ++i) {
@@ -237,16 +228,14 @@ void collect_openwith_candidates(const std::wstring& ext, std::vector<std::wstri
   // ProgIds registered for this extension.
   std::vector<std::wstring> progids;
   for (HKEY base : {HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE}) {
-    std::wstring key =
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\" + ext +
-        L"\\OpenWithProgids";
+    std::wstring key = L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\" + ext +
+                       L"\\OpenWithProgids";
     HKEY h = nullptr;
     if (RegOpenKeyExW(base, key.c_str(), 0, KEY_READ, &h) != ERROR_SUCCESS) continue;
     for (DWORD i = 0;; ++i) {
       WCHAR vn[256]{};
       DWORD vns = 256;
-      if (RegEnumValueW(h, i, vn, &vns, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
-        break;
+      if (RegEnumValueW(h, i, vn, &vns, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) break;
       progids.push_back(vn);
     }
     RegCloseKey(h);
@@ -273,9 +262,10 @@ std::vector<OpenWithApp> native_apps_for_file(const std::string& path, std::size
   std::vector<std::wstring> seen;
   for (auto& c : cands) {
     if (out.size() >= max_apps) break;
-    std::wstring resolved = (c.find(L'\\') != std::wstring::npos || c.find(L'/') != std::wstring::npos)
-                                ? (win_file_exists(c) ? c : std::wstring())
-                                : resolve_exe_name(c);
+    std::wstring resolved =
+        (c.find(L'\\') != std::wstring::npos || c.find(L'/') != std::wstring::npos)
+            ? (win_file_exists(c) ? c : std::wstring())
+            : resolve_exe_name(c);
     if (resolved.empty()) {
       // OpenWithList entries are bare exe names; command-derived ones are full paths.
       resolved = resolve_exe_name(c);
@@ -304,9 +294,9 @@ bool native_open_with(const std::string& target, const std::string& file) {
   auto f = utf8_to_wide(file);
   std::wstring args = L"\"" + f + L"\"";
   std::wstring dir = utf8_to_wide(path_parent(file));
-  auto rc = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", app.c_str(), args.c_str(),
-                                                   dir.empty() ? nullptr : dir.c_str(),
-                                                   SW_SHOWNORMAL));
+  auto rc =
+      reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", app.c_str(), args.c_str(),
+                                              dir.empty() ? nullptr : dir.c_str(), SW_SHOWNORMAL));
   return rc > 32;
 }
 
@@ -407,7 +397,8 @@ std::string win_exec(const std::string& cmd) {
 }
 
 std::string win_lower(std::string s) {
-  for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (auto& c : s)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   return s;
 }
 
@@ -425,7 +416,8 @@ std::string win_wifi_iface() {
         // Heuristic: take the trailing token run after the state column.
         // Fall back to "Wi-Fi" when parsing fails.
         auto t = cur;
-        while (!t.empty() && (t.back() == ' ' || t.back() == '\r')) t.pop_back();
+        while (!t.empty() && (t.back() == ' ' || t.back() == '\r'))
+          t.pop_back();
         auto pos = t.find_last_of("  \t");
         if (pos != std::string::npos) {
           auto name = t.substr(pos + 1);
@@ -482,7 +474,8 @@ bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) 
         if (p != std::string::npos) {
           auto k = win_lower(t.substr(0, p));
           auto v = t.substr(p + 1);
-          while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+          while (!v.empty() && (v.front() == ' ' || v.front() == '\t'))
+            v.erase(v.begin());
           while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
             v.pop_back();
           if (k.find("ssid") != std::string::npos && k.find("bssid") == std::string::npos &&
@@ -506,8 +499,8 @@ bool native_wifi_status(bool& enabled, std::string& detail, std::string& error) 
 bool native_wifi_set(bool enabled, std::string& error) {
   auto iface = win_wifi_iface();
   if (iface.empty()) iface = "Wi-Fi";
-  std::string cmd = "netsh interface set interface name=\"" + iface + "\" admin=" +
-                    (enabled ? "enabled" : "disabled") + " 2>&1";
+  std::string cmd = "netsh interface set interface name=\"" + iface +
+                    "\" admin=" + (enabled ? "enabled" : "disabled") + " 2>&1";
   auto out = win_exec(cmd);
   auto low = win_lower(out);
   if (low.find("ok") != std::string::npos || low.empty()) return true;
@@ -536,7 +529,8 @@ std::vector<std::string> native_wifi_list(std::string& error) {
       if (p != std::string::npos) {
         auto k = win_lower(cur.substr(0, p));
         auto v = cur.substr(p + 1);
-        while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+        while (!v.empty() && (v.front() == ' ' || v.front() == '\t'))
+          v.erase(v.begin());
         while (!v.empty() && (v.back() == ' ' || v.back() == '\r' || v.back() == '\t'))
           v.pop_back();
         if (k.find("ssid") != std::string::npos && k.find("bssid") == std::string::npos &&
@@ -559,13 +553,16 @@ bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& er
       "Where-Object {$_.FriendlyName -like '*Radio*' -or $_.FriendlyName -like '*Bluetooth*'} | "
       "Select-Object -First 1 -ExpandProperty Status 2>$null\" 2>&1");
   auto t = win_lower(out);
-  while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' ')) t.pop_back();
+  while (!t.empty() && (t.back() == '\n' || t.back() == '\r' || t.back() == ' '))
+    t.pop_back();
   if (t.empty()) {
     // Fall back to the Bluetooth service state.
     auto svc = win_exec(
-        "powershell -NoProfile -Command \"(Get-Service bthserv -ErrorAction SilentlyContinue).Status\" 2>&1");
+        "powershell -NoProfile -Command \"(Get-Service bthserv -ErrorAction "
+        "SilentlyContinue).Status\" 2>&1");
     auto s = win_lower(svc);
-    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' '))
+      s.pop_back();
     if (s.find("running") != std::string::npos) {
       enabled = true;
       detail = "bthserv running";
@@ -576,7 +573,8 @@ bool native_bluetooth_status(bool& enabled, std::string& detail, std::string& er
   }
   enabled = t.find("ok") != std::string::npos;
   detail = out;
-  while (!detail.empty() && (detail.back() == '\n' || detail.back() == '\r' || detail.back() == ' '))
+  while (!detail.empty() &&
+         (detail.back() == '\n' || detail.back() == '\r' || detail.back() == ' '))
     detail.pop_back();
   return true;
 }
@@ -585,10 +583,10 @@ bool native_bluetooth_set(bool enabled, std::string& error) {
   std::string verb = enabled ? "Enable-PnpDevice" : "Disable-PnpDevice";
   std::string cmd =
       "powershell -NoProfile -Command \"$d = Get-PnpDevice -Class Bluetooth 2>$null | "
-      "Where-Object {$_.FriendlyName -like '*Radio*'} | Select-Object -First 1; if (!$d) { exit 2 }; "
+      "Where-Object {$_.FriendlyName -like '*Radio*'} | Select-Object -First 1; if (!$d) { exit 2 "
+      "}; "
       "$d | " +
-      verb +
-      " -Confirm:$false; exit $LASTEXITCODE\" 2>&1";
+      verb + " -Confirm:$false; exit $LASTEXITCODE\" 2>&1";
   auto out = win_exec(cmd);
   (void)out;
   // Verify by re-reading status.
@@ -623,8 +621,7 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
-                     reinterpret_cast<void**>(&vol));
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
     error = "cannot open volume control";
@@ -668,8 +665,7 @@ bool native_volume_set(int level, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
-                     reinterpret_cast<void**>(&vol));
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
     error = "cannot open volume control";
@@ -707,8 +703,7 @@ bool native_volume_mute(bool mute, std::string& error) {
     return false;
   }
   IAudioEndpointVolume* vol = nullptr;
-  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr,
-                     reinterpret_cast<void**>(&vol));
+  hr = dev->Activate(kIidAudioEndpointVolume, CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&vol));
   dev->Release();
   if (FAILED(hr) || !vol) {
     error = "cannot open volume control";
@@ -751,7 +746,8 @@ bool native_brightness_set(int percent, std::string& error) {
   if (percent > 100) percent = 100;
   std::string cmd =
       "powershell -NoProfile -Command \"(Get-WmiObject -Namespace root/wmi -Class "
-      "WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Select-Object -First 1).WmiSetBrightness(1, " +
+      "WmiMonitorBrightnessMethods -ErrorAction SilentlyContinue | Select-Object -First "
+      "1).WmiSetBrightness(1, " +
       std::to_string(percent) + ")\" 2>&1";
   win_exec(cmd);
   int cur = -1;

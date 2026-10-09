@@ -11,13 +11,25 @@ namespace wilfred {
 // performs the actual open. These stubs exist so wilfred_core links
 // unchanged.
 
-bool native_launch(const std::string&) { return false; }
-bool native_reveal(const std::string&) { return false; }
+bool native_launch(const std::string&) {
+  return false;
+}
+bool native_reveal(const std::string&) {
+  return false;
+}
 
-std::vector<OpenWithApp> native_apps_for_file(const std::string&, std::size_t) { return {}; }
-bool native_open_with(const std::string&, const std::string&) { return false; }
-bool native_open_terminal(const std::string&) { return false; }
-bool native_open_editor(const std::string&) { return false; }
+std::vector<OpenWithApp> native_apps_for_file(const std::string&, std::size_t) {
+  return {};
+}
+bool native_open_with(const std::string&, const std::string&) {
+  return false;
+}
+bool native_open_terminal(const std::string&) {
+  return false;
+}
+bool native_open_editor(const std::string&) {
+  return false;
+}
 
 bool native_system_action(const std::string&) {
   // Lock/sleep/shutdown are unavailable to sandboxed iOS apps;

@@ -33,7 +33,8 @@ public:
     unsigned int mods = 0;
     for (auto& m : modifiers) {
       auto l = to_lower_utf8(m);
-      if (l == "ctrl" || l == "control") mods |= ControlMask;
+      if (l == "ctrl" || l == "control")
+        mods |= ControlMask;
       else if (l == "alt")
         mods |= Mod1Mask;
       else if (l == "shift")
@@ -96,7 +97,9 @@ private:
   std::thread th_;
 };
 
-std::unique_ptr<HotkeyBackend> create_hotkey_backend() { return std::make_unique<LinuxHotkey>(); }
+std::unique_ptr<HotkeyBackend> create_hotkey_backend() {
+  return std::make_unique<LinuxHotkey>();
+}
 
 #endif
 }  // namespace wilfred

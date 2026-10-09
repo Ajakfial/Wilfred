@@ -2,8 +2,8 @@
 #include "wilfred/ui/overlay.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <objbase.h>
+#include <windows.h>
 #elif defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #endif
@@ -46,7 +46,9 @@ bool is_macos() {
   return false;
 #endif
 }
-bool is_linux() { return !is_windows() && !is_macos() && !is_ios() && !is_bsd(); }
+bool is_linux() {
+  return !is_windows() && !is_macos() && !is_ios() && !is_bsd();
+}
 
 bool is_android() {
 #ifdef __ANDROID__

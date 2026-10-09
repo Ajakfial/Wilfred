@@ -31,8 +31,8 @@
 #ifdef WILFRED_HAS_WEBKIT
 // WebKitGTK headers are pulled via pkg-config cflags (see CMakeLists).
 #include <gtk/gtk.h>
-#include <webkit2/webkit2.h>
 #include <jsc/jsc.h>
+#include <webkit2/webkit2.h>
 #endif
 
 #ifdef WILFRED_HAS_LAYER_SHELL
@@ -92,28 +92,45 @@ static bool wk_edge_at(double x, double y, GdkWindowEdge* edge) {
   int h = gtk_widget_get_allocated_height(g_wk.window);
   const bool left = x < kGrip, right = x >= w - kGrip;
   const bool top = y < kGrip, bottom = y >= h - kGrip;
-  if (top && left) *edge = GDK_WINDOW_EDGE_NORTH_WEST;
-  else if (top && right) *edge = GDK_WINDOW_EDGE_NORTH_EAST;
-  else if (bottom && left) *edge = GDK_WINDOW_EDGE_SOUTH_WEST;
-  else if (bottom && right) *edge = GDK_WINDOW_EDGE_SOUTH_EAST;
-  else if (left) *edge = GDK_WINDOW_EDGE_WEST;
-  else if (right) *edge = GDK_WINDOW_EDGE_EAST;
-  else if (top) *edge = GDK_WINDOW_EDGE_NORTH;
-  else if (bottom) *edge = GDK_WINDOW_EDGE_SOUTH;
-  else return false;
+  if (top && left)
+    *edge = GDK_WINDOW_EDGE_NORTH_WEST;
+  else if (top && right)
+    *edge = GDK_WINDOW_EDGE_NORTH_EAST;
+  else if (bottom && left)
+    *edge = GDK_WINDOW_EDGE_SOUTH_WEST;
+  else if (bottom && right)
+    *edge = GDK_WINDOW_EDGE_SOUTH_EAST;
+  else if (left)
+    *edge = GDK_WINDOW_EDGE_WEST;
+  else if (right)
+    *edge = GDK_WINDOW_EDGE_EAST;
+  else if (top)
+    *edge = GDK_WINDOW_EDGE_NORTH;
+  else if (bottom)
+    *edge = GDK_WINDOW_EDGE_SOUTH;
+  else
+    return false;
   return true;
 }
 
 static const char* wk_edge_cursor(GdkWindowEdge e) {
   switch (e) {
-    case GDK_WINDOW_EDGE_NORTH_WEST: return "nw-resize";
-    case GDK_WINDOW_EDGE_NORTH_EAST: return "ne-resize";
-    case GDK_WINDOW_EDGE_SOUTH_WEST: return "sw-resize";
-    case GDK_WINDOW_EDGE_SOUTH_EAST: return "se-resize";
-    case GDK_WINDOW_EDGE_WEST: return "w-resize";
-    case GDK_WINDOW_EDGE_EAST: return "e-resize";
-    case GDK_WINDOW_EDGE_NORTH: return "n-resize";
-    default: return "s-resize";
+    case GDK_WINDOW_EDGE_NORTH_WEST:
+      return "nw-resize";
+    case GDK_WINDOW_EDGE_NORTH_EAST:
+      return "ne-resize";
+    case GDK_WINDOW_EDGE_SOUTH_WEST:
+      return "sw-resize";
+    case GDK_WINDOW_EDGE_SOUTH_EAST:
+      return "se-resize";
+    case GDK_WINDOW_EDGE_WEST:
+      return "w-resize";
+    case GDK_WINDOW_EDGE_EAST:
+      return "e-resize";
+    case GDK_WINDOW_EDGE_NORTH:
+      return "n-resize";
+    default:
+      return "s-resize";
   }
 }
 
@@ -148,7 +165,6 @@ static gboolean wk_on_motion(GtkWidget* widget, GdkEventMotion* ev, gpointer) {
   gdk_window_set_cursor(gw, nullptr);
   return FALSE;
 }
-
 
 static void wk_place(int w, int h) {
   if (!g_wk.window || g_wk.fit) return;  // never fight the user's size
@@ -312,7 +328,7 @@ static void wk_push_results(const OverlayResponse& resp) {
 }  // namespace
 
 class LinuxWebkitOverlay final : public OverlayUi {
- public:
+public:
   OverlayQuery query;
   OverlaySubmit submit;
   bool create() override {
@@ -347,11 +363,10 @@ class LinuxWebkitOverlay final : public OverlayUi {
       webkit_settings_set_enable_developer_extras(settings, FALSE);
       webkit_settings_set_enable_java(settings, FALSE);
     }
-    WebKitUserContentManager* ucc =
-        webkit_web_view_get_user_content_manager(web);
+    WebKitUserContentManager* ucc = webkit_web_view_get_user_content_manager(web);
     webkit_user_content_manager_register_script_message_handler(ucc, "wilfred");
-    g_signal_connect(ucc, "script-message-received::wilfred",
-                     G_CALLBACK(wk_on_script_message), nullptr);
+    g_signal_connect(ucc, "script-message-received::wilfred", G_CALLBACK(wk_on_script_message),
+                     nullptr);
     gtk_container_add(GTK_CONTAINER(g_wk.window), GTK_WIDGET(web));
     gtk_widget_add_events(GTK_WIDGET(web), GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK);
     g_signal_connect(web, "button-press-event", G_CALLBACK(wk_on_button_press), nullptr);
@@ -390,7 +405,8 @@ class LinuxWebkitOverlay final : public OverlayUi {
   }
   bool visible() const override { return g_wk.visible; }
   void pump() {
-    while (gtk_events_pending()) gtk_main_iteration_do(FALSE);
+    while (gtk_events_pending())
+      gtk_main_iteration_do(FALSE);
   }
 };
 
@@ -426,7 +442,7 @@ static bool push_inbox_take(OverlayResponse& out) {
 }
 
 class X11Overlay final : public OverlayUi {
- public:
+public:
   OverlayQuery query;
   OverlaySubmit submit;
   Display* dpy{nullptr};
@@ -444,17 +460,21 @@ class X11Overlay final : public OverlayUi {
 
   static bool speedtest_query(const std::string& q) {
     std::string t = q;
-    for (char& c : t) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    while (!t.empty() && t.front() == ' ') t.erase(t.begin());
-    while (!t.empty() && t.back() == ' ') t.pop_back();
-    static const char* keys[] = {"speedtest", "speed-test", "speed_test", "netspeed",
+    for (char& c : t)
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    while (!t.empty() && t.front() == ' ')
+      t.erase(t.begin());
+    while (!t.empty() && t.back() == ' ')
+      t.pop_back();
+    static const char* keys[] = {"speedtest", "speed-test",    "speed_test", "netspeed",
                                  "bandwidth", "internetspeed", nullptr};
     for (auto** p = keys; *p; ++p) {
       std::string k = *p;
       if (t == k) return true;
       if (t.size() > k.size() && t.compare(0, k.size(), k) == 0 && t[k.size()] == ' ') {
         auto rest = t.substr(k.size() + 1);
-        while (!rest.empty() && rest.front() == ' ') rest.erase(rest.begin());
+        while (!rest.empty() && rest.front() == ' ')
+          rest.erase(rest.begin());
         return rest.empty() || rest == "again" || rest == "retry" || rest == "new" ||
                rest == "rerun";
       }
@@ -646,7 +666,8 @@ class X11Overlay final : public OverlayUi {
         std::size_t pos = 0;
         for (int line = 0; line < 5 && pos < preview.text.size(); ++line) {
           auto nl = preview.text.find('\n', pos);
-          std::string row = preview.text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+          std::string row =
+              preview.text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
           if (row.size() > 88) row.resize(88);
           // XDrawString needs non-empty printable content; skip empty rows.
           if (!row.empty()) draw_str(16, y, row, 0xF0F0F5);
@@ -812,8 +833,8 @@ class X11Overlay final : public OverlayUi {
           }
         } else if (ks == XK_F3) {
           toggle_preview();
-        } else if ((ks == XK_Return || ks == XK_KP_Enter) && sel < static_cast<int>(results.size()) &&
-                   submit) {
+        } else if ((ks == XK_Return || ks == XK_KP_Enter) &&
+                   sel < static_cast<int>(results.size()) && submit) {
           if (menu_open) {
             const auto& acts = results[static_cast<std::size_t>(sel)].actions;
             std::string act;
@@ -906,7 +927,7 @@ class X11Overlay final : public OverlayUi {
 // the X11 canvas when WebKit cannot start. Shortcuts match in both paths.
 
 class LinuxOverlay final : public OverlayUi {
- public:
+public:
   OverlayQuery query;
   OverlaySubmit submit;
   std::unique_ptr<OverlayUi> inner;
@@ -993,7 +1014,9 @@ void overlay_push_results(const OverlayResponse& resp) {
   push_inbox_store(resp);
 }
 
-void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+void overlay_set_quit(std::function<void()> fn) {
+  (void)fn;
+}
 
 void overlay_pump() {
   if (g_ov) g_ov->pump_inner();
@@ -1025,10 +1048,13 @@ void overlay_push_results(const OverlayResponse& resp) {
   wk_push_results(resp);
 }
 
-void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+void overlay_set_quit(std::function<void()> fn) {
+  (void)fn;
+}
 
 void overlay_pump() {
-  while (gtk_events_pending()) gtk_main_iteration_do(FALSE);
+  while (gtk_events_pending())
+    gtk_main_iteration_do(FALSE);
 }
 
 #elif defined(WILFRED_HAS_X11)
@@ -1052,7 +1078,9 @@ void overlay_push_results(const OverlayResponse& resp) {
   push_inbox_store(resp);
 }
 
-void overlay_set_quit(std::function<void()> fn) { (void)fn; }
+void overlay_set_quit(std::function<void()> fn) {
+  (void)fn;
+}
 
 void overlay_pump() {
   if (g_ov) g_ov->pump();
@@ -1061,7 +1089,9 @@ void overlay_pump() {
 #else
 // ------------------------------------------------------- No Linux UI backend
 
-std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
+std::unique_ptr<OverlayUi> create_overlay() {
+  return nullptr;
+}
 
 void overlay_bind(OverlayQuery, OverlaySubmit) {}
 

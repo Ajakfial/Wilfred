@@ -8,7 +8,9 @@ namespace wilfred {
 // therefore runs headless; null is a valid OverlayUi state throughout
 // Service (every use is guarded by `if (ui_)`).
 
-std::unique_ptr<OverlayUi> create_overlay() { return nullptr; }
+std::unique_ptr<OverlayUi> create_overlay() {
+  return nullptr;
+}
 
 // Headless (Swift owns the UI and its own runloop): pump is a no-op so
 // pump_native_events() links on iOS like on every other backend.
