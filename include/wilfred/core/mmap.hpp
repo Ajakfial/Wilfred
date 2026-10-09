@@ -21,9 +21,7 @@ public:
 
   const std::uint8_t* data() const { return data_; }
   std::size_t size() const { return size_; }
-  std::string_view view() const {
-    return {reinterpret_cast<const char*>(data_), size_};
-  }
+  std::string_view view() const { return {reinterpret_cast<const char*>(data_), size_}; }
   bool valid() const { return data_ != nullptr; }
 
 private:

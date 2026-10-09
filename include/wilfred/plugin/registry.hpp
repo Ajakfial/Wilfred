@@ -43,7 +43,7 @@ bool plugin_registry_resolve(const RegistryEntry& e, std::string& url, std::stri
 
 std::vector<RegistryEntry> plugin_registry_parse(const std::string& body);
 std::vector<RegistryEntry> plugin_registry_fetch(const std::string& url, int timeout_ms,
-                                                std::string& error);
+                                                 std::string& error);
 bool plugin_registry_install(const RegistryEntry& entry, std::string& error);
 
 int run_plugin_list();

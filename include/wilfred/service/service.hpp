@@ -60,9 +60,9 @@ public:
   int run_import_list();
   int run_import_detect();
   int run_import(const std::string& launcher, const std::string& from_path, bool dry_run,
-                 bool overwrite, bool include_hotkey, bool include_searches,
-                 bool include_snippets, bool include_aliases, bool include_quicklinks,
-                 bool include_theme, bool include_browser);
+                 bool overwrite, bool include_hotkey, bool include_searches, bool include_snippets,
+                 bool include_aliases, bool include_quicklinks, bool include_theme,
+                 bool include_browser);
 
   Config& config() { return cfg_; }
   IndexEngine& index() { return index_; }

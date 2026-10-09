@@ -98,7 +98,8 @@ struct MiniIntent {
 
 MiniIntent parse_mini_intent(std::string_view query);
 std::vector<SearchResult> mini_results(const std::string& query, const Config& cfg,
-                                       const std::string& clipboard, class IndexEngine* index = nullptr);
+                                       const std::string& clipboard,
+                                       class IndexEngine* index = nullptr);
 void set_mini_network_enabled(bool enabled);
 
 }  // namespace wilfred

@@ -21,7 +21,7 @@ struct HnswHit {
 };
 
 class HnswIndex {
- public:
+public:
   HnswIndex() = default;
   explicit HnswIndex(int dim, int m = 16, int ef_construction = 64);
 
@@ -38,15 +38,14 @@ class HnswIndex {
   bool has(std::uint32_t id) const;
 
   // k-nearest by cosine. Returns up to k hits sorted by score desc.
-  std::vector<HnswHit> search(const std::vector<float>& query, int k,
-                              int ef = 32) const;
+  std::vector<HnswHit> search(const std::vector<float>& query, int k, int ef = 32) const;
 
   const std::vector<float>* get(std::uint32_t id) const;
 
   bool save(const std::string& path) const;
   bool load(const std::string& path);
 
- private:
+private:
   int level_of(std::uint64_t counter) const;
   float dist2(std::size_t a, std::size_t b) const;
   static float dot(const std::vector<float>& a, const std::vector<float>& b);
@@ -57,9 +56,9 @@ class HnswIndex {
   std::uint64_t counter_{0};
   std::uint32_t entry_{0};  // internal position of entry point
 
-  std::vector<std::uint32_t> ids_;             // pos -> record id
-  std::vector<std::vector<float>> vecs_;      // pos -> vector
-  std::vector<int> levels_;                    // pos -> level
+  std::vector<std::uint32_t> ids_;        // pos -> record id
+  std::vector<std::vector<float>> vecs_;  // pos -> vector
+  std::vector<int> levels_;               // pos -> level
   // links[pos][level] = neighbor positions
   std::vector<std::vector<std::vector<std::uint32_t>>> links_;
 };

@@ -9,7 +9,7 @@ namespace wilfred {
 // Persistent pinned favorites backing the `pin`/`pins` minis and the
 // `ranking.pinned` boost. Entries are lowercased title/path substrings.
 class PinStore {
- public:
+public:
   static PinStore& instance();
 
   void configure(std::string path, const std::vector<std::string>& from_config);
@@ -24,7 +24,7 @@ class PinStore {
   bool contains(const std::string& text) const;
   std::size_t size() const;
 
- private:
+private:
   PinStore() = default;
   mutable std::mutex mu_;
   std::vector<std::string> pins_;

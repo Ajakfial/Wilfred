@@ -18,13 +18,13 @@ double trigram_cosine(const std::string& a, const std::string& b);
 // next to the WAL/snapshot. In `trigram`/`hybrid` mode it also scores live
 // records by trigram cosine. Off unless enabled in config.
 class SemanticProvider : public SearchProvider {
- public:
+public:
   explicit SemanticProvider(IndexEngine& index) : index_(index) {}
   std::string id() const override { return "semantic"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;
 
- private:
+private:
   IndexEngine& index_;
 };
 

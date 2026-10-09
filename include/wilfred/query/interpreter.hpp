@@ -3,9 +3,9 @@
 #include "wilfred/config/config.hpp"
 #include "wilfred/history/history.hpp"
 #include "wilfred/index/engine.hpp"
-#include "wilfred/query/classify.hpp"
-#include "wilfred/providers/provider.hpp"
 #include "wilfred/plugin/host.hpp"
+#include "wilfred/providers/provider.hpp"
+#include "wilfred/query/classify.hpp"
 #include "wilfred/search/engine.hpp"
 #include "wilfred/search/snippets.hpp"
 
@@ -24,8 +24,7 @@ public:
   QueryInterpreter(IndexEngine& index, SearchEngine& search, SnippetStore* snippets = nullptr,
                    PluginHost* plugins = nullptr);
 
-  InterpretedQuery interpret(const std::string& query, const Config& cfg,
-                             HistoryStore* history);
+  InterpretedQuery interpret(const std::string& query, const Config& cfg, HistoryStore* history);
   // Fast phase of interpret(): the full pipeline minus the search-provider
   // fan-out (subprocesses / network). Used by the overlay so index hits
   // render instantly while providers resolve in the background; the

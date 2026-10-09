@@ -29,7 +29,7 @@ struct VectorHit {
 };
 
 class VectorIndex {
- public:
+public:
   VectorIndex() = default;
 
   bool open(const std::string& dir, const Config& cfg);
@@ -53,7 +53,7 @@ class VectorIndex {
   bool save() const;
   bool load();
 
- private:
+private:
   std::string dir_;
   std::string path_;
   bool enabled_{false};

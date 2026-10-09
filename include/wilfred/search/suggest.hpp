@@ -29,13 +29,11 @@ std::string correct_query_command(std::string_view query, const Config& cfg);
 
 // Best full-query correction considering history + vocabulary.
 // Returns empty when the query looks fine or no confident fix exists.
-std::string suggest_correction(const std::string& query, const Config& cfg,
-                               HistoryStore* history);
+std::string suggest_correction(const std::string& query, const Config& cfg, HistoryStore* history);
 
 // Ghost completion: full text that extends query (query must be a prefix,
 // case-insensitive, or a close typo-prefix). Returns empty when none.
-std::string autocomplete_ghost(const std::string& query, const Config& cfg,
-                                HistoryStore* history);
+std::string autocomplete_ghost(const std::string& query, const Config& cfg, HistoryStore* history);
 
 // Top-N inline candidates for the autocomplete dropdown.
 std::vector<std::string> autocomplete_candidates(const std::string& query, const Config& cfg,
@@ -61,7 +59,8 @@ AssistResult build_assist(const std::string& query, const Config& cfg, HistorySt
 
 // Index-aware filename/app completions merged into autocomplete.
 // Returns up to n Display names (basename or app title) that extend query.
-std::vector<std::string> index_autocomplete(const std::string& query, IndexEngine& index, int n = 4);
+std::vector<std::string> index_autocomplete(const std::string& query, IndexEngine& index,
+                                            int n = 4);
 
 // Closest indexed filename within typo distance (for "did you mean" on files).
 // Returns the display name or empty.

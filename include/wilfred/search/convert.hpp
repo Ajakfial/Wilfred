@@ -74,10 +74,9 @@ struct WavData {
   std::vector<float> samples;
 };
 
-bool decode_wav_bytes(const std::vector<std::uint8_t>& bytes, WavData& out,
-                       std::string& error);
-bool encode_wav_bytes(const WavData& wav, int bits_per_sample,
-                      std::vector<std::uint8_t>& out, std::string& error);
+bool decode_wav_bytes(const std::vector<std::uint8_t>& bytes, WavData& out, std::string& error);
+bool encode_wav_bytes(const WavData& wav, int bits_per_sample, std::vector<std::uint8_t>& out,
+                      std::string& error);
 // Resample (linear) + remix (mono<->stereo) a WAV in memory.
 WavData resample_remix_wav(const WavData& in, int target_rate, int target_channels);
 
@@ -99,25 +98,22 @@ struct ImageRgba {
 };
 
 bool decode_png_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out,
-                       std::string& error);
+                      std::string& error);
 bool decode_bmp_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out,
-                       std::string& error);
+                      std::string& error);
 bool decode_ppm_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out,
-                       std::string& error);
+                      std::string& error);
 bool decode_tga_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out,
-                       std::string& error);
+                      std::string& error);
 // Tries PNG, then BMP, then PPM/PGM, then TGA. Pure, no filesystem.
 bool decode_image_bytes(const std::uint8_t* data, std::size_t size, ImageRgba& out,
                         std::string& error);
 
-bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                     std::string& error);
-bool encode_png_rgb(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                    std::string& error);
+bool encode_png_rgba(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error);
+bool encode_png_rgb(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error);
 bool encode_bmp_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out);
 bool encode_ppm_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out);
-bool encode_tga_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out,
-                      std::string& error);
+bool encode_tga_bytes(const ImageRgba& img, std::vector<std::uint8_t>& out, std::string& error);
 // Native encode by format token ("png", "bmp", "ppm", "tga", ...).
 bool encode_image_native(const ImageRgba& img, const std::string& fmt,
                          std::vector<std::uint8_t>& out, std::string& error);
@@ -127,8 +123,8 @@ bool encode_image_native(const ImageRgba& img, const std::string& fmt,
 bool decode_image_file(const std::string& path, ImageRgba& out, std::string& error);
 // Convert one image file to another. Native when both ends are
 // bmp/png/ppm/pgm/tga, otherwise via ffmpeg. `out_path` gets the file.
-bool convert_image_file(const std::string& src, const std::string& dst,
-                        std::string& out_path, std::string& error);
+bool convert_image_file(const std::string& src, const std::string& dst, std::string& out_path,
+                        std::string& error);
 
 // Dispatch audio vs image based on extensions (ffmpeg fallback inside).
 bool convert_media_file(const std::string& src, const std::string& dst, int sample_rate,
@@ -144,16 +140,15 @@ struct BgRemoveOptions {
   std::uint8_t b{255};
   bool has_color{false};  // false = auto-sample corners
   int tolerance{32};      // 0..100, default 32
-  bool contiguous{true};   // true = border flood-fill, false = global chroma-key
+  bool contiguous{true};  // true = border flood-fill, false = global chroma-key
   int feather{2};         // 0..8 feather pixels for smooth edges
 };
 
-bool parse_hex_color(const std::string& s, std::uint8_t& r, std::uint8_t& g,
-                     std::uint8_t& b);
+bool parse_hex_color(const std::string& s, std::uint8_t& r, std::uint8_t& g, std::uint8_t& b);
 bool remove_background(const ImageRgba& src, const BgRemoveOptions& opts, ImageRgba& dst);
 // `dst` empty means "<stem>.transparent.png" next to the source.
-bool bgremove_file(const std::string& src, const std::string& dst,
-                   const BgRemoveOptions& opts, std::string& out_path, std::string& error);
+bool bgremove_file(const std::string& src, const std::string& dst, const BgRemoveOptions& opts,
+                   std::string& out_path, std::string& error);
 
 // ---------------------------------------------------------------------------
 // Query parsing + index lookup (pure except index scan)
@@ -191,12 +186,12 @@ bool decode_convert_payload(const std::string& payload, std::string& src, std::s
                             std::string& dst, int& rate, int& channels);
 std::string encode_bgremove_payload(const std::string& src, const BgRemoveOptions& opts,
                                     const std::string& dst);
-bool decode_bgremove_payload(const std::string& payload, std::string& src,
-                             BgRemoveOptions& opts, std::string& dst);
+bool decode_bgremove_payload(const std::string& payload, std::string& src, BgRemoveOptions& opts,
+                             std::string& dst);
 
 // Index scans for convertible candidates (path substring, case-insensitive).
-std::vector<std::string> find_convertible_in_index(IndexEngine& index,
-                                                   const std::string& needle, int limit = 8);
+std::vector<std::string> find_convertible_in_index(IndexEngine& index, const std::string& needle,
+                                                   int limit = 8);
 std::vector<std::string> find_image_in_index(IndexEngine& index, const std::string& needle,
                                              int limit = 8);
 

@@ -33,7 +33,7 @@ std::string remote_fetch(const std::string& url, int timeout_ms,
                          const std::unordered_map<std::string, std::string>& headers = {});
 
 class RemoteProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "remote"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;

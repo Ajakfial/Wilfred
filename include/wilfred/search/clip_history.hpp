@@ -34,7 +34,7 @@ struct ClipEntry {
 // Persistent clipboard history backing the `clips` mini. Process-wide
 // singleton; all methods are thread-safe. Texts are capped at 64KB each.
 class ClipStore {
- public:
+public:
   static ClipStore& instance();
 
   // max_entries caps unpinned entries (pinned always survive). persist/path
@@ -58,7 +58,7 @@ class ClipStore {
   std::vector<std::string> search(const std::string& query, int limit) const;
   std::size_t size() const;
 
- private:
+private:
   ClipStore() = default;
   void prune_locked();
   bool save_locked() const;

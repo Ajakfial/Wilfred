@@ -40,7 +40,7 @@ float embedding_cosine(const std::vector<float>& a, const std::vector<float>& b)
 // Local embedder: tries llama.cpp first (server endpoint, then model file via
 // optional runtime-loaded libllama), falls back to hash_embed_text.
 class LocalEmbedder {
- public:
+public:
   LocalEmbedder() = default;
 
   // Configure from Config. Returns the active backend name for logging.
@@ -60,7 +60,7 @@ class LocalEmbedder {
   // Never throws; returns false on any failure.
   static bool probe_server(const std::string& endpoint, int timeout_ms = 1500);
 
- private:
+private:
   std::vector<float> embed_via_server(const std::string& text) const;
   std::vector<float> embed_via_llamacpp(const std::string& text) const;
 

@@ -55,7 +55,7 @@ std::vector<SearchResult> pkg_managers_results(const std::string& remainder, con
 bool pkg_install(const std::string& manager, const std::string& id, std::string& error);
 
 class PkgProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "pkg"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;

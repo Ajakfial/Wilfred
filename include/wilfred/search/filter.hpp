@@ -32,8 +32,7 @@ struct SearchFilter {
   std::optional<bool> content_only;
 };
 
-bool record_matches_filter(const SearchFilter& f, const IndexStore& store,
-                           const IndexRecord& rec);
+bool record_matches_filter(const SearchFilter& f, const IndexStore& store, const IndexRecord& rec);
 SearchFilter parse_filter_clauses(std::string& query_inout);
 void apply_named_scopes(SearchFilter& f, const Config& cfg);
 std::uint64_t parse_size_token(std::string_view t, bool& ok);

@@ -43,8 +43,7 @@ bool move_paths_to(const std::vector<std::string>& sources, const std::string& d
 // Create a file from a built-in template: empty|txt|md|python|py|cpp|h|
 // html|json|gitignore|todo. new_name may omit the extension (added).
 bool create_from_template(const std::string& dir, const std::string& template_name,
-                          const std::string& new_name, std::string& out_path,
-                          std::string& error);
+                          const std::string& new_name, std::string& out_path, std::string& error);
 
 bool fs_is_directory(const std::string& path);
 bool fs_exists(const std::string& path);

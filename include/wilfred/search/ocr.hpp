@@ -17,8 +17,8 @@ bool is_ocr_candidate(const std::string& path);
 
 // Extract OCR text (whitespace-collapsed, truncated to max_bytes).
 // Returns false when tesseract is unavailable or yields no readable text.
-bool extract_ocr_text(const std::string& path, std::string& out_text,
-                      std::size_t max_bytes, const std::string& languages = "eng");
+bool extract_ocr_text(const std::string& path, std::string& out_text, std::size_t max_bytes,
+                      const std::string& languages = "eng");
 
 bool tesseract_available();
 

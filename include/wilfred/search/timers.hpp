@@ -24,7 +24,7 @@ std::string format_duration_ms(std::int64_t ms);
 std::string format_remaining_ms(std::int64_t ms);
 
 class TimerStore {
- public:
+public:
   static TimerStore& instance();
   // Starts (or restarts) a timer. Returns a human message.
   std::string start(const std::string& label, std::int64_t duration_ms, bool pomodoro = false);
@@ -33,7 +33,7 @@ class TimerStore {
   std::vector<TimerSpec> list() const;
   const TimerSpec* active() const;
 
- private:
+private:
   TimerStore() = default;
   mutable std::mutex mu_;
   std::vector<TimerSpec> timers_;
@@ -41,7 +41,7 @@ class TimerStore {
 
 // Stopwatch singleton: single running stopwatch with start/stop/reset/lap.
 class Stopwatch {
- public:
+public:
   static Stopwatch& instance();
   std::string start();
   std::string stop();
@@ -51,7 +51,7 @@ class Stopwatch {
   std::int64_t elapsed_ms() const;
   std::vector<std::string> laps() const;
 
- private:
+private:
   Stopwatch() = default;
 };
 

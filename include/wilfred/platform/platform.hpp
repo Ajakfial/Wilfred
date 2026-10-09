@@ -20,8 +20,7 @@ namespace wilfred {
 // Linux specifics: no inotify (kqueue instead), no /proc, sysctl-based
 // system info. They get a native backend (src/platform/bsd/) reusing the
 // portable XDG/X11 Linux files where the APIs match.
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
-    defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #define WILFRED_BSD 1
 #endif
 

@@ -13,13 +13,13 @@ struct BackupEntry {
 };
 
 bool pack_backup_archive(const std::vector<BackupEntry>& files, std::string& out, std::string& err);
-bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& files, std::string& err);
+bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& files,
+                           std::string& err);
 
 // Encrypted variant (dependency-free SHA-256 KDF + keystream XOR).
 // Encrypted blobs use magic "WILFEK1" and embed salt/iterations/crc.
 bool pack_backup_archive_encrypted(const std::vector<BackupEntry>& files,
-                                   const std::string& password, std::string& out,
-                                   std::string& err);
+                                   const std::string& password, std::string& out, std::string& err);
 bool unpack_backup_archive_auto(const std::string& blob, const std::string& password,
                                 std::vector<BackupEntry>& files, std::string& err);
 bool restore_backup_with_password(const std::string& src_path, const std::string& password,

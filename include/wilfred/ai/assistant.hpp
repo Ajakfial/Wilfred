@@ -33,7 +33,7 @@ struct AiAnswer {
 };
 
 class AiAssistant {
- public:
+public:
   bool configured(const Config& cfg) const;
   std::string active_provider(const Config& cfg) const;
   std::string active_model(const Config& cfg) const;

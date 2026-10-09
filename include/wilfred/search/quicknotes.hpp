@@ -24,7 +24,7 @@ struct TodoItem {
 // notes directory, so they are readable, editable, and searchable outside
 // Wilfred. Todos stay in `<data dir>/todos.txt` (tasks are not documents).
 class QuickNoteStore {
- public:
+public:
   static QuickNoteStore& instance();
   // Configure the notes directory (e.g. `<data dir>/notes`). Empty means
   // memory-only, which is what unit tests use. A legacy `quicknotes.txt`
@@ -38,7 +38,7 @@ class QuickNoteStore {
   std::vector<QuickNote> list(const std::string& query = {}, int limit = 12) const;
   std::size_t size() const;
 
- private:
+private:
   QuickNoteStore() = default;
   mutable std::mutex mu_;
   std::vector<QuickNote> notes_;
@@ -47,7 +47,7 @@ class QuickNoteStore {
 };
 
 class TodoStore {
- public:
+public:
   static TodoStore& instance();
   void configure(std::string path);
   bool load();
@@ -62,7 +62,7 @@ class TodoStore {
   std::size_t size() const;
   std::size_t open_count() const;
 
- private:
+private:
   TodoStore() = default;
   mutable std::mutex mu_;
   std::vector<TodoItem> items_;

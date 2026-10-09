@@ -2,7 +2,8 @@
 
 // Native plugin ABI (C). Loadable as .dll / .so / .dylib.
 // Query JSON: {"op":"query","q":"...","limit":40}
-// Result JSON: {"results":[{"title":"...","subtitle":"...","path":"...","score":100,"action":"open"}]}
+// Result JSON:
+// {"results":[{"title":"...","subtitle":"...","path":"...","score":100,"action":"open"}]}
 
 #ifdef __cplusplus
 extern "C" {

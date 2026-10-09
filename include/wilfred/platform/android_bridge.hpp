@@ -16,7 +16,7 @@ namespace wilfred {
 // notes/todos/timers/clips/macros logic lives in C++ (wilfred_core) via
 // this bridge.
 class MobileCore {
- public:
+public:
   MobileCore();
   ~MobileCore();
 
@@ -62,18 +62,17 @@ class MobileCore {
   // Returns true on success. Copy-type actions also update the core
   // clipboard; the Kotlin/Swift layer should copy `payload`/`path` to the
   // OS clipboard.
-  bool execute_action(std::size_t result_index, const std::string& action_id,
-                      std::string& error);
+  bool execute_action(std::size_t result_index, const std::string& action_id, std::string& error);
 
   // File preview for the F3-style peek UI:
   // {"exists":true,"is_dir":false,"size":123,"name":"x","preview":"..."}.
   std::string preview_json(const std::string& path);
 
-  static std::string results_to_json(
-      const std::vector<struct SearchResult>& results, std::size_t limit);
+  static std::string results_to_json(const std::vector<struct SearchResult>& results,
+                                     std::size_t limit);
   static std::string action_to_string(int action_value);
 
- private:
+private:
   struct Impl;
   Impl* impl_{nullptr};
 };

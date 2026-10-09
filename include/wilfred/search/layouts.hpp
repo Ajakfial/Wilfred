@@ -30,7 +30,7 @@ struct Layout {
 };
 
 class LayoutStore {
- public:
+public:
   static LayoutStore& instance();
 
   // Configure the layouts directory (e.g. `<data dir>/layouts`).
@@ -58,7 +58,7 @@ class LayoutStore {
   // CLI, and monitor-change auto-apply.
   static bool apply_layout_by_name(const std::string& name, std::string& error);
 
- private:
+private:
   LayoutStore() = default;
   mutable std::mutex mu_;
   std::string dir_;

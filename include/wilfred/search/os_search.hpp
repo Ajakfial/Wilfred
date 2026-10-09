@@ -34,12 +34,11 @@ bool os_search_should_query(const std::string& text);
 bool os_search_strip_prefix(const std::string& text, std::string& remainder);
 // Pure argv builder for one backend (empty = unsupported here).
 // windows_search uses powershell -EncodedCommand (base64, no shell quoting).
-std::vector<std::string> os_search_argv(const std::string& backend,
-                                        const std::string& query, int limit);
+std::vector<std::string> os_search_argv(const std::string& backend, const std::string& query,
+                                        int limit);
 // Pure output parsers (one path per hit, order preserved).
 std::vector<std::string> os_search_parse_output(const std::string& backend,
-                                                const std::string& output,
-                                                std::size_t max_results);
+                                                const std::string& output, std::size_t max_results);
 // Pure Windows Search SQL builder (TOP n over SystemIndex).
 std::string os_search_windows_sql(const std::string& query, int top);
 #ifdef _WIN32
@@ -48,12 +47,12 @@ std::string os_search_windows_sql(const std::string& query, int top);
 // caller can fall back to Everything CLI / PowerShell.
 bool os_windows_search_com(const std::string& query, int limit, std::vector<std::string>& out);
 #endif
-std::vector<SearchResult> os_search_results_from_paths(
-    const std::vector<std::string>& paths, const std::string& backend,
-    std::size_t limit);
+std::vector<SearchResult> os_search_results_from_paths(const std::vector<std::string>& paths,
+                                                       const std::string& backend,
+                                                       std::size_t limit);
 
 class OsSearchProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "os"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;

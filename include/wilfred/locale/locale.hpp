@@ -20,7 +20,7 @@ namespace wilfred {
 // - `ui.language` accepts `auto` (OS locale), `en`, or any
 //   two-letter code (`de`, `fr`, ...) optionally with region (`pt-BR`).
 class LocaleStore {
- public:
+public:
   static LocaleStore& instance();
 
   // code: "auto" (default), "en", "de", ... Effective code resolves at
@@ -48,7 +48,7 @@ class LocaleStore {
   // Every key in the compiled-in English table (for catalog validation).
   static std::vector<std::string> english_keys();
 
- private:
+private:
   LocaleStore() = default;
   mutable std::mutex mu_;
   std::string requested_{"auto"};
@@ -62,7 +62,9 @@ std::string system_language_code();
 std::string normalize_lang_code(const std::string& raw);
 
 // Shorthand: LocaleStore::instance().tr(key).
-inline std::string tr(const std::string& key) { return LocaleStore::instance().tr(key); }
+inline std::string tr(const std::string& key) {
+  return LocaleStore::instance().tr(key);
+}
 inline std::string tr(const std::string& key,
                       const std::unordered_map<std::string, std::string>& args) {
   return LocaleStore::instance().tr(key, args);

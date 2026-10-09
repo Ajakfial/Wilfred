@@ -26,21 +26,21 @@ std::vector<std::string> default_contacts_roots();
 std::vector<std::string> default_notes_roots();
 
 class CalendarProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "calendar"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;
 };
 
 class ContactsProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "contacts"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;
 };
 
 class NotesProvider : public SearchProvider {
- public:
+public:
   std::string id() const override { return "notes"; }
   std::vector<SearchResult> query(const std::string& text, const Config& cfg,
                                   std::size_t limit) override;
@@ -50,8 +50,7 @@ class NotesProvider : public SearchProvider {
 // Writes a minimal .ics VEVENT / .vcf VCARD under the first configured root
 // (creating a data-dir fallback when none exists) and returns its path.
 bool create_calendar_event(const Config& cfg, const std::string& summary,
-                           const std::string& when_hint, std::string& out_path,
-                           std::string& err);
+                           const std::string& when_hint, std::string& out_path, std::string& err);
 bool create_contact(const Config& cfg, const std::string& name, const std::string& email,
                     const std::string& phone, std::string& out_path, std::string& err);
 

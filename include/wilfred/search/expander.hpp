@@ -22,7 +22,7 @@ class SnippetStore;
 struct Config;
 
 class GlobalExpander {
- public:
+public:
   GlobalExpander() = default;
   ~GlobalExpander() { stop(); }
 
@@ -33,7 +33,7 @@ class GlobalExpander {
   void stop();
   bool running() const { return running_; }
 
- private:
+private:
   bool running_{false};
   SnippetStore* snippets_{nullptr};
   const Config* cfg_{nullptr};

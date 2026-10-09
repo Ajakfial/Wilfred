@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <functional>
+#include <string>
 
 // FreeBSD (and other BSDs) define function-like macros major/minor via
 // <sys/types.h>, which break `Version::major`/`minor` when written as
@@ -58,9 +58,9 @@ Version parse_version(const std::string& tag);
 
 // Runtime platform descriptor, e.g. "windows-x64", "linux-x64", "macos-arm64".
 struct PlatformInfo {
-  std::string os;       // "windows", "linux", "macos"
-  std::string arch;     // "x64", "arm64", "x86"
-  std::string asset_ext; // ".zip" or ".tar.gz"
+  std::string os;         // "windows", "linux", "macos"
+  std::string arch;       // "x64", "arm64", "x86"
+  std::string asset_ext;  // ".zip" or ".tar.gz"
 
   std::string id() const { return os + "-" + arch; }
 };
@@ -81,8 +81,7 @@ struct UpdateCheckResult {
 
 // Query GitHub for the latest release and compare against current.
 // Returns result with update_available=true if a newer version exists.
-UpdateCheckResult check_for_update(const std::string& repo_url,
-                                   const std::string& current_ver,
+UpdateCheckResult check_for_update(const std::string& repo_url, const std::string& current_ver,
                                    int timeout_ms = 10000);
 
 // Progress callback: (bytes_downloaded, total_bytes, user_data)
