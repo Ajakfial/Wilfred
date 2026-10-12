@@ -137,10 +137,15 @@ if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
 }
 
 function Get-ReleaseTag {
-    $projLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
-        Select-String -Pattern 'project\(Wilfred VERSION ([0-9.]+)' |
+    $verLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
+        Select-String -Pattern 'set\(WILFRED_VERSION "([0-9.]+)"' |
         Select-Object -First 1
-    return 'v' + $projLine.Matches[0].Groups[1].Value
+    if (-not $verLine) {
+        $verLine = Get-Content (Join-Path $Root 'CMakeLists.txt') |
+            Select-String -Pattern 'project\(Wilfred VERSION ([0-9.]+)' |
+            Select-Object -First 1
+    }
+    return 'v' + $verLine.Matches[0].Groups[1].Value
 }
 
 if ($Msi -or $Choco) {
