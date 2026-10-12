@@ -270,6 +270,13 @@ def pack_one(d, write_registry=True):
         dest = DIST / f"{pid}-{version}-{OS_TAG}.zip"
         write_zip(lib, manifest, str(dest))
         digest = sha256_file(str(dest))
+        # Self-verify on the builder: a corrupt zip must fail here, with
+        # this job's logs attached — not later in the publish job, where
+        # born-corrupt and transit damage are indistinguishable.
+        with zipfile.ZipFile(str(dest)) as zh:
+            bad = zh.testzip()
+            if bad is not None:
+                return fail(f"{pid}: self-check failed: corrupt member {bad} in {dest.name}")
     finally:
         cleanup_tree(work)
     if not write_registry:
@@ -309,8 +316,14 @@ def assemble(staged):
         if by_id[pid].get("version") != version:
             return fail(f"{z.name}: version {version} != registry {by_id[pid].get('version')}")
         with zipfile.ZipFile(z) as zh:
-            if zh.testzip() is not None:
-                return fail(f"{z.name}: corrupt zip")
+            bad = zh.testzip()
+            if bad is not None:
+                return fail(
+                    f"{z.name}: corrupt member {bad} "
+                    f"({z.stat().st_size} bytes staged; compare its sha256 with "
+                    f"the one the builder job printed to tell born-corrupt "
+                    f"from artifact-transit damage)"
+                )
         DIST.mkdir(parents=True, exist_ok=True)
         shutil.copy2(z, DIST / z.name)
         arts = by_id[pid].setdefault("artifacts", {})
