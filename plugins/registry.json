@@ -83,6 +83,14 @@
           "sha256": "68d0e2ce177c17ea7e62b5747ffd01bac9eddd489f36f141506a865e721aa993"
         }
       }
+    },
+    {
+      "id": "roman",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "Roman numeral converter (2026 <-> MMXXVI)",
+      "permissions": [],
+      "artifacts": {}
     }
   ]
 }
