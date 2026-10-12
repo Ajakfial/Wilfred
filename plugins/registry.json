@@ -91,6 +91,8 @@
       "description": "Roman numeral converter (2026 <-> MMXXVI)",
       "permissions": [],
       "artifacts": {}
+    },
+    {
       "id": "nato",
       "version": "1.0.0",
       "kind": "native",
