@@ -25,6 +25,17 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+# Defensive: a bare "-D..." token binds positionally to -BuildDir (PowerShell
+# fills positional parameters before ValueFromRemainingArguments, even after
+# "--"), which used to yield `cmake -B -D...` ("No build directory specified
+# for -B"). Recover by shifting it into the CMake args. Callers should still
+# prefer the explicit form: -CMakeArgs "-DWILFRED_VERSION=x.y.z".
+if ($BuildDir -like '-*') {
+    if ($CMakeArgs) { $CMakeArgs = @($BuildDir) + $CMakeArgs }
+    else { $CMakeArgs = @($BuildDir) }
+    $BuildDir = 'build\windows'
+}
+
 function Find-VsDevCmd {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     if (-not (Test-Path $vswhere)) {

@@ -54,7 +54,7 @@ with BSD-native replacements for the Linux-only pieces:
 | Process list | `/proc` scan | per-OS sysctl (`minis.cpp`): `KERN_PROC_PROC` (FreeBSD), `KERN_PROC_ALL` (OpenBSD/DragonFly), `KERN_PROC2` (NetBSD) |
 | Swap | `/proc/meminfo` | `swapinfo -k` (FreeBSD, best-effort DragonFly), `swapctl(2)` (OpenBSD/NetBSD) |
 | Ping timeout | `-W` seconds | `-W` milliseconds (FreeBSD/DragonFly), `-w` seconds (NetBSD) |
-| exe path | `/proc/self/exe` | `KERN_PROC_PATHNAME` (FreeBSD/DragonFly), `KERN_PROC_ARGS` + `KERN_PROC_PATHNAME` (NetBSD), procfs only (OpenBSD) |
+| exe path | `/proc/self/exe` | `KERN_PROC_PATHNAME` (FreeBSD/DragonFly), `KERN_PROC_ARGS` + `KERN_PROC_PATHNAME` (NetBSD), `getexecpath(3)` on 8.0+ with argv[0] fallback (OpenBSD) |
 
 Config and data live in the same XDG locations as on Linux
 (`~/.config/wilfred/wilfred.yml`, `~/.local/share/wilfred/`), and the
@@ -69,9 +69,10 @@ ports put `.desktop` files in `/usr/local/share/applications`.
   "unavailable" card instead of wrong numbers.
 * **DragonFly RAM used**: best-effort `vm.stats.vm.v_free_count`
   (FreeBSD-derived tree); falls back to total-only when absent.
-* **OpenBSD exe path**: no sysctl for this exists (procfs is deprecated
-  there), so self-update staging and overlay dir resolution need procfs
-  mounted — otherwise they degrade gracefully.
+* **OpenBSD exe path**: resolved via `getexecpath(3)` on 8.0+ with an
+  argv[0] fallback (saved at startup) on older releases, so no procfs mount
+  is needed; self-update staging and overlay dir resolution work out of the
+  box.
 * **Ping timeout**: OpenBSD `ping` has no wait-timeout flag, so an
   unreachable host takes the full default wait to fail there (FreeBSD and
   DragonFly use `-W` in milliseconds, NetBSD `-w` in seconds).

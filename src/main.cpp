@@ -111,6 +111,7 @@ static bool wants_console(const std::string& cmd) {
 
 static int wilfred_main(int argc, char** argv) {
   try {
+    if (argc > 0 && argv && argv[0]) wilfred::set_program_invocation(argv[0]);
     wilfred::platform_init();
     std::string cmd = "daemon";
     std::string query;

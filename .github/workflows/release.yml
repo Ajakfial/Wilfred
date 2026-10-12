@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           $ver = $env:GITHUB_REF_NAME -replace '^[vV]','' -replace '-.*$',''
-          ./scripts/build-windows.ps1 -Config Release -Tests "-DWILFRED_VERSION=$ver"
+          ./scripts/build-windows.ps1 -Config Release -Tests -CMakeArgs "-DWILFRED_VERSION=$ver"
 
       - name: Sign (Windows)
         if: runner.os == 'Windows'

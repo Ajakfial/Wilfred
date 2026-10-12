@@ -28,10 +28,78 @@
 #include <sys/sysctl.h>
 #include <sys/types.h>
 #endif
+#if defined(__OpenBSD__)
+#include <dlfcn.h>
+#endif
 #endif
 
 namespace wilfred {
 namespace fs = std::filesystem;
+
+// argv[0] saved at startup via set_program_invocation(). Set once before
+// worker threads spawn; read-only afterwards.
+static std::string& program_invocation_storage() {
+  static std::string s;
+  return s;
+}
+
+void set_program_invocation(const char* argv0) {
+  if (argv0 && *argv0) program_invocation_storage() = argv0;
+}
+
+#if !defined(_WIN32) && !defined(__APPLE__)
+namespace {
+// Resolve the saved argv[0] to an absolute executable path: "a/b/prog" via
+// realpath (cwd-relative), bare "prog" via PATH search. Returns "" when it
+// cannot be resolved to an existing file.
+std::string resolve_program_invocation() {
+  const std::string& a = program_invocation_storage();
+  if (a.empty()) return {};
+  if (a.find('/') != std::string::npos) {
+    char real[PATH_MAX];
+    if (realpath(a.c_str(), real)) return std::string(real);
+    return {};
+  }
+  const char* path_env = std::getenv("PATH");
+  if (!path_env || !*path_env) return {};
+  std::string dirs(path_env);
+  std::string::size_type start = 0;
+  while (start <= dirs.size()) {
+    auto end = dirs.find(':', start);
+    std::string dir =
+        (end == std::string::npos) ? dirs.substr(start) : dirs.substr(start, end - start);
+    if (dir.empty()) dir = ".";
+    std::string cand = dir + "/" + a;
+    if (access(cand.c_str(), X_OK) == 0) {
+      char real[PATH_MAX];
+      if (realpath(cand.c_str(), real)) return std::string(real);
+      return cand;
+    }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  return {};
+}
+}  // namespace
+#endif
+
+#if defined(__OpenBSD__)
+namespace {
+// getexecpath(3) exists on OpenBSD 8.0+ (<unistd.h>). Look it up at runtime
+// so the same binary still starts on 7.x, where the symbol does not exist.
+std::string openbsd_getexecpath() {
+  using getexecpath_fn = int (*)(char*, std::size_t);
+  void* sym = dlsym(RTLD_DEFAULT, "getexecpath");
+  if (!sym) return {};
+  getexecpath_fn fn = nullptr;
+  std::memcpy(&fn, &sym, sizeof(fn));
+  char tmp[PATH_MAX];
+  if (fn(tmp, sizeof(tmp)) != 0) return {};
+  tmp[sizeof(tmp) - 1] = '\0';
+  return std::string(tmp);
+}
+}  // namespace
+#endif
 
 char path_separator() {
 #ifdef _WIN32
@@ -238,10 +306,23 @@ std::string exe_directory() {
       return path_parent(buf);
     }
   }
+#elif defined(__OpenBSD__)
+  // OpenBSD has no sysctl for the executable path and procfs is usually
+  // unmounted: prefer getexecpath(3) on 8.0+, else fall through to
+  // procfs/argv[0] below.
+  {
+    std::string p = openbsd_getexecpath();
+    if (!p.empty()) return path_parent(p);
+  }
 #endif
   ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
-  if (n <= 0) return ".";
+  if (n <= 0) {
+    // Last resort: argv[0] saved at startup (covers OpenBSD without procfs).
+    std::string p = resolve_program_invocation();
+    if (!p.empty()) return path_parent(p);
+    return ".";
+  }
   buf[n] = 0;
   return path_parent(buf);
 #endif
@@ -280,10 +361,23 @@ std::string exe_path() {
       return std::string(buf);
     }
   }
+#elif defined(__OpenBSD__)
+  // OpenBSD has no sysctl for the executable path and procfs is usually
+  // unmounted: prefer getexecpath(3) on 8.0+, else fall through to
+  // procfs/argv[0] below.
+  {
+    std::string p = openbsd_getexecpath();
+    if (!p.empty()) return p;
+  }
 #endif
   ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
-  if (n <= 0) return "";
+  if (n <= 0) {
+    // Last resort: argv[0] saved at startup (covers OpenBSD without procfs).
+    std::string p = resolve_program_invocation();
+    if (!p.empty()) return p;
+    return "";
+  }
   buf[n] = 0;
   return std::string(buf);
 #endif

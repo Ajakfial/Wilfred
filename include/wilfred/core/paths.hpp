@@ -23,6 +23,11 @@ std::string exe_directory();
 // Full path of the current executable ("" when unknown). exe_directory()
 // is path_parent() of this.
 std::string exe_path();
+// Remember argv[0] at startup (call once from main). Used as a last-resort
+// fallback by exe_path()/exe_directory() on platforms with no kernel
+// interface for this (OpenBSD before 8.0 has no sysctl for it and procfs is
+// usually unmounted there).
+void set_program_invocation(const char* argv0);
 std::string default_config_path();
 std::string default_index_path();
 std::string default_history_path();

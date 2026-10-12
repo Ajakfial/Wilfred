@@ -1,10 +1,12 @@
 #include "test.hpp"
 
+#include "wilfred/core/paths.hpp"
 #include "wilfred/platform/platform.hpp"
 
 #include <iostream>
 
-int main() {
+int main(int argc, char** argv) {
+  if (argc > 0 && argv && argv[0]) wilfred::set_program_invocation(argv[0]);
   wilfred::platform_init();
   test_yaml();
   test_config();

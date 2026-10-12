@@ -97,7 +97,13 @@ std::string current_executable_path() {
     // NetBSD procfs layout.
     len = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
   }
-  if (len < 0) return "";
+  if (len < 0) {
+    // OpenBSD usually has no procfs mounted: exe_path() covers
+    // getexecpath(8.0+), procfs, and the argv[0] saved at startup.
+    std::string p = exe_path();
+    if (!p.empty()) return p;
+    return "";
+  }
   buf[len] = '\0';
   return std::string(buf);
 #endif
