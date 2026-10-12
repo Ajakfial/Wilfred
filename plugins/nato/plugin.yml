@@ -1,0 +1,5 @@
+id: nato
+kind: native
+version: 1.0.0
+description: NATO phonetic alphabet encoder/decoder (Hotel Echo ...)
+permissions: []

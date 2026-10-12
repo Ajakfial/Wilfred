@@ -104,11 +104,11 @@ add new cases to the matching file, or create a new one and add it to the
 `WILFRED_TEST_SOURCES` list in `CMakeLists.txt` if you're covering a new
 module.
 
-Note that `.github/workflows/release.yml` builds release binaries on tagged
-pushes but does not run the test suite on pull requests. PRs do get a
-`clang-format`/`clang-tidy` check on changed files
-(`.github/workflows/lint.yml`), but please run `ctest` locally before
-opening a PR — see ROADMAP.md for the plan to add it to CI too.
+`.github/workflows/tests.yml` builds + runs `ctest` on Windows, Linux
+and macOS for every PR and `main` push (plus Android/iOS compile gates and
+an overlay typecheck/bundle check), and `.github/workflows/lint.yml` runs
+`clang-format`/`clang-tidy` on changed files — but please still run `ctest`
+locally before opening a PR.
 
 ## Coding conventions
 

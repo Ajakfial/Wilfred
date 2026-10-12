@@ -1,0 +1,5 @@
+id: roman
+kind: native
+version: 1.0.0
+description: Roman numeral converter (2026 <-> MMXXVI)
+permissions: []

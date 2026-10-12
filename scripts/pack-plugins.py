@@ -44,6 +44,8 @@ SMOKE = {
     "dice": ["3d6", "d20+2", "dice"],
     "morse": ["morse hello", "morse .... ..", "morse"],
     "password": ["password", "password 24", "password words 3", "password pin"],
+    "roman": ["roman 2026", "roman MMXXVI", "roman"],
+    "nato": ["nato hello", "nato hotel echo", "nato"],
     "cheatsheets": ["cheat", "cheat git", "cheat git rebase"],
 }
 
