@@ -13,7 +13,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-macos.zip",
-          "sha256": "db73e6ca314f30e1bbe5f293dab7932418142a1639ee46770670782bed67f2cd"
+          "sha256": "1af656a43eb3249e69f5b39cf82a8e8db9e387b7606936970fe4a391a6e76028"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-windows.zip",
@@ -34,7 +34,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-macos.zip",
-          "sha256": "f3f47332f6ad588f2d0577e99357ba890cbe26aff677d8a5bbf86fd792e9ca79"
+          "sha256": "83939d5896d9127fcecd866053e053fadd3ac879e5b14ec0c8ea7db71da43718"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-windows.zip",
@@ -55,7 +55,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-macos.zip",
-          "sha256": "47410fc5f6f0253f66558c588bea16873a9a017a4be15e3fd3c13e8da95a6bc7"
+          "sha256": "e55e8e5445e28321512a695b6ddbc38d962a7a264d3d82547b626a6a1db893cc"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-windows.zip",
@@ -76,7 +76,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-macos.zip",
-          "sha256": "893c6436ec74ca3c6693d1c2426974b23953855ddba334e5dce8bc6063cc14d1"
+          "sha256": "250cdf4078609a108196290846d48d6988d1553b4df94f637b8b2fa16594220c"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-windows.zip",
@@ -91,6 +91,25 @@
       "description": "Roman numeral converter (2026 <-> MMXXVI)",
       "permissions": [],
       "artifacts": {}
+      "id": "nato",
+      "version": "1.0.0",
+      "kind": "native",
+      "description": "NATO phonetic alphabet encoder/decoder (Hotel Echo ...)",
+      "permissions": [],
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/nato-1.0.0-linux.zip",
+          "sha256": "48740418834b4ded8cd93ae31c1eb401d203062ea1d69ca0dc673c4d00a1a2c7"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/nato-1.0.0-macos.zip",
+          "sha256": "5ab6b2055f09f5e6197069b9a439964b738d62c474cdc7db9d33d377e96d29dc"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/nato-1.0.0-windows.zip",
+          "sha256": "3c5e2ec48c9b8966a436c303443619bb26acd8ec49e7272ee278ea3e6ff223d8"
+        }
+      }
     }
   ]
 }
