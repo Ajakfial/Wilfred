@@ -247,6 +247,48 @@ std::string exe_directory() {
 #endif
 }
 
+std::string exe_path() {
+#ifdef _WIN32
+  wchar_t buf[MAX_PATH];
+  DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+  if (!n) return "";
+  return wide_to_utf8(std::wstring(buf, n));
+#elif defined(__APPLE__)
+  char buf[1024];
+  uint32_t sz = sizeof(buf);
+  if (_NSGetExecutablePath(buf, &sz) != 0) return "";
+  char real[PATH_MAX];
+  if (!realpath(buf, real)) return std::string(buf);
+  return std::string(real);
+#else
+  char buf[PATH_MAX];
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return std::string(buf);
+    }
+  }
+#elif defined(__NetBSD__)
+  {
+    int mib[4] = {CTL_KERN, KERN_PROC_ARGS, static_cast<int>(getpid()), KERN_PROC_PATHNAME};
+    std::size_t len = sizeof(buf);
+    if (sysctl(mib, 4, buf, &len, nullptr, 0) == 0 && len > 1) {
+      buf[sizeof(buf) - 1] = '\0';
+      return std::string(buf);
+    }
+  }
+#endif
+  ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+  if (n <= 0) n = readlink("/proc/curproc/exe", buf, sizeof(buf) - 1);
+  if (n <= 0) return "";
+  buf[n] = 0;
+  return std::string(buf);
+#endif
+}
+
 std::string ipc_endpoint() {
 #ifdef _WIN32
   return "\\\\.\\pipe\\wilfred";

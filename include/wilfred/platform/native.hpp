@@ -93,6 +93,19 @@ bool native_volume_mute(bool mute, std::string& error);
 bool native_brightness_status(int& percent, std::string& error);
 bool native_brightness_set(int percent, std::string& error);
 
+// --- Autostart / login items ---
+// enable registers this binary to launch at login (bare `wilfred` runs the
+// daemon); disable removes our entry. status reports whether OUR entry is
+// present and pointing at this executable (detail says what it points at).
+// All return true on success, false with error set when unsupported or the
+// OS call failed. Mobile stubs return false ("not supported on mobile").
+bool native_autostart_status(bool& enabled, std::string& detail, std::string& error);
+bool native_autostart_set(bool enabled, std::string& error);
+// Pure content builders for the file-based backends (macOS LaunchAgents
+// plist, Linux/BSD XDG autostart entry). Tested without touching the machine.
+std::string autostart_desktop_entry(const std::string& exe);
+std::string autostart_launchd_plist(const std::string& exe);
+
 // --- Settings deep-links ---
 // page is lowercased, e.g. "", "wifi", "network", "bluetooth", "sound",
 // "display", "battery", "power", "apps", "privacy", "update".

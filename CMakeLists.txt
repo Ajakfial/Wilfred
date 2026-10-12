@@ -135,6 +135,7 @@ set(WILFRED_CORE_SOURCES
   src/platform/platform.cpp
   src/platform/android/android_bridge.cpp
   src/service/service.cpp
+  src/service/autostart.cpp
   src/ui/web_ui.cpp
   src/ui/icon.cpp
   src/updater/updater.cpp
@@ -252,6 +253,7 @@ if(WIN32)
     src/platform/win/windows.cpp
     src/platform/win/volumes.cpp
     src/platform/win/screenshot.cpp
+    src/platform/win/autostart.cpp
     src/platform/win/usn.cpp
     src/ui/win_overlay.cpp
   )
@@ -270,6 +272,7 @@ elseif(IOS)
     src/platform/ios/windows.cpp
     src/platform/ios/fs_watch.cpp
     src/platform/ios/hotkey.cpp
+    src/platform/ios/autostart.cpp
     src/platform/ios/overlay.cpp
   )
 elseif(APPLE)
@@ -282,6 +285,7 @@ elseif(APPLE)
     src/platform/mac/windows.mm
     src/platform/mac/volumes.mm
     src/platform/mac/screenshot.mm
+    src/platform/mac/autostart.cpp
     src/ui/mac_overlay.mm
   )
 elseif(ANDROID)
@@ -297,6 +301,7 @@ elseif(ANDROID)
     src/platform/android/windows.cpp
     src/platform/android/fs_watch.cpp
     src/platform/android/hotkey.cpp
+    src/platform/android/autostart.cpp
     src/platform/android/overlay.cpp
   )
 elseif(BSD)
@@ -310,6 +315,7 @@ elseif(BSD)
     src/platform/linux/launch.cpp
     src/platform/linux/windows.cpp
     src/platform/linux/screenshot.cpp
+    src/platform/linux/autostart.cpp
     src/platform/bsd/fs_watch.cpp
     src/platform/bsd/volumes.cpp
     src/ui/x11_overlay.cpp
@@ -324,6 +330,7 @@ else()
     src/platform/linux/windows.cpp
     src/platform/linux/volumes.cpp
     src/platform/linux/screenshot.cpp
+    src/platform/linux/autostart.cpp
     src/ui/x11_overlay.cpp
   )
 endif()
@@ -606,6 +613,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_locale.cpp
   tests/test_plugins.cpp
   tests/test_settings.cpp
+  tests/test_autostart.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

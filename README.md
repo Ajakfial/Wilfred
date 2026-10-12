@@ -302,7 +302,9 @@ from PFX or Azure Trusted Signing secrets when configured
 
 * **Run the daemon, not one-shots.** `wilfred daemon` (bare `wilfred`) is the
   long-lived process: indexer + watcher + hotkey + overlay + IPC server.
-  Run it as a login item / autostart entry; the tray icon (Windows) quits it.
+  Run it as a login item / autostart entry (`wilfred autostart enable`
+  registers this binary on Windows/macOS/Linux/BSD); the tray icon
+  (Windows) quits it.
   CLI subcommands (`search`, `launch`, `status`, …) talk to the running
   daemon over the local IPC socket when available (see `docs/cli.md`,
   `docs/ipc-and-api.md`).
