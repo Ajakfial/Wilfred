@@ -43,7 +43,9 @@ jobs:
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/build-windows.ps1 -Config Release -Tests
+        run: |
+          $ver = $env:GITHUB_REF_NAME -replace '^[vV]','' -replace '-.*$',''
+          ./scripts/build-windows.ps1 -Config Release -Tests "-DWILFRED_VERSION=$ver"
 
       - name: Sign (Windows)
         if: runner.os == 'Windows'
@@ -88,12 +90,16 @@ jobs:
       - name: Build (Linux)
         if: runner.os == 'Linux'
         shell: bash
-        run: bash ./scripts/build-linux.sh --release --tests
+        run: |
+          VER="${GITHUB_REF_NAME#v}"; VER="${VER#V}"; VER="${VER%%-*}"
+          bash ./scripts/build-linux.sh --release --tests -- "-DWILFRED_VERSION=${VER}"
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
         shell: bash
-        run: bash ./scripts/build-macos.sh --release --tests
+        run: |
+          VER="${GITHUB_REF_NAME#v}"; VER="${VER#V}"; VER="${VER%%-*}"
+          bash ./scripts/build-macos.sh --release --tests -- "-DWILFRED_VERSION=${VER}"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
