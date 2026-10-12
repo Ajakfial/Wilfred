@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SpokeApp.App">
+  <Application.Resources>
+    <ResourceDictionary>
+      <!-- Spoke dark-first design tokens -->
+      <Color x:Key="Surface">#0E1116</Color>
+      <Color x:Key="Card">#161B22</Color>
+      <Color x:Key="Border">#2D333B</Color>
+      <Color x:Key="PrimaryText">#E6EDF3</Color>
+      <Color x:Key="SecondaryText">#8B949E</Color>
+      <Color x:Key="Accent">#58A6FF</Color>
+      <Color x:Key="Success">#3FB950</Color>
+      <Color x:Key="Warning">#D29922</Color>
+      <Color x:Key="Danger">#F85149</Color>
+
+      <Style TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource PrimaryText}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+      </Style>
+      <Style TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+        <Setter Property="TextColor" Value="#0E1116" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="Padding" Value="16,10" />
+      </Style>
+      <Style TargetType="Frame">
+        <Setter Property="BackgroundColor" Value="{StaticResource Card}" />
+        <Setter Property="BorderColor" Value="{StaticResource Border}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16" />
+      </Style>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

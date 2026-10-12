@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-vs2022",
+      "displayName": "Windows (Visual Studio 2022, x64)",
+      "description": "Default preset for Windows: VS generator, Release/Debug via --config.",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows-vs2022"
+    },
+    {
+      "name": "linux-ninja-release",
+      "displayName": "Linux (Ninja, Release)",
+      "description": "Needs: cmake, ninja, gcc/clang. Installs to build/linux-ninja-release.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-ninja-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/linux-ninja-release/install"
+      }
+    },
+    {
+      "name": "linux-ninja-debug",
+      "displayName": "Linux (Ninja, Debug)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-ninja-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/linux-ninja-debug/install"
+      }
+    },
+    {
+      "name": "macos-ninja-release",
+      "displayName": "macOS (Ninja, Release, AppleClang)",
+      "description": "Needs: Xcode Command Line Tools + cmake + ninja (brew install cmake ninja).",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-ninja-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SPOKE_ENABLE_MARCH_NATIVE": "OFF",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/macos-ninja-release/install"
+      }
+    },
+    {
+      "name": "macos-ninja-debug",
+      "displayName": "macOS (Ninja, Debug)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-ninja-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SPOKE_ENABLE_MARCH_NATIVE": "OFF",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/macos-ninja-debug/install"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-vs2022", "configurePreset": "windows-vs2022", "configuration": "Release" },
+    { "name": "linux-ninja-release", "configurePreset": "linux-ninja-release", "configuration": "Release" },
+    { "name": "linux-ninja-debug", "configurePreset": "linux-ninja-debug", "configuration": "Debug" },
+    { "name": "macos-ninja-release", "configurePreset": "macos-ninja-release", "configuration": "Release" },
+    { "name": "macos-ninja-debug", "configurePreset": "macos-ninja-debug", "configuration": "Debug" }
+  ]
+}

@@ -46,7 +46,7 @@ single summonable search bar.
 * Per-app extra context actions (`app_actions:`) on top of the built-in file actions
 * Large-file finder + duplicate candidates from the index (`large`, `dupes`)
 * File conversion (`convert song.wav to mp3`, `convert photo.bmp to png`: native WAV/RAW + BMP/PNG/PPM/TGA, ffmpeg for mp3/ogg/flac/jpg/webp) + background removal (`bgremove photo.png` to transparent PNG, no model needed)
-* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI)
+* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI or the built-in spoke engine)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
@@ -181,7 +181,7 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `media play` / `media next` / `media mute` | Native media keys + volume (Win media keys; mac HID + Music/Spotify/VLC; Linux native MPRIS D-Bus + wpctl/pactl/amixer, playerctl optional) |
 | `ping example.com` / `dns example.com` / `myip` | Ping, DNS lookup, public IP |
 | `large 10` / `dupes` | Biggest files + duplicate candidates from the index |
-| `transcribe talk.mp3` / `dictate 10` | Speech-to-text for mp3/mp4 audio, mic dictation (needs whisper CLI) |
+| `transcribe talk.mp3` / `dictate 10` | Speech-to-text for mp3/mp4 audio, mic dictation (`transcription.engine`: whisper CLI or spoke) |
 | `convert song.wav to mp3` / `convert photo.bmp to png` | File conversion (native PCM + BMP/PNG/PPM/TGA, ffmpeg for compressed) |
 | `bgremove photo.png` / `bgremove photo.png 40 #ffffff` | Background removal to transparent PNG (auto corners or explicit color) |
 | `windows chrome` / `minimize spotify` | List, switch, minimize, maximize, close, snap windows |

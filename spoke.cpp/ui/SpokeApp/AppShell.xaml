@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:SpokeApp"
+       x:Class="SpokeApp.AppShell"
+       Shell.BackgroundColor="{StaticResource Surface}"
+       Shell.ForegroundColor="{StaticResource PrimaryText}"
+       Title="Spoke">
+  <ShellContent Title="Transcribe"
+                Icon="mic.svg"
+                ContentTemplate="{DataTemplate views:MainPage}"
+                Route="MainPage" />
+</Shell>

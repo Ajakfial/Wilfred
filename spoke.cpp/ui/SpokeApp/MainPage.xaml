@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SpokeApp.ViewModels"
+             x:Class="SpokeApp.MainPage"
+             x:DataType="vm:MainViewModel"
+             BackgroundColor="{StaticResource Surface}"
+             Title="Spoke Transcriber">
+
+  <ScrollView>
+    <VerticalStackLayout Spacing="16" Padding="24" MaximumWidthRequest="860">
+
+      <!-- Header -->
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalOptions="Center">
+        <Image Source="spoke_logo.svg" HeightRequest="40" WidthRequest="40"
+               SemanticProperties.Description="Spoke logo" />
+        <VerticalStackLayout Grid.Column="1" Spacing="0">
+          <Label Text="Spoke" FontSize="24" FontAttributes="Bold" />
+          <Label Text="{Binding EngineLabel}" FontSize="12" TextColor="{StaticResource SecondaryText}" />
+        </VerticalStackLayout>
+        <Button Grid.Column="2" Text="Settings" Clicked="OnSettingsClicked"
+                BackgroundColor="Transparent" TextColor="{StaticResource Accent}"
+                BorderColor="{StaticResource Border}" BorderWidth="1" />
+      </Grid>
+
+      <!-- Status -->
+      <Frame>
+        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+          <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                             Color="{StaticResource Accent}" />
+          <Label Text="{Binding Status}" FontSize="14" VerticalOptions="Center" />
+        </HorizontalStackLayout>
+      </Frame>
+
+      <!-- Input card -->
+      <Frame>
+        <VerticalStackLayout Spacing="12">
+          <Label Text="Audio input" FontSize="16" FontAttributes="Bold" />
+          <Label Text="WAV (16-bit PCM) works everywhere. MP3 / M4A / FLAC / OGG are accepted and decoded by the platform layer. Everything runs offline on CPU."
+                 FontSize="12" TextColor="{StaticResource SecondaryText}" />
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+            <Entry Text="{Binding SelectedFile}" Placeholder="No file selected…"
+                   IsReadOnly="True" FontSize="12" />
+            <Button Grid.Column="1" Text="Browse" Clicked="OnBrowseClicked" />
+            <Button Grid.Column="2" Text="Record" Clicked="OnRecordClicked"
+                    BackgroundColor="Transparent" TextColor="{StaticResource Accent}"
+                    BorderColor="{StaticResource Border}" BorderWidth="1" />
+          </Grid>
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+              <Label Text="Beam" FontSize="12" TextColor="{StaticResource SecondaryText}" />
+              <Stepper Value="{Binding BeamWidth}" Minimum="1" Maximum="16" Increment="1" />
+              <Label Text="{Binding BeamWidth}" FontSize="12" WidthRequest="28" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+              <Label Text="Threads" FontSize="12" TextColor="{StaticResource SecondaryText}" />
+              <Stepper Value="{Binding Threads}" Minimum="0" Maximum="8" Increment="1" />
+              <Label Text="{Binding Threads}" FontSize="12" WidthRequest="28" />
+            </HorizontalStackLayout>
+          </Grid>
+          <Button Text="Transcribe locally" Command="{Binding TranscribeCommand}" />
+          <ProgressBar Progress="{Binding Progress}" IsVisible="{Binding IsBusy}"
+                       ProgressColor="{StaticResource Accent}" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <!-- Result card -->
+      <Frame IsVisible="{Binding HasResult}">
+        <VerticalStackLayout Spacing="10">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" VerticalOptions="Center">
+            <Label Text="Transcript" FontSize="16" FontAttributes="Bold" />
+            <Button Grid.Column="1" Text="Copy" Command="{Binding CopyCommand}"
+                    Padding="10,6" FontSize="12" />
+            <Button Grid.Column="2" Text="Export" Clicked="OnExportClicked"
+                    Padding="10,6" FontSize="12"
+                    BackgroundColor="Transparent" TextColor="{StaticResource Accent}"
+                    BorderColor="{StaticResource Border}" BorderWidth="1" />
+          </Grid>
+          <Label Text="{Binding Result.Text}" FontSize="15" />
+          <Label Text="{Binding Result.RtfChip}" FontSize="12" TextColor="{StaticResource SecondaryText}" />
+        </VerticalStackLayout>
+      </Frame>
+
+      <!-- Segments -->
+      <Frame IsVisible="{Binding HasResult}">
+        <VerticalStackLayout Spacing="8">
+          <Label Text="Segments" FontSize="16" FontAttributes="Bold" />
+          <CollectionView ItemsSource="{Binding Segments}">
+            <CollectionView.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Padding="0,6">
+                  <Label Text="{Binding Timestamp}" FontSize="12"
+                         TextColor="{StaticResource Accent}" VerticalOptions="Start" />
+                  <Label Grid.Column="1" Text="{Binding Text}" FontSize="13" />
+                  <Frame Grid.Column="2" Padding="8,4" CornerRadius="8"
+                         BackgroundColor="Transparent" BorderColor="{StaticResource Border}">
+                    <Label Text="{Binding Tier}" FontSize="11"
+                           TextColor="{StaticResource SecondaryText}" />
+                  </Frame>
+                </Grid>
+              </DataTemplate>
+            </CollectionView.ItemTemplate>
+          </CollectionView>
+        </VerticalStackLayout>
+      </Frame>
+
+      <Label Text="Offline · No cloud · MIT licensed"
+             FontSize="11" TextColor="{StaticResource SecondaryText}"
+             HorizontalOptions="Center" />
+
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>

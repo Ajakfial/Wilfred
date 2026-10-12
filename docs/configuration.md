@@ -452,20 +452,41 @@ the file and Enter transcribes, delivering the transcript to the clipboard
 (plus an optional `<audio>.txt` sidecar, which then gets content-indexed on
 rescan).
 
+Two engines, selected by `engine` (`auto` | `whisper`/`whisper.cpp` |
+`spoke`/`spoke.cpp`, default `auto`):
+
+* `whisper` — the `whisper.cpp` CLI plus a ggml model file (multilingual,
+  large downloads, needs 1–5 GB RAM).
+* `spoke` — the spoke.cpp tiny English engine: when Wilfred is built with
+  `spoke.cpp/` present it runs in-process (no weight files, no extra binary,
+  ~25x realtime on a laptop CPU); otherwise it uses a `spoke_cli` binary on
+  PATH. Container audio still goes through `ffmpeg` to a WAV first. The
+  `language` hint is ignored on this path (English-only).
+
+`auto` uses spoke when it can run (built-in or CLI found), else whisper.
+
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Whether `transcribe ...` queries run at all |
+| `engine` | `"auto"` | `auto` (spoke when available, else whisper), `whisper`/`whisper.cpp`, or `spoke`/`spoke.cpp` |
 | `binary` | `""` | Explicit whisper binary path or command name; empty probes PATH for `whisper-cli`, then `whisper` |
-| `model` | `""` | Explicit whisper model file (`.bin`); empty probes `<data>/models` for a ggml model |
-| `language` | `"auto"` | Language hint passed as whisper `-l` (`en`, `de`, ...); `auto` leaves detection to the model |
+| `spoke_binary` | `""` | Explicit spoke CLI path or command name (only used without the built-in engine); empty probes PATH for `spoke-cli`, `spoke_cli`, `spoke` |
+| `model` | `""` | Explicit whisper model file (`.bin`); empty probes `<data>/models` for a ggml model (unused by spoke) |
+| `language` | `"auto"` | Language hint passed as whisper `-l` (`en`, `de`, ...); `auto` leaves detection to the model (ignored by spoke) |
 | `save_txt` | `true` | Write `<audio>.txt` next to the source on success |
 | `mic` | `""` | Microphone device for `dictate` (ffmpeg syntax for this OS); empty means the OS default |
+| `threads` | `0` | Spoke worker threads (`0` = auto) |
+| `beam_width` | `8` | Spoke CTC beam width (1–64) |
 
 Setup per OS: Windows — a `whisper.cpp` release build plus `winget install
 ffmpeg`; macOS — `brew install whisper-cpp ffmpeg`; Linux — build
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) plus distro
 `ffmpeg`. Models (e.g. `ggml-base.en.bin`) come from
-`huggingface.co/ggerganov/whisper.cpp`. Missing pieces surface as cards
+`huggingface.co/ggerganov/whisper.cpp`. For spoke, release builds ship the built-in engine on Windows, macOS,
+Linux, and Android (BSD and iOS are excluded — the engine doesn't support
+them there); self-builds get it whenever `spoke.cpp/` is present, otherwise
+build spoke.cpp separately (`cmake --preset <platform>`) and put
+`spoke_cli` on PATH. Missing pieces surface as cards
 with the exact install step instead of failing silently.
 
 ## `api:` — optional local HTTP API

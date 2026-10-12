@@ -3030,15 +3030,25 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          "", "transcribe", 8000, ResultAction::None));
       return out;
     }
-    // Setup state first: without a whisper binary/model there is nothing to run.
-    auto binary = resolve_whisper_binary(cfg);
-    auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
-    if (binary.empty() || model.empty()) {
-      std::string what =
-          binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model");
-      out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model", what, "",
-                         "transcribe", 9000, ResultAction::None));
-      return out;
+    // Engine setup state first: spoke needs no model file, whisper needs a
+    // binary plus a ggml model. `auto` already resolved to one of them.
+    auto eff = resolve_transcription_engine(cfg);
+    if (eff == "spoke") {
+      if (!spoke_available(cfg)) {
+        out.push_back(card("Spoke not found", transcribe_install_hint("spoke"), "",
+                           "transcribe", 9000, ResultAction::None));
+        return out;
+      }
+    } else {
+      auto binary = resolve_whisper_binary(cfg);
+      auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
+      if (binary.empty() || model.empty()) {
+        std::string what =
+            binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model");
+        out.push_back(card(binary.empty() ? "Whisper not found" : "No whisper model", what, "",
+                           "transcribe", 9000, ResultAction::None));
+        return out;
+      }
     }
     auto target = trim_sv(intent.remainder);
     if (target.size() >= 2 && ((target.front() == '"' && target.back() == '"') ||
@@ -3069,6 +3079,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     std::string dest_note = cfg.transcription.save_txt ? " · transcript to clipboard + .txt"
                                                        : " · transcript to clipboard";
+    dest_note += eff == "spoke" ? " via spoke" : " via whisper";
     int n = 0;
     for (auto& p : paths) {
       SearchResult r = card("Transcribe " + path_filename(p), "Enter transcribes" + dest_note, p,
@@ -3115,14 +3126,23 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
                          "dictate", 9000, ResultAction::None));
       return out;
     }
-    auto binary = resolve_whisper_binary(cfg);
-    auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
-    if (binary.empty() || model.empty()) {
-      out.push_back(card(
-          binary.empty() ? "Whisper not found" : "No whisper model",
-          binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model"),
-          "", "dictate", 9000, ResultAction::None));
-      return out;
+    auto eff = resolve_transcription_engine(cfg);
+    if (eff == "spoke") {
+      if (!spoke_available(cfg)) {
+        out.push_back(card("Spoke not found", transcribe_install_hint("spoke"), "", "dictate",
+                            9000, ResultAction::None));
+        return out;
+      }
+    } else {
+      auto binary = resolve_whisper_binary(cfg);
+      auto model = binary.empty() ? std::string() : resolve_whisper_model(cfg);
+      if (binary.empty() || model.empty()) {
+        out.push_back(card(
+            binary.empty() ? "Whisper not found" : "No whisper model",
+            binary.empty() ? transcribe_install_hint("whisper") : transcribe_install_hint("model"),
+            "", "dictate", 9000, ResultAction::None));
+        return out;
+      }
     }
     SearchResult r = card("Dictate " + std::to_string(seconds) + "s",
                           "Enter records the microphone · transcript to clipboard",

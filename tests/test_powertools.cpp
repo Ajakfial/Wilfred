@@ -484,6 +484,103 @@ app_actions:
       CHECK(!execute_result_action(r, cfg, ""));
       (void)err;
     }
+    // --- Spoke engine: pure helpers + config + safe error paths ---
+    // Never runs real inference here (needs audio); the built-in path is
+    // exercised only through missing-file / non-audio failures.
+    {
+      CHECK_EQ(normalize_transcription_engine("spoke"), "spoke");
+      CHECK_EQ(normalize_transcription_engine("spoke.cpp"), "spoke");
+      CHECK_EQ(normalize_transcription_engine("SPOKE"), "spoke");
+      CHECK_EQ(normalize_transcription_engine("whisper"), "whisper");
+      CHECK_EQ(normalize_transcription_engine("whisper.cpp"), "whisper");
+      CHECK_EQ(normalize_transcription_engine("WHISPER.CPP"), "whisper");
+      CHECK_EQ(normalize_transcription_engine("auto"), "auto");
+      CHECK_EQ(normalize_transcription_engine("bogus"), "auto");
+
+      auto scmd = build_spoke_command("spoke_cli", "/a/in.wav", 4, 8);
+      CHECK(scmd.find("spoke_cli") != std::string::npos);
+      CHECK(scmd.find("transcribe") != std::string::npos);
+      CHECK(scmd.find("--json") != std::string::npos);
+      CHECK(scmd.find("--threads 4") != std::string::npos);
+      CHECK(scmd.find("--beam 8") != std::string::npos);
+      auto scmd_auto = build_spoke_command("spoke", "/a/in.wav", 0, 0);
+      CHECK(scmd_auto.find("--threads") == std::string::npos);
+      CHECK(scmd_auto.find("--json") != std::string::npos);
+
+      CHECK_EQ(parse_spoke_json_text("{\"text\":\"hello world\",\"rtf\":0.04}"),
+               "hello world");
+      CHECK_EQ(parse_spoke_json_text("{\"text\":\"a\\\"b\",\"rtf\":1}"), "a\"b");
+      CHECK(parse_spoke_json_text("not json").empty());
+      CHECK(parse_spoke_json_text("{}").empty());
+      CHECK(!transcribe_install_hint("spoke").empty());
+
+      // Config: engine + spoke tuning validate through the real loader.
+      {
+        Config cfg;
+        ConfigError err;
+        CHECK(load_config_text(
+            "transcription:\n  engine: spoke\n  threads: 2\n  beam_width: 4\n", cfg, err));
+        CHECK_EQ(cfg.transcription.engine, "spoke");
+        CHECK_EQ(cfg.transcription.threads, 2);
+        CHECK_EQ(cfg.transcription.beam_width, 4);
+        CHECK_EQ(normalize_transcription_engine(cfg.transcription.engine), "spoke");
+        Config cpp;
+        CHECK(load_config_text("transcription:\n  engine: spoke.cpp\n", cpp, err));
+        CHECK_EQ(cpp.transcription.engine, "spoke");
+        Config wcpp;
+        CHECK(load_config_text("transcription:\n  engine: whisper.cpp\n", wcpp, err));
+        CHECK_EQ(wcpp.transcription.engine, "whisper");
+        Config bad;
+        CHECK(!load_config_text("transcription:\n  engine: watson\n", bad, err));
+        CHECK(err.message.find("transcription.engine") != std::string::npos);
+        Config bad_threads;
+        CHECK(!load_config_text("transcription:\n  threads: 99\n", bad_threads, err));
+        Config bad_beam;
+        CHECK(!load_config_text("transcription:\n  beam_width: 0\n", bad_beam, err));
+      }
+      // Engine resolution: explicit pins the backend; auto stays sane.
+      {
+        Config spoke_cfg;
+        spoke_cfg.transcription.engine = "spoke";
+        CHECK_EQ(resolve_transcription_engine(spoke_cfg), "spoke");
+        Config spoke_cpp;
+        spoke_cpp.transcription.engine = "spoke.cpp";
+        CHECK_EQ(resolve_transcription_engine(spoke_cpp), "spoke");
+        Config whisper_cfg;
+        whisper_cfg.transcription.engine = "whisper";
+        CHECK_EQ(resolve_transcription_engine(whisper_cfg), "whisper");
+        Config auto_cfg;
+        auto eff = resolve_transcription_engine(auto_cfg);
+        CHECK(eff == "spoke" || eff == "whisper");
+        if (spoke_builtin_available()) CHECK_EQ(eff, "spoke");
+        // Explicit spoke binary wins over the PATH probe.
+        Config bicfg;
+        bicfg.transcription.spoke_binary = "definitely-not-a-real-spoke-xyz";
+        CHECK_EQ(resolve_spoke_binary(bicfg), "definitely-not-a-real-spoke-xyz");
+      }
+      // Safe failures on the spoke path (missing file, non-audio).
+      {
+        Config cfg;
+        cfg.transcription.engine = "spoke";
+        std::string text, err;
+        CHECK(!transcribe_audio_file("C:/nope/missing-song.mp3", cfg, text, err));
+        CHECK(!err.empty());
+        CHECK(!transcribe_audio_file("nope.txt", cfg, text, err));
+        CHECK(!err.empty());
+      }
+      // Mini cards on the spoke path (no model file needed).
+      {
+        Config cfg;
+        cfg.transcription.engine = "spoke";
+        if (spoke_available(cfg)) {
+          auto usage = mini_results("transcribe", cfg, "");
+          CHECK(!usage.empty());
+        } else {
+          auto missing = mini_results("transcribe some-song.mp3", cfg, "");
+          CHECK(!missing.empty());
+        }
+      }
+    }
   }
 
   // --- Window management: verbs, actions, safe no-op paths ---

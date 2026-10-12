@@ -146,11 +146,15 @@ const SettingMeta kTable[] = {
     S("os_search.backend"),
     // transcription
     B("transcription.enabled"),
+    S("transcription.engine"),
     S("transcription.binary"),
+    S("transcription.spoke_binary"),
     S("transcription.model"),
     S("transcription.language"),
     B("transcription.save_txt"),
     S("transcription.mic"),
+    I("transcription.threads"),
+    I("transcription.beam_width"),
     // api / sync
     B("api.enabled"),
     S("api.bind"),
@@ -198,6 +202,8 @@ void apply_options(SettingMeta& m) {
     m.options = {"hybrid", "vector", "trigram"};
   else if (k == "os_search.backend")
     m.options = {"auto", "spotlight", "windows_search", "tracker", "baloo", "locate", "everything"};
+  else if (k == "transcription.engine")
+    m.options = {"auto", "whisper", "spoke"};
   else if (k == "index.format")
     m.options = {"auto", "v2", "v3"};
 }

@@ -262,17 +262,26 @@ struct Config {
 
   struct Transcription {
     // On-demand speech-to-text for audio files (`transcribe ...`).
-    // Optional CLIs like OCR: whisper.cpp (`whisper-cli`) for recognition,
-    // ffmpeg only when container audio (mp4/m4a/...) needs extracting.
+    // Two engines: whisper.cpp (`whisper-cli`, needs a ggml model file) and
+    // spoke.cpp (in-process tiny English model, no weight files; falls back
+    // to a `spoke_cli` binary when built without the bundled engine).
+    // `engine` selects the backend: "auto" (spoke when available, else
+    // whisper), "whisper"/"whisper.cpp", or "spoke"/"spoke.cpp".
     bool enabled{true};
+    std::string engine{"auto"};
     // Explicit whisper binary path or command name. Empty means probe PATH
     // for `whisper-cli`, then `whisper`.
     std::string binary;
+    // Explicit spoke CLI path or command name (only used when the
+    // in-process engine is unavailable). Empty means probe PATH for
+    // `spoke-cli`, `spoke_cli`, then `spoke`.
+    std::string spoke_binary;
     // Explicit whisper model file (.bin). Empty means probe
-    // <data>/models for a ggml model.
+    // <data>/models for a ggml model. Unused by the spoke engine.
     std::string model;
     // BCP-47-ish language hint for whisper (`en`, `de`, ...).
-    // `auto` (default) leaves detection to the model.
+    // `auto` (default) leaves detection to the model. Spoke is
+    // English-only, so the hint is ignored on that path.
     std::string language{"auto"};
     // Write `<audio>.txt` next to the source on success, in addition to
     // copying the transcript to the clipboard.
@@ -281,6 +290,9 @@ struct Config {
     // means the OS default: dshow audio device name on Windows, avfoundation
     // audio index (or ":idx") on macOS, ALSA device on Linux.
     std::string mic;
+    // Spoke-only tuning: worker threads (0 = auto) and CTC beam width.
+    int threads{0};
+    int beam_width{8};
   } transcription;
 
   struct Api {

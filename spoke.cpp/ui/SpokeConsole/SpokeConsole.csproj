@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SpokeConsole</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>spoke-console</AssemblyName>
+    <Description>Cross-platform .NET console host for the spoke.cpp engine (Linux/macOS/Windows).</Description>
+  </PropertyGroup>
+
+  <!-- Share the exact same service layer as the MAUI app: one C# codebase,
+       three OSes. No forks, no drift. -->
+  <ItemGroup>
+    <Compile Include="..\SpokeApp\Models\TranscriptionModels.cs" Link="Shared\TranscriptionModels.cs" />
+    <Compile Include="..\SpokeApp\Services\ISpokeEngine.cs" Link="Shared\ISpokeEngine.cs" />
+    <Compile Include="..\SpokeApp\Services\SpokeNativeService.cs" Link="Shared\SpokeNativeService.cs" />
+    <Compile Include="..\SpokeApp\Services\TranscriptionService.cs" Link="Shared\TranscriptionService.cs" />
+  </ItemGroup>
+
+</Project>

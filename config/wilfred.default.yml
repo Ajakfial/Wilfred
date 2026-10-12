@@ -281,21 +281,30 @@ layouts:
   # signatures; enable debug logging to see them on change).
   monitor_layouts: {}
 
-# On-demand speech-to-text for audio files (`transcribe ...`).
-# Needs the `whisper-cli` binary (whisper.cpp) on PATH; `ffmpeg` is only
-# needed to extract audio from containers (mp4/m4a/...). WAV files need
-# neither ffmpeg nor conversion.
+# On-demand speech-to-text for audio files (`transcribe ...`) and mic
+# dictation (`dictate [seconds]`). Two engines:
+#   whisper — whisper.cpp CLI (`whisper-cli`) + a ggml model file.
+#   spoke   — spoke.cpp tiny English engine: built in when Wilfred is built
+#             with spoke.cpp/ present (no model files, no extra binary),
+#             otherwise a spoke_cli binary on PATH.
+# engine: auto (spoke when available, else whisper), whisper/whisper.cpp,
+# or spoke/spoke.cpp.
 transcription:
   enabled: true
+  engine: auto
   # Explicit whisper binary path or command name (empty probes PATH for
   # `whisper-cli`, then `whisper`).
   binary: ""
+  # Explicit spoke CLI path or command name, used only when the built-in
+  # spoke engine is unavailable (empty probes PATH for `spoke-cli`,
+  # then `spoke_cli`, then `spoke`).
+  spoke_binary: ""
   # Explicit whisper model file (.bin). Empty probes <data>/models for a
   # ggml model. Download one, e.g. ggml-base.en.bin, from
-  # huggingface.co/ggerganov/whisper.cpp.
+  # huggingface.co/ggerganov/whisper.cpp. Unused by the spoke engine.
   model: ""
   # Language hint for whisper (`en`, `de`, ...). `auto` leaves detection
-  # to the model.
+  # to the model. Spoke is English-only: the hint is ignored there.
   language: "auto"
   # Write `<audio>.txt` next to the source on success (transcript also
   # goes to the clipboard).
@@ -303,6 +312,9 @@ transcription:
   # Microphone device for `dictate` (ffmpeg syntax for this OS). Empty means
   # the OS default.
   mic: ""
+  # Spoke-only tuning: worker threads (0 = auto) and CTC beam width (1-64).
+  threads: 0
+  beam_width: 8
 
 api:
   enabled: false

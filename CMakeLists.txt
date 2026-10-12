@@ -21,6 +21,11 @@ endif()
 option(WILFRED_BUILD_TESTS "Build unit tests" ON)
 option(WILFRED_BUILD_BENCH "Build benchmarks" ON)
 option(WILFRED_ENABLE_SANITIZERS "Enable ASan/UBSan in Debug" OFF)
+# In-process spoke.cpp transcription engine (tiny English STT, no weight
+# files). Vendored in-tree under spoke.cpp/, so every build with the sources
+# present gets it — including all release builds — except BSD and iOS, which
+# the engine does not support.
+option(WILFRED_WITH_SPOKE "Build with in-process spoke.cpp transcription engine" ON)
 
 if(MSVC)
   add_compile_options(/W4 /permissive- /Zc:__cplusplus /utf-8)
@@ -320,6 +325,56 @@ endif()
 
 add_library(wilfred_core STATIC ${WILFRED_CORE_SOURCES} ${WILFRED_CORE_HEADERS})
 target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# In-process spoke.cpp engine: compile its dependency-free sources as a
+# separate static lib (keeps its headers/flags isolated) and link it into
+# the core. CLI fallback (`spoke_cli` on PATH) works with or without this.
+set(WILFRED_SPOKE_ENABLED FALSE)
+# BSD and iOS are excluded: the engine is Windows/Linux/macOS (+Android)
+# only. iOS never reaches this branch in practice (the Xcode project
+# compiles wilfred_core directly, without the spoke_builtin target), but the
+# explicit gate keeps -DIOS=ON configures honest too.
+if(WILFRED_WITH_SPOKE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/spoke.cpp/src/transcriber.cpp" AND
+   NOT BSD AND NOT IOS)
+  set(WILFRED_SPOKE_ENABLED TRUE)
+endif()
+if(WILFRED_SPOKE_ENABLED)
+  set(WILFRED_SPOKE_SOURCES
+    spoke.cpp/src/audio.cpp
+    spoke.cpp/src/config.cpp
+    spoke.cpp/src/fft.cpp
+    spoke.cpp/src/features.cpp
+    spoke.cpp/src/platform.cpp
+    spoke.cpp/src/quant.cpp
+    spoke.cpp/src/status.cpp
+    spoke.cpp/src/tensor.cpp
+    spoke.cpp/src/threading.cpp
+    spoke.cpp/src/model.cpp
+    spoke.cpp/src/tokenizer.cpp
+    spoke.cpp/src/decoder.cpp
+    spoke.cpp/src/vad.cpp
+    spoke.cpp/src/transcriber.cpp
+    spoke.cpp/src/api.cpp
+  )
+  add_library(spoke_builtin STATIC ${WILFRED_SPOKE_SOURCES})
+  target_include_directories(spoke_builtin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/spoke.cpp/include)
+  target_compile_features(spoke_builtin PUBLIC cxx_std_17)
+  set_target_properties(spoke_builtin PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  if(MSVC)
+    target_compile_options(spoke_builtin PRIVATE /EHsc)
+  endif()
+  find_package(Threads REQUIRED)
+  target_link_libraries(spoke_builtin PUBLIC Threads::Threads)
+  if(UNIX AND NOT APPLE)
+    target_link_libraries(spoke_builtin PUBLIC m)
+  endif()
+  target_link_libraries(wilfred_core PUBLIC spoke_builtin)
+  target_compile_definitions(wilfred_core PUBLIC WILFRED_WITH_SPOKE=1)
+  target_include_directories(wilfred_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/spoke.cpp/include)
+  message(STATUS "Wilfred: in-process spoke.cpp engine enabled")
+else()
+  message(STATUS "Wilfred: spoke.cpp engine not built in (spoke CLI fallback only)")
+endif()
 
 # Generate version header
 configure_file(

@@ -65,6 +65,7 @@ void test_settings() {
       if (m.key == "ui.language") return scalar("de");
       if (m.key == "index.format") return scalar("auto");
       if (m.key == "transcription.language") return scalar("en");
+      if (m.key == "transcription.engine") return scalar("spoke");
       if (m.key == "embedding.backend") return scalar("hash");
       if (m.key == "ai.provider") return scalar("openai");
       if (m.key == "providers.semantic_backend") return scalar("hybrid");

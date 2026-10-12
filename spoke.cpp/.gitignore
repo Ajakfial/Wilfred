@@ -1,0 +1,55 @@
+# Build outputs
+build/
+build-*/
+out/
+install/
+dist/
+*.nupkg
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Compiled artifacts
+*.o
+*.obj
+*.lib
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.pdb
+*.dSYM/
+*.pc
+!packaging/*.pc.in
+
+# Test / bench scratch files
+test_roundtrip_tmp.wav
+test_transcribe_tmp.wav
+results_bench.txt
+bench/results.txt
+
+# Audio samples (large, local only)
+*.wav
+*.mp3
+*.flac
+!tests/data/*.wav
+
+# .NET MAUI / console
+ui/**/bin/
+ui/**/obj/
+
+# Python tooling
+__pycache__/
+.venv/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/

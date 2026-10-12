@@ -1199,19 +1199,47 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       err.message = "transcription: must be a mapping";
       return false;
     }
-    std::vector<std::string> valid = {"enabled", "binary", "model", "language", "save_txt", "mic"};
+    std::vector<std::string> valid = {"enabled", "engine", "binary", "spoke_binary",
+                                      "model",   "language", "save_txt", "mic",
+                                      "threads", "beam_width"};
     if (!check_unknown_keys(*tr, valid, "transcription", err)) return false;
     if (!expect_bool(tr, "enabled", "transcription", err) ||
         !expect_bool(tr, "save_txt", "transcription", err))
       return false;
+    for (auto* k : {"threads", "beam_width"})
+      if (!expect_int(tr, k, "transcription", err)) return false;
     c.transcription.enabled = tr->boolean("enabled", true);
+    auto engine_raw = to_lower_utf8(tr->str("engine", "auto"));
+    for (char& ch : engine_raw)
+      if (ch == '-' || ch == ' ') ch = '_';
+    std::string engine_canon = engine_raw;
+    // Accept "spoke.cpp"/"whisper.cpp" spellings from the README.
+    if (engine_canon == "spoke.cpp" || engine_canon == "spokecpp") engine_canon = "spoke";
+    if (engine_canon == "whisper.cpp" || engine_canon == "whispercpp") engine_canon = "whisper";
+    if (engine_canon != "auto" && engine_canon != "whisper" && engine_canon != "spoke") {
+      err.message = "transcription.engine has unknown engine '" + engine_raw +
+                    "' (try: auto, whisper, spoke)";
+      return false;
+    }
+    c.transcription.engine = engine_canon;
     c.transcription.binary = tr->str("binary", "");
+    c.transcription.spoke_binary = tr->str("spoke_binary", "");
     c.transcription.model = tr->str("model", "");
     c.transcription.language = tr->str("language", "auto");
     c.transcription.save_txt = tr->boolean("save_txt", true);
     c.transcription.mic = tr->str("mic", "");
+    c.transcription.threads = static_cast<int>(tr->integer("threads", 0));
+    c.transcription.beam_width = static_cast<int>(tr->integer("beam_width", 8));
     if (c.transcription.language.size() > 16) {
       err.message = "transcription.language must be a short language tag like en or auto";
+      return false;
+    }
+    if (c.transcription.threads < 0 || c.transcription.threads > 64) {
+      err.message = "transcription.threads must be between 0 (auto) and 64";
+      return false;
+    }
+    if (c.transcription.beam_width < 1 || c.transcription.beam_width > 64) {
+      err.message = "transcription.beam_width must be between 1 and 64";
       return false;
     }
   }
