@@ -13,7 +13,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-macos.zip",
-          "sha256": "1af656a43eb3249e69f5b39cf82a8e8db9e387b7606936970fe4a391a6e76028"
+          "sha256": "88c62e188dd60128c725fc302242c146ee39af8b1c0b711bb5025b83addad405"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-windows.zip",
@@ -34,7 +34,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-macos.zip",
-          "sha256": "83939d5896d9127fcecd866053e053fadd3ac879e5b14ec0c8ea7db71da43718"
+          "sha256": "88781eebbeee227855825f2299f2f73c7318b4eecd875cf9c4d19df39e0efd43"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-windows.zip",
@@ -55,7 +55,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-macos.zip",
-          "sha256": "e55e8e5445e28321512a695b6ddbc38d962a7a264d3d82547b626a6a1db893cc"
+          "sha256": "1d111050d26e83ad5ac35e86519c0d7b13ac217296611fbc8aa3b6d110135c6e"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/morse-1.0.0-windows.zip",
@@ -76,7 +76,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-macos.zip",
-          "sha256": "250cdf4078609a108196290846d48d6988d1553b4df94f637b8b2fa16594220c"
+          "sha256": "365c048c29b8b2a826e70b38277bf98be7614f9da541015522ee3bbf4ebdc869"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-windows.zip",
@@ -90,7 +90,20 @@
       "kind": "native",
       "description": "Roman numeral converter (2026 <-> MMXXVI)",
       "permissions": [],
-      "artifacts": {}
+      "artifacts": {
+        "linux": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/roman-1.0.0-linux.zip",
+          "sha256": "49b95167cdbbe94c49622d277b69be3bed60729cf35ec51dc7b003b7b9c518a2"
+        },
+        "macos": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/roman-1.0.0-macos.zip",
+          "sha256": "49a5bb71e9ba979d2e6ab2819e811acc4b27dc315f9f0595515faecb66604140"
+        },
+        "windows": {
+          "url": "https://ajakfial.github.io/Wilfred/plugins/roman-1.0.0-windows.zip",
+          "sha256": "2906c6e4d02658a14cc0037bfe049f7b6994717b38a1fe4d6d90b0eb6c76b426"
+        }
+      }
     },
     {
       "id": "nato",
@@ -105,7 +118,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/nato-1.0.0-macos.zip",
-          "sha256": "5ab6b2055f09f5e6197069b9a439964b738d62c474cdc7db9d33d377e96d29dc"
+          "sha256": "e83a539a38cc5294741f4cff2b29fb906b16f98e0afcce0680eefd36e485227f"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/nato-1.0.0-windows.zip",
