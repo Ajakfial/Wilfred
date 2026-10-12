@@ -631,7 +631,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(artifacts/*.zip artifacts/*.msi artifacts/*.nupkg artifacts/*.tar.gz artifacts/*.apk artifacts/*.aab)
+          files=(artifacts/*.zip artifacts/*.msi artifacts/*.nupkg artifacts/*.tar.gz artifacts/*.deb artifacts/*.AppImage artifacts/*.apk artifacts/*.aab)
           if [[ ${#files[@]} -eq 0 ]]; then
             echo "No release files found" >&2
             find artifacts -type f || true
