@@ -15,7 +15,7 @@ void test_autostart() {
   {
     const std::string exe = "/opt/wilfred/wilfred";
     const std::string de = autostart_desktop_entry(exe);
-    CHECK(de.compare(0, 16, "[Desktop Entry]") == 0);
+    CHECK(de.compare(0, 15, "[Desktop Entry]") == 0);
     CHECK(de.find("Type=Application\n") != std::string::npos);
     CHECK(de.find("Exec=\"/opt/wilfred/wilfred\"\n") != std::string::npos);
     CHECK(de.find("X-GNOME-Autostart-enabled=true\n") != std::string::npos);
