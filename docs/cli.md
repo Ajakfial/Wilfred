@@ -27,6 +27,7 @@ wilfred import <id|auto> [--from <path>] [--dry-run] [--overwrite]
                          Import hotkey, web searches, snippets, ...
 wilfred history-clear    Erase local search history
 wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)
+wilfred autostart [status|enable|disable]  Launch at login
 wilfred config-validate  Validate wilfred.yml against the schema
 wilfred config-open      Open wilfred.yml in the editor
 wilfred config-path      Print the wilfred.yml path
@@ -245,6 +246,23 @@ browser search template, then writes only the missing keys back to
 `wilfred.yml` (existing keys are kept unless `--overwrite`). Refuses to
 write when the result fails schema validation. The overlay `setup` mini
 reports the same three items as cards for users who prefer the GUI.
+
+## `wilfred autostart [status|enable|disable]`
+
+Launch-at-login management (see [README](../README.md#production-deployment)):
+
+```
+wilfred autostart          # status: enabled/disabled + what the entry points at
+wilfred autostart enable   # register this binary (bare `wilfred` runs the daemon)
+wilfred autostart disable  # remove our entry (foreign entries are never touched)
+```
+
+Backends: Windows writes `HKCU\...\Run\Wilfred`, macOS writes
+`~/Library/LaunchAgents/com.wilfred.launcher.plist` (`RunAtLoad`), Linux/BSD
+write `~/.config/autostart/wilfred.desktop`. `status` only reports our entry
+pointing at *this* executable as enabled — a foreign entry or a moved binary
+reports disabled with the location in the detail. Android/iOS report
+unsupported (the OS manages background apps). See [Exit codes](#exit-codes).
 
 ## `wilfred config-validate` / `config-open` / `config-path`
 

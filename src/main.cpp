@@ -7,6 +7,7 @@
 #include "wilfred/search/layouts.hpp"
 #include "wilfred/search/pins.hpp"
 #include "wilfred/search/setup.hpp"
+#include "wilfred/service/autostart.hpp"
 #include "wilfred/service/service.hpp"
 #include "wilfred/updater/updater.hpp"
 
@@ -48,6 +49,7 @@ static void print_help() {
             << "                          Import hotkey, web searches, snippets, ...\n"
             << "  wilfred history-clear   Erase local search history\n"
             << "  wilfred setup [--overwrite]  First-run wizard (roots, hotkey, browser)\n"
+            << "  wilfred autostart [status|enable|disable]  Launch at login\n"
             << "  wilfred config-validate      Validate wilfred.yml schema\n"
             << "  wilfred config-get <key>     Print one setting (section.key)\n"
             << "  wilfred config-set <key> <value>  Update one setting (validated)\n"
@@ -177,6 +179,12 @@ static int wilfred_main(int argc, char** argv) {
         if (a == "--overwrite" || a == "-f" || a == "--force") overwrite = true;
       }
       return wilfred::run_setup_wizard(overwrite);
+    }
+    if (cmd == "autostart" || cmd == "startup" || cmd == "login-item" ||
+        cmd == "login_item") {
+      std::vector<std::string> args;
+      for (int i = 2; i < argc; ++i) args.push_back(argv[i]);
+      return wilfred::run_autostart(args);
     }
     if (cmd == "config-validate" || cmd == "config_check" || cmd == "validate-config" ||
         cmd == "configcheck") {

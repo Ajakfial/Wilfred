@@ -41,6 +41,7 @@ int main() {
   test_locale();
   test_plugins();
   test_settings();
+  test_autostart();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;
