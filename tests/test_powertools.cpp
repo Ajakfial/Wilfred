@@ -568,6 +568,45 @@ app_actions:
         CHECK(!transcribe_audio_file("nope.txt", cfg, text, err));
         CHECK(!err.empty());
       }
+      // Corrupt WAVs must fail cleanly, never crash the process
+      // (regression: zeroed header fields used to divide by zero).
+      {
+        auto wav_hdr = [](uint16_t channels, uint32_t rate, uint16_t bps) {
+          std::string h;
+          h += "RIFF";
+          uint32_t cs = 36;
+          h.append(reinterpret_cast<const char*>(&cs), 4);
+          h += "WAVEfmt ";
+          uint32_t fs = 16;
+          h.append(reinterpret_cast<const char*>(&fs), 4);
+          uint16_t fmt = 1, ba = 2, extra = bps;
+          (void)extra;
+          h.append(reinterpret_cast<const char*>(&fmt), 2);
+          h.append(reinterpret_cast<const char*>(&channels), 2);
+          h.append(reinterpret_cast<const char*>(&rate), 4);
+          uint32_t br = rate * channels * bps / 8;
+          h.append(reinterpret_cast<const char*>(&br), 4);
+          h.append(reinterpret_cast<const char*>(&ba), 2);
+          h.append(reinterpret_cast<const char*>(&bps), 2);
+          h += "data";
+          uint32_t dc = 0;
+          h.append(reinterpret_cast<const char*>(&dc), 4);
+          return h;
+        };
+        Config cfg;
+        cfg.transcription.engine = "spoke";
+        const char* names[] = {"spoke-corrupt-zerobps.wav", "spoke-corrupt-zeroch.wav",
+                               "spoke-corrupt-garbage.wav"};
+        std::string blobs[] = {wav_hdr(1, 16000, 0), wav_hdr(0, 16000, 16),
+                               std::string("not a wav at all", 16)};
+        for (int i = 0; i < 3; ++i) {
+          CHECK(write_file_atomic(names[i], blobs[i].data(), blobs[i].size()));
+          std::string text, err;
+          CHECK(!transcribe_audio_file(names[i], cfg, text, err));
+          CHECK(!err.empty());
+          remove_file(names[i]);
+        }
+      }
       // Mini cards on the spoke path (no model file needed).
       {
         Config cfg;

@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <exception>
 #include <string>
 #include <vector>
 
@@ -526,9 +527,9 @@ bool transcribe_via_spoke_cli(const std::string& audio_path, const std::string& 
 // In-process spoke path (compiled in via WILFRED_WITH_SPOKE). Same WAV
 // prep as the CLI, then straight into spoke::Transcriber: no binary, no
 // model files, fully offline.
-bool transcribe_via_spoke_builtin(const std::string& audio_path, const Config& cfg,
-                                  std::string& out_text, std::string& error,
-                                  std::size_t max_chars) {
+bool transcribe_via_spoke_builtin_inner(const std::string& audio_path, const Config& cfg,
+                                        std::string& out_text, std::string& error,
+                                        std::size_t max_chars) {
 #ifdef WILFRED_WITH_SPOKE
   std::string tmp_wav, wav;
   {
@@ -558,6 +559,35 @@ bool transcribe_via_spoke_builtin(const std::string& audio_path, const Config& c
   }
   out_text = text;
   return true;
+#else
+  (void)audio_path;
+  (void)cfg;
+  (void)out_text;
+  error = "Spoke engine not built in. " + transcribe_install_hint("spoke");
+  return false;
+#endif
+}
+
+// Exception firewall around the engine: spoke may throw (bad_alloc on huge
+// inputs, thread/resource failures) and Wilfred promises never to throw out
+// of transcribe_audio_file — an uncaught throw would terminate the daemon.
+// Any fault becomes a plain error string instead of a crash.
+bool transcribe_via_spoke_builtin(const std::string& audio_path, const Config& cfg,
+                                  std::string& out_text, std::string& error,
+                                  std::size_t max_chars) {
+#ifdef WILFRED_WITH_SPOKE
+  try {
+    return transcribe_via_spoke_builtin_inner(audio_path, cfg, out_text, error, max_chars);
+  } catch (const std::exception& e) {
+    // Best-effort temp cleanup (path is deterministic, see prepare_wav_input).
+    remove_file(path_join(data_directory(), "spoke-tmp.wav"));
+    error = std::string("Spoke failed: ") + e.what();
+    return false;
+  } catch (...) {
+    remove_file(path_join(data_directory(), "spoke-tmp.wav"));
+    error = "Spoke failed with an unexpected error";
+    return false;
+  }
 #else
   (void)audio_path;
   (void)cfg;

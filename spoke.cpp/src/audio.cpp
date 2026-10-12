@@ -55,9 +55,24 @@ Status loadWavFile(const std::string& path, AudioBuffer& out) {
     std::fclose(f);
     return Status::Error(StatusCode::UnsupportedFormat, "not a WAV file");
   }
-  if (h.audio_fmt != 1 && h.audio_fmt != 3) {
+  // Validate the format header before trusting any size fields below: a
+  // corrupt file with channels == 0 or bits_per_sample == 0 would otherwise
+  // divide by zero when computing the frame count (process crash, not error).
+  if (h.channels == 0 || h.channels > 32) {
     std::fclose(f);
-    return Status::Error(StatusCode::UnsupportedFormat, "only PCM16/float32 WAV supported");
+    return Status::Error(StatusCode::UnsupportedFormat, "unsupported channel count");
+  }
+  if (h.sample_rate <= 0 || h.sample_rate > 384000) {
+    std::fclose(f);
+    return Status::Error(StatusCode::UnsupportedFormat, "unsupported sample rate");
+  }
+  // Only the combos the readers below handle (PCM8 / PCM16 / float32).
+  bool fmt_ok = (h.audio_fmt == 1 && (h.bits_per_sample == 8 || h.bits_per_sample == 16)) ||
+                (h.audio_fmt == 3 && h.bits_per_sample == 32);
+  if (!fmt_ok) {
+    std::fclose(f);
+    return Status::Error(StatusCode::UnsupportedFormat,
+                         "only PCM8/PCM16/float32 WAV supported");
   }
   // Skip any extra fmt bytes.
   if (h.fmt_size > 16) std::fseek(f, static_cast<long>(h.fmt_size - 16), SEEK_CUR);
@@ -78,6 +93,12 @@ Status loadWavFile(const std::string& path, AudioBuffer& out) {
   if (!found) {
     std::fclose(f);
     return Status::Error(StatusCode::UnsupportedFormat, "WAV data chunk not found");
+  }
+  // Cap absurd data chunks from lying headers before any allocation.
+  constexpr uint32_t kMaxWavDataBytes = 512u * 1024u * 1024u;
+  if (chunk_size > kMaxWavDataBytes) {
+    std::fclose(f);
+    return Status::Error(StatusCode::UnsupportedFormat, "WAV data chunk too large");
   }
 
   size_t bytes_per_sample = h.bits_per_sample / 8;
