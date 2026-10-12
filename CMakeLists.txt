@@ -112,6 +112,7 @@ set(WILFRED_CORE_SOURCES
   src/plugin/host.cpp
   src/plugin/trust.cpp
   src/plugin/registry.cpp
+  src/plugin/scaffold.cpp
   src/plugin/mini.cpp
   src/sync/backup.cpp
   src/import/import.cpp

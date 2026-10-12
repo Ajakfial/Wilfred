@@ -148,4 +148,39 @@ void test_plugins() {
     CHECK_NEAR(embedding_cosine(rep, rep), 1.0, 1e-5);
     CHECK(embedding_cosine(rep, a) > embedding_cosine(rep, far));
   }
+
+  // --- Scaffold: `wilfred plugin new` layout ---
+  {
+    CHECK(plugin_scaffold_valid_id("demo"));
+    CHECK(plugin_scaffold_valid_id("my-plugin2"));
+    CHECK(!plugin_scaffold_valid_id(""));
+    CHECK(!plugin_scaffold_valid_id("Demo"));
+    CHECK(!plugin_scaffold_valid_id("has space"));
+    CHECK(!plugin_scaffold_valid_id("-lead"));
+    CHECK(!plugin_scaffold_valid_id("under_score"));
+    std::error_code ec;
+    fs::path base = fs::temp_directory_path() / "wilfred_scaffold_test";
+    fs::remove_all(base, ec);
+    std::string err;
+    CHECK(plugin_scaffold_write(base.string(), "demo", "native", err));
+    CHECK(fs::exists(base / "demo" / "plugin.yml"));
+    CHECK(fs::exists(base / "demo" / "README.md"));
+    CHECK(fs::exists(base / "demo" / "demo.c"));
+    std::string text;
+    CHECK(read_file_all((base / "demo" / "plugin.yml").string(), text));
+    CHECK(text.find("id: demo") != std::string::npos);
+    CHECK(text.find("kind: native") != std::string::npos);
+    CHECK(read_file_all((base / "demo" / "demo.c").string(), text));
+    CHECK(text.find("wilfred_plugin_query") != std::string::npos);
+    CHECK(text.find("return \"demo\"") != std::string::npos);
+    // Refuses to overwrite, and rejects bad ids/kinds.
+    CHECK(!plugin_scaffold_write(base.string(), "demo", "native", err));
+    CHECK(!plugin_scaffold_write(base.string(), "Bad!", "native", err));
+    CHECK(!plugin_scaffold_write(base.string(), "ok", "fancy", err));
+    CHECK(plugin_scaffold_write(base.string(), "helper", "stdio", err));
+    CHECK(fs::exists(base / "helper" / "helper.py"));
+    CHECK(read_file_all((base / "helper" / "plugin.yml").string(), text));
+    CHECK(text.find("kind: stdio") != std::string::npos);
+    fs::remove_all(base, ec);
+  }
 }
