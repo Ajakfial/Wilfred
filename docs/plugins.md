@@ -249,7 +249,9 @@ and falls back to the plain `url`/`sha256` when no artifact matches;
 The `plugins/` directory in the repo is the official index source:
 flagship sources plus community submissions via PR (one `plugins/<id>/`
 directory per PR — see [plugins/README.md](../plugins/README.md) for the
-exact format). Merging to `main` runs `.github/workflows/plugins.yml`,
+exact format). Scaffold the layout with `wilfred plugin new <id>`
+(`--kind native|stdio`, `--dir DIR`; refuses to overwrite, validates the
+id the same way CI does). Merging to `main` runs `.github/workflows/plugins.yml`,
 which compiles, smoke-tests, and publishes per-platform zips +
 `plugins/registry.json` automatically; the website's Plugins page serves
 that index at `https://ajakfial.github.io/Wilfred/plugins/registry.json`.

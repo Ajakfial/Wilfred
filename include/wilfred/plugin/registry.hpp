@@ -51,5 +51,13 @@ int run_plugin_pending();
 int run_plugin_install(const std::string& id);
 int run_plugin_approve(const std::string& id, bool all);
 int run_plugin_revoke(const std::string& id);
+// Scaffold a new plugin source tree: <dir>/<id>/{plugin.yml,README.md,source}.
+// kind is "native" (default) or "stdio"; empty dir means the current
+// directory. Returns the process exit code (0 ok, 2 usage).
+int run_plugin_new(const std::string& id, const std::string& kind, const std::string& dir);
+// Gallery id rule, same as scripts/pack-plugins.py and plugins/README.md.
+bool plugin_scaffold_valid_id(const std::string& id);
+bool plugin_scaffold_write(const std::string& dir, const std::string& id,
+                           const std::string& kind, std::string& error);
 
 }  // namespace wilfred

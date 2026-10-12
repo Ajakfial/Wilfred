@@ -33,7 +33,7 @@ wilfred config-path      Print the wilfred.yml path
 wilfred config-get <key> Print one setting (section.key)
 wilfred config-set <key> <value>  Update one setting (validated)
 wilfred config-reset     Restore defaults (backs up first)
-wilfred plugin <list|pending|install|approve|revoke>  Registry + trust
+wilfred plugin <list|pending|install|approve|revoke|new>  Registry + trust
 wilfred tile <preset>    Tile open windows (halves|thirds|grid|columns|rows|stack)
 wilfred update [--check] Check for and install updates
 wilfred help             Show the built-in help text
@@ -262,7 +262,7 @@ change up. Same engine as the overlay `settings edit <key> <value>` /
 `settings get <key>` cards. `config-reset` restores the shipped defaults,
 saving the current file as `.pre-reset.bak` first.
 
-## `wilfred plugin <list|pending|install|approve|revoke>`
+## `wilfred plugin <list|pending|install|approve|revoke|new>`
 
 Registry and trust management (see [plugins.md](plugins.md)):
 
@@ -272,6 +272,8 @@ wilfred plugin pending           # plugins awaiting trust approval
 wilfred plugin install <id>      # download + sha256-verify into plugins/<id>/
 wilfred plugin approve <id>      # record hash + permissions (or --all)
 wilfred plugin revoke <id>       # un-approve; queries skip it again
+wilfred plugin new <id> [--kind native|stdio] [--dir DIR]
+                                 # scaffold plugins/<id>/{plugin.yml,README.md,source}
 ```
 
 ## `wilfred tile <preset>`

@@ -54,7 +54,7 @@ static void print_help() {
             << "  wilfred config-reset         Restore defaults (backs up first)\n"
             << "  wilfred config-open          Open wilfred.yml in the editor\n"
             << "  wilfred config-path          Print wilfred.yml path\n"
-            << "  wilfred plugin <list|pending|install|approve|revoke>  Plugin registry + trust\n"
+            << "  wilfred plugin <list|pending|install|approve|revoke|new>  Plugin registry + trust\n"
             << "  wilfred tile <halves|thirds|grid|columns N|rows N|stack>  Tile open windows\n"
             << "  wilfred update [--check] Check for and install updates\n"
             << "  wilfred help            Show this message\n\n"
@@ -235,8 +235,28 @@ static int wilfred_main(int argc, char** argv) {
         }
         return wilfred::run_plugin_revoke(arg);
       }
-      std::cerr
-          << "usage: wilfred plugin <list|pending|install <id>|approve [id|--all]|revoke <id>>\n";
+      if (sub == "new") {
+        std::string kind = "native";
+        std::string dir;
+        for (int i = 4; i < argc; ++i) {
+          std::string a = argv[i];
+          if ((a == "--kind" || a == "-k") && i + 1 < argc) {
+            kind = argv[++i];
+          } else if ((a == "--dir" || a == "-d") && i + 1 < argc) {
+            dir = argv[++i];
+          } else {
+            std::cerr << "usage: wilfred plugin new <id> [--kind native|stdio] [--dir DIR]\n";
+            return 2;
+          }
+        }
+        if (arg.empty()) {
+          std::cerr << "usage: wilfred plugin new <id> [--kind native|stdio] [--dir DIR]\n";
+          return 2;
+        }
+        return wilfred::run_plugin_new(arg, kind, dir);
+      }
+      std::cerr << "usage: wilfred plugin "
+                   "<list|pending|install <id>|approve [id|--all]|revoke <id>|new <id>>\n";
       return 2;
     }
     if (cmd == "tile" || cmd == "tiling") {
