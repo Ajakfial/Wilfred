@@ -1,0 +1,133 @@
+# SCCS ignore file - patterns to ignore for source code control
+# Similar to .gitignore but for SCCS
+
+# Build directories
+build/
+build*/
+.out/
+bin/
+obj/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+*.suo
+*.user
+
+# Compiled objects and libraries
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.exp
+
+# Build artifacts
+*.pdb
+*.ilk
+*.ncb
+*.sdf
+*.opensdf
+*.ipch
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+*.cmake~
+
+# Package managers
+node_modules/
+packages/
+.vcpkg/
+conan/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.cache
+Thumbs.db
+.DS_Store
+
+# Test outputs
+*.gcno
+*.gcda
+*.gcov
+coverage/
+
+# Package outputs
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.msi
+*.apk
+*.aab
+*.ipa
+
+# Local config overrides (keep wilfred.yml.example but ignore actual config)
+wilfred.yml
+*.local.yml
+
+# IDE specific
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# Profiling
+*.prof
+*.gmon
+gmon.out
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+vendor/
+*.mod
+*.sum
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+build/
+
+# C#/.NET
+*.dll
+*.exe
+*.pdb
+obj/
+bin/
+packages/
+*.user
+*.suo
+
+# OS generated
+ehthumbs.db
+Desktop.ini
