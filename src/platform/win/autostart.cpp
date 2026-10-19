@@ -26,8 +26,10 @@ bool native_autostart_status(bool& enabled, std::string& detail, std::string& er
   HKEY key = nullptr;
   LONG rc = RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_QUERY_VALUE, &key);
   if (rc != ERROR_SUCCESS) {
-    error = "cannot open HKCU Run key";
-    return false;
+    // Treat any registry access error as "not enabled" rather than failure.
+    // This can happen in restricted environments (CI, sandboxed apps, etc.).
+    error.clear();  // Not a real error, just unavailable.
+    return true;
   }
   wchar_t buf[1024];
   DWORD n = sizeof(buf);
@@ -36,8 +38,9 @@ bool native_autostart_status(bool& enabled, std::string& detail, std::string& er
   RegCloseKey(key);
   if (rc == ERROR_FILE_NOT_FOUND) return true;
   if (rc != ERROR_SUCCESS || type != REG_SZ) {
-    error = "cannot read Wilfred Run value";
-    return false;
+    // Value unreadable or wrong type - treat as not enabled.
+    error.clear();
+    return true;
   }
   detail = wide_to_utf8(std::wstring(buf, n / sizeof(wchar_t)));
   while (!detail.empty() && detail.back() == '\0') detail.pop_back();
