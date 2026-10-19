@@ -1,0 +1,54 @@
+# Cursor ignore list for Wilfred.
+#
+# AGENTS.md forbids AI work on core algorithms, platform internals, system
+# integration, architecture, security, and performance-critical code. This
+# file keeps those areas out of Cursor's context so the allowed exceptions
+# stay the path of least resistance.
+#
+# This is advisory only. It does not replace the policy, and it does not cover
+# Cursor's terminal. Read AGENTS.md and
+# .agents/skills/wilfred-ai-policy/SKILL.md first.
+
+# Build output, dependency trees, caches, VCS metadata
+build/
+out/
+node_modules/
+__pycache__/
+*.py[cod]
+.git/
+
+# Core algorithms, ranking, and index internals
+src/index/
+src/query/
+src/search/engine.cpp
+src/search/rank.cpp
+src/search/fuzzy.cpp
+src/search/hnsw.cpp
+src/search/vector_index.cpp
+src/search/semantic.cpp
+src/search/embedding.cpp
+
+# System integration: power actions, toggles, window management, media keys
+src/search/actions.cpp
+src/search/toggles.cpp
+src/search/layouts.cpp
+src/search/media.cpp
+src/service/autostart.cpp
+
+# Platform internals, hotkeys, watchers, and overlay UI
+src/platform/
+src/ui/
+src/hotkey/
+src/fs/watcher.cpp
+
+# Security-sensitive: sync, updater, IPC, plugin trust
+src/sync/
+src/updater/
+src/ipc/
+src/plugin/trust.cpp
+
+# Performance-critical allocators and indexes
+src/core/mmap.cpp
+
+# Intentionally readable: docs/, tests/, lang/, .github/, CMake files,
+# .agents/, and src/search/minis.cpp (the minor-mini exception).
