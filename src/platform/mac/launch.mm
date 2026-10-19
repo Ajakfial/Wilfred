@@ -1,5 +1,6 @@
 #include "wilfred/platform/native.hpp"
 
+#include "wilfred/core/paths.hpp"
 #include "wilfred/core/utf8.hpp"
 
 #include <cctype>

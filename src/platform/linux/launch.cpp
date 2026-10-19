@@ -425,15 +425,6 @@ bool native_open_editor(const std::string& dir) {
   return native_launch(dir);
 }
 
-bool native_open_parent(const std::string& path) {
-  if (path.empty()) return false;
-  auto parent = path_parent(path);
-  if (parent.empty()) return false;
-  // Use xdg-open on the parent directory - this opens the file manager
-  std::string cmd = "xdg-open " + sh_quote(parent) + " >/dev/null 2>&1 &";
-  return sys(cmd);
-}
-
 namespace {
 
 struct FileManager {

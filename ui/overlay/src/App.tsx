@@ -7,6 +7,8 @@ import {
   hasNativeHost,
   hotkeyHint,
   isSpeedtestQuery,
+  kindLabel,
+  kindOf,
   nativeSend,
   platformId,
   primaryLabel,

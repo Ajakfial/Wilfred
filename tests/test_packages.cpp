@@ -9,10 +9,12 @@ void test_packages() {
   CHECK(pkg_is_manager("winget"));
   CHECK(pkg_is_manager("BREW"));
   CHECK(pkg_is_manager("Apt"));
+  CHECK(pkg_is_manager("pkg"));
+  CHECK(pkg_is_manager("pkgin"));
+  CHECK(pkg_is_manager("pkg_add"));
   CHECK(!pkg_is_manager("firefox"));
-  CHECK(!pkg_is_manager("pkg"));
   CHECK(!pkg_is_manager(""));
-  CHECK_EQ(pkg_known_managers().size(), 6u);
+  CHECK_EQ(pkg_known_managers().size(), 9u);
 
   // Intent parsing.
   {
