@@ -1,0 +1,30 @@
+# clangd configuration for Wilfred.
+#
+# CMake exports compile_commands.json (CMAKE_EXPORT_COMPILE_COMMANDS is ON).
+# If clangd does not find it automatically, point it at the build directory
+# for your platform, for example:
+#   clangd --compile-commands-dir=build/linux-debug
+#   clangd --compile-commands-dir=build/windows
+#
+# .clang-format and .clang-tidy are picked up automatically from the tree, so
+# they are not duplicated here.
+
+CompileFlags:
+  # Editor warnings stay informative; the project build does not use -Werror.
+  Remove:
+    - -Werror
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+InlayHints:
+  Enabled: true
+  ParameterNames: true
+  DeducedTypes: true
+
+Hover:
+  ShowAKA: true
+
+Documentation:
+  CommentFormat: Markdown
