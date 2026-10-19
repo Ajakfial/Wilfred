@@ -32,3 +32,7 @@ plugins/dist/
 .cursor
 .aider*
 .zed
+
+# Python bytecode caches
+__pycache__/
+*.py[cod]
