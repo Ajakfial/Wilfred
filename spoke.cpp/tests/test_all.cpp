@@ -1,4 +1,4 @@
-// spoke_tests — dependency-free unit + integration tests.
+// spoke_tests -- dependency-free unit + integration tests.
 // Each TEST() prints PASS/FAIL; main returns nonzero on any failure so
 // `ctest` gates merges. No gtest, no network, fully deterministic.
 #include <cmath>

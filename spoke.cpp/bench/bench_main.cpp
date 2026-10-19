@@ -1,4 +1,4 @@
-// spoke_bench — real throughput numbers, printed + saved to bench/results.txt.
+// spoke_bench -- real throughput numbers, printed + saved to bench/results.txt.
 #include <algorithm>
 #include <chrono>
 #include <cstdio>

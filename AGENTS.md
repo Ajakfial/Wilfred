@@ -1,11 +1,11 @@
-# AGENTS.md — AI Usage Policy
+# AGENTS.md -- AI Usage Policy
 
 ## Allowed AI Use (No Restriction)
 
 You MAY use AI freely for:
 
 - **Documentation**: Writing, editing, formatting, translating docs (`docs/`, `README.md`, `*.md`)
-- **Minor minis**: Adding/fixing small mini commands (`src/search/minis.cpp` — trivial additions, typo fixes, help text)
+- **Minor minis**: Adding/fixing small mini commands (`src/search/minis.cpp` -- trivial additions, typo fixes, help text)
 - **Small fixes**: One-liner bug fixes, typo corrections, comment updates
 - **Moderate refactors**: Code style, naming, dead code removal, simple logic simplification
 - **Test additions**: Adding unit tests for existing functionality

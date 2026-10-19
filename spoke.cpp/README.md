@@ -1,7 +1,7 @@
-# spoke.cpp — from-scratch English transcription engine
+# spoke.cpp -- from-scratch English transcription engine
 
-> A whisper.cpp alternative with **no whisper code**. Every layer — FFT, mel filterbank,
-> quantized encoder, CTC decoder, VAD — is implemented from scratch in dependency-free
+> A whisper.cpp alternative with **no whisper code**. Every layer -- FFT, mel filterbank,
+> quantized encoder, CTC decoder, VAD -- is implemented from scratch in dependency-free
 > C++17, with a .NET MAUI front end whose only job is UI (all inference lives in C++).
 
 [![tests](https://img.shields.io/badge/tests-53%2F53%20passing-brightgreen)]()
@@ -15,7 +15,7 @@
 |---|---|
 | Ports OpenAI's Whisper (transformer, 39M–1.5B params) | Original tiny CTC acoustic model (~310k params, int8) |
 | Needs 1–5 GB RAM, GPU for comfort | Runs on a 10-year-old laptop CPU at **25x realtime** |
-| 100+ MB weight files | **Zero weight files** — deterministic seeded init, reproducible |
+| 100+ MB weight files | **Zero weight files** -- deterministic seeded init, reproducible |
 | General multilingual | Focused: bare-bones **English** transcription, no hallucination on silence |
 
 ## Quick start
@@ -68,12 +68,12 @@ WAV/PCM ─▶ resample 16k ─▶ EnergyVad ─▶ LogMel (FFT▶mel▶log▶CM
                                    segments + confidence ─▶ text / JSON
 ```
 
-- **`include/spoke/` + `src/`** — the engine. See [`docs/architecture.md`](docs/architecture.md).
-- **`tools/spoke_cli.cpp`** — CLI (`transcribe`, `info`, `synth`).
-- **`tests/test_all.cpp`** — 48 assertions, zero dependencies, runs under `ctest`.
-- **`bench/bench_main.cpp`** — prints + persists RTF numbers. Latest: [`docs/benchmarks.md`](docs/benchmarks.md).
-- **`ui/SpokeApp/`** — .NET MAUI UI (C# presentation only, P/Invoke into `spoke.dll`).
-- **`models/`** — model card + weight philosophy (no blobs by design).
+- **`include/spoke/` + `src/`** -- the engine. See [`docs/architecture.md`](docs/architecture.md).
+- **`tools/spoke_cli.cpp`** -- CLI (`transcribe`, `info`, `synth`).
+- **`tests/test_all.cpp`** -- 48 assertions, zero dependencies, runs under `ctest`.
+- **`bench/bench_main.cpp`** -- prints + persists RTF numbers. Latest: [`docs/benchmarks.md`](docs/benchmarks.md).
+- **`ui/SpokeApp/`** -- .NET MAUI UI (C# presentation only, P/Invoke into `spoke.dll`).
+- **`models/`** -- model card + weight philosophy (no blobs by design).
 
 ## Measured performance (this repo, 6-thread laptop CPU)
 
@@ -96,13 +96,13 @@ Build with Visual Studio + MAUI workload; SVG icon set in
 
 ## Docs
 
-- [`docs/architecture.md`](docs/architecture.md) — module map + data flow
-- [`docs/model.md`](docs/model.md) — tiny CTC model spec + why no weight files
-- [`docs/api.md`](docs/api.md) — C++ + C ABI + C# interop reference
-- [`docs/build.md`](docs/build.md) — Windows / Linux / macOS builds
-- [`docs/benchmarks.md`](docs/benchmarks.md) — methodology + real numbers
-- [`docs/ui-ux.md`](docs/ui-ux.md) — MAUI design system
-- [`docs/contributing.md`](docs/contributing.md) — how to extend modules
+- [`docs/architecture.md`](docs/architecture.md) -- module map + data flow
+- [`docs/model.md`](docs/model.md) -- tiny CTC model spec + why no weight files
+- [`docs/api.md`](docs/api.md) -- C++ + C ABI + C# interop reference
+- [`docs/build.md`](docs/build.md) -- Windows / Linux / macOS builds
+- [`docs/benchmarks.md`](docs/benchmarks.md) -- methodology + real numbers
+- [`docs/ui-ux.md`](docs/ui-ux.md) -- MAUI design system
+- [`docs/contributing.md`](docs/contributing.md) -- how to extend modules
 
 ## Project layout
 
@@ -121,4 +121,4 @@ spoke.cpp/
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT -- see [LICENSE](LICENSE).

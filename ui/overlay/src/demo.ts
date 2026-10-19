@@ -210,8 +210,8 @@ export function demoQuery(q: string): ResultItem[] {
       meter = 100;
     }
     const fmt = (v: number) =>
-      v <= 0 ? "—" : v < 10 ? v.toFixed(2) + " Mbps" : v.toFixed(1) + " Mbps";
-    const pingTxt = ping ? Math.round(ping) + " ms" : "—";
+      v <= 0 ? "--" : v < 10 ? v.toFixed(2) + " Mbps" : v.toFixed(1) + " Mbps";
+    const pingTxt = ping ? Math.round(ping) + " ms" : "--";
     const copy = `Download ${fmt(down)} · Upload ${fmt(up)} · Ping ${pingTxt}`;
     return [
       {
@@ -293,7 +293,7 @@ export function demoQuery(q: string): ResultItem[] {
   const toggles: ResultItem[] = [
     {
       title: "Wi-Fi: On · DemoNet",
-      subtitle: "wifi on | wifi off | wifi toggle — enter toggles",
+      subtitle: "wifi on | wifi off | wifi toggle -- enter toggles",
       kind: "wifi",
       category: "toggle",
       payload: "toggle:wifi:toggle",
@@ -305,7 +305,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Bluetooth: On",
-      subtitle: "bluetooth on | bluetooth off — enter toggles",
+      subtitle: "bluetooth on | bluetooth off -- enter toggles",
       kind: "bluetooth",
       category: "toggle",
       payload: "toggle:bluetooth:toggle",
@@ -317,7 +317,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Volume: 50%",
-      subtitle: "volume 50 | volume mute | volume up — enter toggles mute",
+      subtitle: "volume 50 | volume mute | volume up -- enter toggles mute",
       kind: "volume",
       category: "toggle",
       payload: "toggle:volume:mute_toggle",
@@ -330,7 +330,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Brightness: 75%",
-      subtitle: "brightness 70 | brightness up — enter applies",
+      subtitle: "brightness 70 | brightness up -- enter applies",
       kind: "brightness",
       category: "toggle",
       payload: "toggle:brightness:set:75",
@@ -345,7 +345,7 @@ export function demoQuery(q: string): ResultItem[] {
   const settingsDemo: ResultItem[] = [
     {
       title: "Wi-Fi settings",
-      subtitle: "settings wifi — enter opens",
+      subtitle: "settings wifi -- enter opens",
       kind: "settings",
       category: "settings",
       payload: "settings:wifi",
@@ -354,7 +354,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Sound settings",
-      subtitle: "settings sound — enter opens",
+      subtitle: "settings sound -- enter opens",
       kind: "settings",
       category: "settings",
       payload: "settings:sound",
@@ -363,7 +363,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Settings",
-      subtitle: "Main settings — enter opens",
+      subtitle: "Main settings -- enter opens",
       kind: "settings",
       category: "settings",
       payload: "settings:",
@@ -374,7 +374,7 @@ export function demoQuery(q: string): ResultItem[] {
   const setupDemo: ResultItem[] = [
     {
       title: "Setup: ready (roots, hotkey, browser ok)",
-      subtitle: "setup status — enter opens wilfred.yml",
+      subtitle: "setup status -- enter opens wilfred.yml",
       kind: "setup",
       category: "setup",
       payload: "config:open",
@@ -383,7 +383,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Validate wilfred.yml",
-      subtitle: "setup validate — enter checks now",
+      subtitle: "setup validate -- enter checks now",
       kind: "setup",
       category: "setup",
       payload: "config:validate",
@@ -392,7 +392,7 @@ export function demoQuery(q: string): ResultItem[] {
     },
     {
       title: "Edit wilfred.yml",
-      subtitle: "config open — enter opens in editor",
+      subtitle: "config open -- enter opens in editor",
       kind: "config",
       category: "config",
       payload: "config:open",
@@ -418,7 +418,7 @@ export function demoQuery(q: string): ResultItem[] {
   const pkgsDemo: ResultItem[] = [
     {
       title: "Mozilla Firefox",
-      subtitle: "Mozilla.Firefox · 131.0 · via winget — Enter installs",
+      subtitle: "Mozilla.Firefox · 131.0 · via winget -- Enter installs",
       kind: "pkg",
       category: "pkg",
       path: "pkg-install:winget:Mozilla.Firefox",
@@ -432,8 +432,8 @@ export function demoQuery(q: string): ResultItem[] {
   ];
   const pkgManagersDemo: ResultItem[] = [
     {
-      title: "winget — available",
-      subtitle: "e.g. `winget firefox` — Enter copies an example",
+      title: "winget -- available",
+      subtitle: "e.g. `winget firefox` -- Enter copies an example",
       kind: "pkg",
       category: "pkg",
       payload: "winget firefox",
@@ -441,8 +441,8 @@ export function demoQuery(q: string): ResultItem[] {
       actions: [{ id: "copy_text", label: "Copy example" }],
     },
     {
-      title: "brew — available",
-      subtitle: "e.g. `brew firefox` — Enter copies an example",
+      title: "brew -- available",
+      subtitle: "e.g. `brew firefox` -- Enter copies an example",
       kind: "pkg",
       category: "pkg",
       payload: "brew firefox",

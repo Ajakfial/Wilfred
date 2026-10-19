@@ -24,5 +24,5 @@ developers extending it.
 | [localization.md](localization.md) | UI languages, catalog files, and adding a translation |
 
 If something you need isn't covered, the header files under
-`include/wilfred/<module>/` are the source of truth — each doc below points
+`include/wilfred/<module>/` are the source of truth -- each doc below points
 to the specific headers it summarizes.

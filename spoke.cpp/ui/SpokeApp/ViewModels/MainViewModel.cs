@@ -16,7 +16,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 {
     private readonly TranscriptionService _service;
 
-    private string _status = "Ready — pick an audio file or record.";
+    private string _status = "Ready -- pick an audio file or record.";
     private bool _isBusy;
     private double _progress;
     private TranscriptionResult? _result;
@@ -80,8 +80,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             Segments.Clear();
             foreach (var s in r.Segments) Segments.Add(s);
             Status = r.IsEmpty
-                ? "Done — no speech detected (silence is never hallucinated)."
-                : $"Done — {r.Segments.Count} segment(s) · {r.RtfChip}.";
+                ? "Done -- no speech detected (silence is never hallucinated)."
+                : $"Done -- {r.Segments.Count} segment(s) · {r.RtfChip}.";
         }
         catch (OperationCanceledException)
         {
@@ -110,7 +110,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Result = null;
         Segments.Clear();
         SelectedFile = string.Empty;
-        Status = "Ready — pick an audio file or record.";
+        Status = "Ready -- pick an audio file or record.";
     }
 
     private void RefreshCanExecute()

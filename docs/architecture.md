@@ -34,7 +34,7 @@ Dependencies flow roughly top-to-bottom in the list above: `core` has no
 internal dependencies, `config` depends only on `core`, `index` depends on
 `config` and `core`, and so on up to `service`, which depends on nearly
 everything. `platform` sits below all of it as the only place `#ifdef`s for
-Windows/macOS/Linux are allowed — see [Platform layer](#platform-layer).
+Windows/macOS/Linux are allowed -- see [Platform layer](#platform-layer).
 
 ## Startup and the `Service` class
 
@@ -48,22 +48,22 @@ subcommand (`daemon`, `search`, `index`, `status`, `backup`, `restore`,
 `Service` owns one instance of each long-lived subsystem:
 
 ```
-Config          cfg_          — loaded once at boot
-IndexEngine     index_        — the on-disk index (records + WAL)
-SearchEngine    search_       — fuzzy match + ranking over the index
-SnippetStore    snippets_     — text-expansion snippets
-PluginHost      plugins_      — loaded native/stdio plugins
-QueryInterpreter interpreter_ — classifies + dispatches a raw query string
-HistoryStore    history_      — recency/frequency signals
-FsWatcher       watcher_      — filesystem change notifications (daemon only)
-GlobalHotkey    hotkey_       — OS hotkey registration (daemon only)
-IpcServer       ipc_          — local socket for the CLI to talk to the daemon
-HttpApiServer   http_         — optional localhost HTTP API
-OverlayUi       ui_           — the search popup window (daemon only)
+Config          cfg_          -- loaded once at boot
+IndexEngine     index_        -- the on-disk index (records + WAL)
+SearchEngine    search_       -- fuzzy match + ranking over the index
+SnippetStore    snippets_     -- text-expansion snippets
+PluginHost      plugins_      -- loaded native/stdio plugins
+QueryInterpreter interpreter_ -- classifies + dispatches a raw query string
+HistoryStore    history_      -- recency/frequency signals
+FsWatcher       watcher_      -- filesystem change notifications (daemon only)
+GlobalHotkey    hotkey_       -- OS hotkey registration (daemon only)
+IpcServer       ipc_          -- local socket for the CLI to talk to the daemon
+HttpApiServer   http_         -- optional localhost HTTP API
+OverlayUi       ui_           -- the search popup window (daemon only)
 ```
 
 `Service::boot()` loads the config (`load_or_create_user_config`, writing
-defaults on first run — see [configuration.md](configuration.md)), opens the
+defaults on first run -- see [configuration.md](configuration.md)), opens the
 index directory, starts the plugin host, and constructs the
 `QueryInterpreter`. `run_daemon()` additionally starts the filesystem
 watcher, the global hotkey, the IPC server, and (if `api.enabled`) the HTTP
@@ -75,9 +75,9 @@ API, then creates and pumps the overlay window until quit.
    into C++ (see [UI layer](#ui-layer)), or the CLI passes `argv` straight to
    `Service::run_search`.
 2. **Classification.** `classify_query()` (`query/classify.hpp`) looks at
-   the raw text and buckets it into a `QueryKind` — `FileSearch`,
+   the raw text and buckets it into a `QueryKind` -- `FileSearch`,
    `AppLaunch`, `Math`, `Url`, `WebSearch`, `FilteredSearch`, `Mini`,
-   `Macro`, `Clipboard`, `Command`, `Alias`, `SystemAction`, or `Empty` —
+   `Macro`, `Clipboard`, `Command`, `Alias`, `SystemAction`, or `Empty` --
    using cheap heuristics (`looks_like_url`, `looks_like_math`, macro/mini
    prefixes, filter syntax). See [query-language.md](query-language.md) for
    the full grammar.
@@ -106,7 +106,7 @@ API, then creates and pumps the overlay window until quit.
    as text.
 6. **Execution.** Selecting a result calls `execute_result()` /
    `execute_result_action()` (`query/interpreter.hpp`,
-   `search/actions.hpp`), which dispatches on `ResultAction` — `Open` calls
+   `search/actions.hpp`), which dispatches on `ResultAction` -- `Open` calls
    `launch_path()` (`apps/discovery.hpp`), `Reveal` shows the file in the
    OS file manager, `Copy` writes to the clipboard, `WebSearch`/`Url` open
    the default browser, `Plugin` calls back into `PluginHost::execute()`,
@@ -119,7 +119,7 @@ API, then creates and pumps the overlay window until quit.
 
 The index is Wilfred's core data structure: a compact, memory-mapped store
 of every indexed file/folder/application, kept in sync with the filesystem
-via a write-ahead log. See [indexing.md](indexing.md) for the full design —
+via a write-ahead log. See [indexing.md](indexing.md) for the full design --
 in short:
 
 * `fs::walk_tree()` walks configured roots, applying excludes
@@ -145,22 +145,22 @@ in short:
 
 `search/` contains the query-time logic that runs over the index:
 
-* `fuzzy.hpp` — subsequence/fuzzy scoring (`score_fuzzy`), acronym matching,
+* `fuzzy.hpp` -- subsequence/fuzzy scoring (`score_fuzzy`), acronym matching,
   and a bounded Levenshtein distance used for near-miss suggestions.
-* `filter.hpp` — parses inline filter syntax (`*.cpp in Projects`,
+* `filter.hpp` -- parses inline filter syntax (`*.cpp in Projects`,
   `type:image`, `size:>10mb`) out of the query text into a `SearchFilter`,
   and matches records against it.
-* `rank.hpp` — combines many independent signals (exact/prefix/fuzzy name
+* `rank.hpp` -- combines many independent signals (exact/prefix/fuzzy name
   match, path component match, extension, recency, frequency, alias,
   learned choice, clipboard overlap, content hit, hour-of-day affinity...)
   into a single integer score using the weights in `RankingWeights`
-  (configurable — see [configuration.md](configuration.md)). Extra signals
+  (configurable -- see [configuration.md](configuration.md)). Extra signals
   can be registered at runtime via `RankPipeline` /
   `default_rank_pipeline()` without touching `rank_record` itself.
-* `context.hpp` — builds the `RankContext` fed into ranking: recent
+* `context.hpp` -- builds the `RankContext` fed into ranking: recent
   parent folders/extensions/names, session tokens, clipboard tokens, and
   the current hour/weekday.
-* `minis.hpp` — recognizes a fixed set of system "mini" queries (`weather`,
+* `minis.hpp` -- recognizes a fixed set of system "mini" queries (`weather`,
   `time`, `disk`, `ram`, `cpu`, `process <name>`, `clip[s]`, `bm`, `battery`,
   `uptime`, `speedtest`, `screenshot [fullscreen|window|region]`, `emoji`, `symbol`, `fx`,
   `uuid`/`base64`/`sha256`/`lorem`/`json`,
@@ -172,17 +172,17 @@ in short:
   `search/doctext.hpp` extracts readable text from real documents (PDF,
   Office, RTF, HTML) for the content index; `search/clip_history.hpp`
   persists clipboard history behind `clip`/`clips`.
-* `macros.hpp` — user- and built-in-defined query templates (`!yt`, `gh`)
+* `macros.hpp` -- user- and built-in-defined query templates (`!yt`, `gh`)
   that expand `{query}` / `{clipboard}` placeholders into a URL.
-* `content.hpp` — decides which files are eligible for content indexing and
+* `content.hpp` -- decides which files are eligible for content indexing and
   tokenizes their text (bounded by `content_max_bytes` /
   `content_max_tokens` in config) so `content:` filters and the
   `content_hit` ranking signal can work.
-* `snippets.hpp` — a small text-expansion store (trigger → body), matched
+* `snippets.hpp` -- a small text-expansion store (trigger → body), matched
   and inserted separately from the main index.
-* `clipboard.hpp` — reads the OS clipboard and clipboard history, used both
+* `clipboard.hpp` -- reads the OS clipboard and clipboard history, used both
   as a "mini" result source and as ranking context (`clipboard_overlap`).
-* `actions.hpp` — turns a `SearchResult` + chosen `ResultActionItem` into
+* `actions.hpp` -- turns a `SearchResult` + chosen `ResultActionItem` into
   an actual OS action, and lets plugins register their own actions. File
   and folder results expose rich actions (`search/file_ops.hpp` for the
   portable pieces: POSIX/`file://`/WSL path flavors, SHA-256 hashing,
@@ -194,7 +194,7 @@ in short:
 
 Two different extension points exist:
 
-* **`providers::SearchProvider`** — an in-process C++ interface
+* **`providers::SearchProvider`** -- an in-process C++ interface
   (`providers/provider.hpp`) for embedding another search backend directly
   into the binary. `ProviderRegistry::query_all()` fans a query out to every
   registered provider and merges the results. Built-in: `search/semantic.hpp`
@@ -203,9 +203,9 @@ Two different extension points exist:
   `browser.library`), `sources/sources.hpp` (calendar, contacts, notes
   files), `search/remote.hpp` (opt-in `remotes:` HTTP endpoints with
   per-source headers and caps), `search/pkg.hpp` (system package
-  managers — `winget`/`brew`/`apt`/`choco`/`flatpak`/`pacman`, explicit
+  managers -- `winget`/`brew`/`apt`/`choco`/`flatpak`/`pacman`, explicit
   `<manager> <query>` only, `packages:`) and `search/os_search.hpp`
-  (official OS index federation — Windows Search, Spotlight,
+  (official OS index federation -- Windows Search, Spotlight,
   Tracker/Baloo, `locate`; `os_search:`, on by default, deduped against
   the Wilfred index). Providers are compile-time except
   `remotes:`, which end users configure without recompiling. In the
@@ -217,7 +217,7 @@ Two different extension points exist:
   CLI/IPC/API stay fully synchronous. `ProviderRegistry` times every
   backend (calls, average/last latency, hit counts) for `wilfred status`
   and HTTP `GET /status`, so a slow provider is visible instead of silent.
-* **`plugin::PluginHost`** — out-of-process/dynamically-loaded extensions
+* **`plugin::PluginHost`** -- out-of-process/dynamically-loaded extensions
   end users can install without recompiling Wilfred: either a native
   `.dll`/`.so`/`.dylib` implementing the small C ABI in `plugin/abi.hpp`, or
   an external executable spoken to over a one-shot JSON request/response on
@@ -232,11 +232,11 @@ Two different extension points exist:
 Two local-only network surfaces exist, both used to control an already
 running daemon:
 
-* `ipc::IpcServer` — a lightweight local socket/named-pipe protocol
+* `ipc::IpcServer` -- a lightweight local socket/named-pipe protocol
   (`ipc/protocol.hpp`) used by the CLI (`wilfred search`, `wilfred status`,
   etc.) to talk to a running `wilfred daemon` without duplicating the index
   in a second process.
-* `ipc::HttpApiServer` — an optional (`api.enabled`, default `false`)
+* `ipc::HttpApiServer` -- an optional (`api.enabled`, default `false`)
   `127.0.0.1`-bound HTTP API guarded by a bearer token, for scripting or
   third-party integrations.
 
@@ -249,19 +249,19 @@ The overlay is a native, borderless, always-on-top window per platform
 web view that loads `ui/overlay/index.html` / `dist/app.bundle.js` /
 `style.css`. The bundle is built from the React + TypeScript sources in
 `ui/overlay/src/` (`npm run build` there; the bundle is committed so C++
-builds don't need Node — see `ui/overlay/README.md`). C++
+builds don't need Node -- see `ui/overlay/README.md`). C++
 and the web UI talk to each other through:
 
-* `overlay_bind(OverlayQuery, OverlaySubmit)` — registers the C++ callbacks
+* `overlay_bind(OverlayQuery, OverlaySubmit)` -- registers the C++ callbacks
   the web UI invokes for "user typed a query" and "user selected a result
   with this action".
-* `overlay_results_json()` — serializes a `vector<SearchResult>` to the JSON
+* `overlay_results_json()` -- serializes a `vector<SearchResult>` to the JSON
   shape the React `App` expects. A `preview` message (`{type:"preview",index}`)
   returns `overlay_preview_json()` (`ui/web_ui.hpp`) for the `F3` side
   pane; result actions can also be chained (`open+copy_path`) in
   `execute_result_action()`, and the same preview is available as
   `wilfred preview <path>` and the IPC `preview` command.
-* `overlay_pump()` — pumps the native event loop; called from the daemon's
+* `overlay_pump()` -- pumps the native event loop; called from the daemon's
   main loop.
 
 `ui/icon.hpp` renders a small file-type icon as a data URL for the overlay
@@ -276,13 +276,13 @@ under `src/platform/`, split by OS. Modules like `fs/watcher.hpp`,
 `hotkey/hotkey.hpp`, `ipc/server.hpp`, and `plugin/host.cpp` also contain
 their own `#ifdef _WIN32` / `#ifdef __APPLE__` / else-Linux branches directly
 (rather than going through `platform/`) where the OS API surface is small
-and specific to that module — see each header's `.cpp` for the exact split.
+and specific to that module -- see each header's `.cpp` for the exact split.
 
 ## Cross-cutting concerns
 
 * **Config** (`config/config.hpp`, `config/yaml.hpp`) is loaded once at
   startup into a single `Config` struct passed by `const&` almost
-  everywhere; there is no live-reload — changes require restarting the
+  everywhere; there is no live-reload -- changes require restarting the
   daemon (`wilfred daemon`) or re-running the CLI.
 * **History** (`history/history.hpp`) is the only subsystem with
   meaningful cross-request mutable state used as a ranking input; it's
@@ -291,4 +291,4 @@ and specific to that module — see each header's `.cpp` for the exact split.
   stderr and/or a file, level and path controlled by `logging.*` config.
 * **Backup/Sync** (`sync/backup.hpp`) packs config + snippets + (optionally)
   the index into a single archive for local backup/restore or push/pull to
-  a remote URL — see [sync-and-backup.md](sync-and-backup.md).
+  a remote URL -- see [sync-and-backup.md](sync-and-backup.md).

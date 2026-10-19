@@ -28,7 +28,7 @@ namespace fs = std::filesystem;
 // kqueue watcher: one EVFILT_VNODE watch per directory (kqueue watches are
 // not recursive, so the tree is walked like the inotify backend does).
 // A kevent wake triggers an mtime rescan+diff, which is also run every 2s
-// as a safety net — same cadence and debounce contract as the other
+// as a safety net -- same cadence and debounce contract as the other
 // backends. Rename pairing is impossible with kqueue, so moves surface as
 // Deleted+Created pairs; consumers already handle both shapes.
 class BsdWatcher final : public WatcherBackend {

@@ -4,10 +4,10 @@ Wilfred supports two kinds of end-user-installable plugins, hosted by
 `wilfred::PluginHost` (`include/wilfred/plugin/host.hpp`,
 `src/plugin/host.cpp`):
 
-* **Native** — a `.dll` (Windows), `.dylib`/`.so` (macOS), or `.so` (Linux)
+* **Native** -- a `.dll` (Windows), `.dylib`/`.so` (macOS), or `.so` (Linux)
   loaded directly into the Wilfred process via `LoadLibrary`/`dlopen`,
   implementing a small C ABI (`include/wilfred/plugin/abi.hpp`).
-* **stdio** — an external executable, run as a subprocess once per query
+* **stdio** -- an external executable, run as a subprocess once per query
   (and once per action execution), communicating over a single JSON
   request/response on stdin/stdout.
 
@@ -17,7 +17,7 @@ optionally handle a follow-up "execute this action" call.
 This is a separate extension mechanism from `providers::SearchProvider`
 (`include/wilfred/providers/provider.hpp`), which is a compile-time,
 in-process C++ interface for embedding another search backend directly into
-a Wilfred fork — see [architecture.md](architecture.md#extensibility-plugins-and-providers).
+a Wilfred fork -- see [architecture.md](architecture.md#extensibility-plugins-and-providers).
 Use a plugin if you want end users to install your extension without
 recompiling Wilfred; use a `SearchProvider` if you're maintaining your own
 build of Wilfred.
@@ -25,20 +25,20 @@ build of Wilfred.
 ## Discovery and the manifest
 
 Plugins are discovered from `plugins.directories` in the config (default:
-`<config dir>/plugins` and `<data dir>/plugins` — see
+`<config dir>/plugins` and `<data dir>/plugins` -- see
 [configuration.md](configuration.md#file-location)). `plugins.enabled` must
 be `true` (the default) and `search.plugins` must be `true` for queries to
 reach them.
 
 Under a plugin directory, Wilfred recognizes:
 
-* A **subfolder** containing `plugin.yml` or `plugin.json` — the manifest
+* A **subfolder** containing `plugin.yml` or `plugin.json` -- the manifest
   described below, with `path`/`command` resolved relative to that folder
   if not absolute.
 * A **bare manifest file** (`plugin.yml` or `plugin.json`) directly in the
   plugin directory.
 * A **bare native library** (`.dll`/`.so`/`.dylib` matching the current
-  platform) directly in the plugin directory — no manifest needed; its
+  platform) directly in the plugin directory -- no manifest needed; its
   filename (without extension) becomes the plugin ID, unless the library
   itself reports a different ID (see [Native plugins](#native-plugins)
   below).
@@ -48,11 +48,11 @@ Under a plugin directory, Wilfred recognizes:
 ```yaml
 # plugin.yml
 id: my-plugin        # defaults to the filename stem if omitted
-kind: stdio           # "native" or "stdio" — inferred from whether
+kind: stdio           # "native" or "stdio" -- inferred from whether
                      # `command` is set if omitted
-path: ./my-plugin.so  # for kind: native — path to the library
-command: ./run.sh     # for kind: stdio — the executable to spawn
-args: ["--flag"]      # for kind: stdio — extra argv entries
+path: ./my-plugin.so  # for kind: native -- path to the library
+command: ./run.sh     # for kind: stdio -- the executable to spawn
+args: ["--flag"]      # for kind: stdio -- extra argv entries
 timeout_ms: 400        # per-query timeout; falls back to plugins.timeout_ms
 enabled: true
 version: 1.0.0        # registry/approval display; changing sha256/permissions re-pends
@@ -91,22 +91,22 @@ const char* wilfred_plugin_id(void);
 
 If `wilfred_plugin_abi` is present and returns something other than `1`, or
 `wilfred_plugin_query` is missing entirely, the library is unloaded and
-skipped with a warning — both are logged, so check Wilfred's log
+skipped with a warning -- both are logged, so check Wilfred's log
 (`logging.file`) if a native plugin isn't showing up.
 
 ## stdio plugins
 
-`command` (or `path`, if `command` is empty) is resolved to an executable —
+`command` (or `path`, if `command` is empty) is resolved to an executable --
 absolute, relative to the plugin's directory, or (as a last resort) looked
-up on `PATH` — and spawned fresh for **each** query and **each** action
+up on `PATH` -- and spawned fresh for **each** query and **each** action
 execution (`run_stdio_once`, not a persistent long-running process). The
 request JSON is written to the child's stdin; the full stdout is read back
 as the response, bounded by `timeout_ms` (the manifest's own value, or
-`plugins.timeout_ms` if unset) — a process that doesn't respond in time is
+`plugins.timeout_ms` if unset) -- a process that doesn't respond in time is
 killed and the query/action is skipped for that plugin.
 
 This makes stdio plugins simple to write in any language, at the cost of
-one process spawn per keystroke-triggered search — keep stdio plugins fast
+one process spawn per keystroke-triggered search -- keep stdio plugins fast
 to start, or prefer a native plugin for something performance-sensitive.
 
 ## Request/response protocol (both kinds)
@@ -119,7 +119,7 @@ Request (sent to `wilfred_plugin_query` or a stdio plugin's stdin):
 {"op": "query", "q": "<query text>", "limit": 40}
 ```
 
-Response — a JSON object with a `results` array:
+Response -- a JSON object with a `results` array:
 
 ```json
 {
@@ -144,7 +144,7 @@ Notes:
 
 * At least one of `title` or `path` must be present, or the result is
   dropped; an empty `title` falls back to the filename portion of `path`.
-* `score` defaults to `500` if omitted — compare against the built-in
+* `score` defaults to `500` if omitted -- compare against the built-in
   ranking scale in [ranking.md](ranking.md) if you want your results to
   land relative to file-search results (built-in exact-name matches score
   ~1200).
@@ -153,13 +153,13 @@ Notes:
   (including omitted) → `Plugin`, meaning selecting it calls back into your
   plugin's exec handler rather than a built-in action.
 * `actions` lets a single result expose multiple named actions (e.g. an
-  "Open" primary action plus a secondary "Copy path") — each needs an `id`
+  "Open" primary action plus a secondary "Copy path") -- each needs an `id`
   (or `action` as a fallback key) and a `label`.
 * Every result from a plugin is tagged `category: "plugin"` and
-  `plugin_id: <your manifest's id>` automatically — you don't set these
+  `plugin_id: <your manifest's id>` automatically -- you don't set these
   yourself.
 * Results from every enabled plugin are concatenated (not individually
-  ranked against file-search results by the main `rank_record()` pipeline —
+  ranked against file-search results by the main `rank_record()` pipeline --
   your `score` field is what controls relative ordering among all results),
   then the combined list is truncated to the requested `limit`.
 * Any exception/crash from a native call, or an empty/timed-out stdio
@@ -183,25 +183,25 @@ produced it (`SearchResult::plugin_id`):
 ```
 
 Sent to `wilfred_plugin_exec` (native) or spawned as a fresh process
-(stdio) — the response body is not currently interpreted by Wilfred beyond
+(stdio) -- the response body is not currently interpreted by Wilfred beyond
 confirming the call didn't throw/fail; do any user-visible work (opening a
 window, printing something) as a side effect of handling this call.
 
 ## Timeouts and safety
 
-* Each plugin gets its own `timeout_ms` — a slow plugin only delays how long
+* Each plugin gets its own `timeout_ms` -- a slow plugin only delays how long
   *its own* results take to appear, not the whole search (though the
-  overlay does wait for all sources before rendering — see
+  overlay does wait for all sources before rendering -- see
   [architecture.md](architecture.md#the-life-of-a-query)).
 * Trust-on-first-use (default `plugins.require_approval: true`): a plugin id
-  unseen in `<data>/plugins/trust.json` — or seen with a different sha256 or
-  permission set — shows as a `plugins` approval card and contributes no
+  unseen in `<data>/plugins/trust.json` -- or seen with a different sha256 or
+  permission set -- shows as a `plugins` approval card and contributes no
   results until `wilfred plugin approve <id>` (or the overlay Approve action)
   records its fingerprint. `wilfred plugin pending` lists them;
   `wilfred plugin revoke <id>` un-approves. Set `require_approval: false` to
   restore load-everything behavior.
 * Native plugins run **in-process** with full access to the same address
-  space as Wilfred — there is no sandboxing. Only install native plugins you
+  space as Wilfred -- there is no sandboxing. Only install native plugins you
   trust; see [SECURITY.md](../SECURITY.md) for how this is scoped in
   Wilfred's security policy. Prefer the registry (`plugins.registry` +
   `wilfred plugin install`, sha256-verified) over hand-dropped binaries.
@@ -248,7 +248,7 @@ and falls back to the plain `url`/`sha256` when no artifact matches;
 
 The `plugins/` directory in the repo is the official index source:
 flagship sources plus community submissions via PR (one `plugins/<id>/`
-directory per PR — see [plugins/README.md](../plugins/README.md) for the
+directory per PR -- see [plugins/README.md](../plugins/README.md) for the
 exact format). Scaffold the layout with `wilfred plugin new <id>`
 (`--kind native|stdio`, `--dir DIR`; refuses to overwrite, validates the
 id the same way CI does). Merging to `main` runs `.github/workflows/plugins.yml`,

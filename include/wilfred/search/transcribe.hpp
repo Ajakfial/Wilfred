@@ -6,9 +6,9 @@
 // ("auto" | "whisper" | "spoke", with "whisper.cpp"/"spoke.cpp" accepted as
 // aliases):
 //
-// * whisper — the `whisper.cpp` CLI (`whisper-cli` or `whisper`) plus a ggml
+// * whisper -- the `whisper.cpp` CLI (`whisper-cli` or `whisper`) plus a ggml
 //   model file, with `ffmpeg` for container audio extraction when needed.
-// * spoke — the in-tree spoke.cpp tiny English engine. When Wilfred is built
+// * spoke -- the in-tree spoke.cpp tiny English engine. When Wilfred is built
 //   with WILFRED_WITH_SPOKE it runs in-process (no model files, no extra
 //   binary); otherwise it shells out to a `spoke_cli` binary
 //   (`spoke-cli` / `spoke_cli` / `spoke` on PATH, or

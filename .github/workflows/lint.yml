@@ -131,7 +131,7 @@ jobs:
         run: git fetch --no-tags --depth=1 origin "${{ needs.changed-files.outputs.base }}" || true
 
       # Tests/benches are enabled purely so their sources land in
-      # compile_commands.json below — configuring costs nothing here (this
+      # compile_commands.json below -- configuring costs nothing here (this
       # does not build anything), and it gets them clang-tidy coverage too.
       - name: Configure (generates compile_commands.json)
         run: |
@@ -160,5 +160,5 @@ jobs:
           cat /tmp/tidy.err >&2 || true
           echo "$OUT"
           if echo "$OUT" | grep -q "warning:\|error:"; then
-            echo "::warning::clang-tidy found issues in changed lines — see job log above."
+            echo "::warning::clang-tidy found issues in changed lines -- see job log above."
           fi

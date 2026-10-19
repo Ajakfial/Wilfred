@@ -249,7 +249,7 @@ static std::string mac_wifi_dev() {
 }
 
 bool native_media_action(const std::string& id, std::string& error) {
-  // System-wide HID first — works with any player (Music, Spotify, VLC,
+  // System-wide HID first -- works with any player (Music, Spotify, VLC,
   // IINA, Chrome, Safari, …) with nothing to install.
   if (id == "play" || id == "pause" || id == "playpause") {
     if (PostMediaHID(16)) return true;

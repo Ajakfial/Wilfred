@@ -46,7 +46,7 @@ single summonable search bar.
 * Per-app extra context actions (`app_actions:`) on top of the built-in file actions
 * Large-file finder + duplicate candidates from the index (`large`, `dupes`)
 * File conversion (`convert song.wav to mp3`, `convert photo.bmp to png`: native WAV/RAW + BMP/PNG/PPM/TGA, ffmpeg for mp3/ogg/flac/jpg/webp) + background removal (`bgremove photo.png` to transparent PNG, no model needed)
-* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` — no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI or the built-in spoke engine)
+* Process killer (`kill <pid|name>`), native media keys (`media play/next/mute/vol` -- no helpers to install), network tools (`ping`, `dns`, `myip`), speech-to-text (`transcribe` via whisper CLI or the built-in spoke engine)
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
@@ -55,15 +55,15 @@ single summonable search bar.
 * Native and stdio plugins, plus extra search backends via providers
 * Calculator plus unit, currency, color, date, and small dev utilities
 * System commands from the overlay (`lock`, `sleep`, `shutdown`, `restart`, `logout`, empty trash)
-* System toggles (`wifi on/off`, `bluetooth toggle`, `volume 50/mute`, `brightness 70`) + settings deep-links (`settings wifi/bluetooth/sound/display/...`) — real OS backends on Windows/macOS/Linux, honest unsupported errors on mobile/BSD gaps
-* Package-manager search (`winget firefox`, `brew switch`, `apt vlc` — Enter installs, `Tab` copies the command; `packages` lists detected managers)
-* Settings + setup (`settings config open/validate`, `settings edit <key> <value>`, `setup`, `wilfred setup --overwrite`, `wilfred config-get/set/reset`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` — your endpoints only, off by default; per-source `headers:` + `max_results:`)
+* System toggles (`wifi on/off`, `bluetooth toggle`, `volume 50/mute`, `brightness 70`) + settings deep-links (`settings wifi/bluetooth/sound/display/...`) -- real OS backends on Windows/macOS/Linux, honest unsupported errors on mobile/BSD gaps
+* Package-manager search (`winget firefox`, `brew switch`, `apt vlc` -- Enter installs, `Tab` copies the command; `packages` lists detected managers)
+* Settings + setup (`settings config open/validate`, `settings edit <key> <value>`, `setup`, `wilfred setup --overwrite`, `wilfred config-get/set/reset`, `wilfred config-validate/open/path`) and opt-in remote search backends (`remotes:` -- your endpoints only, off by default; per-source `headers:` + `max_results:`)
 * Plugins with trust-on-first-use (`plugins` approval cards, `wilfred plugin list/install/approve/revoke`, optional `plugins.registry` index, sha256-verified installs)
 * Window tiling (`layout tile halves|thirds|grid|columns N|rows N|stack`, `wilfred tile …`) + monitor-change auto-apply (`layouts.auto_apply`, `auto_layout`, `monitor_layouts`)
-* Android app (Kotlin UI + C++ core via NDK → `.apk`): floating W button, search bar, same index/search/ranking — see `docs/android.md`
-* iOS app (SwiftUI + same C++ core → simulator `.app`): same search UI as Android (app-icon entry; iOS forbids overlay buttons), sandbox-only index — see `docs/ios.md`
+* Android app (Kotlin UI + C++ core via NDK → `.apk`): floating W button, search bar, same index/search/ranking -- see `docs/android.md`
+* iOS app (SwiftUI + same C++ core → simulator `.app`): same search UI as Android (app-icon entry; iOS forbids overlay buttons), sandbox-only index -- see `docs/ios.md`
 * Local backup/restore and optional remote sync (`backup`, `restore`, `sync-push`, `sync-pull`)
-* Import from other launchers (`wilfred import --list/--detect/auto --dry-run/--overwrite`): Alfred, Raycast, PowerToys Run, Flow Launcher/Wox, Keypirinha, Listary, Ulauncher, Albert, KRunner, Rofi — see `docs/import.md`
+* Import from other launchers (`wilfred import --list/--detect/auto --dry-run/--overwrite`): Alfred, Raycast, PowerToys Run, Flow Launcher/Wox, Keypirinha, Listary, Ulauncher, Albert, KRunner, Rofi -- see `docs/import.md`
 * YAML configuration with validation, `Did you mean` hints, and human-readable errors
 * Global hotkey: `Ctrl+Alt+W` (Windows/Linux), `⌘+Alt+W` (macOS), configurable
 * Local search history (optional; disable or `wilfred history-clear`)
@@ -93,7 +93,7 @@ cmake --build build --config Release
 On Linux, X11 development headers enable the overlay (`libx11-dev`); on
 Wayland sessions the WebKit overlay additionally becomes a native
 layer-shell surface when `libgtk-layer-shell-dev` is installed
-(Sway/wlroots, KDE Plasma — GNOME has no layer-shell protocol, where the
+(Sway/wlroots, KDE Plasma -- GNOME has no layer-shell protocol, where the
 window stays a plain toplevel).
 
 ## Run
@@ -204,7 +204,7 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 | `settings edit search.max_results 40` / `settings get hotkey.key` | Update/read one setting in place, validated (`wilfred config-set/get`) |
 | `plugins` / `plugins approve demo` | Plugin list + trust approvals (`wilfred plugin list/install/approve`) |
 | `layout tile grid` / `tile halves` / `layout work` | Tile open windows or apply a saved layout (`wilfred tile`, `layouts.auto_apply` on monitor change) |
-| `winget firefox` / `brew switch` / `apt vlc` | Package search — Enter installs, `Tab` copies the command (`packages` lists managers) |
+| `winget firefox` / `brew switch` / `apt vlc` | Package search -- Enter installs, `Tab` copies the command (`packages` lists managers) |
 | `clip` / `clips` | Clipboard and recent clips |
 | `!yt cats` / `gh wilfred` | Search macros (`macros` lists them) |
 
@@ -212,17 +212,17 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 
 Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 
-* `config` — YAML parse + schema validation
-* `index` — string intern pool, compact records, inverted/trigram indexes, WAL
-* `fs` — walker, classification, volumes, watcher
-* `search` — fuzzy, ranking weights, filters, query cache
-* `query` — classification + interpreter
-* `math` — recursive-descent calculator
+* `config` -- YAML parse + schema validation
+* `index` -- string intern pool, compact records, inverted/trigram indexes, WAL
+* `fs` -- walker, classification, volumes, watcher
+* `search` -- fuzzy, ranking weights, filters, query cache
+* `query` -- classification + interpreter
+* `math` -- recursive-descent calculator
 * `apps` / `browser` / `history` / `hotkey` / `ipc` / `ui` / `service`
-* `plugin` — native `.dll`/`.so`/`.dylib` ABI and stdio plugins, trust store, registry index
-* `sync` — local backup archives and optional remote push/pull
-* `import` — cross-OS launcher settings importer (hotkeys, searches, snippets)
-* `providers` — registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes, packages)
+* `plugin` -- native `.dll`/`.so`/`.dylib` ABI and stdio plugins, trust store, registry index
+* `sync` -- local backup archives and optional remote push/pull
+* `import` -- cross-OS launcher settings importer (hotkeys, searches, snippets)
+* `providers` -- registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes, packages)
 
 ## Tests and benchmarks
 
@@ -237,7 +237,7 @@ classification, config validation, history, paths, IPC, and application discover
 
 ## Performance
 
-Wilfred is a single C++20 binary with no vendored third-party libraries —
+Wilfred is a single C++20 binary with no vendored third-party libraries --
 everything (JSON, YAML, mmap wrapper, CRC32) is implemented in-tree, so
 there is nothing extra to install (the Linux overlay uses system X11/WebKit
 libraries when present, plus gtk-layer-shell for native Wayland anchoring,
@@ -247,7 +247,7 @@ speed comes from the index design (see `docs/architecture.md`):
 * Compact memory-mapped record store with a string intern pool (no duplicate
   path/name strings in RAM)
 * Trigram + token indexes so queries hit posting lists, not full scans
-* Write-ahead log with periodic snapshots and crash recovery — writes are
+* Write-ahead log with periodic snapshots and crash recovery -- writes are
   appends, reads never block on persistence
 * Incremental, debounced filesystem-watcher updates instead of rescans
 * Bounded result sets (top-40) with per-query timeouts on plugins
@@ -269,7 +269,7 @@ the 100K insert) and reports Min / Median / Mean / P95 / Max milliseconds:
 | Snapshot save / load: 10K | Persistence round-trip |
 | Memory reporting: 100K index | Index footprint accounting |
 
-Run it on your own hardware before quoting numbers — results depend on CPU,
+Run it on your own hardware before quoting numbers -- results depend on CPU,
 disk, and dataset shape:
 
 ```bash
@@ -287,9 +287,9 @@ Release binaries and attaches one archive per platform to the GitHub Release
 |---|---|
 | `windows-x64` | Portable `.zip`, signed `.msi` (WiX v3, per-user, no UAC), Chocolatey `.nupkg` (embedded portable, no downloads at install) |
 | `linux-x64` | Portable `.tar.gz` |
-| `freebsd-x64` | Portable `.tar.gz` (FreeBSD release job; other BSDs build from source — see `docs/bsd.md`) |
+| `freebsd-x64` | Portable `.tar.gz` (FreeBSD release job; other BSDs build from source -- see `docs/bsd.md`) |
 | `macos-arm64` | Portable `.tar.gz` |
-| `android` | `.apk` + `.aab` — signed when keystore secrets exist, otherwise `-unsigned` suffixed (see `docs/android.md`) |
+| `android` | `.apk` + `.aab` -- signed when keystore secrets exist, otherwise `-unsigned` suffixed (see `docs/android.md`) |
 | `ios` | Unsigned simulator `.zip` (see `docs/ios.md`) |
 
 Desktop archives stage the binary with `ui/overlay/`, `README.md`, and
@@ -311,7 +311,7 @@ from PFX or Azure Trusted Signing secrets when configured
 * **Config is code.** First run writes a validated `wilfred.yml`
   (locations table above); invalid keys fail with human-readable errors and
   `Did you mean` hints, never silent defaults. For fleets, distribute a
-  baseline `wilfred.yml` (roots, excludes, weights, aliases — full schema in
+  baseline `wilfred.yml` (roots, excludes, weights, aliases -- full schema in
   `docs/configuration.md` and `config/wilfred.default.yml`) and let users
   override locally.
 * **Data and DR.** Index, history, clips, notes, and logs live in the per-OS
@@ -328,6 +328,6 @@ from PFX or Azure Trusted Signing secrets when configured
   API keys (`ai.*`, off by default).
 * **Mobile is experimental (as of v23.0.5).** The Android (`.apk`) and iOS
   (simulator `.app`) builds install and run but are not daily-driver ready
-  pending further testing and development — deploy desktop first
+  pending further testing and development -- deploy desktop first
   (see `docs/android.md`, `docs/ios.md`).
 

@@ -27,7 +27,7 @@ function Hero() {
       </h1>
       <p className="lede">
         Wilfred is a fast, lightweight desktop search engine and application launcher for
-        Windows, macOS, and Linux — files, apps, calculations, timers, notes, clipboard,
+        Windows, macOS, and Linux -- files, apps, calculations, timers, notes, clipboard,
         media, and more.
       </p>
       <div className="cta-row">
@@ -81,7 +81,7 @@ function QueryDemo() {
             <span className={`chip kind-${h.kind}`}>{h.kind}</span>
           </li>
         ))}
-        {hits.length === 0 && <li className="demo-row empty">No examples match — try timer.</li>}
+        {hits.length === 0 && <li className="demo-row empty">No examples match -- try timer.</li>}
       </ul>
     </section>
   );
@@ -208,7 +208,7 @@ function Plugins() {
         </pre>
         <p className="muted">
           New installs need trust approval (<code>wilfred plugin approve &lt;id&gt;</code>).
-          Submit yours with a <code>plugins/&lt;id&gt;/</code> pull request — see the gallery readme.
+          Submit yours with a <code>plugins/&lt;id&gt;/</code> pull request -- see the gallery readme.
         </p>
       </div>
       <div className="demo-bar">
@@ -227,7 +227,7 @@ function Plugins() {
       ) : hits.length === 0 ? (
         <p className="muted">
           {entries.length === 0
-            ? 'The gallery index is not published yet — check back after the next plugins workflow run.'
+            ? 'The gallery index is not published yet -- check back after the next plugins workflow run.'
             : 'No plugins match.'}
         </p>
       ) : (

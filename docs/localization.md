@@ -1,7 +1,7 @@
 # Localization
 
-Wilfred's UI strings live in one place — `include/wilfred/locale/locale.hpp`
-(keys) and `src/locale/locale.cpp` (compiled-in English fallback) — with
+Wilfred's UI strings live in one place -- `include/wilfred/locale/locale.hpp`
+(keys) and `src/locale/locale.cpp` (compiled-in English fallback) -- with
 per-language overrides in `lang/<code>.yml`. No third-party i18n libraries;
 the existing in-tree YAML parser reads the catalogs.
 
@@ -15,7 +15,7 @@ Shipped languages: English (`en`, always available), German (`de`), French
 Japanese (`ja`), Korean (`ko`), Chinese Simplified (`zh`), Russian (`ru`),
 Polish (`pl`), Turkish (`tr`), Ukrainian (`uk`).
 Unknown languages fall back to English per key, so a partial catalog stays
-usable — untranslated strings simply remain English.
+usable -- untranslated strings simply remain English.
 
 ## How it works
 
@@ -27,13 +27,13 @@ usable — untranslated strings simply remain English.
    overrides win), `lang/<code>.yml` next to the checkout/binary, then
    `share/wilfred/lang/<code>.yml` under the install prefix.
 3. Code calls `tr("action.open")` (or `tr(key, {{"n", count}})`) and gets the
-   catalog value, the compiled-in English, or the key itself — never empty.
+   catalog value, the compiled-in English, or the key itself -- never empty.
 4. Overlay chrome (search placeholder, empty states, action bar, Enter labels)
    travels in the `show` message's `strings` map (`overlay_show_json()`); the
    web UI falls back to English per key, so old hosts keep working.
 
 Action IDs, payloads, query keywords (`define`, `pin`, `rename`, ...),
-config keys, and file formats stay English — only human-readable labels are
+config keys, and file formats stay English -- only human-readable labels are
 translated.
 
 ## Adding a language

@@ -6,7 +6,7 @@
 namespace spoke {
 
 /// Symmetric int8 quantization for encoder matmuls.
-/// One scale per row (per output channel) — accurate yet cheap.
+/// One scale per row (per output channel) -- accurate yet cheap.
 struct QuantRowParams {
   float scale = 1.0f;  // dequant: float = int8 * scale
 };

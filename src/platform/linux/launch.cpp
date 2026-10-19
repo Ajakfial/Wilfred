@@ -687,7 +687,7 @@ bool native_volume_status(int& level, bool& muted, std::string& error) {
   if (have_tool("pactl")) {
     auto vol = lin_exec("pactl get-sink-volume @DEFAULT_SINK@");
     auto mute = lin_lower(lin_exec("pactl get-sink-mute @DEFAULT_SINK@"));
-    // "... / 50% / ..." — take the first NN%.
+    // "... / 50% / ..." -- take the first NN%.
     int pct = -1;
     for (std::size_t i = 0; i + 1 < vol.size(); ++i) {
       if (vol[i] == '%' && i > 0) {

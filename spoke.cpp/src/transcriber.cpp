@@ -104,7 +104,7 @@ Status Transcriber::transcribe(const AudioBuffer& audio, TranscriptionResult& ou
       } else {
         auto hyps = ctcBeamSearch(logp, impl_->tokenizer, beam);
         // If top hypothesis is empty, fall back to greedy (identical in that
-        // case) — keeps confidence meaningful.
+        // case) -- keeps confidence meaningful.
         auto g = ctcGreedyDecodeDetailed(logp, impl_->tokenizer);
         if (!hyps.empty() && !hyps[0].text.empty()) {
           text = hyps[0].text;

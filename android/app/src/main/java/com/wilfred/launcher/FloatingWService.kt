@@ -32,7 +32,7 @@ import java.util.concurrent.Executors
 /**
  * Floating "W" button pinned to the **bottom-left** corner of the screen.
  * Tapping it pops up the search bar (overlay popup with results) without
- * leaving the current app — the Android replacement for the desktop global
+ * leaving the current app -- the Android replacement for the desktop global
  * hotkey (Ctrl+Alt+W), which has no Android equivalent.
  *
  * All search logic lives in C++ (wilfred_core via WilfredBridge); this

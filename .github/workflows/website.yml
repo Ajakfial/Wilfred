@@ -43,7 +43,7 @@ jobs:
 
       - name: Stage plugin gallery
         # The marketplace page fetches plugins/registry.json at runtime and
-        # links per-platform zips; both are staged here (gitignored locally —
+        # links per-platform zips; both are staged here (gitignored locally --
         # use `npm run prebuild` equivalent below before previewing).
         run: |
           mkdir -p public/plugins

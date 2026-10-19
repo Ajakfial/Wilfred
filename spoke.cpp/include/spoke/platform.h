@@ -5,7 +5,7 @@ namespace spoke {
 
 /// Compile-time OS / architecture / toolchain identification.
 /// Used by the CLI (`spoke_cli info`), packaging scripts and docs so every
-/// platform reports itself honestly. No OS-specific APIs live here — only
+/// platform reports itself honestly. No OS-specific APIs live here -- only
 /// preprocessor detection, so this header compiles everywhere.
 
 std::string platformName();       ///< "windows" | "linux" | "macos" | "unknown"

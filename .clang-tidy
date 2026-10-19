@@ -1,6 +1,6 @@
 ---
 # Wilfred clang-tidy config.
-# Warnings are informative, not build-breaking (see CONTRIBUTING.md) —
+# Warnings are informative, not build-breaking (see CONTRIBUTING.md) --
 # WarningsAsErrors is intentionally left empty.
 Checks: >
   clang-diagnostic-*,
@@ -47,7 +47,7 @@ CheckOptions:
   - key: readability-identifier-naming.TypedefCase
     value: CamelCase
 
-  # `cfg_`, `dir_`, `stats_mu_` — private/protected members carry a
+  # `cfg_`, `dir_`, `stats_mu_` -- private/protected members carry a
   # trailing underscore, as used throughout src/.
   - key: readability-identifier-naming.PrivateMemberCase
     value: lower_case

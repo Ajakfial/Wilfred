@@ -70,7 +70,7 @@ const char* kReadme =
     "- Offline, no permissions (declare any in `permissions:` in `plugin.yml`).\n"
     "\n"
     "@@BUILD@@\n"
-    "Submit via a PR that adds `plugins/@@ID@@/` — see `plugins/README.md` —\n"
+    "Submit via a PR that adds `plugins/@@ID@@/` -- see `plugins/README.md` --\n"
     "and validate with `python3 scripts/pack-plugins.py --validate-only`.\n";
 
 const char* kReadmeBuildNative =
@@ -88,7 +88,7 @@ const char* kReadmeBuildStdio =
     "\n"
     "No build: point Wilfred's `plugins.directories` here (or install the\n"
     "directory as `plugins/@@ID@@/`) and approve it with\n"
-    "`wilfred plugin approve @@ID@@`. Keep startup fast — one process spawn\n"
+    "`wilfred plugin approve @@ID@@`. Keep startup fast -- one process spawn\n"
     "per query.\n"
     "\n";
 
@@ -96,7 +96,7 @@ const char* kReadmeBuildStdio =
 // Contributors replace the echo with trigger-gated results.
 const char* kSourceNative =
     "// Wilfred plugin: @@ID@@ (scaffolded by `wilfred plugin new`).\n"
-    "// Gate queries on a trigger word before echoing — see dice/morse.\n"
+    "// Gate queries on a trigger word before echoing -- see dice/morse.\n"
     "// Single-file native plugin (ABI v1). Build: cc -shared -fPIC -o @@ID@@.so @@ID@@.c\n"
     "// (Windows: cl /nologo /LD @@ID@@.c /Fe@@ID@@.dll; macOS: cc -dynamiclib -o @@ID@@.dylib "
     "@@ID@@.c)\n"

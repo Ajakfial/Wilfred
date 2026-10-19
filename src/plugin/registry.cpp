@@ -299,7 +299,7 @@ int run_plugin_install(const std::string& id) {
       }
       std::cout << "installed " << e.id;
       if (!e.version.empty()) std::cout << " v" << e.version;
-      std::cout << " — approve with: wilfred plugin approve " << e.id << "\n";
+      std::cout << " -- approve with: wilfred plugin approve " << e.id << "\n";
       return 0;
     }
   }

@@ -21,7 +21,7 @@ preference:
 
 1. **GitHub Security Advisories**: open a
    [private security advisory](../../security/advisories/new) on this
-   repository. This is the preferred channel — it lets maintainers
+   repository. This is the preferred channel -- it lets maintainers
    collaborate with you on a fix before any public disclosure.
 
 Please include as much of the following as you can:
@@ -35,7 +35,7 @@ Please include as much of the following as you can:
 
 You should expect an initial response within **5 business days**. We'll work
 with you to confirm the issue, assess severity, and agree on a disclosure
-timeline — typically a fix is released before any public write-up. Please
+timeline -- typically a fix is released before any public write-up. Please
 give us a reasonable window to ship a patch before disclosing publicly.
 
 ## Scope and Security Considerations
@@ -58,7 +58,7 @@ targets for a report:
 * **Native plugin loading** (`include/wilfred/plugin/abi.hpp`,
   `src/plugin/host.cpp`): Wilfred loads `.dll` / `.so` / `.dylib` files from
   the configured plugin directories and calls into them directly with no
-  sandboxing. This is intentionally similar to loading any native code —
+  sandboxing. This is intentionally similar to loading any native code --
   the security boundary is "don't put untrusted plugins in your plugin
   directory," not something Wilfred can enforce at runtime. Reports about
   the *loading/discovery* logic (e.g. path traversal that loads a plugin

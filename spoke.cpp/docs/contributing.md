@@ -12,7 +12,7 @@
 
 1. Clean configure + build on your OS (`scripts/build-*.sh|ps1`), zero new warnings
    on MSVC, GCC and AppleClang alike.
-2. `ctest` 48/48 green — extend `tests/test_all.cpp` for new behaviour
+2. `ctest` 48/48 green -- extend `tests/test_all.cpp` for new behaviour
    (deterministic fixtures only, no network, no checked-in audio blobs).
 3. `spoke_bench` shows no RTF regression (RTF must stay < 1.0; tiny target
    is ≤ 0.1 on a laptop CPU).

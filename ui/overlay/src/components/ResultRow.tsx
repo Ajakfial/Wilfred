@@ -77,7 +77,7 @@ export function ResultRow({ entry, pos, selected, needle, expanded, quickMod, on
         <div className="ans-in">
           <span className="ans-label">{answer.label}</span>
           <span className="ans-expr" title={answer.expression}>
-            {answer.expression || "—"}
+            {answer.expression || "--"}
           </span>
         </div>
         <span className="ans-arrow" aria-hidden="true">
@@ -96,7 +96,7 @@ export function ResultRow({ entry, pos, selected, needle, expanded, quickMod, on
           {label}
         </span>
         <span className="sp-value">
-          <b className={v.value === "—" ? "is-idle" : ""}>{v.value}</b>
+          <b className={v.value === "--" ? "is-idle" : ""}>{v.value}</b>
           {v.unit && <i>{v.unit}</i>}
         </span>
       </div>

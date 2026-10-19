@@ -32,9 +32,9 @@ Rules:
   (`network`, `fs-read`, ...); undeclared behavior fails review.
 - `version` starts at `1.0.0` and bumps on every behavior change (trust
   re-approval keys off version+sha256+permissions).
-- stdio scripts must answer within `timeout_ms` (default 400ms) — keep
+- stdio scripts must answer within `timeout_ms` (default 400ms) -- keep
   startup fast (no heavy interpreters on the hot path if avoidable).
-- Never commit binaries, zips, or `dist/` output — CI builds and publishes
+- Never commit binaries, zips, or `dist/` output -- CI builds and publishes
   those. Run `python3 scripts/pack-plugins.py --validate-only` before
   pushing.
 

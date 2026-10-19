@@ -27,7 +27,7 @@ option(WILFRED_BUILD_BENCH "Build benchmarks" ON)
 option(WILFRED_ENABLE_SANITIZERS "Enable ASan/UBSan in Debug" OFF)
 # In-process spoke.cpp transcription engine (tiny English STT, no weight
 # files). Vendored in-tree under spoke.cpp/, so every build with the sources
-# present gets it — including all release builds — except BSD and iOS, which
+# present gets it -- including all release builds -- except BSD and iOS, which
 # the engine does not support.
 option(WILFRED_WITH_SPOKE "Build with in-process spoke.cpp transcription engine" ON)
 
@@ -260,7 +260,7 @@ if(WIN32)
 elseif(IOS)
   # iOS: SwiftUI owns the UI (ContentView); the C++ core runs headless in
   # the app sandbox with a polling watcher and Swift-delegated launching.
-  # android_bridge.cpp is shared and portable (MobileCore) — see above.
+  # android_bridge.cpp is shared and portable (MobileCore) -- see above.
   # NOTE: this branch must stay before elseif(APPLE): iOS defines __APPLE__
   # too, but must not pick up the macOS AppKit backend.
   list(APPEND WILFRED_CORE_SOURCES
@@ -291,7 +291,7 @@ elseif(APPLE)
 elseif(ANDROID)
   # Android NDK: Kotlin owns the UI (floating W + search bar); the C++ core
   # runs headless with polling watcher and intent-delegated launching.
-  # android_bridge.cpp is shared (portable, unit-tested) — see above.
+  # android_bridge.cpp is shared (portable, unit-tested) -- see above.
   list(APPEND WILFRED_CORE_SOURCES
     src/platform/android/apps.cpp
     src/platform/android/browser.cpp
@@ -483,7 +483,7 @@ else()
       target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_WEBKIT=1)
       message(STATUS "Wilfred: WebKitGTK overlay enabled (${WEBKIT_VERSION})")
     else()
-      message(STATUS "Wilfred: WebKitGTK not found — using X11 fallback overlay")
+      message(STATUS "Wilfred: WebKitGTK not found -- using X11 fallback overlay")
     endif()
     # Wayland native overlay: gtk-layer-shell turns the WebKitGTK window into
     # a layer-shell surface (top-anchored, always on top, exclusive keyboard)
@@ -498,7 +498,7 @@ else()
       target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_LAYER_SHELL=1)
       message(STATUS "Wilfred: layer-shell overlay enabled (${LAYER_SHELL_VERSION})")
     else()
-      message(STATUS "Wilfred: gtk-layer-shell not found — WebKit overlay without layer-shell anchoring")
+      message(STATUS "Wilfred: gtk-layer-shell not found -- WebKit overlay without layer-shell anchoring")
     endif()
   endif()
   # dlopen lives in libc on BSD (and libdl may not exist there), so only
@@ -545,7 +545,7 @@ if(WIN32)
 endif()
 
 # Ship only the runtime overlay files (index.html, style.css, vendor assets,
-# and the committed dist/ bundle) — never node_modules or TS sources.
+# and the committed dist/ bundle) -- never node_modules or TS sources.
 # Desktop only: Android packages no overlay (Kotlin UI instead).
 if(NOT ANDROID AND NOT IOS)
 add_custom_command(TARGET wilfred POST_BUILD

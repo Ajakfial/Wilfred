@@ -44,7 +44,7 @@ See [import.md](import.md) for the per-launcher mapping (macOS / Windows /
 Linux) and merge semantics.
 
 Running `wilfred` with an argument that isn't one of the above subcommands
-treats the whole argument list as a search query — `wilfred firefox` is
+treats the whole argument list as a search query -- `wilfred firefox` is
 shorthand for `wilfred search firefox`.
 
 ## `wilfred` / `wilfred daemon` / `wilfred run`
@@ -69,14 +69,14 @@ wilfred search "25 * 42"
 
 Runs a single query against the local index (talking to a running daemon
 over the IPC socket when one is available, or opening the index directly
-otherwise — see `Service::run_search`) and prints up to 40 results to
+otherwise -- see `Service::run_search`) and prints up to 40 results to
 stdout. Useful for scripting or quick terminal lookups without opening the
 overlay. Exit code is `0` on success; a missing query argument exits `2`.
 
 ## `wilfred launch <query>` / `wilfred open <query>`
 
 Same search as above, but immediately executes the top result's default
-action (open the file/app, open the URL, etc.) instead of printing results —
+action (open the file/app, open the URL, etc.) instead of printing results --
 equivalent to typing a query in the overlay and pressing Enter without
 looking at the list.
 
@@ -120,14 +120,14 @@ wasn't running.
 
 ## `wilfred status`
 
-Prints `IndexStats` — file/directory/application counts, error count, total
+Prints `IndexStats` -- file/directory/application counts, error count, total
 indexed bytes, whether a scan is currently in progress, and the duration of
 the last scan.
 
 It ends with a `providers:` section: a one-shot live probe (your most
 recent query, clamped provider timeouts) through the real search-provider
 registry, then cumulative per-provider timing (`calls`, average and last
-latency in ms, hit count) — the quickest way to see whether the OS index
+latency in ms, hit count) -- the quickest way to see whether the OS index
 is answering and which backend is slow:
 
 ```
@@ -149,8 +149,8 @@ overlay's `F3` preview pane, useful for scripts.
 ## `wilfred backup [path] [--no-index]`
 
 Writes a single archive containing the current config, snippets, and (by
-default) the full index to `path` (or a default location — see
-`sync::default_backup_path()` — if omitted). Pass `--no-index` to back up
+default) the full index to `path` (or a default location -- see
+`sync::default_backup_path()` -- if omitted). Pass `--no-index` to back up
 only config and snippets (much smaller, but a restore will need a fresh
 index scan).
 
@@ -202,7 +202,7 @@ Output is always PNG (alpha cannot survive in JPEG), defaulting to
 
 Restores config, snippets, and (if present in the archive) the index from a
 previously created backup archive. This overwrites the current user config
-and index directory — back up anything you want to keep first.
+and index directory -- back up anything you want to keep first.
 
 ## `wilfred sync-push` / `wilfred sync-pull`
 
@@ -217,7 +217,7 @@ commands trigger a sync on demand regardless of that interval.
 
 Imports hotkeys, custom web searches (as `macros:` + `quicklinks:`),
 snippets, aliases, theme and the default search template from other
-launchers — Alfred / Raycast (macOS), PowerToys Run / Flow Launcher / Wox /
+launchers -- Alfred / Raycast (macOS), PowerToys Run / Flow Launcher / Wox /
 Keypirinha / Listary (Windows), Ulauncher / Albert / KRunner / Rofi (Linux).
 See [import.md](import.md) for the full mapping and examples:
 
@@ -260,7 +260,7 @@ wilfred autostart disable  # remove our entry (foreign entries are never touched
 Backends: Windows writes `HKCU\...\Run\Wilfred`, macOS writes
 `~/Library/LaunchAgents/com.wilfred.launcher.plist` (`RunAtLoad`), Linux/BSD
 write `~/.config/autostart/wilfred.desktop`. `status` only reports our entry
-pointing at *this* executable as enabled — a foreign entry or a moved binary
+pointing at *this* executable as enabled -- a foreign entry or a moved binary
 reports disabled with the location in the detail. Android/iOS report
 unsupported (the OS manages background apps). See [Exit codes](#exit-codes).
 

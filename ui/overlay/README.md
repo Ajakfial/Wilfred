@@ -3,7 +3,7 @@
 React + TypeScript glass command palette (Raycast-grade) shared by Windows
 (WebView2), macOS (WKWebView) and Linux (WebKitGTK). The X11 canvas overlay
 is a separate native fallback in `src/ui/x11_overlay.cpp` with a matching
-palette — no HTML needed there.
+palette -- no HTML needed there.
 
 Glass is progressive enhancement: `style.css` paints solid opaque fallbacks
 first, then an `@supports (backdrop-filter)` block upgrades to
@@ -46,7 +46,7 @@ never fights the user's size. Min size is 420x100 on every platform.
 
 ## Building
 
-Requires Node 18+ (only for UI work — C++ builds use the committed bundle):
+Requires Node 18+ (only for UI work -- C++ builds use the committed bundle):
 
 ```bash
 cd ui/overlay
@@ -55,7 +55,7 @@ npm run typecheck  # tsc --noEmit
 npm run build      # esbuild -> dist/app.bundle.js
 ```
 
-**Always rebuild `dist/` and commit it alongside source changes** — CMake
+**Always rebuild `dist/` and commit it alongside source changes** -- CMake
 copies the whole `ui/overlay` directory next to the binary, and the C++
 build does not run npm.
 

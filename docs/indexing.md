@@ -34,19 +34,19 @@ CRC32. Loading accepts v1/v2/v3; what gets written is controlled by
 
 v1/v2 store records + string pool + live bitmap + content tokens; the
 token/trigram/extension postings and the name sort are **rebuilt** on load
-(re-tokenize every name, `O(N log N)` string sort) — the dominant startup
+(re-tokenize every name, `O(N log N)` string sort) -- the dominant startup
 cost past ~1M records. v3 additionally persists those structures:
 postings as sorted id lists in delta + zigzag-varint encoding (~1–2 bytes
 per id), `sorted_by_name_` verbatim. On load each list is strictly
 validated (ids in range and live); any inconsistency falls back to a full
-rebuild, so a corrupt v3 section can never poison results — worst case is a
+rebuild, so a corrupt v3 section can never poison results -- worst case is a
 slower start.
 
 Downgrading across a v3 snapshot is safe but slow: the old binary sees an
 unknown version, discards the snapshot, and replays the WAL (or rescans).
 Set `index.format: v2` before downgrading to skip even that.
 
-### `IndexRecord` — what's stored per entry
+### `IndexRecord` -- what's stored per entry
 
 (`include/wilfred/index/record.hpp`)
 
@@ -67,26 +67,26 @@ struct IndexRecord {
 
 Names, paths, parent paths, and extensions are stored once in a shared
 `StringPool` (`include/wilfred/index/string_pool.hpp`) and referenced by
-integer ID — this is what keeps memory/disk usage low even with hundreds of
+integer ID -- this is what keeps memory/disk usage low even with hundreds of
 thousands of records, since long, repeated path prefixes aren't duplicated
 per file.
 
-### `IndexStore` — the in-memory structure
+### `IndexStore` -- the in-memory structure
 
 `include/wilfred/index/store.hpp` holds:
 
-* `records_` — the flat vector of `IndexRecord`s, plus a `live_` bitmap
+* `records_` -- the flat vector of `IndexRecord`s, plus a `live_` bitmap
   (deleted records are tombstoned, not immediately compacted out of the
-  vector — see [Compaction](#compaction-and-checkpoints)).
-* `path_to_id_` — path → record ID lookup.
-* `token_postings_` — inverted index from name token → record IDs, for
+  vector -- see [Compaction](#compaction-and-checkpoints)).
+* `path_to_id_` -- path → record ID lookup.
+* `token_postings_` -- inverted index from name token → record IDs, for
   fast fuzzy/substring candidate lookup.
-* `tri_postings_` — a trigram index (`trigrams()`, `index/tokenizer.hpp`)
+* `tri_postings_` -- a trigram index (`trigrams()`, `index/tokenizer.hpp`)
   used for fuzzy-matching candidate generation on partial/misspelled input.
-* `ext_postings_` — extension → record IDs, for fast `ext:`/`*.ext` filter
+* `ext_postings_` -- extension → record IDs, for fast `ext:`/`*.ext` filter
   lookups.
-* `sorted_by_name_` — a name-sorted ordering used for prefix search.
-* `extra_tokens_` — content tokens per record ID, populated when content
+* `sorted_by_name_` -- a name-sorted ordering used for prefix search.
+* `extra_tokens_` -- content tokens per record ID, populated when content
   indexing is enabled (see [Content indexing](#content-indexing) below).
 
 All of this is guarded by a single `std::recursive_mutex` per `IndexStore`,
@@ -122,9 +122,9 @@ event are excluded consistently.
 
 Applications are indexed separately from the general file walk:
 `apps::index_applications()` (`include/wilfred/apps/discovery.hpp`) calls
-`discover_applications()`, which is platform-specific — Start Menu shortcuts
+`discover_applications()`, which is platform-specific -- Start Menu shortcuts
 and registered `.exe`s on Windows, `.app` bundles on macOS, `.desktop`
-entries on Linux — and inserts each as an `IndexRecord` with
+entries on Linux -- and inserts each as an `IndexRecord` with
 `kind = FileKind::Application` and the `Application` flag set, plus any
 `keywords` from the platform metadata folded into the searchable tokens.
 
@@ -137,7 +137,7 @@ and tokenized into up to `content_max_tokens` tokens
 (`extract_content_tokens`), stored via `IndexStore::add_content_tokens()`.
 This is what powers the `content:`/`intext:` filter clause and the
 `content_hit` ranking signal (see [query-language.md](query-language.md) and
-[ranking.md](ranking.md)) — binary files are detected and skipped
+[ranking.md](ranking.md)) -- binary files are detected and skipped
 (`looks_binary()`).
 
 Real documents (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.rtf`,
@@ -158,8 +158,8 @@ backups via the `index/` tree.
 
 ### Writes always go through the WAL
 
-Every mutation — `IndexEngine::upsert_file()`, `remove_path()`,
-`rename_path()` — appends a `WalEntry` (`WalOp::Upsert` / `Delete` /
+Every mutation -- `IndexEngine::upsert_file()`, `remove_path()`,
+`rename_path()` -- appends a `WalEntry` (`WalOp::Upsert` / `Delete` /
 `Rename`) to `journal.wal` via `WriteAheadLog::append_*()` *before* (or as
 part of) updating the in-memory `IndexStore`, so a crash between the two
 never loses a change that was already durably logged.
@@ -179,12 +179,12 @@ Events (`FsEventKind::Created/Deleted/Modified/Renamed/Overflow`) are
 debounced by `index.debounce_fs_ms` (default 80 ms) before being applied, so
 a burst of writes to the same file (e.g. a build system rewriting an object
 file repeatedly) doesn't cause redundant re-indexing. An `Overflow` event
-(the OS notification queue dropped events — this can happen under very
+(the OS notification queue dropped events -- this can happen under very
 heavy filesystem activity) triggers a full rescan of the affected root as a
 correctness fallback.
 
 `index.rescan_interval_seconds`, if non-zero, additionally forces a full
-rescan on a timer regardless of watcher activity — useful as a
+rescan on a timer regardless of watcher activity -- useful as a
 belt-and-suspenders safety net, or on filesystems/mounts where native
 watching isn't reliable (e.g. some network shares).
 
@@ -197,7 +197,7 @@ watching isn't reliable (e.g. some network shares).
   changed records, and always on clean shutdown (`IndexEngine::close()`).
 * **Compact** (`IndexEngine::compact()`): additionally calls
   `store_.rebuild_secondary()` to rebuild the derived indexes (postings,
-  trigrams, sorted-by-name) from scratch — this is where tombstoned
+  trigrams, sorted-by-name) from scratch -- this is where tombstoned
   (deleted) records are actually dropped rather than just marked dead.
   Triggered when the WAL grows past `index.wal_compact_bytes` (default 8
   MiB), or manually via `wilfred index` performing a full rescan.
@@ -208,10 +208,10 @@ On `IndexEngine::open()`:
 
 1. If `snapshot.wilf` exists, it's loaded (`IndexStore::load`). A corrupt or
    unreadable snapshot is treated as "start from empty" rather than a fatal
-   error — recovery then relies entirely on the WAL.
+   error -- recovery then relies entirely on the WAL.
 2. `WriteAheadLog::replay()` reads every entry from `journal.wal`.
 3. If a snapshot was loaded successfully, only WAL entries **after the last
-   `Checkpoint` marker** are replayed (`recover()`) — everything before that
+   `Checkpoint` marker** are replayed (`recover()`) -- everything before that
    marker is already reflected in the snapshot. If the snapshot failed to
    load, every WAL entry is replayed from the beginning.
 4. Each replayed entry is applied to `IndexStore` (`upsert`/`remove_path`/
@@ -219,14 +219,14 @@ On `IndexEngine::open()`:
    than aborting the whole recovery.
 
 This means the worst case for data loss is the interval between the last
-completed WAL `append_*()` call and a crash — a single in-flight write, not
+completed WAL `append_*()` call and a crash -- a single in-flight write, not
 the whole index.
 
 ## Statistics
 
-`IndexEngine::stats()` returns an `IndexStats` snapshot — `files`, `dirs`,
+`IndexEngine::stats()` returns an `IndexStats` snapshot -- `files`, `dirs`,
 `apps`, `errors`, `bytes`, whether a scan is `scanning`, and
-`last_scan_seconds` — which is what `wilfred status` prints, and can be
+`last_scan_seconds` -- which is what `wilfred status` prints, and can be
 subscribed to live via `IndexEngine::set_progress()` for UI progress
 reporting during a scan.
 

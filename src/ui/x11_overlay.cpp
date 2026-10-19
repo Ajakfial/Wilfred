@@ -20,7 +20,7 @@
 // available, with an X11 canvas fallback for minimal containers and
 // X11-only WMs. On Wayland sessions the WebKit window additionally becomes
 // a layer-shell surface (gtk-layer-shell, when built in): top-anchored,
-// always on top, exclusive keyboard — the things plain GTK hints cannot do
+// always on top, exclusive keyboard -- the things plain GTK hints cannot do
 // under a Wayland compositor. Both speak the identical overlay protocol
 // (results + correction + ghost + candidates) so typo safety and
 // autocomplete behave the same on every platform. When both backends are
@@ -635,7 +635,7 @@ public:
       y += 40;
       if (y > 470) break;
     }
-    if (results.empty()) draw_str(16, y, "(no matches — typo-tolerant search active)", 0x6C7490);
+    if (results.empty()) draw_str(16, y, "(no matches -- typo-tolerant search active)", 0x6C7490);
     // Details pane (F3).
     if (preview_open) {
       y += 4;

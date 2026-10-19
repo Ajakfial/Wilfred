@@ -283,8 +283,8 @@ layouts:
 
 # On-demand speech-to-text for audio files (`transcribe ...`) and mic
 # dictation (`dictate [seconds]`). Two engines:
-#   whisper — whisper.cpp CLI (`whisper-cli`) + a ggml model file.
-#   spoke   — spoke.cpp tiny English engine: built in when Wilfred is built
+#   whisper -- whisper.cpp CLI (`whisper-cli`) + a ggml model file.
+#   spoke   -- spoke.cpp tiny English engine: built in when Wilfred is built
 #             with spoke.cpp/ present (no model files, no extra binary),
 #             otherwise a spoke_cli binary on PATH.
 # engine: auto (spoke when available, else whisper), whisper/whisper.cpp,

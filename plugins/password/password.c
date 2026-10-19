@@ -182,7 +182,7 @@ const char* wilfred_plugin_query(const char* json_request) {
     }
   }
   char sub[128];
-  snprintf(sub, sizeof(sub), "%s%s (Enter copies, clipboard only — nothing is stored)",
+  snprintf(sub, sizeof(sub), "%s%s (Enter copies, clipboard only -- nothing is stored)",
            kind, g_weak ? ", weak RNG" : "");
   snprintf(g_resp, sizeof(g_resp),
            "{\"results\":[{\"title\":\"%s\",\"subtitle\":\"%s\","

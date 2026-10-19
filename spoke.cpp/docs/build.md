@@ -1,4 +1,4 @@
-# Build guide — Windows, Linux, macOS
+# Build guide -- Windows, Linux, macOS
 
 Spoke is plain C++17 with no third-party dependencies. The same tree builds
 on all three desktop OSes; CI proves it on every push
@@ -94,7 +94,7 @@ cmake --install build/linux-ninja-release
 | macOS | `libspoke.dylib` | `spoke_cli` | app bundle / `SPOKE_LIBRARY_PATH` / `--lib` / `@rpath` |
 
 `spoke_cli info` prints the platform triple, e.g. `linux (x86_64, GCC 13.2)`
-or `macos (arm64, Clang 15.0 (Apple))`, plus the expected library filename —
+or `macos (arm64, Clang 15.0 (Apple))`, plus the expected library filename --
 use it to confirm you built the right artifact.
 
 ## CMake options
@@ -116,7 +116,7 @@ MSVC gets `/O2 /Oi /Ot`; GCC/Clang get `-O3 -ffast-math -funroll-loops`
 
 - `ui/SpokeConsole` (`net8.0`, runs on all three OSes):
   `dotnet run --project ui/SpokeConsole -- info --lib ./build/linux-ninja-release`
-- `ui/SpokeApp` (MAUI: Windows / MacCatalyst / iOS / Android — MAUI has no
+- `ui/SpokeApp` (MAUI: Windows / MacCatalyst / iOS / Android -- MAUI has no
   Linux target, which is exactly why the console host exists).
 - Both share the same `Services/` sources; `SpokeNativeService` probes
   `--lib DIR` → `SPOKE_LIBRARY_PATH` → app directory → OS loader, trying

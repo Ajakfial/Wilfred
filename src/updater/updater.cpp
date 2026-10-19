@@ -91,7 +91,7 @@ std::string current_executable_path() {
   }
 #endif
   // OpenBSD has no sysctl for this; all BSDs fall through to procfs here
-  // (present only when mounted — otherwise "" and callers degrade).
+  // (present only when mounted -- otherwise "" and callers degrade).
   ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
   if (len < 0) {
     // NetBSD procfs layout.

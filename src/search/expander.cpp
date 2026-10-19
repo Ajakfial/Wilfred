@@ -279,7 +279,7 @@ void GlobalExpander::stop() {
 #else
 
 // Linux/BSD X11 backend (Wayland: best-effort via XWayland; native Wayland
-// needs a compositor helper — overlay paste still works everywhere).
+// needs a compositor helper -- overlay paste still works everywhere).
 #if !defined(_WIN32) && !defined(__APPLE__)
 #if defined(WILFRED_HAS_X11)
 #include <X11/Xlib.h>

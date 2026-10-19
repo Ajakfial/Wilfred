@@ -570,7 +570,7 @@ bool transcribe_via_spoke_builtin_inner(const std::string& audio_path, const Con
 
 // Exception firewall around the engine: spoke may throw (bad_alloc on huge
 // inputs, thread/resource failures) and Wilfred promises never to throw out
-// of transcribe_audio_file — an uncaught throw would terminate the daemon.
+// of transcribe_audio_file -- an uncaught throw would terminate the daemon.
 // Any fault becomes a plain error string instead of a crash.
 bool transcribe_via_spoke_builtin(const std::string& audio_path, const Config& cfg,
                                   std::string& out_text, std::string& error,

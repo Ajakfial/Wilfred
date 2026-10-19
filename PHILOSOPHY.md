@@ -1,4 +1,4 @@
-# PHILOSOPHY.md — The Soul of Wilfred
+# PHILOSOPHY.md -- The Soul of Wilfred
 
 ---
 
@@ -6,10 +6,10 @@
 
 Wilfred was born from frustration. Every launcher, every search tool, every "productivity app" made the same compromises:
 
-- **Cloud-first, local-second** — Your data belongs to you, not a server.
-- **Electron bloat** — 200MB RAM for a search bar? No.
-- **Closed ecosystems** — Lock-in is a feature for vendors, a bug for users.
-- **AI slop** — "Smart" features that are neither smart nor features.
+- **Cloud-first, local-second** -- Your data belongs to you, not a server.
+- **Electron bloat** -- 200MB RAM for a search bar? No.
+- **Closed ecosystems** -- Lock-in is a feature for vendors, a bug for users.
+- **AI slop** -- "Smart" features that are neither smart nor features.
 
 Wilfred rejects all of it.
 
@@ -19,7 +19,7 @@ Wilfred rejects all of it.
 
 ### 1. Local-First, Always
 
-Your files, your history, your clips, your notes — they never leave your machine unless *you* explicitly sync them. No telemetry. No "anonymous usage statistics." No phoning home. The only network calls Wilfred makes are the ones *you* initiate: weather, web search, package installs, AI (with your own keys).
+Your files, your history, your clips, your notes -- they never leave your machine unless *you* explicitly sync them. No telemetry. No "anonymous usage statistics." No phoning home. The only network calls Wilfred makes are the ones *you* initiate: weather, web search, package installs, AI (with your own keys).
 
 > **If it can work offline, it must work offline.**
 
@@ -29,7 +29,7 @@ Every line of Wilfred is written by a human who understands it. No AI-generated 
 
 > **If you can't explain it, you don't own it. If you don't own it, it doesn't ship.**
 
-This is why `AGENTS.md` exists. AI is a tool — a compiler, a search engine, a rubber duck. It is not a contributor.
+This is why `AGENTS.md` exists. AI is a tool -- a compiler, a search engine, a rubber duck. It is not a contributor.
 
 ### 3. Performance Is a Feature
 
@@ -56,7 +56,7 @@ Not "ports." One codebase. Platform-specific backends for the things that *must*
 
 Plugins. Scripts. Minis. Workflows. Quicklinks. Macros.
 
-You extend Wilfred *your way*. The core stays lean. If you want a feature, write a plugin — or a mini — or a script. The kernel doesn't grow.
+You extend Wilfred *your way*. The core stays lean. If you want a feature, write a plugin -- or a mini -- or a script. The kernel doesn't grow.
 
 > **A small core that does one thing well beats a large core that does everything poorly.**
 
@@ -86,11 +86,11 @@ Every platform has gaps. Every OS has quirks. Wilfred documents them.
 
 ## What Wilfred Is Not
 
-- **Not a "smart" assistant** — It doesn't guess. It finds.
-- **Not a file manager** — It opens file managers.
-- **Not an IDE** — It launches editors.
-- **Not a package manager** — It searches them.
-- **Not a window manager** — It talks to yours.
+- **Not a "smart" assistant** -- It doesn't guess. It finds.
+- **Not a file manager** -- It opens file managers.
+- **Not an IDE** -- It launches editors.
+- **Not a package manager** -- It searches them.
+- **Not a window manager** -- It talks to yours.
 
 Wilfred is a **search layer**. The universal `Ctrl+Alt+W` (or `⌘+Alt+W`) that sits above everything and finds anything.
 
@@ -98,7 +98,7 @@ Wilfred is a **search layer**. The universal `Ctrl+Alt+W` (or `⌘+Alt+W`) that 
 
 ## The Name
 
-*Wilfred* — Old English *wil* (will, desire) + *frith* (peace, protection).
+*Wilfred* -- Old English *wil* (will, desire) + *frith* (peace, protection).
 
 **"The will to find, the peace of knowing it's yours."**
 

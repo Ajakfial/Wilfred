@@ -95,7 +95,7 @@ void add_unit(std::unordered_map<std::string, UnitDef>& m, Qty q, double mul, do
 const std::unordered_map<std::string, UnitDef>& units() {
   static const auto m = [] {
     std::unordered_map<std::string, UnitDef> u;
-    // Length — SI metre
+    // Length -- SI metre
     add_unit(u, Qty::Length, 1e-9, 0, {"nm", "nanometer", "nanometers", "nanometre", "nanometres"});
     add_unit(u, Qty::Length, 1e-6, 0,
              {"um", "µm", "micrometer", "micrometers", "micrometre", "micrometres"});
@@ -114,7 +114,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Length, 1609.344, 0, {"mi", "mile", "miles"});
     add_unit(u, Qty::Length, 1852, 0, {"nmi", "nauticalmile", "nauticalmiles"});
 
-    // Mass — SI kilogram
+    // Mass -- SI kilogram
     add_unit(u, Qty::Mass, 1e-9, 0, {"ug", "µg", "mcg", "microgram", "micrograms"});
     add_unit(u, Qty::Mass, 1e-6, 0, {"mg", "mgs", "milligram", "milligrams"});
     add_unit(u, Qty::Mass, 0.001, 0, {"g", "gm", "gms", "gram", "grams", "gramme", "grammes"});
@@ -126,7 +126,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Mass, 6.479891e-5, 0, {"gr", "grain", "grains"});
     add_unit(u, Qty::Mass, 0.0017718451953125, 0, {"dr", "dram", "drams"});
 
-    // Volume — SI cubic metre
+    // Volume -- SI cubic metre
     add_unit(u, Qty::Volume, 1e-9, 0, {"mm3", "cubicmillimeter", "cubicmillimeters"});
     add_unit(u, Qty::Volume, 1e-6, 0,
              {"ml", "milliliter", "milliliters", "millilitre", "millilitres", "cc", "cm3",
@@ -155,7 +155,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Volume, 6.1611519921875e-7, 0, {"dash", "dashes"});
     add_unit(u, Qty::Volume, 3.08057599609375e-7, 0, {"pinch", "pinches"});
 
-    // Area — SI square metre
+    // Area -- SI square metre
     add_unit(u, Qty::Area, 1e-6, 0, {"mm2", "sqmm", "squaremillimeter", "squaremillimeters"});
     add_unit(u, Qty::Area, 1e-4, 0, {"cm2", "sqcm", "squarecentimeter", "squarecentimeters"});
     add_unit(
@@ -169,13 +169,13 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Area, 0.83612736, 0, {"sqyd", "yd2", "squareyard", "squareyards"});
     add_unit(u, Qty::Area, 2.589988110336e6, 0, {"sqmi", "mi2", "squaremile", "squaremiles"});
 
-    // Temperature — SI kelvin (affine)
+    // Temperature -- SI kelvin (affine)
     add_unit(u, Qty::Temperature, 1, 273.15, {"c", "celsius", "centigrade", "°c", "degc"});
     add_unit(u, Qty::Temperature, 5.0 / 9.0, 273.15 - 32.0 * 5.0 / 9.0,
              {"f", "fahrenheit", "°f", "degf"});
     add_unit(u, Qty::Temperature, 1, 0, {"k", "kelvin", "kelvins"});
 
-    // Speed — SI m/s
+    // Speed -- SI m/s
     add_unit(u, Qty::Speed, 1, 0, {"mps", "m/s", "meterpersecond", "meterspersecond"});
     add_unit(u, Qty::Speed, 1000.0 / 3600.0, 0,
              {"kmh", "km/h", "kph", "kilometerperhour", "kilometersperhour"});
@@ -183,7 +183,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Speed, 1852.0 / 3600.0, 0, {"kn", "kt", "knot", "knots"});
     add_unit(u, Qty::Speed, 0.3048, 0, {"fps", "ft/s", "feetpersecond"});
 
-    // Energy — SI joule
+    // Energy -- SI joule
     add_unit(u, Qty::Energy, 1, 0, {"j", "joule", "joules"});
     add_unit(u, Qty::Energy, 1000, 0, {"kj", "kilojoule", "kilojoules"});
     add_unit(u, Qty::Energy, 4.184, 0, {"cal", "calorie", "calories"});
@@ -192,7 +192,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Energy, 3.6e6, 0, {"kwh", "kilowatthour", "kilowatthours"});
     add_unit(u, Qty::Energy, 1055.05585262, 0, {"btu", "btus"});
 
-    // Pressure — SI pascal
+    // Pressure -- SI pascal
     add_unit(u, Qty::Pressure, 1, 0, {"pa", "pascal", "pascals"});
     add_unit(u, Qty::Pressure, 1000, 0, {"kpa", "kilopascal", "kilopascals"});
     add_unit(u, Qty::Pressure, 1e6, 0, {"mpa", "megapascal", "megapascals"});
@@ -201,7 +201,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Pressure, 6894.757293168, 0, {"psi"});
     add_unit(u, Qty::Pressure, 133.322368421, 0, {"torr", "mmhg"});
 
-    // Time — SI second
+    // Time -- SI second
     add_unit(u, Qty::Time, 1e-9, 0, {"ns", "nanosecond", "nanoseconds"});
     add_unit(u, Qty::Time, 1e-6, 0, {"us", "µs", "microsecond", "microseconds"});
     add_unit(u, Qty::Time, 1e-3, 0, {"ms", "millisecond", "milliseconds"});
@@ -212,7 +212,7 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Time, 604800, 0, {"wk", "week", "weeks"});
     add_unit(u, Qty::Time, 31557600, 0, {"yr", "year", "years"});
 
-    // Data — keep kb/mb as 1024 to match existing launcher behaviour
+    // Data -- keep kb/mb as 1024 to match existing launcher behaviour
     add_unit(u, Qty::Data, 1, 0, {"b", "byte", "bytes"});
     add_unit(u, Qty::Data, 1024, 0, {"kb", "kib", "kilobyte", "kilobytes"});
     add_unit(u, Qty::Data, 1024.0 * 1024, 0, {"mb", "mib", "megabyte", "megabytes"});
@@ -220,18 +220,18 @@ const std::unordered_map<std::string, UnitDef>& units() {
     add_unit(u, Qty::Data, 1024.0 * 1024 * 1024 * 1024, 0, {"tb", "tib", "terabyte", "terabytes"});
     add_unit(u, Qty::Data, 0.125, 0, {"bit", "bits"});
 
-    // Force — SI newton
+    // Force -- SI newton
     add_unit(u, Qty::Force, 1, 0, {"n", "newton", "newtons"});
     add_unit(u, Qty::Force, 1000, 0, {"kilonewton", "kilonewtons"});
     add_unit(u, Qty::Force, 4.4482216152605, 0, {"lbf", "poundforce"});
 
-    // Power — SI watt
+    // Power -- SI watt
     add_unit(u, Qty::Power, 1, 0, {"w", "watt", "watts"});
     add_unit(u, Qty::Power, 1000, 0, {"kw", "kilowatt", "kilowatts"});
     add_unit(u, Qty::Power, 1e6, 0, {"mwatt", "megawatt", "megawatts"});
     add_unit(u, Qty::Power, 745.6998715822702, 0, {"hp", "horsepower"});
 
-    // Angle — SI radian
+    // Angle -- SI radian
     add_unit(u, Qty::Angle, 1, 0, {"rad", "radian", "radians"});
     add_unit(u, Qty::Angle, 3.14159265358979323846 / 180.0, 0, {"deg", "degree", "degrees"});
 

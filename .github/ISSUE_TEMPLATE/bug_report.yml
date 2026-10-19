@@ -8,7 +8,7 @@ body:
         Thanks for taking the time to report a bug. Please check the
         [existing issues](../../issues) first to avoid duplicates.
 
-        **Security issues:** please do not file them here — see
+        **Security issues:** please do not file them here -- see
         [SECURITY.md](../../blob/main/SECURITY.md) instead.
 
   - type: dropdown
@@ -50,7 +50,7 @@ body:
       label: Relevant wilfred.yml
       description: >
         Only if the issue is config-related. Please redact anything sensitive
-        — in particular the `sync.token` and `api.token` fields.
+        -- in particular the `sync.token` and `api.token` fields.
       render: yaml
     validations:
       required: false

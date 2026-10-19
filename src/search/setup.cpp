@@ -96,7 +96,7 @@ bool ranking_get(const RankingWeights& w, const std::string& name, std::string& 
 }
 
 // Flat getter table for config_get_value (a ~150-branch if/else chain hits
-// MSVC's C1061 nesting limit — keep this table-driven).
+// MSVC's C1061 nesting limit -- keep this table-driven).
 using CfgGet = std::string (*)(const Config&);
 static std::string g_bool(bool b) {
   return b ? "true" : "false";
@@ -262,38 +262,38 @@ std::vector<SearchResult> setup_results(const std::string& remainder, const Conf
   bool hotkey_ok = !cfg.hotkey.key.empty();
   bool browser_ok = cfg.browser.search_template.find("{query}") != std::string::npos;
   if (l.empty() || l == "status" || l == "check") {
-    out.push_back(scard("Setup: " + setup_summary(cfg), "setup status — enter opens wilfred.yml",
+    out.push_back(scard("Setup: " + setup_summary(cfg), "setup status -- enter opens wilfred.yml",
                         "config:open", "setup", "setup"));
     out.push_back(scard(roots_ok ? "Index roots: configured" : "Index roots: using defaults",
-                        "setup roots — edit index.paths in wilfred.yml", "config:open", "setup",
+                        "setup roots -- edit index.paths in wilfred.yml", "config:open", "setup",
                         "setup"));
-    out.push_back(scard("Hotkey: " + cfg.hotkey.key, "setup hotkey — edit hotkey: in wilfred.yml",
+    out.push_back(scard("Hotkey: " + cfg.hotkey.key, "setup hotkey -- edit hotkey: in wilfred.yml",
                         "config:open", "setup", "setup"));
     out.push_back(scard(browser_ok ? "Browser search: configured" : "Browser search: broken",
-                        "setup browser — edit browser.search_template", "config:open", "setup",
+                        "setup browser -- edit browser.search_template", "config:open", "setup",
                         "setup"));
-    out.push_back(scard("Validate wilfred.yml", "setup validate — enter checks now",
+    out.push_back(scard("Validate wilfred.yml", "setup validate -- enter checks now",
                         "config:validate", "setup", "setup"));
     out.push_back(scard("Run terminal setup",
-                        "run: wilfred setup — prompts for roots/hotkey/browser", "setup:run",
+                        "run: wilfred setup -- prompts for roots/hotkey/browser", "setup:run",
                         "setup", "setup"));
     (void)hotkey_ok;
     return out;
   }
   if (l == "roots" || l == "root" || l == "index") {
     out.push_back(scard("Index roots: " + std::to_string(cfg.index.paths.size()) + " custom",
-                        "edit index.paths in wilfred.yml — enter opens", "config:open", "setup",
+                        "edit index.paths in wilfred.yml -- enter opens", "config:open", "setup",
                         "setup"));
     return out;
   }
   if (l == "hotkey" || l == "hotkeys" || l == "key") {
-    out.push_back(scard("Hotkey: " + cfg.hotkey.key, "edit hotkey: — enter opens wilfred.yml",
+    out.push_back(scard("Hotkey: " + cfg.hotkey.key, "edit hotkey: -- enter opens wilfred.yml",
                         "config:open", "setup", "setup"));
     return out;
   }
   if (l == "browser" || l == "search") {
     out.push_back(scard("Browser template: " + cfg.browser.search_template,
-                        "edit browser.search_template — enter opens", "config:open", "setup",
+                        "edit browser.search_template -- enter opens", "config:open", "setup",
                         "setup"));
     return out;
   }
@@ -311,7 +311,7 @@ std::vector<SearchResult> setup_results(const std::string& remainder, const Conf
     return out;
   }
   // Default: show status.
-  out.push_back(scard("Setup: " + setup_summary(cfg), "setup — enter opens wilfred.yml",
+  out.push_back(scard("Setup: " + setup_summary(cfg), "setup -- enter opens wilfred.yml",
                       "config:open", "setup", "setup"));
   return out;
 }
@@ -346,14 +346,14 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
   auto l = to_lower_utf8(trim_ws(remainder));
   std::string path = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
   if (l.empty() || l == "open" || l == "edit" || l == "show") {
-    out.push_back(scard("Edit wilfred.yml", path + " — enter opens in editor", "config:open",
+    out.push_back(scard("Edit wilfred.yml", path + " -- enter opens in editor", "config:open",
                         "config", "config"));
     out.push_back(
-        scard("Show in folder", path + " — enter reveals", "config:reveal", "config", "config"));
+        scard("Show in folder", path + " -- enter reveals", "config:reveal", "config", "config"));
     out.push_back(scard("Validate wilfred.yml", "enter checks syntax + schema", "config:validate",
                         "config", "config"));
     out.push_back(scard("Copy config path", path, "config:copy", "config", "config"));
-    out.push_back(scard("Set a setting", "config set search.max_results 40 — enter applies",
+    out.push_back(scard("Set a setting", "config set search.max_results 40 -- enter applies",
                         "config:open", "config", "config"));
     out.push_back(scard("Reset to defaults", "backs up to .pre-reset.bak", "config:reset", "config",
                         "config"));
@@ -375,12 +375,12 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
     return out;
   }
   if (l == "path" || l == "where" || l == "copy") {
-    out.push_back(scard(path, "config path — enter copies", "config:copy", "config", "config"));
+    out.push_back(scard(path, "config path -- enter copies", "config:copy", "config", "config"));
     return out;
   }
   if (l == "reset" || l == "restore defaults" || l == "defaults") {
     out.push_back(scard("Reset wilfred.yml to defaults",
-                        "backs up to .pre-reset.bak — enter resets", "config:reset", "config",
+                        "backs up to .pre-reset.bak -- enter resets", "config:reset", "config",
                         "config"));
     return out;
   }
@@ -403,7 +403,7 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
       bool known = config_get_value(live, to_lower_utf8(key), cur, err);
       out.push_back(
           scard("Set " + key + " to " + val,
-                known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
+                known ? ("now: " + cur + " -- enter applies") : err + " -- enter tries anyway",
                 "config:set:" + key + "=" + val, "config", "config"));
       return out;
     }
@@ -411,7 +411,7 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
       auto key = to_lower_utf8(trim_ws(remainder.substr(4)));
       std::string cur, err;
       if (config_get_value(cfg, key, cur, err))
-        out.push_back(scard(key + " = " + cur, path + " — enter copies", "config:get:" + key,
+        out.push_back(scard(key + " = " + cur, path + " -- enter copies", "config:get:" + key,
                             "config", "config"));
       else
         out.push_back(scard("Unknown setting: " + key, err, "", "config", "config"));
@@ -419,7 +419,7 @@ std::vector<SearchResult> config_results(const std::string& remainder, const Con
     }
   }
   out.push_back(
-      scard("Edit wilfred.yml", path + " — enter opens", "config:open", "config", "config"));
+      scard("Edit wilfred.yml", path + " -- enter opens", "config:open", "config", "config"));
   return out;
 }
 
@@ -440,7 +440,7 @@ std::string setup_summary(const Config& cfg) {
   if (cfg.hotkey.key.empty()) ++missing;
   if (cfg.browser.search_template.find("{query}") == std::string::npos) ++missing;
   if (missing == 0) return "ready (roots, hotkey, browser ok)";
-  return std::to_string(missing) + " item(s) need attention — open wilfred.yml";
+  return std::to_string(missing) + " item(s) need attention -- open wilfred.yml";
 }
 
 static std::string prompt_line(const std::string& prompt, const std::string& def) {
@@ -458,7 +458,7 @@ int run_setup_wizard(bool overwrite) {
   Config cfg = load_or_create_user_config(err);
   if (!err.message.empty()) std::cout << "note: " << err.message << "\n";
   std::string path = cfg.source_path.empty() ? default_config_path() : cfg.source_path;
-  std::cout << "Wilfred setup — " << path << "\n";
+  std::cout << "Wilfred setup -- " << path << "\n";
   std::cout << "Leaves existing keys untouched unless --overwrite is given.\n\n";
 
   std::string text;
@@ -517,24 +517,24 @@ int run_setup_wizard(bool overwrite) {
     } else if (text.find("key:") == std::string::npos) {
       ensure_key("hotkey", "key", "key: " + key);
     } else {
-      std::cout << "  (keeping existing hotkey.key — use --overwrite to change)\n";
+      std::cout << "  (keeping existing hotkey.key -- use --overwrite to change)\n";
     }
   }
 
   std::cout << "\n3/3 Browser search template (must contain {query}).\n";
   std::string tmpl = prompt_line("  template", cfg.browser.search_template);
   if (!tmpl.empty() && tmpl.find("{query}") == std::string::npos) {
-    std::cout << "  template must contain {query} — skipped.\n";
+    std::cout << "  template must contain {query} -- skipped.\n";
   } else if (!tmpl.empty() && (overwrite || tmpl != cfg.browser.search_template)) {
     if (text.find("search_template:") == std::string::npos || overwrite) {
       ensure_key("browser", "search_template", "search_template: \"" + tmpl + "\"");
     } else {
-      std::cout << "  (keeping existing browser.search_template — use --overwrite to change)\n";
+      std::cout << "  (keeping existing browser.search_template -- use --overwrite to change)\n";
     }
   }
 
   if (!changed) {
-    std::cout << "\nNothing to change — " << setup_summary(cfg) << "\n";
+    std::cout << "\nNothing to change -- " << setup_summary(cfg) << "\n";
     return 0;
   }
   std::string msg;
@@ -546,7 +546,7 @@ int run_setup_wizard(bool overwrite) {
     std::cerr << "cannot write " << path << "\n";
     return 1;
   }
-  std::cout << "\nWrote " << path << " — restart the daemon to apply.\n";
+  std::cout << "\nWrote " << path << " -- restart the daemon to apply.\n";
   return 0;
 }
 
@@ -857,7 +857,7 @@ int run_config_set(const std::string& dotted, const std::string& value) {
     std::cerr << err << "\n";
     return 1;
   }
-  std::cout << dotted << " updated — restart the daemon to apply.\n";
+  std::cout << dotted << " updated -- restart the daemon to apply.\n";
   return 0;
 }
 
@@ -867,7 +867,7 @@ int run_config_reset() {
     std::cerr << err << "\n";
     return 1;
   }
-  std::cout << "reset to defaults (previous saved as .pre-reset.bak) — restart the daemon.\n";
+  std::cout << "reset to defaults (previous saved as .pre-reset.bak) -- restart the daemon.\n";
   return 0;
 }
 

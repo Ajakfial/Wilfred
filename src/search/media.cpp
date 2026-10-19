@@ -54,7 +54,7 @@ bool playerctl_try(const std::string& id) {
 }
 
 // PipeWire / Pulse / ALSA volume chain. Tries whatever the system already
-// ships — no new installs required. Order: wpctl (PipeWire native) ->
+// ships -- no new installs required. Order: wpctl (PipeWire native) ->
 // pactl (Pulse/PipeWire-pulse) -> amixer (ALSA) -> pamixer (optional).
 bool volume_try(const std::string& id, bool mute) {
   if (mute) {
@@ -90,7 +90,7 @@ bool native_media_action(const std::string& id, std::string& error) {
   if (id == "play" || id == "pause" || id == "playpause" || id == "next" || id == "prev" ||
       id == "stop") {
     // Genuine path first: native MPRIS over D-Bus, no helpers needed.
-    // Covers Spotify, VLC, Chrome/Chromium, Firefox, mpv, mpd, etc. —
+    // Covers Spotify, VLC, Chrome/Chromium, Firefox, mpv, mpd, etc. --
     // anything exposing org.mpris.MediaPlayer2 on the session bus.
     std::string native_err;
     if (mpris_media_action(id, native_err)) return true;
@@ -106,12 +106,12 @@ bool native_media_action(const std::string& id, std::string& error) {
   }
   if (id == "mute") {
     if (volume_try(id, true)) return true;
-    error = "mute failed (tried wpctl, pactl, amixer, pamixer — none found/working)";
+    error = "mute failed (tried wpctl, pactl, amixer, pamixer -- none found/working)";
     return false;
   }
   if (id == "volup" || id == "voldn") {
     if (volume_try(id, false)) return true;
-    error = "volume change failed (tried wpctl, pactl, amixer, pamixer — none found/working)";
+    error = "volume change failed (tried wpctl, pactl, amixer, pamixer -- none found/working)";
     return false;
   }
   error = "unknown media action '" + id + "'";

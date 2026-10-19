@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""export_reference.py — independent audit of spoke's deterministic weights.
+"""export_reference.py -- independent audit of spoke's deterministic weights.
 
 Reimplements the Xavier-uniform scheme from src/model.cpp (mt19937-seeded)
 using Python's `random` as a *documentation* reference: it prints the first

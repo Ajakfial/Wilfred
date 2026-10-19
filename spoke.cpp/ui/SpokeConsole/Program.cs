@@ -1,4 +1,4 @@
-// spoke-console — cross-platform .NET host for the spoke.cpp engine.
+// spoke-console -- cross-platform .NET host for the spoke.cpp engine.
 // Same service layer as the MAUI app (shared sources, see .csproj).
 // The native library is located per-OS by SpokeNativeService:
 //   Windows: spoke.dll | Linux: libspoke.so | macOS: libspoke.dylib
@@ -7,7 +7,7 @@ using SpokeApp.Services;
 
 static void Usage()
 {
-    Console.WriteLine("spoke-console — offline English transcription (.NET host)");
+    Console.WriteLine("spoke-console -- offline English transcription (.NET host)");
     Console.WriteLine();
     Console.WriteLine("Usage:");
     Console.WriteLine("  spoke-console info [--lib DIR]");

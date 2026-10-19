@@ -1,4 +1,4 @@
-# Model card — spoke-tiny.en
+# Model card -- spoke-tiny.en
 
 ## Identity
 
@@ -45,7 +45,7 @@ hardware" goal and make the repo unauditable. Instead:
    extension points are designed for it, and quantized export will keep the
    "no GPU required" promise. Until then, spoke is honest about what it is:
    a **real, measured, real-time transcription pipeline** with correct DSP,
-   correct decoding, and zero-hallucination guarantees — not a SOTA claim.
+   correct decoding, and zero-hallucination guarantees -- not a SOTA claim.
 
 ## Intended use / limits
 

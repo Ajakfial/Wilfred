@@ -54,12 +54,12 @@ std::vector<SearchResult> plugin_results(const std::string& remainder, const Con
         if (is_pending(m)) ++n;
       out.push_back(
           pcard(n ? "Approve all plugins (" + std::to_string(n) + ")" : "No pending plugins",
-                n ? "trust-on-first-use — records hash + permissions"
+                n ? "trust-on-first-use -- records hash + permissions"
                   : "every installed plugin is approved",
                 "plugin_approve_all"));
       return out;
     }
-    out.push_back(pcard("Approve plugin " + id, "records hash + permissions — enter approves",
+    out.push_back(pcard("Approve plugin " + id, "records hash + permissions -- enter approves",
                         "plugin_approve:" + id));
     return out;
   }
@@ -76,7 +76,7 @@ std::vector<SearchResult> plugin_results(const std::string& remainder, const Con
       for (auto& p : m.permissions)
         sub += " " + p;
     }
-    sub += " — enter approves";
+    sub += " -- enter approves";
     out.push_back(pcard("Approve " + m.id, sub, "plugin_approve:" + m.id));
   }
   if (any_pending) {

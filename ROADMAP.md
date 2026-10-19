@@ -2,7 +2,7 @@
 
 This is a living snapshot of where Wilfred is headed, not a fixed
 commitment or a schedule. Priorities shift based on contributor
-availability and user feedback — if something below matters to you,
+availability and user feedback -- if something below matters to you,
 open an issue (see [CONTRIBUTING.md](CONTRIBUTING.md)) so it can be
 prioritized and discussed before someone starts building it.
 
@@ -12,11 +12,11 @@ service/tooling changes go through @SGizek.
 
 ## Shipped
 
-The feature set described in [README.md](README.md) — incremental
+The feature set described in [README.md](README.md) -- incremental
 indexing with a write-ahead log, filesystem watchers on all three
 platforms, fuzzy/token/path ranking with context-aware signals, minis,
 macros, filters, plugin support (native + stdio), local backup/sync, the
-overlay UI, and the CLI — is implemented today. See
+overlay UI, and the CLI -- is implemented today. See
 [docs/](docs/README.md) for how each subsystem works.
 
 Also shipped since: productivity minis (countdown timers, Pomodoro
@@ -68,14 +68,14 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
 
 ## Near-term
 
-* ~~**Run tests in CI on every PR.**~~ Done —
+* ~~**Run tests in CI on every PR.**~~ Done --
   `.github/workflows/tests.yml` builds + runs `ctest` on Windows, Linux
   and macOS for every PR and `main` push, compile-gates the Android
   (debug APK) and iOS (unsigned simulator) builds so mobile no longer
-  breaks only on release tags (BSD stays on nightly — VM
+  breaks only on release tags (BSD stays on nightly -- VM
   runners are slow), plus an overlay job (`typecheck`, bundle build, and
   a stale-`dist/` check so TS changes always ship their bundle).
-* ~~**Enforce formatting/linting in CI.**~~ Done —
+* ~~**Enforce formatting/linting in CI.**~~ Done --
   `.github/workflows/lint.yml` runs `clang-format` and `clang-tidy` on
   changed C/C++ files for every PR (scoped to the diff, not a full-tree
   reformat, since most of the codebase predates these configs).
@@ -84,27 +84,27 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   an AppImage, alongside the zip/tar.gz per platform. That is the full
   distribution story (see explicitly-not-planned below).
 * **Expand the mini and macro library.** Largely expanded (timers, notes,
-  media, network, workflows, quicklinks — see
+  media, network, workflows, quicklinks -- see
   [docs/query-language.md](docs/query-language.md) and
   `include/wilfred/search/minis.hpp`); the `RankPipeline`/mini extension
   points still accept more without core changes.
 
 ## Mid-term
 
-* ~~**Plugin discovery/registry.**~~ Done — `plugins.registry` points at a
+* ~~**Plugin discovery/registry.**~~ Done -- `plugins.registry` points at a
   JSON index for `wilfred plugin list/install` (sha256-verified), and
   trust-on-first-use approvals (`wilfred plugin approve`, `plugins`
   overlay cards) gate new/changed plugins (see
   [docs/plugins.md](docs/plugins.md)).
-* ~~**Config validation UX.**~~ Done — unknown keys suggest the closest
+* ~~**Config validation UX.**~~ Done -- unknown keys suggest the closest
   valid key, type errors show what was got versus expected with an
   example, and `workflows:`/`quicklinks:`/`app_actions:` validate action
   ids and placeholders instead of failing silently.
-* ~~**Optional encrypted sync.**~~ Done — `sync.encrypt` with `password` /
+* ~~**Optional encrypted sync.**~~ Done -- `sync.encrypt` with `password` /
   `key_file` (dependency-free SHA-256 KDF + keystream, `WILFEK1`) encrypts
   `sync-push` archives; `sync-pull`/`restore` auto-detect plain vs encrypted
   (see [docs/sync-and-backup.md](docs/sync-and-backup.md)).
-* ~~**`.clang-format` rollout to existing files.**~~ Done — the full
+* ~~**`.clang-format` rollout to existing files.**~~ Done -- the full
   C++ tree is clang-format-18 clean (per-module commits, `plugins/`
   excluded: its zips are sha256-pinned in `plugins/registry.json`;
   order-dependent system headers stay pinned via blank-line-separated
@@ -117,23 +117,23 @@ plugin gallery (`plugins/` + per-OS registry artifacts + flagship plugins
   behind the existing `platform/native.hpp` abstraction.
 * ~~**Remote/cloud index sources** as a `SearchProvider`
   ([docs/architecture.md](docs/architecture.md#extensibility-plugins-and-providers))
-  for teams wanting to search shared drives or wikis.~~ Done — the opt-in
+  for teams wanting to search shared drives or wikis.~~ Done -- the opt-in
   `remotes:` backends (`include/wilfred/search/remote.hpp`) query
   team-owned HTTP endpoints with per-source headers and caps (see
   [docs/configuration.md](docs/configuration.md)).
 * **Alternative on-disk index formats** for very large indexes (millions
-  of files) — this changes the WAL/snapshot format described in
+  of files) -- this changes the WAL/snapshot format described in
   [docs/indexing.md](docs/indexing.md) and needs a design issue first,
   per CONTRIBUTING.md.
 
 ## Explicitly not planned
 
 * Adding third-party runtime dependencies to the core (`src/core`,
-  `src/config`) without a design discussion — the dependency-free,
+  `src/config`) without a design discussion -- the dependency-free,
   low-resource footprint is a stated project goal.
-* A hosted/cloud-only mode that requires an account — Wilfred is a local
+* A hosted/cloud-only mode that requires an account -- Wilfred is a local
   search tool first; sync is opt-in and points at an endpoint you control.
-* Homebrew formulae, winget packages, and Scoop manifests — the release
+* Homebrew formulae, winget packages, and Scoop manifests -- the release
   workflow archives (.msi/.nupkg/.deb/.AppImage/.tar.gz/.apk) plus wilfred update
   are the distribution story; store submissions are a maintenance burden the
   project will not take on.

@@ -61,4 +61,4 @@ TranscriptionResult r = engine.TranscribeFileJson("speech.wav"); // parsed JSON
 
 `TranscriptionService.cs` adds file-picking, WAV validation, and
 `IProgress<double>` reporting on top; `MainViewModel` is the bindable
-surface the XAML consumes. No DSP code lives in C# — presentation only.
+surface the XAML consumes. No DSP code lives in C# -- presentation only.

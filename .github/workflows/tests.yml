@@ -92,14 +92,14 @@ jobs:
         # rebuilt bundle would silently not take effect. Fail loudly.
         run: |
           if ! git diff --exit-code -- dist/; then
-            echo "::error::ui/overlay/dist/ is stale — run 'npm run build' in ui/overlay and commit it."
+            echo "::error::ui/overlay/dist/ is stale -- run 'npm run build' in ui/overlay and commit it."
             exit 1
           fi
 
   android:
     # Compile gate: the NDK/JNI build only ran on release tags before,
     # so a broken Android link shipped in v35.0.0. Debug APK (auto-signed
-    # with the debug key — no secrets needed). SDK/NDK versions mirror
+    # with the debug key -- no secrets needed). SDK/NDK versions mirror
     # release.yml; no artifacts are staged for PRs.
     name: Build android (debug)
     runs-on: ubuntu-latest

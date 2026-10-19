@@ -7,13 +7,13 @@ the binary (see [signing.md](signing.md)).
 
 ## What installing does
 
-- Installs per-user to `%LocalAppData%\Wilfred` — no UAC elevation.
+- Installs per-user to `%LocalAppData%\Wilfred` -- no UAC elevation.
 - Adds Start Menu shortcuts (Wilfred + Uninstall).
 - Appends the install dir to the **user** `PATH` (removed on uninstall),
   so `wilfred search ...` works from any terminal.
 - Registers Publisher **Wilfred Open Contributors** in Add/Remove Programs.
 - Major upgrades in place: installing a newer `.msi` replaces the old one.
-  The `UpgradeCode` in `Wilfred.wxs` is stable forever — never change it,
+  The `UpgradeCode` in `Wilfred.wxs` is stable forever -- never change it,
   or upgrades become side-by-side installs.
 - Optional checked-by-default **Launch Wilfred** on the final wizard page.
 
@@ -47,17 +47,17 @@ a Microsoft-trusted signature plus reputation (see [signing.md](signing.md)).
 
 ## Customization points
 
-- App icon: drop an `icon.ico` at `packaging/wix/icon.ico` — the build
+- App icon: drop an `icon.ico` at `packaging/wix/icon.ico` -- the build
   picks it up automatically for shortcuts and Add/Remove Programs.
   Without it the installer builds icon-less (valid, just generic).
 - Scope is intentionally per-user. Switching to per-machine would require
-  `InstallScope="perMachine"`, elevation, and HKLM/Program Files moves —
+  `InstallScope="perMachine"`, elevation, and HKLM/Program Files moves --
   a deliberate change, not a flag.
 
 ## Chocolatey package (.nupkg)
 
 Releases also ship an embedded portable Chocolatey package built from the
-same staging dir — no downloads at install time, works offline.
+same staging dir -- no downloads at install time, works offline.
 
 - Manifest: `packaging/choco/wilfred.nuspec.template` (id `wilfred`,
   authors/owners `Wilfred Open Contributors`, MIT). Version is normalized
@@ -70,7 +70,7 @@ same staging dir — no downloads at install time, works offline.
   `./scripts/build-windows.ps1 -Choco` for a local one-command build.
 - The release workflow attaches the `.nupkg` to the GitHub Release and
   pushes it to the community feed only when the `CHOCO_API_KEY` secret is
-  set — otherwise it logs a warning and skips the push.
+  set -- otherwise it logs a warning and skips the push.
 - If the `wilfred` id is taken on the community feed (first push answers
   409), rename the id in the template and here, e.g. `wilfred-launcher`.
 

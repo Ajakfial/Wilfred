@@ -22,22 +22,22 @@ bug report includes:
 * Your OS and version (Windows build, macOS version, or Linux distro).
 * The output of `wilfred status` and, if relevant, `wilfred --help`.
 * Your `wilfred.yml` if the issue is config-related (redact anything
-  sensitive — the `sync.token` and `api.token` fields in particular).
+  sensitive -- the `sync.token` and `api.token` fields in particular).
 * Steps to reproduce, and what you expected vs. what happened.
 * Whether the daemon, the CLI (`wilfred search ...`), or the overlay UI is
   involved.
 
 ## Ways to contribute
 
-* **Bug reports** — see [Reporting bugs](#reporting-bugs) below.
-* **Bug fixes and small improvements** — always welcome, open a PR directly.
-* **New features** — for anything non-trivial (a new query type, a new mini,
+* **Bug reports** -- see [Reporting bugs](#reporting-bugs) below.
+* **Bug fixes and small improvements** -- always welcome, open a PR directly.
+* **New features** -- for anything non-trivial (a new query type, a new mini,
   a new platform backend, a change to the on-disk index format), please open
   an issue first to discuss the design. This avoids wasted work if the
   approach needs to change.
-* **Documentation** — fixes and additions to `README.md` and `docs/` are
+* **Documentation** -- fixes and additions to `README.md` and `docs/` are
   welcome and don't require a design discussion.
-* **Security issues** — do **not** open a public issue. See
+* **Security issues** -- do **not** open a public issue. See
   [SECURITY.md](SECURITY.md).
 
 ## Project layout
@@ -84,9 +84,9 @@ and manual (non-script) build steps.
 
 Two CMake options control optional targets:
 
-* `WILFRED_BUILD_TESTS` (default `ON`) — builds `wilfred_tests`
-* `WILFRED_BUILD_BENCH` (default `ON`) — builds `wilfred_bench`
-* `WILFRED_ENABLE_SANITIZERS` (default `OFF`) — enables ASan/UBSan on
+* `WILFRED_BUILD_TESTS` (default `ON`) -- builds `wilfred_tests`
+* `WILFRED_BUILD_BENCH` (default `ON`) -- builds `wilfred_bench`
+* `WILFRED_ENABLE_SANITIZERS` (default `OFF`) -- enables ASan/UBSan on
   non-MSVC Debug builds
 
 ## Running the test suite
@@ -97,7 +97,7 @@ ctest --test-dir build/linux --output-on-failure
 ```
 
 (swap `build/linux` for your build directory). Please add or extend a test
-under `tests/` for any behavioral change — see the existing `tests/test_*.cpp`
+under `tests/` for any behavioral change -- see the existing `tests/test_*.cpp`
 files for the lightweight test harness (`tests/test.hpp`). There is one test
 file per module (`test_index.cpp`, `test_rank.cpp`, `test_config.cpp`, etc.);
 add new cases to the matching file, or create a new one and add it to the
@@ -107,7 +107,7 @@ module.
 `.github/workflows/tests.yml` builds + runs `ctest` on Windows, Linux
 and macOS for every PR and `main` push (plus Android/iOS compile gates and
 an overlay typecheck/bundle check), and `.github/workflows/lint.yml` runs
-`clang-format`/`clang-tidy` on changed files — but please still run `ctest`
+`clang-format`/`clang-tidy` on changed files -- but please still run `ctest`
 locally before opening a PR.
 
 ## Coding conventions
@@ -132,14 +132,14 @@ locally before opening a PR.
 * **Include order**: `.clang-format` sorts `#include`s alphabetically, which
   breaks order-dependent system headers. `windows.h` (and `winsock2.h`
   where used) must come first, and followers such as `shellapi.h`,
-  `WebView2.h`, or BSD socket headers keep their dependency order — put
+  `WebView2.h`, or BSD socket headers keep their dependency order -- put
   each in its own blank-line-separated block so the sorter can never
   reorder them (see `src/ui/win_overlay.cpp`, `src/search/minis.cpp`).
 * **Warnings**: the build treats warnings as informative, not fatal, but PRs
   that introduce new `-Wall -Wextra -Wpedantic` (or `/W4`) warnings will be
   asked to fix them.
 * **Platform code**: guard with `#ifdef _WIN32` / `__APPLE__` / else-Linux
-  as done throughout `src/platform/` and `src/fs/watcher.cpp` — don't
+  as done throughout `src/platform/` and `src/fs/watcher.cpp` -- don't
   introduce a new platform abstraction pattern without discussion.
 * **Config changes**: if you add a new config key, update all three of:
   `include/wilfred/config/config.hpp` (the `Config` struct), the YAML
@@ -152,7 +152,7 @@ locally before opening a PR.
 
 ## Commit and PR guidelines
 
-* Keep PRs focused — one logical change per PR is much easier to review than
+* Keep PRs focused -- one logical change per PR is much easier to review than
   a bundle of unrelated fixes.
 * Write a clear PR description: what changed, why, and how you tested it
   (which platform(s) you built and ran on).
@@ -160,7 +160,7 @@ locally before opening a PR.
 * Make sure `ctest` passes locally on at least one platform before
   requesting review; note in the PR description which platform(s) you were
   able to test on, since reviewers may not be able to test all three.
-* Be willing to iterate — review feedback is part of the process, not a
+* Be willing to iterate -- review feedback is part of the process, not a
   rejection.
 
 ## License

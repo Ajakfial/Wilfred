@@ -1,4 +1,4 @@
-# SHAME.md — AI Policy Violators
+# SHAME.md -- AI Policy Violators
 
 > "The names of those who chose the easy path over the right one."
 
@@ -8,7 +8,7 @@
 
 | Date | Offender | Violation | Commit/PR |
 |------|----------|-----------|-----------|
-| *Nobody yet* | — | — | — |
+| *Nobody yet* | -- | -- | -- |
 
 ---
 
@@ -16,8 +16,8 @@
 
 1. **Don't use AI for forbidden work** (see `AGENTS.md`)
 2. **Review every line** of AI-assisted code before committing
-3. **Write your own PR descriptions** — no AI-generated fluff
-4. **When in doubt, don't use AI** — it's not worth your reputation
+3. **Write your own PR descriptions** -- no AI-generated fluff
+4. **When in doubt, don't use AI** -- it's not worth your reputation
 
 ---
 

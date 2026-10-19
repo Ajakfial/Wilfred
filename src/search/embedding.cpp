@@ -351,7 +351,7 @@ std::vector<float> LocalEmbedder::embed_via_llamacpp(const std::string& text) co
   // defined and call llama_model_load_from_file + embedding path here.
   (void)text;
   if (cfg_.model.empty() || !file_exists(cfg_.model)) return {};
-  // No runtime libllama found in this build — signal fallback.
+  // No runtime libllama found in this build -- signal fallback.
   return {};
 }
 
@@ -372,7 +372,7 @@ std::vector<float> LocalEmbedder::embed(const std::string& text) const {
           f /= n;
       return v;
     }
-    // Server unreachable — fall back to hash so search keeps working offline.
+    // Server unreachable -- fall back to hash so search keeps working offline.
   } else if (active_backend_ == "llamacpp") {
     auto v = embed_via_llamacpp(text);
     if (!v.empty() && (int)v.size() == dim_) return v;

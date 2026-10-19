@@ -1,4 +1,4 @@
-// ResultRow.swift — one search result row.
+// ResultRow.swift -- one search result row.
 // Mirrors android/.../ResultAdapter.kt + res/layout/row_result.xml:
 // title, subtitle, trailing badge (category → action → kind).
 

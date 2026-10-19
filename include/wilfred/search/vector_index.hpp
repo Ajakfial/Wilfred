@@ -3,7 +3,7 @@
 // Persistent vector sidecar for semantic search.
 //
 // Layout (next to the WAL/snapshot in the index directory):
-//   vectors.bin  — HNSW graph + float vectors keyed by IndexRecord id
+//   vectors.bin  -- HNSW graph + float vectors keyed by IndexRecord id
 // ("vectors.wal" is reserved for future incremental journaling; v1 reuses the
 // main snapshot checkpoint cadence so vectors never drift far from records.)
 //

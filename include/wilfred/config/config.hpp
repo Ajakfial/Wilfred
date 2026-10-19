@@ -167,7 +167,7 @@ struct Config {
   struct Providers {
     bool semantic{false};
     double semantic_min_score{0.3};
-    // vector | trigram | hybrid — which semantic backend to use when enabled.
+    // vector | trigram | hybrid -- which semantic backend to use when enabled.
     std::string semantic_backend{"hybrid"};
     int semantic_max_results{10};
     // Hybrid fusion weights (multipliers on each backend's 0..1 similarity

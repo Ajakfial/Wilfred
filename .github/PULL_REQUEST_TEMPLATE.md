@@ -10,7 +10,7 @@
 
 <!--
 `ctest` should pass locally on at least one platform before requesting
-review. Note which platform(s) you tested on below — reviewers may not be
+review. Note which platform(s) you tested on below -- reviewers may not be
 able to test all three (Windows / macOS / Linux).
 -->
 

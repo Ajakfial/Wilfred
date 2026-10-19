@@ -1,4 +1,4 @@
-# UI/UX — SpokeApp (MAUI)
+# UI/UX -- SpokeApp (MAUI)
 
 ## Principle
 
@@ -14,7 +14,7 @@ inference; an engine dev can swap the model without touching XAML.
 - **Live status**: waveform (SVG-driven bars), elapsed time, RTF chip after each run.
 - **Results**: full transcript card (copy / export .txt / export .json) + segment
   list with `mm:ss` timestamps and confidence bars (green ≥ 0.8, amber ≥ 0.55,
-  red below — matching the engine's 0.55 gate so the UI never contradicts it).
+  red below -- matching the engine's 0.55 gate so the UI never contradicts it).
 - **Settings sheet**: threads (auto/1–8), beam width (1–16), VAD sensitivity,
   all persisted to app preferences.
 
@@ -54,13 +54,13 @@ the 30 s chunk UX copy, and reports progress.
 | Linux | `libspoke.so` (+ `libspoke.so.0`) | app dir, `~/.local/lib`, or system `ldconfig` path |
 | macOS (MacCatalyst) | `libspoke.dylib` | app bundle `Frameworks/` (bundled resource) |
 | Android | `libspoke.so` (arm64-v8a) | `Platforms/Android/jniLibs/` |
-| iOS devices | static xcframework (roadmap) | `__Internal` — App Store forbids loose dylibs |
+| iOS devices | static xcframework (roadmap) | `__Internal` -- App Store forbids loose dylibs |
 
 `SpokeNativeService` probes `--lib DIR`-equivalent `LibrarySearchPath` →
 `SPOKE_LIBRARY_PATH` → app directory → OS loader, trying the right filename
 per OS, so one C# codebase runs everywhere. Build each artifact from this
 repo's CMake presets (`windows-vs2022`, `linux-ninja-release`,
-`macos-ninja-release`) — no downloads, no keys, fully offline.
+`macos-ninja-release`) -- no downloads, no keys, fully offline.
 
 Linux has no MAUI target, so Linux .NET users run `ui/SpokeConsole`
 (`net8.0`): `dotnet run --project ui/SpokeConsole -- transcribe a.wav

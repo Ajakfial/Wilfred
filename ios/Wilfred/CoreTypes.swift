@@ -1,4 +1,4 @@
-// CoreTypes.swift — Decodable models for the C++ bridge JSON.
+// CoreTypes.swift -- Decodable models for the C++ bridge JSON.
 // Mirrors android/.../WilfredBridge.kt (SearchResult, ResultActionItem,
 // Assist) field for field, including the per-result `actions` array that
 // powers the long-press menu.

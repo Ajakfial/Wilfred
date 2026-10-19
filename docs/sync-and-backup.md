@@ -24,7 +24,7 @@ restore.
 
 ## Archive format
 
-A small custom binary container (magic `WILFBK1`), not a zip/tar — chosen to
+A small custom binary container (magic `WILFBK1`), not a zip/tar -- chosen to
 keep the implementation dependency-free:
 
 ```
@@ -39,7 +39,7 @@ for each entry:
 ```
 
 All integers are little-endian. `unpack_backup_archive()` validates the
-magic, then each entry's CRC32 individually — a single corrupted entry fails
+magic, then each entry's CRC32 individually -- a single corrupted entry fails
 the whole restore with a specific error (`"checksum mismatch for <name>"`)
 rather than silently restoring partial/corrupt data. An entry count above
 10,000 is rejected outright as a corrupt header (a sanity bound, not a real
@@ -60,7 +60,7 @@ Default path: `<data dir>/backups/wilfred.wilfbk` (see
 `sync::default_backup_path()` creates the `backups/` folder if needed).
 
 **Restoring overwrites your current config, snippets, history, and (if
-present in the archive) index in place** — there's no merge step. Take a
+present in the archive) index in place** -- there's no merge step. Take a
 fresh backup of your current state first if you might want it back.
 
 ## Remote sync
@@ -114,12 +114,12 @@ or via the HTTP API's `/sync/push` / `/sync/pull` (see
 `sync_push()`/`sync_pull()` use plain `HTTP PUT`/`GET` against `sync.url`
 (`include/wilfred/ipc/http.hpp`'s `http_put()`/`http_get()`), sending
 `sync.token` as an `X-Wilfred-Token` header. **Wilfred does not implement
-its own transport encryption** — if `sync.url` is `http://`, the archive
+its own transport encryption** -- if `sync.url` is `http://`, the archive
 (which contains your file index and history) travels in the clear. Use an
 `https://` endpoint for anything beyond a trusted local network, and treat
 `sync.token` like any other bearer credential.
 
-You are responsible for running whatever server sits at `sync.url` — it
+You are responsible for running whatever server sits at `sync.url` -- it
 just needs to accept a `PUT` with the raw archive bytes as the body and
 serve the same bytes back on `GET` (with the token, if you choose to check
 it server-side too). A directory index served over WebDAV, a small custom
@@ -128,7 +128,7 @@ endpoint, or object storage with presigned URLs would all work.
 ## Choosing what to sync
 
 If you're syncing between machines that will each maintain their *own*
-local file index (the common case — machine A's files aren't the same as
+local file index (the common case -- machine A's files aren't the same as
 machine B's), set `include_index: false`: sync config, snippets, and
 history (the parts that represent *your preferences and habits*, which are
 meaningfully shared across machines), and let each machine build its own

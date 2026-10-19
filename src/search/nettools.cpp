@@ -201,7 +201,7 @@ bool looks_like_url_text(const std::string& s) {
   auto l = to_lower_utf8(t);
   if (l.rfind("http://", 0) == 0 || l.rfind("https://", 0) == 0 || l.rfind("www.", 0) == 0)
     return true;
-  // Emails contain '@' — never a bare URL.
+  // Emails contain '@' -- never a bare URL.
   if (t.find('@') != std::string::npos) return false;
   // bare domain with TLD + path?
   auto slash = t.find('/');

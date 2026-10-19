@@ -33,7 +33,7 @@ hotkeys:
 | `workflow:<name>` | Run a named workflow against the clipboard |
 
 Workflows bound to hotkeys run headless against the clipboard, so prefer
-targetless steps there — file steps (e.g. `copy_path`) fail gracefully per
+targetless steps there -- file steps (e.g. `copy_path`) fail gracefully per
 step but report the chain as failed. At most 16 bindings; each gets its own
 OS registration (Windows `RegisterHotKey`, X11 `XGrabKey`, macOS Carbon
 hotkeys with unique ids), and a failed registration only warns. Invalid
@@ -64,7 +64,7 @@ Workflows and hotkeys can manage windows:
   contains the text.
 - `layout_apply:<name>` applies a saved window layout (see below).
 - `tile:<preset>` tiles current windows (`halves`, `thirds`, `grid`,
-  `columns 3`, `rows 2`, `stack`) — same engine as `wilfred tile` and
+  `columns 3`, `rows 2`, `stack`) -- same engine as `wilfred tile` and
   `layout tile …`, usable in workflows and hotkeys.
 - `window_minimize`, `window_maximize`, `window_restore`, `window_close`,
   `window_snap_left`, `window_snap_right` act on file-less window cards;
@@ -107,6 +107,6 @@ auto-applies (no window management there).
 Under the hood this is the same native surface as the window actions:
 Win32 `ShowWindow`/`SetWindowPos`/`WM_CLOSE` on the monitor work area,
 EWMH/X11 client messages plus `XMoveResizeWindow` on Linux (X11 builds
-only — Wayland-only reports unsupported), and Accessibility
+only -- Wayland-only reports unsupported), and Accessibility
 minimize/zoom/close-button/position/size on macOS (needs Accessibility
 permission, like window focus already did).

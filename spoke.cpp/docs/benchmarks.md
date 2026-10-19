@@ -1,4 +1,4 @@
-# Benchmarks — real numbers, reproducible
+# Benchmarks -- real numbers, reproducible
 
 Methodology: `bench/bench_main.cpp` synthesizes deterministic speech-like
 audio (harmonic complex + 3 Hz syllabic AM + noise, seed 1234), runs each
@@ -43,7 +43,7 @@ installed `libspoke.so` (only the 7 `spoke_*` C ABI symbols exported);
 `DESTDIR` staging produces the versioned `libspoke.so → .so.0 → .so.0.1.0` chain.
 
 Interpretation: spoke transcribes roughly **25x faster than realtime** on a
-plain CPU — a 30-second clip finishes in ~1.1 s. The frontend is essentially
+plain CPU -- a 30-second clip finishes in ~1.1 s. The frontend is essentially
 free (860x); the encoder dominates, as expected, and still clears 87x.
 
 Raw harness output is persisted to `results_bench.txt` on every run:

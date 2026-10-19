@@ -7,7 +7,7 @@
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ApplicationTitle>Spoke — Offline Transcriber</ApplicationTitle>
+    <ApplicationTitle>Spoke -- Offline Transcriber</ApplicationTitle>
     <ApplicationId>com.spoke.transcriber</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <!-- All inference lives in spoke.dll via P/Invoke; the app ships it per-platform (see README). -->

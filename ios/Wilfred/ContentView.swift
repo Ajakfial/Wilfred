@@ -1,4 +1,4 @@
-// ContentView.swift — the Wilfred search UI.
+// ContentView.swift -- the Wilfred search UI.
 // Mirrors android/.../MainActivity.kt + res/layout/activity_main.xml, top to
 // bottom: search field, did-you-mean bar, ghost completion, candidate strip,
 // status line, results list. All search logic runs in C++ (WilfredCore);
@@ -96,7 +96,7 @@ final class SearchModel: ObservableObject {
         }
         let r = o["records"] as? Int ?? 0
         let a = o["apps"] as? Int ?? 0
-        return "\(r) files · \(a) apps — C++ core ready"
+        return "\(r) files · \(a) apps -- C++ core ready"
     }
 }
 

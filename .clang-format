@@ -39,7 +39,7 @@ BinPackParameters: true
 AllowAllParametersOfDeclarationOnNextLine: true
 
 # `#include "wilfred/..."` group first, then a blank line, then system
-# `<...>` headers — matches the existing include blocks.
+# `<...>` headers -- matches the existing include blocks.
 SortIncludes: CaseSensitive
 IncludeBlocks: Preserve
 

@@ -1,4 +1,4 @@
-# SpokeApp — MAUI front end + SpokeConsole — cross-platform .NET host
+# SpokeApp -- MAUI front end + SpokeConsole -- cross-platform .NET host
 
 Professional offline-transcriber UI for the spoke.cpp engine, plus a
 terminal host for OSes MAUI doesn't reach (Linux).
@@ -36,5 +36,5 @@ dotnet run --project ui/SpokeConsole -- transcribe speech.wav --lib ./build/linu
 # to the output (or set SpokeNativeService.LibrarySearchPath / SPOKE_LIBRARY_PATH).
 ```
 
-No model downloads, no API keys, no network — identical behaviour to the CLI
+No model downloads, no API keys, no network -- identical behaviour to the CLI
 because all inference is the same C++ code.

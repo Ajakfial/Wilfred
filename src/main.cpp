@@ -24,7 +24,7 @@
 #endif
 
 static void print_help() {
-  std::cout << "Wilfred — cross-platform desktop search and launcher\n\n"
+  std::cout << "Wilfred -- cross-platform desktop search and launcher\n\n"
             << "Usage:\n"
             << "  wilfred                 Run the background daemon (overlay + indexer)\n"
             << "  wilfred daemon          Same as above\n"
@@ -362,7 +362,7 @@ static int wilfred_main(int argc, char** argv) {
       }
       wilfred::DefineHit hit;
       if (wilfred::define_lookup(query, hit)) {
-        std::cout << hit.word << " (" << hit.pos << ") — " << hit.definition << "\n";
+        std::cout << hit.word << " (" << hit.pos << ") -- " << hit.definition << "\n";
         if (!hit.synonyms.empty()) std::cout << "synonyms: " << hit.synonyms << "\n";
         return 0;
       }

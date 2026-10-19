@@ -573,7 +573,7 @@ export function App() {
               kind: it?.kind || "file",
               size: "12.4 KB",
               modified: "2026-09-30 10:42",
-              text: p ? `${p}\n\nDemo preview — open via the native host for full content.` : "",
+              text: p ? `${p}\n\nDemo preview -- open via the native host for full content.` : "",
             },
           });
         }

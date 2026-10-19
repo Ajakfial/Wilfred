@@ -75,7 +75,7 @@ hallucinates on non-speech; this is asserted by tests.
 - `ctc_proj`: 128 → 29 (blank + a–z + space + apostrophe), blank bias +1.0
   so uncertain frames prefer silence over gibberish.
 - Total **310,813 params** (tiny config). All weights are deterministic
-  Xavier (`seed=42` family) — no download, reproducible everywhere.
+  Xavier (`seed=42` family) -- no download, reproducible everywhere.
 
 Optimizations: per-row symmetric int8 quantization (2–4x less memory
 traffic), 4x-unrolled dot products (auto-vectorized), cache-blocked matmul,
@@ -108,14 +108,14 @@ path on `flush()`.
 Plain C ABI (`spoke_create`, `spoke_transcribe_file`, `spoke_transcribe_pcm`,
 `spoke_version`, `spoke_free_string`). Never throws across the boundary;
 errors come back as `error_code` + `error_message`. The MAUI layer
-P/Invokes exactly this surface — see `docs/api.md`.
+P/Invokes exactly this surface -- see `docs/api.md`.
 
 ## Threading model
 
 - `ThreadPool` (header-inline): N workers (auto = min(hw_concurrency, 8)),
   `parallelFor` shards `[0,n)` into contiguous chunks.
 - Frontend frame loop and encoder projection loop shard across the pool;
-  GRU stays serial (recurrent dependency) — Amdahl-aware, not thread-for-
+  GRU stays serial (recurrent dependency) -- Amdahl-aware, not thread-for-
   thread's-sake.
 
 ## Memory model

@@ -1,8 +1,8 @@
 # IPC and the Local HTTP API
 
 Wilfred exposes two local-only control surfaces for talking to an already
-running `wilfred daemon`. Both are designed for **local, trusted use** —
-scripting, the CLI, or a local integration — not as a network service; see
+running `wilfred daemon`. Both are designed for **local, trusted use** --
+scripting, the CLI, or a local integration -- not as a network service; see
 [SECURITY.md](../SECURITY.md) for the threat model.
 
 ## The IPC socket (used by the CLI)
@@ -39,7 +39,7 @@ BACKUP<TAB>/optional/dest/path
 RESTORE<TAB>/optional/src/path
 ```
 
-**JSON form** — any subset of these fields:
+**JSON form** -- any subset of these fields:
 
 ```json
 {"cmd": "search", "q": "firefox", "limit": 40}
@@ -90,7 +90,7 @@ human-readable `error` string and an empty `results` array.
 
 ## The local HTTP API
 
-Optional, off by default (`api.enabled: false` — see
+Optional, off by default (`api.enabled: false` -- see
 [configuration.md](configuration.md#api--optional-local-http-api)). When
 enabled, binds to `api.bind:api.port` (default `127.0.0.1:17380`) and speaks
 plain HTTP + JSON.
@@ -109,7 +109,7 @@ Authorization: Bearer <api.token>
 If `api.token` is set, every non-`OPTIONS` request must present a matching
 token or gets rejected. If `api.token` is **empty**, non-local (non-loopback)
 requests are rejected outright with `{"ok":false,"error":"token required
-for remote clients"}` — set a token before relying on the API from anything
+for remote clients"}` -- set a token before relying on the API from anything
 other than `127.0.0.1`/`::1`. `OPTIONS` requests always succeed with an
 empty body (CORS preflight support).
 
@@ -117,7 +117,7 @@ empty body (CORS preflight support).
 
 All paths also accept an optional `/v1/` prefix (`/v1/search` and `/search`
 are equivalent). Query parameters and a JSON request body are both
-accepted for the same fields — query params win if both are present.
+accepted for the same fields -- query params win if both are present.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -164,14 +164,14 @@ the scan completes). `{"ok": true}`.
 
 Two modes:
 
-* **By query** — provide `q`; the top search result for that query is
+* **By query** -- provide `q`; the top search result for that query is
   executed:
   ```json
   {"q": "firefox"}
   ```
-* **By explicit result** — provide `path` (and optionally `payload`,
+* **By explicit result** -- provide `path` (and optionally `payload`,
   `title`, `plugin`/`plugin_id`, `category`) to execute a specific result
-  directly without re-running search — this is how a client that already
+  directly without re-running search -- this is how a client that already
   has a `SearchResult` from `/search` re-executes it:
   ```json
   {"path": "/usr/bin/firefox", "action": "open"}
@@ -198,13 +198,13 @@ unreadable archive.
 
 #### `POST /sync/push` / `POST /sync/pull`
 
-No body needed — uses `sync.url`/`sync.token` from the config, same as
+No body needed -- uses `sync.url`/`sync.token` from the config, same as
 `wilfred sync-push`/`wilfred sync-pull`. `{"ok": true}` or HTTP 400 with an
 error.
 
 #### `POST /snippets`
 
-Body fields: `trigger` (or `name`) — required; `id` (defaults to `trigger`);
+Body fields: `trigger` (or `name`) -- required; `id` (defaults to `trigger`);
 `title`; `body` (or `text`); `kind`.
 
 ```json
@@ -228,10 +228,10 @@ Any other path/method returns HTTP 404 with
 ## Choosing between them
 
 * Use the **CLI** (which uses the IPC socket internally) for scripting on
-  the same machine — it's already installed, handles the platform-specific
+  the same machine -- it's already installed, handles the platform-specific
   endpoint for you, and needs no configuration.
 * Use the **HTTP API** if you're building a separate tool/integration (a
   browser extension, a status-bar widget, a different language) that would
   rather speak HTTP+JSON than the CLI's process-spawn model, and you're
-  comfortable managing a token. Leave it disabled if you don't need it —
+  comfortable managing a token. Leave it disabled if you don't need it --
   it's off by default for a reason.

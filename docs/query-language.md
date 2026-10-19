@@ -4,7 +4,7 @@ Every character typed into the overlay (or passed to `wilfred search`/
 `wilfred launch`) goes through `classify_query()`
 (`include/wilfred/query/classify.hpp`, implemented in
 `src/query/classify.cpp`) first. Classification is a fast, ordered set of
-heuristics — the first one that matches wins — followed by
+heuristics -- the first one that matches wins -- followed by
 `QueryInterpreter::interpret()` actually producing results. This document
 describes each recognized form, in the order they're checked.
 
@@ -27,7 +27,7 @@ A query starting with any of these is sent straight to
 * Explicit schemes: `http://`, `https://`, `file://`
 * `www.`-prefixed hosts
 * A bare host with a known TLD (`.com`, `.org`, `.net`, `.io`, `.dev`, `.app`,
-  and a few dozen more — see `classify.cpp`) and no path characters that
+  and a few dozen more -- see `classify.cpp`) and no path characters that
   would make it look like a Windows path (a literal `\` disqualifies it)
 
 Matched queries are opened directly in the default browser
@@ -39,7 +39,7 @@ index.
 `looks_like_math()` requires at least one digit, plus either an operator
 (`+ - * / ^ % ( )`) or a recognized function name (`sin`, `cos`, `tan`,
 `sqrt`, `log`, `ln`, `abs`, `pow`, `ceil`, `floor`, `exp`, `pi`), or a
-`" to "` / `" in "` / `convert ` phrase for unit conversion — and the
+`" to "` / `" in "` / `convert ` phrase for unit conversion -- and the
 expression must actually evaluate successfully
 (`math::evaluate_math()` / `convert_metric()`, see below). Successful
 dev-utility commands (`convert_devutil()`) also count, even with no
@@ -113,7 +113,7 @@ decodes header/payload without verifying the signature. Regex tester:
 `regex <pattern> <text>` (`regexi` ignores case, `/pat/i` flags work,
 quoted patterns allow spaces).
 
-The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) —
+The calculator is a safe recursive-descent parser (`src/math/expr.cpp`) --
 there is no `eval`/scripting backdoor.
 
 ## 4. Command prefix
@@ -126,7 +126,7 @@ query, offered for direct execution rather than fuzzy search.
 cmd ipconfig /all
 ```
 
-## 5. Minis — system info cards
+## 5. Minis -- system info cards
 
 A single recognized keyword (optionally followed by an argument) returns a
 synthetic result card instead of searching the index
@@ -141,7 +141,7 @@ synthetic result card instead of searching the index
 | `ram` | `memory`, `mem` | Physical memory used/free |
 | `cpu` | `processor` | Current CPU load |
 | `process <name>` | `proc`, `ps`, `top`, `processes` | Matching live processes with CPU/RAM |
-| `screenshot [mode]` | `screenshots`, `screencap`, `screencapture`, `printscreen`, `print screen`, `screen capture`, `screen shot`, `capture screen` | Capture the screen (`fullscreen`, `window`, or `region`); bare `screenshot` lists all three. Saves to `Pictures/Wilfred` — fullscreen is silent, window captures the active window (Windows) or picks one, region drag-selects (Windows opens the Snipping Tool). Enter captures + opens, `Tab` offers capture + reveal / copy path |
+| `screenshot [mode]` | `screenshots`, `screencap`, `screencapture`, `printscreen`, `print screen`, `screen capture`, `screen shot`, `capture screen` | Capture the screen (`fullscreen`, `window`, or `region`); bare `screenshot` lists all three. Saves to `Pictures/Wilfred` -- fullscreen is silent, window captures the active window (Windows) or picks one, region drag-selects (Windows opens the Snipping Tool). Enter captures + opens, `Tab` offers capture + reveal / copy path |
 | `battery` | `power` | Battery percentage and charge state |
 | `hostname` | `host` | Machine hostname |
 | `ip` | `ipaddress` | Local IP address |
@@ -186,7 +186,7 @@ synthetic result card instead of searching the index
 | `note [text]` | `notes`, `memo` | Quick notes (`note buy milk`, `notes`, `note clear`) |
 | `todo [task]` | `todos`, `task` | Todos (`todo ship it`, `todos`, `todo done 1`, `todo clear`) |
 | `kill <pid\|name>` | `killall`, `pkill` | Process killer (enter terminates; `process` lists) |
-| `media [action]` | `player`, `music`, `play`, `pause`, `next`, `prev`, `mute`, `volume` | Native media controls, nothing to install — Win: system media keys; macOS: system HID keys + Music/Spotify/VLC fallback; Linux: native MPRIS D-Bus (Spotify/VLC/Chrome/…) with optional `playerctl`, volume via built-in `wpctl` → `pactl` → `amixer` → `pamixer` |
+| `media [action]` | `player`, `music`, `play`, `pause`, `next`, `prev`, `mute`, `volume` | Native media controls, nothing to install -- Win: system media keys; macOS: system HID keys + Music/Spotify/VLC fallback; Linux: native MPRIS D-Bus (Spotify/VLC/Chrome/…) with optional `playerctl`, volume via built-in `wpctl` → `pactl` → `amixer` → `pamixer` |
 | `ping <host>` | | Ping summary via the OS ping CLI |
 | `dns <host>` | `nslookup`, `resolve` | DNS lookup via getaddrinfo |
 | `myip` | `publicip`, `ip public` | Public IP (via api.ipify.org) + local IP |
@@ -237,7 +237,7 @@ need to suppress the weather mini. `speedtest` downloads and uploads a few
 megabytes against Cloudflare to measure live throughput; type `speedtest again`
 to rerun.
 
-## 6. Macros — query templates
+## 6. Macros -- query templates
 
 A macro expands the rest of the query into a URL template
 (`include/wilfred/search/macros.hpp`). Two invocation forms:
@@ -287,7 +287,7 @@ Built-in macros (all templates support `{query}`, `{query_enc}`,
 | `gclip`, `clipsearch` | Google-search the current clipboard |
 | `ytclip` | YouTube-search the current clipboard |
 
-Add your own or override a built-in name in `config.macros` — see
+Add your own or override a built-in name in `config.macros` -- see
 [configuration.md](configuration.md#macros--query-templates). List them all
 at any time with the `macros` mini.
 
@@ -310,7 +310,7 @@ chain; picking `Run <name>` from a file's actions (`Ctrl`/`⌘`+`K`)
 executes each step in order. Steps are the same ids as per-file
 actions, joined with `+` ad-hoc (`copy_path+reveal`).
 
-## 7. Filtered search — inline filter clauses
+## 7. Filtered search -- inline filter clauses
 
 Any other query is scanned for filter clauses before falling back to plain
 fuzzy search (`parse_filter_clauses()`, `include/wilfred/search/filter.hpp`).
@@ -323,7 +323,7 @@ are stripped out is used as the plain-text fuzzy query. Quoted phrases
 | Clause | Meaning |
 |---|---|
 | `ext:cpp` / `extension:cpp` | Extension filter (leading `.` optional) |
-| `type:image` / `kind:image` | Kind filter — see [FileKind values](#filekind-values) below; `type:app`/`type:apps` also sets apps-only |
+| `type:image` / `kind:image` | Kind filter -- see [FileKind values](#filekind-values) below; `type:app`/`type:apps` also sets apps-only |
 | `in:Projects` / `path:Projects` / `dir:Projects` | Only under a directory whose path contains/matches this |
 | `scope:home` | Only within a named directory group from `config.scopes` |
 | `name:foo` | Name must contain `foo` |
@@ -349,7 +349,7 @@ are stripped out is used as the plain-text fuzzy query. Quoted phrases
 | `images` / `photos` | Image kind |
 | `videos` / `movies` | Video kind |
 
-Clauses combine — everything must match:
+Clauses combine -- everything must match:
 
 ```
 *.cpp in Projects
@@ -373,14 +373,14 @@ If nothing above matched, the whole query is a fuzzy name/path search over
 the index, combined with any signals in [ranking.md](ranking.md):
 
 * **Exact / prefix / substring** matches on the file or app name.
-* **Fuzzy subsequence matching** (`score_fuzzy`) — letters of the query
+* **Fuzzy subsequence matching** (`score_fuzzy`) -- letters of the query
   appear in order in the name, not necessarily contiguous (so `vsc` can
   match "Visual Studio Code").
-* **Acronym matching** — the query matches the first letters of each token
+* **Acronym matching** -- the query matches the first letters of each token
   in the name.
-* **Path component matches** — the query matches a folder name above the
+* **Path component matches** -- the query matches a folder name above the
   file, not just the file name itself.
-* **Content matches** — if `search.content_indexing` and content was
+* **Content matches** -- if `search.content_indexing` and content was
   indexed for that file, matching indexed text also contributes (see
   `content_hit` in [ranking.md](ranking.md)), independent of the explicit
   `content:`/`intext:` filter clause above.
@@ -388,9 +388,9 @@ the index, combined with any signals in [ranking.md](ranking.md):
 ## Clipboard as a query source
 
 If `search.clipboard` is enabled, clipboard text and clipboard-derived paths
-are also considered — both as an extra source of results (e.g. a copied
+are also considered -- both as an extra source of results (e.g. a copied
 file path shows up as a hit) and as a ranking signal
-(`clipboard_overlap` — see [ranking.md](ranking.md)) when the query overlaps
+(`clipboard_overlap` -- see [ranking.md](ranking.md)) when the query overlaps
 with what's currently on the clipboard. The `clip`/`clips` minis above
 surface the clipboard directly as a result rather than as a ranking
 influence.
@@ -400,7 +400,7 @@ influence.
 If `snippets.expansion` is enabled, typing the configured `snippets.prefix`
 (default `;`) followed by a trigger matches a saved text snippet
 (`include/wilfred/search/snippets.hpp`) for insertion/paste, independent of
-the classification pipeline above — snippet matching runs alongside the main
+the classification pipeline above -- snippet matching runs alongside the main
 search rather than being one of the `QueryKind` branches. Bodies support
 `{date} {time} {datetime} {year} {month} {day} {clipboard} {query}`, snippets
 carry an optional `folder:` (filter with `;folder/name`), and
@@ -434,5 +434,5 @@ are searchable as `note` results) are searched as `calendar` / `contact` /
 
 Regardless of how a query classifies, if `search.plugins` is enabled every
 loaded plugin also receives the query text and may contribute additional
-results (tagged with `category: "plugin"` and that plugin's `plugin_id`) —
+results (tagged with `category: "plugin"` and that plugin's `plugin_id`) --
 see [plugins.md](plugins.md).

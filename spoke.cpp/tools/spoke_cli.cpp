@@ -1,4 +1,4 @@
-// spoke_cli — command-line frontend for the spoke engine.
+// spoke_cli -- command-line frontend for the spoke engine.
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -14,7 +14,7 @@
 #include "spoke/version.h"
 
 static void print_usage(const char* prog) {
-  std::cout << "spoke " << SPOKE_VERSION_STRING << " — from-scratch English transcriber\n\n"
+  std::cout << "spoke " << SPOKE_VERSION_STRING << " -- from-scratch English transcriber\n\n"
             << "Usage:\n"
             << "  " << prog << " transcribe <file.wav> [--threads N] [--beam N] [--json]\n"
             << "  " << prog << " info\n"

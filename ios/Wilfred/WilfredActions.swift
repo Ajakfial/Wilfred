@@ -1,4 +1,4 @@
-// WilfredActions.swift — shared result-opening logic for ContentView.
+// WilfredActions.swift -- shared result-opening logic for ContentView.
 // Mirrors android/.../WilfredActions.kt: all ranking/search/calc/snippets/
 // notes/todos/timers logic lives in C++ (wilfred_core via WilfredCore); this
 // layer only performs iOS opens, UIPasteboard writes and the share sheet.

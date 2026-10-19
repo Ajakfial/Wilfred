@@ -1334,7 +1334,7 @@ const Glyph kGlyphs[] = {
     {"‘", "left single quotation mark", "quote", true},
     {"’", "right single quotation mark apostrophe", "quote", true},
     {"–", "en dash", "dash", true},
-    {"—", "em dash", "dash", true},
+    {"--", "em dash", "dash", true},
     {"…", "ellipsis", "dots", true},
     {"•", "bullet", "dot list", true},
     {"·", "middle dot", "interpunct", true},

@@ -299,7 +299,7 @@ bool is_file_like(const SearchResult& r) {
 
 void append_context_actions(SearchResult& r, const Config& cfg) {
   if (!is_file_like(r) && r.kind != FileKind::Application) {
-    // Workflows still apply to process/media? No — only file-like + apps.
+    // Workflows still apply to process/media? No -- only file-like + apps.
     // But allow workflow on any actionable file result; skip pure text cards.
     if (!is_file_like(r)) return;
   }
@@ -626,7 +626,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
         log_warn("plugin", "cannot write trust store");
         return false;
       }
-      write_clipboard("plugin approved — queries include it now");
+      write_clipboard("plugin approved -- queries include it now");
       return true;
     }
   }
@@ -650,7 +650,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
         log_warn("config", err.empty() ? "cannot update setting" : err);
         return false;
       }
-      write_clipboard(kv.substr(0, eq) + " updated — restart the daemon");
+      write_clipboard(kv.substr(0, eq) + " updated -- restart the daemon");
       return true;
     }
     if (raw.rfind("config:get:", 0) == 0) {
@@ -679,7 +679,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
         log_warn("config", err.empty() ? "reset failed" : err);
         return false;
       }
-      write_clipboard("reset to defaults — restart the daemon");
+      write_clipboard("reset to defaults -- restart the daemon");
       return true;
     }
     if (r.category == "toggle" || raw.rfind("toggle:", 0) == 0) {
@@ -1061,7 +1061,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
   }
   // Built-in dictation: record the mic, transcribe, clipboard the text.
   // Dictated audio is transient (data-dir WAV, deleted after), so unlike
-  // file transcription there is no sidecar — the clipboard is the delivery.
+  // file transcription there is no sidecar -- the clipboard is the delivery.
   if (id.rfind("dictate_run", 0) == 0) {
     int seconds = 10;
     if (id.size() > 12 && id[12] == ':') {
@@ -1184,7 +1184,7 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     }
   }
   // Package installs: `pkg-install:<manager>:<id>` (flatpak encodes the
-  // remote as `<remote>:<app-id>`). Installs block — they take minutes —
+  // remote as `<remote>:<app-id>`). Installs block -- they take minutes --
   // and report success only when the tool exits 0.
   if (id.rfind("pkg-install:", 0) == 0) {
     auto rest = id.substr(12);

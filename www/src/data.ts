@@ -81,7 +81,7 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Clipboard manager',
-    body: 'Persistent searchable history with pinning and type filters: text, urls, emails, paths, code, IPs — plus copied images and file paths as first-class clips.',
+    body: 'Persistent searchable history with pinning and type filters: text, urls, emails, paths, code, IPs -- plus copied images and file paths as first-class clips.',
     icon: '⧉',
   },
   {
@@ -96,7 +96,7 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Offline dictionary',
-    body: 'Define and thesaurus cards with zero network calls — definitions plus synonyms, enter copies.',
+    body: 'Define and thesaurus cards with zero network calls -- definitions plus synonyms, enter copies.',
     icon: '❝',
   },
   {
@@ -111,7 +111,7 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Snippets everywhere',
-    body: 'Global abbreviation expansion in any app: Windows hook, macOS event tap, X11 listener — overlay paste everywhere else.',
+    body: 'Global abbreviation expansion in any app: Windows hook, macOS event tap, X11 listener -- overlay paste everywhere else.',
     icon: '✎',
   },
   {
@@ -131,7 +131,7 @@ export const FEATURES: Feature[] = [
   },
   {
     title: 'Private by design',
-    body: 'Local-first, dependency-free core. History optional, sync opt-in to infrastructure you control — with optional password-encrypted archives.',
+    body: 'Local-first, dependency-free core. History optional, sync opt-in to infrastructure you control -- with optional password-encrypted archives.',
     icon: '◈',
   },
 ];
@@ -167,7 +167,7 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     os: 'BSD',
     label: 'BSD',
     commands: ['tar -xzf wilfred-<version>-freebsd-x64.tar.gz', 'cd wilfred-<version>-freebsd-x64 && ./wilfred'],
-    note: 'FreeBSD release tarball (other BSDs: build from source with scripts/build-bsd.sh). Optional libX11 and WebKitGTK from ports/pkg — see docs/bsd.md.',
+    note: 'FreeBSD release tarball (other BSDs: build from source with scripts/build-bsd.sh). Optional libX11 and WebKitGTK from ports/pkg -- see docs/bsd.md.',
   },
   {
     os: 'Android',
@@ -180,7 +180,7 @@ export const INSTALL_OPTIONS: InstallOption[] = [
     os: 'iOS',
     label: 'iOS',
     commands: ['./scripts/build-ios.sh --simulator', 'xcrun simctl install booted ios/build/DerivedData/Build/Products/Release-iphonesimulator/Wilfred.app'],
-    note: 'SwiftUI (same search UI as Android, app-icon entry) over the same C++ core. Simulator builds are unsigned; device and TestFlight distribution need Apple signing — see docs/ios.md.',
+    note: 'SwiftUI (same search UI as Android, app-icon entry) over the same C++ core. Simulator builds are unsigned; device and TestFlight distribution need Apple signing -- see docs/ios.md.',
     experimental: true,
   },
 ];

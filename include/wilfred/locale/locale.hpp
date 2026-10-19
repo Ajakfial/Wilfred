@@ -14,7 +14,7 @@ namespace wilfred {
 // - `lang/<code>.yml` flat `key: "value"` mappings override English.
 //   Lookup order: `<config dir>/lang/<code>.yml` (user overrides), then
 //   `share/wilfred/lang/<code>.yml` next to the binary / install prefix /
-//   CWD (shipped catalogs). Add a language by dropping a file — no code
+//   CWD (shipped catalogs). Add a language by dropping a file -- no code
 //   changes needed (see docs/localization.md).
 // - Values support `{name}` placeholders via the tr() overload with args.
 // - `ui.language` accepts `auto` (OS locale), `en`, or any

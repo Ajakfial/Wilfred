@@ -4,7 +4,7 @@
     <string name="search_hint">Search files, apps, web…</string>
     <string name="status_booting">Starting Wilfred core…</string>
     <string name="status_boot_failed">Could not start Wilfred core.</string>
-    <string name="status_ready">%1$d files · %2$d apps — C++ core ready</string>
+    <string name="status_ready">%1$d files · %2$d apps -- C++ core ready</string>
     <string name="copied">Copied</string>
     <string name="copy_path">Copy path</string>
     <string name="close">Close</string>

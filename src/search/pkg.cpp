@@ -625,7 +625,7 @@ std::vector<std::string> pkg_detected_managers(const Config& cfg) {
 
 std::vector<SearchResult> pkg_managers_results(const std::string& remainder, const Config& cfg) {
   // A full provider invocation (`pkg <manager> <query>`) belongs to the
-  // provider, not this list — stay out of its way.
+  // provider, not this list -- stay out of its way.
   if (pkg_parse_intent(std::string("pkg ") + remainder).matched) return {};
   std::vector<SearchResult> out;
   auto filter = to_lower_utf8(trim_copy(remainder));
@@ -652,9 +652,9 @@ std::vector<SearchResult> pkg_managers_results(const std::string& remainder, con
     if (!allowed) continue;
     bool found = is_detected(mgr);
     SearchResult r;
-    r.title = mgr + (found ? " — available" : " — not on PATH");
+    r.title = mgr + (found ? " -- available" : " -- not on PATH");
     r.subtitle =
-        found ? (std::string("e.g. `") + mgr + " firefox` — Enter copies an example") : hint[i];
+        found ? (std::string("e.g. `") + mgr + " firefox` -- Enter copies an example") : hint[i];
     r.path = "";
     r.payload = mgr + " firefox";
     r.action = ResultAction::Mini;
@@ -666,7 +666,7 @@ std::vector<SearchResult> pkg_managers_results(const std::string& remainder, con
   if (out.empty()) {
     SearchResult r;
     r.title = "No package managers match";
-    r.subtitle = "packages — Enter copies the list";
+    r.subtitle = "packages -- Enter copies the list";
     r.payload = "packages";
     r.action = ResultAction::Mini;
     r.score = 9000;
@@ -759,7 +759,7 @@ std::vector<SearchResult> PkgProvider::query(const std::string& text, const Conf
     r.title = h.name.empty() ? h.id : h.name;
     r.subtitle = h.id;
     if (!h.version.empty()) r.subtitle += " · " + h.version;
-    r.subtitle += " · via " + intent.manager + " — Enter installs";
+    r.subtitle += " · via " + intent.manager + " -- Enter installs";
     std::string enc_id = h.id;
     if (intent.manager == "flatpak" && !h.source.empty()) enc_id = h.source + ":" + h.id;
     r.path = "pkg-install:" + intent.manager + ":" + enc_id;

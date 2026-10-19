@@ -2,7 +2,7 @@
 // overlay_results_json / overlay_preview_json in src/ui/web_ui.cpp).
 // The assist fields (correction/ghost/candidates) are served identically by
 // the Windows (WebView2), macOS (WKWebView) and Linux (WebKitGTK/X11)
-// hosts — the web UI must treat them as optional for back-compat.
+// hosts -- the web UI must treat them as optional for back-compat.
 
 export interface ActionItem {
   id: string;

@@ -47,7 +47,7 @@ void QuantMatrix::matvec(const float* x, float* y, size_t rows, size_t cols) con
     // Accumulate in integer domain, scale once at the end (key optimization).
     int total = 0;
     // Unrolled int accumulation; x is float so we scale: use float acc with
-    // int8 weights — still 2x less memory traffic than float weights.
+    // int8 weights -- still 2x less memory traffic than float weights.
     float acc = 0.0f;
     size_t i = 0;
     for (; i + 4 <= cols; i += 4) {

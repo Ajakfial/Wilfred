@@ -1,6 +1,6 @@
 # Windows Publisher and Signing
 
-Every Windows `wilfred.exe` — local or CI — carries the publisher name
+Every Windows `wilfred.exe` -- local or CI -- carries the publisher name
 **Wilfred Open Contributors** in its version resource. Authenticode trust
 is a separate step with different guarantees.
 
@@ -87,12 +87,12 @@ binary will show a different publisher than local builds.
 
 ## Troubleshooting
 
-- `signtool.exe not found` — install Windows SDK or Visual Studio Build
+- `signtool.exe not found` -- install Windows SDK or Visual Studio Build
   Tools; the script searches both kit paths plus PATH.
-- `No signing identity found` — run `New-DevCodeSignCert.ps1` first, or pass
+- `No signing identity found` -- run `New-DevCodeSignCert.ps1` first, or pass
   `-Thumbprint` / `-PfxPath`.
-- `UnknownError` after self-sign — expected until the cert is in Root on
+- `UnknownError` after self-sign -- expected until the cert is in Root on
   that machine; re-run the cert script with `-Install`.
-- Timestamp failures in CI — transient network; the script uses
+- Timestamp failures in CI -- transient network; the script uses
   `http://timestamp.digicert.com` for PFX mode and
   `http://timestamp.acs.microsoft.com` for Azure mode.

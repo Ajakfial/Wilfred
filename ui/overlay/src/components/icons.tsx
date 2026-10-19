@@ -1,8 +1,8 @@
-// Wilfred overlay icon library — Lucide-style inline SVG icons.
+// Wilfred overlay icon library -- Lucide-style inline SVG icons.
 //
 // Replaces the old bootstrap-icons webfont with crisp, dependency-free
 // inline SVGs (24x24 grid, round caps/joins, currentColor stroke).
-// No font files, no CDN, no FOUT — icons inherit the row tint color
+// No font files, no CDN, no FOUT -- icons inherit the row tint color
 // and stay sharp at any DPI. Style: Lucide (ISC, https://lucide.dev).
 
 import type { JSX } from "react";

@@ -179,7 +179,7 @@ std::vector<SearchResult> wifi_results(const std::string& remainder, const Confi
   std::string status = !ok ? ("Unavailable" + (err.empty() ? "" : " · " + err))
                            : (enabled ? "On" : "Off") + (detail.empty() ? "" : " · " + detail);
   if (op == ToggleOp::Status) {
-    out.push_back(tcard("Wi-Fi: " + status, "wifi on | wifi off | wifi toggle — enter toggles",
+    out.push_back(tcard("Wi-Fi: " + status, "wifi on | wifi off | wifi toggle -- enter toggles",
                         "toggle:wifi:toggle", "wifi", "toggle"));
     if (ok) {
       out.push_back(tcard("Turn Wi-Fi on", "wifi on", "toggle:wifi:on", "wifi", "toggle"));
@@ -189,7 +189,7 @@ std::vector<SearchResult> wifi_results(const std::string& remainder, const Confi
       for (std::size_t i = 0; i < nets.size() && i < 5; ++i)
         out.push_back(tcard(nets[i], "Nearby network", "toggle:wifi:toggle", "wifi", "toggle"));
     }
-    out.push_back(tcard("Open Wi-Fi settings", "settings wifi — enter opens", "settings:wifi",
+    out.push_back(tcard("Open Wi-Fi settings", "settings wifi -- enter opens", "settings:wifi",
                         "settings", "settings"));
     return out;
   }
@@ -199,7 +199,7 @@ std::vector<SearchResult> wifi_results(const std::string& remainder, const Confi
   std::string label = op == ToggleOp::On    ? "Turn Wi-Fi on"
                       : op == ToggleOp::Off ? "Turn Wi-Fi off"
                                             : "Toggle Wi-Fi (now " + status + ")";
-  out.push_back(tcard(label, "Wi-Fi · " + status + " — enter applies", payload, "wifi", "toggle"));
+  out.push_back(tcard(label, "Wi-Fi · " + status + " -- enter applies", payload, "wifi", "toggle"));
   return out;
 }
 
@@ -213,7 +213,7 @@ std::vector<SearchResult> bluetooth_results(const std::string& remainder, const 
                            : (enabled ? "On" : "Off") + (detail.empty() ? "" : " · " + detail);
   if (op == ToggleOp::Status) {
     out.push_back(tcard("Bluetooth: " + status,
-                        "bluetooth on | bluetooth off | bluetooth toggle — enter toggles",
+                        "bluetooth on | bluetooth off | bluetooth toggle -- enter toggles",
                         "toggle:bluetooth:toggle", "bluetooth", "toggle"));
     if (ok) {
       out.push_back(
@@ -221,7 +221,7 @@ std::vector<SearchResult> bluetooth_results(const std::string& remainder, const 
       out.push_back(tcard("Turn Bluetooth off", "bluetooth off", "toggle:bluetooth:off",
                           "bluetooth", "toggle"));
     }
-    out.push_back(tcard("Open Bluetooth settings", "settings bluetooth — enter opens",
+    out.push_back(tcard("Open Bluetooth settings", "settings bluetooth -- enter opens",
                         "settings:bluetooth", "settings", "settings"));
     return out;
   }
@@ -232,7 +232,7 @@ std::vector<SearchResult> bluetooth_results(const std::string& remainder, const 
                       : op == ToggleOp::Off ? "Turn Bluetooth off"
                                             : "Toggle Bluetooth (now " + status + ")";
   out.push_back(
-      tcard(label, "Bluetooth · " + status + " — enter applies", payload, "bluetooth", "toggle"));
+      tcard(label, "Bluetooth · " + status + " -- enter applies", payload, "bluetooth", "toggle"));
   return out;
 }
 
@@ -256,7 +256,7 @@ std::vector<SearchResult> volume_results(const std::string& remainder, const Con
   std::string curstr(curbuf);
   if (kind == "status") {
     out.push_back(tcard("Volume: " + curstr,
-                        "volume 50 | volume mute | volume up — enter toggles mute",
+                        "volume 50 | volume mute | volume up -- enter toggles mute",
                         "toggle:volume:mute_toggle", "volume", "toggle", cur));
     if (ok) {
       for (int v : {25, 50, 75, 100}) {
@@ -269,7 +269,7 @@ std::vector<SearchResult> volume_results(const std::string& remainder, const Con
                           muted ? "toggle:volume:unmute" : "toggle:volume:mute", "volume", "toggle",
                           cur));
     }
-    out.push_back(tcard("Open sound settings", "settings sound — enter opens", "settings:sound",
+    out.push_back(tcard("Open sound settings", "settings sound -- enter opens", "settings:sound",
                         "settings", "settings"));
     return out;
   }
@@ -293,7 +293,7 @@ std::vector<SearchResult> volume_results(const std::string& remainder, const Con
     payload = "toggle:volume:down";
     label = "Volume down (now " + curstr + ")";
   }
-  out.push_back(tcard(label, "Volume · " + curstr + " — enter applies", payload, "volume", "toggle",
+  out.push_back(tcard(label, "Volume · " + curstr + " -- enter applies", payload, "volume", "toggle",
                       level >= 0 ? level : cur));
   return out;
 }
@@ -310,7 +310,7 @@ std::vector<SearchResult> brightness_results(const std::string& remainder, const
       !ok ? ("Unavailable" + (err.empty() ? "" : " · " + err)) : (std::to_string(cur) + "%");
   if (kind == "status") {
     out.push_back(tcard("Brightness: " + curstr,
-                        "brightness 70 | brightness up — enter opens display settings",
+                        "brightness 70 | brightness up -- enter opens display settings",
                         "settings:display", "brightness", "toggle", cur));
     if (ok) {
       for (int v : {25, 50, 75, 100}) {
@@ -334,7 +334,7 @@ std::vector<SearchResult> brightness_results(const std::string& remainder, const
     payload = "toggle:brightness:down";
     label = "Brightness down (now " + curstr + ")";
   }
-  out.push_back(tcard(label, "Brightness · " + curstr + " — enter applies", payload, "brightness",
+  out.push_back(tcard(label, "Brightness · " + curstr + " -- enter applies", payload, "brightness",
                       "toggle", level >= 0 ? level : cur));
   return out;
 }
@@ -359,7 +359,7 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
     bool known = config_get_value(cfg, to_lower_utf8(key), cur, err);
     out.push_back(
         tcard("Set " + key + " to " + val,
-              known ? ("now: " + cur + " — enter applies") : err + " — enter tries anyway",
+              known ? ("now: " + cur + " -- enter applies") : err + " -- enter tries anyway",
               "config:set:" + key + "=" + val, "settings", "settings"));
     return out;
   }
@@ -375,7 +375,7 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
   }
   if (tl == "reset" || tl == "reset defaults" || tl == "restore defaults") {
     out.push_back(tcard("Reset wilfred.yml to defaults",
-                        "backs up to .pre-reset.bak — enter resets", "config:reset", "settings",
+                        "backs up to .pre-reset.bak -- enter resets", "config:reset", "settings",
                         "settings"));
     return out;
   }
@@ -383,7 +383,7 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
   if (!remainder.empty() && trim(remainder).size() > 0 && !page.empty()) {
     std::string label = page;
     if (!label.empty()) label[0] = static_cast<char>(std::toupper(label[0]));
-    out.push_back(tcard("Open " + label + " settings", "settings " + page + " — enter opens",
+    out.push_back(tcard("Open " + label + " settings", "settings " + page + " -- enter opens",
                         "settings:" + page, "settings", "settings"));
     return out;
   }
@@ -393,23 +393,23 @@ std::vector<SearchResult> settings_results(const std::string& remainder, const C
   }
   if (trim(remainder).empty()) {
     out.push_back(
-        tcard("Settings", "Main settings — enter opens", "settings:", "settings", "settings"));
+        tcard("Settings", "Main settings -- enter opens", "settings:", "settings", "settings"));
     for (auto& [id, label] : settings_page_list()) {
       if (id.empty()) continue;
-      out.push_back(tcard(label + " settings", "settings " + id + " — enter opens",
+      out.push_back(tcard(label + " settings", "settings " + id + " -- enter opens",
                           "settings:" + id, "settings", "settings"));
     }
-    out.push_back(tcard("Edit wilfred.yml", "settings config — open in editor", "config:open",
+    out.push_back(tcard("Edit wilfred.yml", "settings config -- open in editor", "config:open",
                         "settings", "settings"));
-    out.push_back(tcard("Validate wilfred.yml", "settings config validate — enter checks",
+    out.push_back(tcard("Validate wilfred.yml", "settings config validate -- enter checks",
                         "config:validate", "settings", "settings"));
-    out.push_back(tcard("First-run setup", "setup — check roots, hotkey, browser", "setup:wizard",
+    out.push_back(tcard("First-run setup", "setup -- check roots, hotkey, browser", "setup:wizard",
                         "setup", "setup"));
     return out;
   }
   // `settings <page>` with empty normalized page = main settings.
   out.push_back(
-      tcard("Settings", "Main settings — enter opens", "settings:", "settings", "settings"));
+      tcard("Settings", "Main settings -- enter opens", "settings:", "settings", "settings"));
   return out;
 }
 

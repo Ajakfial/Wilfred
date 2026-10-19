@@ -1,4 +1,4 @@
-// WilfredCore.swift — Swift wrapper around WilfredCoreBridge (ObjC++).
+// WilfredCore.swift -- Swift wrapper around WilfredCoreBridge (ObjC++).
 // Mirrors android/.../WilfredBridge.kt: same methods, same JSON parsing,
 // same "never throws, empty on failure" contract. All calls are synchronous
 // C++; callers dispatch off the main thread (see ContentView).

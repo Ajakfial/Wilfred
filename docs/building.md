@@ -1,7 +1,7 @@
 # Building Wilfred
 
 Wilfred builds with plain CMake and has no third-party library dependencies
-to fetch — everything under `src/core/` and `src/config/` (JSON, YAML, CRC32,
+to fetch -- everything under `src/core/` and `src/config/` (JSON, YAML, CRC32,
 mmap wrapper, etc.) is implemented in-tree.
 
 ## Requirements
@@ -13,7 +13,7 @@ mmap wrapper, etc.) is implemented in-tree.
   (`libx11-dev` on Debian/Ubuntu, `libX11-devel` on Fedora); optional
   `libgtk-layer-shell-dev` for native Wayland anchoring (top layer,
   exclusive keyboard) on compositors with the layer-shell protocol
-* **BSD only**: nothing beyond base + CMake — see [bsd.md](bsd.md).
+* **BSD only**: nothing beyond base + CMake -- see [bsd.md](bsd.md).
   Optional `libX11`, `webkit2-gtk3`, `gtk-layer-shell` from ports/pkg for
   the full desktop experience (overlay, hotkey, Wayland anchoring)
 * Optional: **Ninja**, used automatically by the build scripts if present
@@ -69,7 +69,7 @@ in brackets):
 Environment variable overrides (Linux/macOS/BSD scripts): `WILFRED_CONFIG`,
 `WILFRED_BUILD_DIR`, `WILFRED_JOBS`, and on macOS `WILFRED_ARCH`.
 
-Example — a debug build with tests and sanitizers on Linux:
+Example -- a debug build with tests and sanitizers on Linux:
 
 ```bash
 ./scripts/build-linux.sh --debug --tests --sanitizers
@@ -77,7 +77,7 @@ Example — a debug build with tests and sanitizers on Linux:
 
 The resulting binaries land in `<build-dir>/wilfred[.exe]`,
 `<build-dir>/wilfred_tests[.exe]`, and `<build-dir>/wilfred_bench[.exe]`
-(exact subpath varies slightly by generator — Visual Studio/Xcode
+(exact subpath varies slightly by generator -- Visual Studio/Xcode
 multi-config generators nest a `<Config>/` folder).
 
 ## Manual CMake invocation
@@ -134,7 +134,7 @@ All presets build to `build/<preset-name>/` and enable
 ```
 
 On first run, Wilfred writes a default config to the platform config
-directory (see [configuration.md](configuration.md)) — no manual setup step
+directory (see [configuration.md](configuration.md)) -- no manual setup step
 is required before first launch.
 
 ## Running tests and benchmarks
@@ -175,33 +175,33 @@ Release. Windows additionally produces a signed `.msi` installer and a
 Chocolatey `.nupkg` from the same staging dir, and Linux produces a `.deb`
 and an `.AppImage` (see [installer.md](installer.md)). On Windows it also stamps Publisher `Wilfred Open Contributors`
 via VERSIONINFO on every build and Authenticode-signs when signing secrets
-are present — see [signing.md](signing.md). Pull requests are gated by
+are present -- see [signing.md](signing.md). Pull requests are gated by
 `.github/workflows/tests.yml` (desktop `ctest` on Windows/Linux/macOS,
 Android/iOS compile gates, overlay typecheck + stale-`dist/` check) and
 `.github/workflows/lint.yml` (`clang-format`/`clang-tidy` on changed files)
-— still run `ctest` locally before submitting a change (see
+-- still run `ctest` locally before submitting a change (see
 [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ## Troubleshooting
 
-* **Linux: overlay fails to build / link errors mentioning X11** — install
+* **Linux: overlay fails to build / link errors mentioning X11** -- install
   `libx11-dev` (or run the build script with `--deps`).
-* **Linux Wayland: overlay shows but the summon hotkey does nothing** — the
+* **Linux Wayland: overlay shows but the summon hotkey does nothing** -- the
   global key grab is X11-only, so on pure Wayland (no XWayland) nothing can
   listen for `Ctrl+Alt+W`. The overlay itself is native there (layer-shell
   when `libgtk-layer-shell-dev` was installed at build time). Workarounds:
   run under XWayland, or bind a compositor shortcut that talks to the
-  daemon — enable the local HTTP API (`api:` in `wilfred.yml`, see
+  daemon -- enable the local HTTP API (`api:` in `wilfred.yml`, see
   [ipc-and-api.md](ipc-and-api.md)) and `POST /show`, or drive headless
   actions with `wilfred exec` / `wilfred workflow`.
-* **Linux Wayland: overlay is a plain window, not pinned on top** — your
+* **Linux Wayland: overlay is a plain window, not pinned on top** -- your
   compositor lacks the layer-shell protocol (notably GNOME). Install
   `libgtk-layer-shell-dev` and rebuild; on GNOME the window still works,
   just without compositor anchoring.
-* **Windows: `VsDevCmd.bat not found`** — install the "Desktop development
+* **Windows: `VsDevCmd.bat not found`** -- install the "Desktop development
   with C++" workload in Visual Studio Build Tools; `build-windows.ps1` looks
   it up via `vswhere.exe`.
-* **Windows: running `wilfred.exe` directly shows no console output** — the
+* **Windows: running `wilfred.exe` directly shows no console output** -- the
   daemon build is a GUI subsystem app (`wWinMain`); it re-attaches to a
   parent console for CLI subcommands like `search`/`status`, but has no
   console of its own when double-clicked. Use `wilfred daemon` from an

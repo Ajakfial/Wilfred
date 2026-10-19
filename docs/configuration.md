@@ -14,7 +14,7 @@ crash or silent fallback.
 | Linux | `~/.config/wilfred/wilfred.yml` | `~/.local/share/wilfred/` |
 
 The shipped template with every key and its default value is
-[`config/wilfred.default.yml`](../config/wilfred.default.yml) — copy it to
+[`config/wilfred.default.yml`](../config/wilfred.default.yml) -- copy it to
 the path above and edit, or just edit the file Wilfred creates on first run.
 There is no live-reload: restart the daemon (or re-run the CLI) after
 editing.
@@ -37,14 +37,14 @@ the same schema the daemon uses:
   to `.pre-reset.bak` first), `wilfred setup` for the first-run wizard.
 
 `config-set` refuses to write when the result fails validation, and
-workflows/quicklinks/macros/aliases (nested maps) stay file-edited —
+workflows/quicklinks/macros/aliases (nested maps) stay file-edited --
 the editor covers the ~70 scalar/list keys, not the whole schema.
 
-## `search:` — query-time behavior
+## `search:` -- query-time behavior
 
 | Key | Default | Meaning |
 |---|---|---|
-| `include_system_files` | `false` | Whether the *index* includes OS/system files at all (separate from whether they're shown — see `show_system_in_results`) |
+| `include_system_files` | `false` | Whether the *index* includes OS/system files at all (separate from whether they're shown -- see `show_system_in_results`) |
 | `include_hidden_files` | `true` | Whether hidden files/dotfiles are searchable |
 | `show_system_in_results` | `false` | Whether system files, if indexed, appear in results |
 | `max_results` | `40` | Max results returned per query |
@@ -62,7 +62,7 @@ the editor covers the ~70 scalar/list keys, not the whole schema.
 | `plugins` | `true` | Enable querying loaded plugins |
 | `async_providers` | `true` | Overlay only: answer from the local index first, then merge providers (subprocesses/network) in the background; CLI/IPC/API stay synchronous |
 
-## `index:` — what gets scanned and how
+## `index:` -- what gets scanned and how
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -92,10 +92,10 @@ the editor covers the ~70 scalar/list keys, not the whole schema.
 See [indexing.md](indexing.md) for how these interact with the walker,
 watcher, and write-ahead log.
 
-## `ranking:` — scoring weights
+## `ranking:` -- scoring weights
 
 Every key is an integer weight fed into `rank_record()`
-(`include/wilfred/search/rank.hpp`) — higher means that signal contributes
+(`include/wilfred/search/rank.hpp`) -- higher means that signal contributes
 more to a result's final score. There's no absolute scale to hit; they only
 matter relative to each other. Defaults, roughly ordered by default
 magnitude:
@@ -126,9 +126,9 @@ magnitude:
 | `directory_bonus` | 40 | Small bonus for directories, to keep folders visible among many file hits |
 
 Additional custom scoring can be registered at runtime without adding a new
-config key — see `RankPipeline` in [ranking.md](ranking.md).
+config key -- see `RankPipeline` in [ranking.md](ranking.md).
 
-## `aliases:` — query shortcuts
+## `aliases:` -- query shortcuts
 
 Maps a typed word to a target the search engine should prefer, weighted by
 `ranking.alias`. Defaults:
@@ -143,7 +143,7 @@ aliases:
 
 Add your own, e.g. `aliases: { term: Windows Terminal }`.
 
-## `macros:` — query templates
+## `macros:` -- query templates
 
 Maps a macro name to a URL template. `{query}` and `{query_enc}` are
 replaced with the raw/URL-encoded remainder of the query; `{clipboard}` and
@@ -160,7 +160,7 @@ macros:
 User-defined macros in this section are merged with the built-ins
 (`merged_macros()`); a user key with the same name overrides the built-in.
 
-## `scopes:` — named directory groups
+## `scopes:` -- named directory groups
 
 Named sets of directories referenced in a query as `scope:<name>` (see
 `apply_named_scopes()` in `search/filter.hpp`). Default only defines an
@@ -177,7 +177,7 @@ scopes:
 ## `custom_metadata:`
 
 An open key/value map (`std::unordered_map<std::string, std::string>`, empty
-by default) with no built-in meaning — intended for plugins or a custom
+by default) with no built-in meaning -- intended for plugins or a custom
 `RankPipeline` signal to read project-specific tags out of the config
 without Wilfred needing to know about them.
 
@@ -206,13 +206,13 @@ without Wilfred needing to know about them.
 | `key` | `W` | The key itself |
 | `use_command_on_macos` | `true` | On macOS, remap `ctrl` in `modifiers` to Command, so the same config produces `⌘+Alt+W` there and `Ctrl+Alt+W` elsewhere |
 
-## `hotkeys:` — extra system-wide bindings
+## `hotkeys:` -- extra system-wide bindings
 
 A mapping of binding name to `{modifiers, key, run}`, fired from any app
 without opening the overlay. `run` is one of: `show` (toggle the overlay),
 `macro:<text>` (open a macro/quicklink URL, clipboard feeds `{clipboard}`
 placeholders), `system:<id>` (`lock`, `sleep`, ...), `media:<id>`
-(`play`, `mute`, ...), or `workflow:<name>` (runs against the clipboard —
+(`play`, `mute`, ...), or `workflow:<name>` (runs against the clipboard --
 use targetless steps). At most 16 bindings; each gets its own OS
 registration, and a failed one only warns. See
 [automation.md](automation.md).
@@ -248,7 +248,7 @@ hotkeys:
 | `theme` | `dark` | Overlay color theme |
 | `accent` | `""` | Custom accent (`#RRGGBB`, `#RGB`, or `indigo/blue/green/teal/pink/orange/red/purple`); empty = default |
 | `font_size` | `0` | Base overlay font size in px (`0` = default 14, clamped 10–24) |
-| `language` | `auto` | UI language: `auto` (OS locale), `en`, `de`, `fr`, `es`, `pt`, `it`, `nl`, `ja`, `ko`, `zh`, `ru`, `pl`, `tr`, `uk`, or any two-letter code with optional region (`pt-BR`). Unknown languages fall back to English — see [localization.md](localization.md) |
+| `language` | `auto` | UI language: `auto` (OS locale), `en`, `de`, `fr`, `es`, `pt`, `it`, `nl`, `ja`, `ko`, `zh`, `ru`, `pl`, `tr`, `uk`, or any two-letter code with optional region (`pt-BR`). Unknown languages fall back to English -- see [localization.md](localization.md) |
 | `max_visible` | `9` | Max results shown in the overlay list at once (scrollable beyond that; independent of `search.max_results`, which caps what the engine computes) |
 | `width` | `720` | Overlay window width in pixels |
 
@@ -282,7 +282,7 @@ cutoff (no full sort per query). Each backend's 0..1 similarity is scaled
 by its fusion weight, then shifted by a +500 base before merging with
 keyword results.
 
-## `embedding:` — local vector model for semantic search
+## `embedding:` -- local vector model for semantic search
 
 Works offline via the built-in hash embedder; point at llama.cpp for higher
 quality. Vectors are stored as `vectors.bin` (HNSW) next to
@@ -298,7 +298,7 @@ quality. Vectors are stored as `vectors.bin` (HNSW) next to
 | `min_score` | `0.45` | Minimum cosine for a vector hit |
 | `max_results` | `10` | Cap on vector hits per query |
 
-## `ai:` — optional assistant (OpenAI / Anthropic / Gemini / Groq)
+## `ai:` -- optional assistant (OpenAI / Anthropic / Gemini / Groq)
 
 Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
 
@@ -313,7 +313,7 @@ Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
 | `temperature` | `0.7` | Sampling temperature 0–2 |
 | `timeout_ms` | `30000` | Request timeout |
 
-## `sources:` — calendar / contacts / notes + OCR
+## `sources:` -- calendar / contacts / notes + OCR
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -327,7 +327,7 @@ Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
 | `ocr_languages` | `eng` | Tesseract `-l` value |
 | `max_results` | `8` | Cap per source per query |
 
-## `remotes:` — opt-in remote search backends
+## `remotes:` -- opt-in remote search backends
 
 Off by default. No network calls unless `enabled: true` **and** at least one
 `source` is listed. Each source is a GET template with `{query}` /
@@ -359,10 +359,10 @@ remotes:
 | `max_results` per source | `0` | Per-source cap (0 = use global `max_results`); list form only |
 | `headers` per source | `{}` | Extra request headers, e.g. `Authorization: Bearer <token>` (list form only; never logged) |
 
-## `packages:` — system package-manager search (desktop)
+## `packages:` -- system package-manager search (desktop)
 
 On by default, but fires only on explicit `<manager> <query>`
-invocations (`winget firefox`, `brew switch`, `apt vlc`) — plain file
+invocations (`winget firefox`, `brew switch`, `apt vlc`) -- plain file
 searches never touch a package manager, so there is no per-keystroke
 cost and no surprise network traffic. Each hit installs on Enter
 (`winget`/`brew`/`choco`/`flatpak` run headless; `apt`/`pacman` use
@@ -385,11 +385,11 @@ packages:
 | `timeout_ms` | `8000` | Per-tool search timeout, hard kill past it (2000–30000) |
 | `managers` | `[]` | Allowed ids from `winget, brew, apt, choco, flatpak, pacman`; empty = per-OS defaults |
 
-## `os_search:` — official OS index federation (desktop)
+## `os_search:` -- official OS index federation (desktop)
 
 On by default and local-only: every file-ish query also asks the
 platform's own index, so Wilfred cooperates with it instead of
-competing — files the OS knows about but Wilfred hasn't indexed yet
+competing -- files the OS knows about but Wilfred hasn't indexed yet
 still surface. Hits Wilfred already lists are dropped (no duplicate
 cards); Wilfred's own index always ranks first. Missing tools fail
 silent per query (no blocking, bounded by `timeout_ms`).
@@ -422,7 +422,7 @@ Turn the federation off with `enabled: false`.
 | `timeout_ms` | `3000` | Per-tool timeout, hard kill past it (1000–15000) |
 | `backend` | `auto` | Which OS index; `auto` = platform default above |
 
-## `layouts:` — saved layouts, tiling, monitor auto-apply (desktop)
+## `layouts:` -- saved layouts, tiling, monitor auto-apply (desktop)
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -434,18 +434,18 @@ Tiling needs no config: `layout tile halves|thirds|grid|columns N|rows N|stack`
 (or `tile …`, `wilfred tile …`) tiles current windows across the primary work
 area immediately.
 
-## `plugins:` — registry + trust-on-first-use
+## `plugins:` -- registry + trust-on-first-use
 
 | Key | Default | Meaning |
 |---|---|---|
 | `registry` | `""` | Registry index URL for `wilfred plugin list/install` (empty = disabled) |
 | `require_approval` | `true` | New/changed plugins show as `plugins` approval cards and are skipped until `wilfred plugin approve <id>` |
 
-## `transcription:` — speech-to-text for audio
+## `transcription:` -- speech-to-text for audio
 
 On-demand transcription of MP3s and MP4 audio (`transcribe <file>` in the
 overlay) plus microphone dictation (`dictate [seconds]`). Same philosophy as OCR: the core stays dependency-free and shells
-out to optional CLIs — `whisper.cpp` (`whisper-cli`) for recognition, plus
+out to optional CLIs -- `whisper.cpp` (`whisper-cli`) for recognition, plus
 `ffmpeg` only to extract audio from containers (mp4/m4a/...). WAV files need
 neither conversion nor ffmpeg. Nothing runs at query time: the mini resolves
 the file and Enter transcribes, delivering the transcript to the clipboard
@@ -455,9 +455,9 @@ rescan).
 Two engines, selected by `engine` (`auto` | `whisper`/`whisper.cpp` |
 `spoke`/`spoke.cpp`, default `auto`):
 
-* `whisper` — the `whisper.cpp` CLI plus a ggml model file (multilingual,
+* `whisper` -- the `whisper.cpp` CLI plus a ggml model file (multilingual,
   large downloads, needs 1–5 GB RAM).
-* `spoke` — the spoke.cpp tiny English engine: when Wilfred is built with
+* `spoke` -- the spoke.cpp tiny English engine: when Wilfred is built with
   `spoke.cpp/` present it runs in-process (no weight files, no extra binary,
   ~25x realtime on a laptop CPU); otherwise it uses a `spoke_cli` binary on
   PATH. Container audio still goes through `ffmpeg` to a WAV first. The
@@ -478,23 +478,23 @@ Two engines, selected by `engine` (`auto` | `whisper`/`whisper.cpp` |
 | `threads` | `0` | Spoke worker threads (`0` = auto) |
 | `beam_width` | `8` | Spoke CTC beam width (1–64) |
 
-Setup per OS: Windows — a `whisper.cpp` release build plus `winget install
-ffmpeg`; macOS — `brew install whisper-cpp ffmpeg`; Linux — build
+Setup per OS: Windows -- a `whisper.cpp` release build plus `winget install
+ffmpeg`; macOS -- `brew install whisper-cpp ffmpeg`; Linux -- build
 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) plus distro
 `ffmpeg`. Models (e.g. `ggml-base.en.bin`) come from
 `huggingface.co/ggerganov/whisper.cpp`. For spoke, release builds ship the built-in engine on Windows, macOS,
-Linux, and Android (BSD and iOS are excluded — the engine doesn't support
+Linux, and Android (BSD and iOS are excluded -- the engine doesn't support
 them there); self-builds get it whenever `spoke.cpp/` is present, otherwise
 build spoke.cpp separately (`cmake --preset <platform>`) and put
 `spoke_cli` on PATH. Missing pieces surface as cards
 with the exact install step instead of failing silently.
 
-## `api:` — optional local HTTP API
+## `api:` -- optional local HTTP API
 
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `false` | Whether the local HTTP API starts at all |
-| `bind` | `127.0.0.1` | Bind address — leave this as loopback unless you specifically intend to expose the API beyond the local machine, and understand the security implications of doing so (see [SECURITY.md](../SECURITY.md)) |
+| `bind` | `127.0.0.1` | Bind address -- leave this as loopback unless you specifically intend to expose the API beyond the local machine, and understand the security implications of doing so (see [SECURITY.md](../SECURITY.md)) |
 | `port` | `17380` | TCP port |
 | `token` | `""` | Bearer token required on every request; set this before enabling the API |
 
@@ -523,13 +523,13 @@ See [sync-and-backup.md](sync-and-backup.md).
 | `prefix` | `;` | Trigger prefix recognized in queries |
 | `auto_paste` | `false` | Automatically simulate a paste of the expanded text on selection, instead of just copying it to the clipboard |
 | `global_expansion` | `false` | Expand abbreviations typed in any app (Windows hook; overlay paste everywhere) |
-| `items` | `{}` | Inline snippet definitions (trigger → body); snippets can also be added/edited at runtime and are persisted to their own store — see `SnippetStore` in `include/wilfred/search/snippets.hpp` |
+| `items` | `{}` | Inline snippet definitions (trigger → body); snippets can also be added/edited at runtime and are persisted to their own store -- see `SnippetStore` in `include/wilfred/search/snippets.hpp` |
 
 Snippet bodies support `{date} {time} {datetime} {year} {month} {day}
 {clipboard} {query}` placeholders. Snippets can carry a `folder:` in
 `snippets.yml` and are filtered with `;folder/name` or `snip folder/name`.
 
-## `pins:` — pinned favorites
+## `pins:` -- pinned favorites
 
 Lowercased path/title substrings, always boosted by `ranking.pinned` (default
 900). Managed live via `pin <text>`, `unpin <text>`, `pins` (persisted to
@@ -542,7 +542,7 @@ pins:
   - /home/user/docs
 ```
 
-## `workflows:` — named multi-step actions
+## `workflows:` -- named multi-step actions
 
 Maps a workflow name to an ordered list of result actions run in order.
 Each step is an action id accepted by `execute_result_action`
@@ -560,7 +560,7 @@ workflows:
     steps: [copy_path, reveal]
 ```
 
-## `quicklinks:` — parameterized quicklinks
+## `quicklinks:` -- parameterized quicklinks
 
 Maps a name to a URL/path/command template with placeholders:
 `{query}` `{query_enc}` `{clipboard}` `{clipboard_enc}` plus positional
@@ -574,7 +574,7 @@ quicklinks:
   ticket: "https://example.com/t/{1}"
 ```
 
-## `app_actions:` — per-app context actions
+## `app_actions:` -- per-app context actions
 
 Maps an app-name substring (case-insensitive, matched against the
 result title + path) to extra action ids appended to that app's
@@ -588,7 +588,7 @@ app_actions:
 ## Validation and errors
 
 `load_config_file()` / `load_config_text()` return `false` and populate a
-`ConfigError{message}` on any parse or validation failure — Wilfred surfaces
+`ConfigError{message}` on any parse or validation failure -- Wilfred surfaces
 this as a startup error rather than falling back to partial defaults
 silently. Errors name the file, the offending `section.key`, what was
 got vs. expected, and an example; unknown keys suggest the closest

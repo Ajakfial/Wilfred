@@ -1,7 +1,7 @@
 name: Plugins
 
 # Gallery plugins (plugins/<id>/): validate manifests, compile native
-# plugins per OS, smoke-test the query protocol, and — on push to main —
+# plugins per OS, smoke-test the query protocol, and -- on push to main --
 # publish per-platform zips + updated registry.json back to the branch.
 #
 # Contributors only submit source: PRs get validation + build + smoke tests.

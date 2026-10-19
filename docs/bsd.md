@@ -47,7 +47,7 @@ build scripts): `cmake`, `ninja`, `pkgconf`, `bash`/`shells/bash`.
 | NetBSD | `pkgin install cmake ninja pkgconf shells/bash` |
 | DragonFly | `pkg install cmake ninja pkgconf shells/bash` |
 
-Optional GUI packages (same graceful degradation as Linux — the daemon
+Optional GUI packages (same graceful degradation as Linux -- the daemon
 builds and runs headless without them):
 
 | Package | Enables |
@@ -56,7 +56,7 @@ builds and runs headless without them):
 | `webkit2-gtk3` + `gtk3` | Full HTML overlay UI (else X11 canvas fallback) |
 | `gtk-layer-shell` | Native Wayland anchoring (same as Linux) |
 
-Manual CMake works too — no preset required, though `freebsd-release` /
+Manual CMake works too -- no preset required, though `freebsd-release` /
 `freebsd-debug` presets exist in `CMakePresets.json`:
 
 ```bash
@@ -85,7 +85,7 @@ with BSD-native replacements for the Linux-only pieces:
 Config and data live in the same XDG locations as on Linux
 (`~/.config/wilfred/wilfred.yml`, `~/.local/share/wilfred/`), and the
 default index roots (home, `/usr/share/applications`,
-`/usr/local/share/applications`, `/opt`) already cover BSD layouts —
+`/usr/local/share/applications`, `/opt`) already cover BSD layouts --
 ports put `.desktop` files in `/usr/local/share/applications`.
 
 ## BSD-Specific Features
@@ -94,7 +94,7 @@ ports put `.desktop` files in `/usr/local/share/applications`.
 The `open_parent` action (bound to `Ctrl+Enter` on files) opens the
 containing folder in your preferred file manager. Wilfred detects and
 prefers: Thunar, Dolphin, Nautilus, Nemo, PCManFM, Caja, SpaceFM, Worker,
-lf, ranger, nnn, vifm, Krusader, Double Commander — then falls back to
+lf, ranger, nnn, vifm, Krusader, Double Commander -- then falls back to
 `xdg-open`.
 
 ### Package Manager Integration
@@ -137,7 +137,7 @@ numbers. See `docs/benchmarks.md` for 1M+ record results.
   (NetBSD).
 * **MPRIS media control**: works over D-Bus where a session bus with
   players exists; the "Linux-only" fallback message is shown otherwise.
-* **Packages**: no ports/packages yet — build from source, grab a tagged
+* **Packages**: no ports/packages yet -- build from source, grab a tagged
   FreeBSD/OpenBSD/NetBSD release tarball, or use the nightly CI jobs.
   `pkg`/`ports` submissions welcome; see `docs/installer.md` for how the
   other artifacts are staged.

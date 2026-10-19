@@ -178,7 +178,7 @@ def smoke_test(lib, pid):
                 return fail(f"{pid}: query {query!r}: {err}")
             if pid in SMOKE:
                 # Known flagships must answer their trigger queries (usage cards
-                # count — every SMOKE entry above returns at least one result).
+                # count -- every SMOKE entry above returns at least one result).
                 doc = json.loads(raw.decode("utf-8", "replace"))
                 if not doc["results"]:
                     return fail(f"{pid}: query {query!r} returned no results")
@@ -271,7 +271,7 @@ def pack_one(d, write_registry=True):
         write_zip(lib, manifest, str(dest))
         digest = sha256_file(str(dest))
         # Self-verify on the builder: a corrupt zip must fail here, with
-        # this job's logs attached — not later in the publish job, where
+        # this job's logs attached -- not later in the publish job, where
         # born-corrupt and transit damage are indistinguishable.
         with zipfile.ZipFile(str(dest)) as zh:
             bad = zh.testzip()

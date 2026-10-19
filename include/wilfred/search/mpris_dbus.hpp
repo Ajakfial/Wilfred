@@ -6,7 +6,7 @@
 #include <vector>
 
 // Minimal dependency-free D-Bus MPRIS client for Linux.
-// Uses only POSIX sockets — no libdbus / playerctl required.
+// Uses only POSIX sockets -- no libdbus / playerctl required.
 // All functions are safe to call when no session bus exists; they fail
 // fast with an error string instead of hanging.
 namespace wilfred {

@@ -1,4 +1,4 @@
-// WLogo.swift — the Wilfred "W" badge drawn in SwiftUI.
+// WLogo.swift -- the Wilfred "W" badge drawn in SwiftUI.
 // Same artwork as android/.../res/drawable/ic_w.xml: periwinkle
 // rounded square (#6C8CFF) with a dark rounded "W" stroke, 56pt space.
 

@@ -30,7 +30,7 @@ public partial class MainPage : ContentPage
 
     private async void OnRecordClicked(object? sender, EventArgs e) =>
         await DisplayAlert("Record",
-            "Microphone capture streams 16 kHz PCM into StreamingTranscriber via SpokeNativeService.TranscribePcm. Wire your platform recorder here — the engine side is ready.",
+            "Microphone capture streams 16 kHz PCM into StreamingTranscriber via SpokeNativeService.TranscribePcm. Wire your platform recorder here -- the engine side is ready.",
             "OK");
 
     private async void OnSettingsClicked(object? sender, EventArgs e) =>

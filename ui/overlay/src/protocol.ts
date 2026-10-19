@@ -483,8 +483,8 @@ export interface Speed {
 
 function speedStat(raw: string): SpeedStat {
   const t = raw.trim();
-  const m = t.match(/^([\d.,]+|—|-)\s*(.*)$/);
-  return m ? { value: m[1] === "-" ? "—" : m[1], unit: m[2] } : { value: t || "—", unit: "" };
+  const m = t.match(/^([\d.,]+|--|-)\s*(.*)$/);
+  return m ? { value: m[1] === "-" ? "--" : m[1], unit: m[2] } : { value: t || "--", unit: "" };
 }
 
 /** Parses the speed-test summary row ("↓ 186 Mbps   ↑ 38 Mbps" +
@@ -500,7 +500,7 @@ export function parseSpeed(item: ResultItem): Speed | null {
   const up = speedStat(t.slice(b + 1));
   const sub = item.subtitle || "";
   const pm = sub.match(/Ping\s+([^·]+?)\s*(?:·|$)/i);
-  const ping = speedStat(pm ? pm[1] : "—");
+  const ping = speedStat(pm ? pm[1] : "--");
   const cut = sub.indexOf(" · ");
   const phase = cut >= 0 ? sub.slice(cut + 3) : "";
   const progress = typeof item.meter === "number" ? Math.max(0, Math.min(100, item.meter)) : 0;

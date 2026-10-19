@@ -274,7 +274,7 @@ static double mbps_of(std::uint64_t bytes, double sec) {
 
 static std::string fmt_mbps(double v) {
   char buf[48];
-  if (v <= 0.0) return "—";
+  if (v <= 0.0) return "--";
   if (v < 10.0)
     std::snprintf(buf, sizeof(buf), "%.2f Mbps", v);
   else if (v < 100.0)
@@ -286,7 +286,7 @@ static std::string fmt_mbps(double v) {
 
 static std::string fmt_ping(double ms) {
   char buf[48];
-  if (ms <= 0.0) return "—";
+  if (ms <= 0.0) return "--";
   if (ms < 10.0)
     std::snprintf(buf, sizeof(buf), "%.1f ms", ms);
   else
@@ -2915,7 +2915,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
           card(m.display, "Dev · enter copies", m.display, "dev", 10000, ResultAction::Convert));
       // For base overview, also offer each radix as its own copyable card.
       if (intent.kind == MiniKind::Base && m.display.find('=') != std::string::npos) {
-        // display is "255 = 0xFF = 0b... = 0o..." — split for convenience.
+        // display is "255 = 0xFF = 0b... = 0o..." -- split for convenience.
         std::string d = m.display;
         std::size_t pos = d.find('=');
         if (pos != std::string::npos) {
@@ -3424,7 +3424,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     DefineHit hit;
     if (define_lookup(word, hit)) {
-      std::string title = hit.word + " (" + hit.pos + ") — " + hit.definition;
+      std::string title = hit.word + " (" + hit.pos + ") -- " + hit.definition;
       std::string sub = hit.synonyms.empty() ? tr("define.sub_defined")
                                              : tr("define.syn_prefix", {{"syn", hit.synonyms}});
       auto r = card(title, sub, hit.definition, "define", 10100, ResultAction::Copy);

@@ -103,7 +103,7 @@ void VectorIndex::gc(const IndexStore& store) {
   // Collect stale ids (present in HNSW but dead in the store).
   std::vector<std::uint32_t> stale;
   // Probe via get(): iterate a snapshot of hits is not possible, so walk the
-  // store's live set indirectly — remove anything HNSW has that store lacks.
+  // store's live set indirectly -- remove anything HNSW has that store lacks.
   // HnswIndex has no iterator; use search-free approach: try all ids up to
   // next_id and drop dead ones (cheap for typical sizes, runs on checkpoint).
   for (std::uint32_t id = 1; id < store.next_id(); ++id) {

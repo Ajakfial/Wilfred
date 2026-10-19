@@ -25,7 +25,7 @@ namespace wilfred {
 #ifdef _WIN32
 
 // Portable COM IDs for the audio endpoint API. __uuidof() is MSVC-only, so
-// MinGW builds use explicit GUIDs — same objects, all compilers.
+// MinGW builds use explicit GUIDs -- same objects, all compilers.
 namespace {
 const GUID kClsidMMDeviceEnumerator = {
     0xBCDE0395, 0xE52F, 0x467C, {0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}};
