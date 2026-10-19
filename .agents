@@ -1,0 +1,247 @@
+# .agents — AI Exception Workflows
+
+This file documents the specific workflows, scripts, and instructions for the **very few exceptions** where AI assistance is explicitly permitted per `AGENTS.md`.
+
+---
+
+## 1. Documentation (`docs/`, `README.md`, `*.md`)
+
+### Workflow
+```
+1. Human writes outline / bullet points
+2. AI expands to full prose
+3. Human reviews every word for accuracy
+4. Human commits with own message
+```
+
+### Allowed Prompts
+- "Expand these bullets into a section on X"
+- "Rewrite this paragraph for clarity"
+- "Add cross-references to related docs"
+- "Generate a table from this data"
+
+### Forbidden
+- Writing docs from scratch without human outline
+- Inventing features that don't exist
+- Writing CLI help text from scratch (copy from `--help`)
+
+### Script: `scripts/gen-docs-index.py`
+```bash
+# Regenerate docs index from markdown files
+python3 scripts/gen-docs-index.py
+```
+
+---
+
+## 2. Minor Minis (`src/search/minis.cpp`)
+
+### What Counts as "Minor"
+- Adding a new mini command (< 50 lines)
+- Fixing typo in help text
+- Updating regex pattern
+- Adding one new alias
+
+### Workflow
+```
+1. Human writes the C++ skeleton (switch case, parser hook)
+2. AI writes the help string + simple logic
+3. Human verifies logic, compiles, tests
+```
+
+### Template: New Mini
+```cpp
+// In parse_mini_intent():
+else if (key == "mycmd") {
+    set(MiniKind::MyCmd, rest.empty());
+}
+```
+
+```cpp
+// In mini_cards():
+if (it.kind == "mycmd") {
+    out.push_back(card("My Cmd", "Description", "payload", "label"));
+}
+```
+
+### Forbidden
+- Writing new mini *categories* (new `MiniKind`)
+- Complex logic (> 50 lines)
+- Anything touching `execute_toggle_payload` or `execute_mini`
+
+---
+
+## 3. Small Fixes
+
+### Allowed
+- One-line bug fixes
+- Typo corrections in comments/strings
+- `#include` fixes
+- `const` correctness
+- `[[maybe_unused]]` additions
+
+### Workflow
+```
+1. Human identifies exact line(s)
+2. AI suggests fix
+3. Human applies, compiles, runs tests
+```
+
+### Script: `scripts/fix-typos.py`
+```bash
+# Find common typos in source
+python3 scripts/fix-typos.py --check
+python3 scripts/fix-typos.py --fix  # DANGEROUS: human must review diff
+```
+
+---
+
+## 4. Moderate Refactors
+
+### Allowed
+- Renaming variables/functions (IDE-style)
+- Extracting helper function (< 30 lines)
+- Dead code removal
+- `if/else` → `switch` or ternary
+- Adding `const`, `noexcept`, `[[nodiscard]]`
+
+### Workflow
+```
+1. Human identifies scope (single file, single purpose)
+2. AI suggests refactored version
+3. Human reviews diff line-by-line
+4. Compile + full test suite
+```
+
+### Forbidden
+- Cross-file refactors
+- Changing data structures
+- Changing public APIs
+- Moving code between modules
+
+---
+
+## 5. Test Additions
+
+### Allowed
+- Adding `TEST_CASE` for existing function
+- Edge case coverage for existing mini
+- Regression test for fixed bug
+
+### Workflow
+```
+1. Human writes test name + expected behavior
+2. AI writes test body (arrange/act/assert)
+3. Human verifies logic, runs test
+```
+
+### Template
+```cpp
+void test_my_feature() {
+    using namespace wilfred;
+    // Arrange
+    Config cfg;
+    // Act
+    auto result = my_function(cfg, "input");
+    // Assert
+    CHECK_EQ(result, expected);
+}
+```
+
+### Script: `scripts/add-test.py`
+```bash
+# Scaffold a new test
+python3 scripts/add-test.py --name test_foo --file tests/test_foo.cpp
+```
+
+---
+
+## 6. Build/CI Tweaks
+
+### Allowed
+- Adding `-Wwarning` to CMake
+- Updating GitHub Actions matrix
+- Adding `ctest` timeout
+- Fixing flaky test retry logic
+
+### Workflow
+```
+1. Human describes desired change
+2. AI edits `.github/workflows/*.yml` or `CMakeLists.txt`
+3. Human validates syntax, runs locally if possible
+```
+
+### Forbidden
+- Adding new CI jobs/stages
+- Changing compiler versions
+- Modifying release workflow
+
+---
+
+## 7. Localization (`lang/*.yml`)
+
+### Workflow
+```
+1. Human adds new key to `src/locale/locale.cpp` (kEnglish table)
+2. Run `python3 scripts/generate-lang-en.py`
+3. AI translates `lang/en.yml` → `lang/XX.yml`
+4. Human verifies translations
+```
+
+### Script: `scripts/translate.py`
+```bash
+# Translate en.yml to target language (requires API key)
+python3 scripts/translate.py --lang de --api-key $DEEPL_KEY
+python3 scripts/translate.py --lang fr --api-key $DEEPL_KEY
+# ... etc for all 13 languages
+```
+
+### Forbidden
+- Adding new keys without human approval
+- Machine-translating without human review
+
+---
+
+## Universal Rules (Apply to All Above)
+
+| Rule | Enforcement |
+|------|-------------|
+| Human writes commit message | `git commit --no-verify` blocked by hook |
+| Human reviews every diff | Pre-commit hook shows `git diff --stat` |
+| AI never pushes directly | Push requires human GPG signature |
+| Tests must pass | CI blocks merge on failure |
+| No AI in PR description | Template requires "Human-authored: yes" |
+
+---
+
+## Quick Reference: Allowed vs Forbidden
+
+| Task | Allowed? | Notes |
+|------|----------|-------|
+| Write doc section from bullets | Yes | Human outlines |
+| Add new mini command | Yes | < 50 lines, human skeleton |
+| Fix typo in comment | Yes | Trivial |
+| Rename variable | Yes | Single file |
+| Add test case | Yes | Human writes assertion |
+| Update CI matrix | Yes | Human validates |
+| Translate strings | Yes | Human reviews |
+| **Write new algorithm** | **No** | Core logic is human-only |
+| **Add new module** | **No** | Architecture decision |
+| **Change data structure** | **No** | Affects too much |
+| **Write PR description** | **No** | Must be human |
+| **Generate commit message** | **No** | Must be human |
+| **AI-generated PR** | **No** | Auto-rejected |
+
+---
+
+## Emergency Override
+
+If you *must* use AI for something forbidden (e.g., critical bug, no human available):
+
+1. File an issue explaining why
+2. Get explicit approval from maintainer
+3. Document AI usage in commit: `AI-assisted: [reason]`
+4. Extra thorough review required
+
+---
+
+*Remember: Wilfred is human-crafted. AI is a power tool — use it precisely, not broadly.*
