@@ -1,0 +1,64 @@
+# Codecov configuration for Wilfred
+# See https://docs.codecov.com/docs/configuring-codecov
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 5%
+        base: auto
+        flags:
+          - unittests
+        paths:
+          - "src/"
+          - "include/"
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+    changes: false
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
+
+ignore:
+  - "tests/"
+  - "benches/"
+  - "src/platform/"
+  - "src/ui/"
+  - "src/updater/"
+  - "src/plugin/"
+  - "src/ai/"
+  - "src/sources/"
+  - "src/sync/"
+  - "src/import/"
+  - "src/browser/"
+  - "*.hpp"
+  - "*.h"
+  - "third_party/"
+  - "spoke.cpp/"
+  - "ui/overlay/"
+
+flags:
+  unittests:
+    paths:
+      - src/
+      - include/
+      - tests/
+    carryforward: true
+
+github_checks:
+  annotations: true
