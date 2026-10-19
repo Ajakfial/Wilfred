@@ -27,6 +27,9 @@ bool native_open_terminal(const std::string&) {
 bool native_open_editor(const std::string&) {
   return false;
 }
+bool native_open_parent(const std::string&) {
+  return false;
+}
 
 bool native_system_action(const std::string&) {
   // Lock/sleep/shutdown require device-admin privileges on Android;

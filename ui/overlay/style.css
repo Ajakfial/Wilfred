@@ -1115,3 +1115,15 @@ html.no-blur .action-menu {
   .pill, .tile, .more, .meter span, .sp-track span, .clear, .bar-btn, .chip, .cand, .correct { transition: none; }
   .spinner, .loadbar span.on, .skel i { animation: none; }
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

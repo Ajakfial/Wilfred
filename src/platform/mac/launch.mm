@@ -149,6 +149,18 @@ bool native_open_editor(const std::string& dir) {
   return native_launch(dir);
 }
 
+bool native_open_parent(const std::string& path) {
+  if (path.empty()) return false;
+  auto parent = path_parent(path);
+  if (parent.empty()) return false;
+  @autoreleasepool {
+    NSString* s = [NSString stringWithUTF8String:path.c_str()];
+    NSURL* url = [NSURL fileURLWithPath:s];
+    [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[ url ]];
+    return true;
+  }
+}
+
 // Genuine system-wide media keys via HID (no helper apps needed).
 // NX_KEYTYPE values from IOKit/hidsystem/ev_keymap.h (hardcoded to avoid a
 // new framework dependency; AppKit/CoreGraphics already linked):

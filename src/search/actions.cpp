@@ -62,6 +62,7 @@ void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
   };
   auto p = r.path.empty() ? r.payload : r.path;
   add("open", tr("action.open"));
+  add("open_parent", tr("action.open_parent"));
   add("reveal", tr("action.reveal"));
   add("copy_path", tr("action.copy_path"));
   add("copy_name", tr("action.copy_name"));
@@ -239,6 +240,7 @@ std::string lower_copy(const std::string& s) {
 
 std::string action_label_for(const std::string& id) {
   if (id == "open") return tr("action.open");
+  if (id == "open_parent") return tr("action.open_parent");
   if (id == "reveal") return tr("action.reveal");
   if (id == "copy_path") return tr("action.copy_path");
   if (id == "copy_name") return tr("action.copy_name");
@@ -357,7 +359,7 @@ void attach_result_actions(std::vector<SearchResult>& results, const Config& cfg
 }
 
 bool action_hides_overlay(const std::string& action_id) {
-  if (action_id.empty() || action_id == "open" || action_id == "reveal" || action_id == "paste" ||
+  if (action_id.empty() || action_id == "open" || action_id == "open_parent" || action_id == "reveal" || action_id == "paste" ||
       action_id == "expand" || action_id == "open_terminal" || action_id == "open_editor" ||
       action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder" ||
       action_id == "bulk_rename" || action_id.rfind("bulk_rename:", 0) == 0 ||
@@ -530,6 +532,10 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
     if (id == "copy_path" || id == "copy_text" || id == "copy") return write_clipboard(out_path);
     if (id == "copy_name") return write_clipboard(out_path);
     return launch_path(out_path);
+  }
+  if (id == "open_parent") {
+    auto p = r.path.empty() ? r.payload : r.path;
+    return native_open_parent(p);
   }
   if (id == "reveal") {
     auto p = r.path.empty() ? r.payload : r.path;

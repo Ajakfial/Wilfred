@@ -425,6 +425,70 @@ bool native_open_editor(const std::string& dir) {
   return native_launch(dir);
 }
 
+bool native_open_parent(const std::string& path) {
+  if (path.empty()) return false;
+  auto parent = path_parent(path);
+  if (parent.empty()) return false;
+  // Use xdg-open on the parent directory - this opens the file manager
+  std::string cmd = "xdg-open " + sh_quote(parent) + " >/dev/null 2>&1 &";
+  return sys(cmd);
+}
+
+namespace {
+
+struct FileManager {
+  const char* name;
+  const char* check_cmd;
+  const char* open_cmd;  // %s = directory
+};
+
+static const FileManager kFileManagers[] = {
+  {"thunar", "thunar", "thunar %s"},
+  {"dolphin", "dolphin", "dolphin %s"},
+  {"nautilus", "nautilus", "nautilus %s"},
+  {"nemo", "nemo", "nemo %s"},
+  {"pcmanfm", "pcmanfm", "pcmanfm %s"},
+  {"caja", "caja", "caja %s"},
+  {"spacefm", "spacefm", "spacefm %s"},
+  {"worker", "worker", "worker %s"},
+  {"lf", "lf", "lf %s"},
+  {"ranger", "ranger", "ranger %s"},
+  {"nnn", "nnn", "nnn %s"},
+  {"vifm", "vifm", "vifm %s"},
+  {"krusader", "krusader", "krusader %s"},
+  {"doublecmd", "doublecmd", "doublecmd %s"},
+  {nullptr, nullptr, nullptr}
+};
+
+const FileManager* detect_file_manager() {
+  for (const auto* fm = kFileManagers; fm->name; ++fm) {
+    if (have_tool(fm->check_cmd)) return fm;
+  }
+  return nullptr;
+}
+
+}  // namespace
+
+bool native_open_parent(const std::string& path) {
+  if (path.empty()) return false;
+  auto parent = path_parent(path);
+  if (parent.empty()) return false;
+  // Try to use a specific file manager if available
+  const auto* fm = detect_file_manager();
+  if (fm) {
+    std::string cmd = fm->open_cmd;
+    size_t pos = cmd.find("%s");
+    if (pos != std::string::npos) {
+      cmd.replace(pos, 2, sh_quote(parent));
+    }
+    cmd += " >/dev/null 2>&1 &";
+    if (sys(cmd)) return true;
+  }
+  // Fallback to xdg-open
+  std::string cmd = "xdg-open " + sh_quote(parent) + " >/dev/null 2>&1 &";
+  return sys(cmd);
+}
+
 namespace {
 
 std::string lin_exec(const std::string& cmd) {

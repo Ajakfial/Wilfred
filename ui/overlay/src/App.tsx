@@ -26,6 +26,7 @@ import { ResultRow } from "./components/ResultRow";
 import { SettingsPanel } from "./components/SettingsPanel";
 import type { SettingResult, SettingSchema } from "./components/SettingsPanel";
 import { Icon } from "./components/icons";
+import { useId } from "react";
 
 interface SettingsMsg {
   schema?: SettingSchema[];
@@ -309,6 +310,11 @@ export function App() {
   const prevRowsRef = useRef<unknown>(null);
   const mouseRef = useRef({ x: -1, y: -1 });
   const [modHeld, setModHeld] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const resultsListId = useId();
+  const searchInputId = useId();
+  const liveRegionId = useId();
+  const statusRegionId = useId();
 
   const rows = useMemo(() => rowsOf(s.items), [s.items]);
   const sections = useMemo(() => sectionsOf(rows), [rows]);
@@ -624,11 +630,18 @@ export function App() {
     reportSize();
   }, [s.items, s.correction, s.candidates, s.previewOpen, s.preview, s.visible, s.menuOpen, s.menuSel, s.sel, s.loading, s.settingsOpen, s.settingsSchema]);
 
+  const announce = (msg: string) => {
+    setAnnouncement(msg);
+    // Clear after a delay so it can be re-announced if the same message comes again
+    window.setTimeout(() => setAnnouncement(""), 1000);
+  };
+
   const dismiss = () => {
     setModHeld(false);
     dispatch({ type: "HIDE" });
     window.clearTimeout(hideTimer.current);
     hideTimer.current = window.setTimeout(() => nativeSend({ type: "hidden" }), 200);
+    announce(uiStr("overlay.dismissed", "Search dismissed"));
   };
 
   const toggleSettings = () => {
@@ -664,18 +677,22 @@ export function App() {
       e.preventDefault();
       if (s.settingsOpen) {
         dispatch({ type: "SETTINGS_CLOSE" });
+        announce(uiStr("overlay.settings_closed", "Settings closed"));
         return;
       }
       if (s.menuOpen) {
         dispatch({ type: "MENU_TOGGLE" });
+        announce(uiStr("overlay.actions_closed", "Actions closed"));
         return;
       }
       if (s.correction) {
         dispatch({ type: "DISMISS_CORRECTION" });
+        announce(uiStr("overlay.correction_dismissed", "Correction dismissed"));
         return;
       }
       if (s.previewOpen) {
         dispatch({ type: "PREVIEW_TOGGLE" });
+        announce(uiStr("overlay.preview_closed", "Preview closed"));
         return;
       }
       dismiss();
@@ -684,17 +701,21 @@ export function App() {
       // Typo-first: a confident correction wins over the action menu.
       if (s.correction) {
         applyCorrection();
+        announce(uiStr("overlay.correction_applied", "Correction applied"));
         return;
       }
       if (suffix) {
         acceptGhost();
+        announce(uiStr("overlay.completion_accepted", "Completion accepted"));
         return;
       }
       toggleMenu();
+      announce(s.menuOpen ? uiStr("overlay.actions_closed", "Actions closed") : uiStr("overlay.actions_opened", "Actions opened"));
     } else if (e.key === "ArrowRight" && !s.menuOpen) {
       if (suffix && atEnd) {
         e.preventDefault();
         acceptGhost();
+        announce(uiStr("overlay.completion_accepted", "Completion accepted"));
         return;
       }
     } else if (e.key === "ArrowRight" && s.menuOpen) {
@@ -715,11 +736,19 @@ export function App() {
       if (e.ctrlKey || e.metaKey) {
         if (rows.length) dispatch({ type: "SELECT", index: rows.length - 1 });
       } else if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
+      if (rows.length) {
+        const item = rows[s.sel]?.item;
+        if (item) announce(`${item.title}, ${kindLabel(kindOf(item))}`);
+      }
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         if (rows.length) dispatch({ type: "SELECT", index: 0 });
       } else if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
+      if (rows.length) {
+        const item = rows[s.sel]?.item;
+        if (item) announce(`${item.title}, ${kindLabel(kindOf(item))}`);
+      }
     } else if (e.key === "Home") {
       if (rows.length) {
         e.preventDefault();
@@ -824,14 +853,40 @@ export function App() {
       : uiStr("overlay.bar_results_other", "{n} results", { n: rows.length });
   const selPath = selItem && selItem.action !== "habit" ? selItem.path || "" : "";
 
+  // Announce results count when it changes
+  useEffect(() => {
+    if (s.visible && rows.length > 0) {
+      announce(`${rows.length} ${rows.length === 1 ? "result" : "results"}`);
+    }
+  }, [s.visible, rows.length]);
+
+  // Announce correction when it appears
+  useEffect(() => {
+    if (s.correction) {
+      announce(uiStr("overlay.correction_available", "Did you mean {correction}?", { correction: s.correction }));
+    }
+  }, [s.correction]);
+
+  // Announce ghost completion
+  useEffect(() => {
+    if (suffix) {
+      announce(uiStr("overlay.completion_available", "Press Right Arrow to accept completion"));
+    }
+  }, [suffix]);
+
   return (
     <div className="shell" data-plat={plat}>
+      {/* Live region for screen reader announcements */}
+      <div id={liveRegionId} role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
       <div
         className={launcherClass}
         style={{ ["--menu-n" as string]: selActions.length }}
         aria-hidden={!s.visible}
         role="dialog"
         aria-label="Wilfred search"
+        aria-describedby={liveRegionId}
       >
         <div className="search" role="search">
           <span className="search-ico" aria-hidden="true">
@@ -840,7 +895,7 @@ export function App() {
           <div className="field">
             <input
               ref={inputRef}
-              id="q"
+              id={searchInputId}
               type="text"
               autoComplete="off"
               autoCorrect="off"
@@ -850,8 +905,9 @@ export function App() {
               aria-label="Search"
               aria-autocomplete="both"
               aria-expanded={showAssistBar}
-              aria-controls="results"
+              aria-controls={resultsListId}
               aria-activedescendant={activeId}
+              aria-describedby={statusRegionId}
               value={s.query}
               onChange={(e) => {
                 const q = e.target.value;
@@ -948,7 +1004,7 @@ export function App() {
             </div>
           ) : (
             <>
-              <div className="results" id="results" hidden={showEmpty && !s.visible}>
+              <div className="results" id={resultsListId} hidden={showEmpty && !s.visible} role="listbox" aria-label="Results">
             {showSkeleton ? (
               <div className="rows" aria-hidden="true">
                 {[0, 1, 2, 3].map((i) => (
@@ -1043,9 +1099,12 @@ export function App() {
           </div>
             </>
           )}
-          <aside className="detail" id="preview" hidden={!s.previewOpen} aria-label="Details">
+          <aside className="detail" id="preview" hidden={!s.previewOpen} aria-label="Details" role="region">
             <PreviewPane preview={s.preview} path={selPath} />
           </aside>
+        </div>
+        <div id={statusRegionId} role="status" aria-live="polite" className="sr-only">
+          {status}
         </div>
         {(rows.length > 0 || s.settingsOpen) && (
           <ActionBar

@@ -1,0 +1,381 @@
+# Wilfred BSD Configuration Example
+
+This is a sample configuration for BSD systems (FreeBSD, OpenBSD, NetBSD, DragonFly).
+Copy to `~/.config/wilfred/wilfred.yml` and adjust as needed.
+
+```yaml
+# Wilfred configuration for BSD systems
+# Generated: {{date}}
+# See docs/configuration.md for full schema
+
+# =============================================================================
+# Index roots - directories to index
+# =============================================================================
+index:
+  roots:
+    - "~/Documents"
+    - "~/Downloads"
+    - "~/Projects"
+    - "~/Code"
+    - "/usr/local/share/applications"
+    - "/usr/share/applications"
+    - "/opt"
+  # Exclude patterns (glob)
+  excludes:
+    - "*/.git/*"
+    - "*/node_modules/*"
+    - "*/__pycache__/*"
+    - "*/target/*"
+    - "*/build/*"
+    - "*.tmp"
+    - "*.swp"
+    - "*.bak"
+  # Follow symlinks
+  follow_symlinks: false
+  # Rescan interval (0 = disabled, use watcher only)
+  rescan_interval_hours: 24
+
+# =============================================================================
+# Watcher - filesystem monitoring
+# =============================================================================
+watcher:
+  # Debounce milliseconds (BSD kqueue is event-driven, low debounce OK)
+  debounce_ms: 50
+  # Enable recursive watching (kqueue watches directories individually)
+  recursive: true
+
+# =============================================================================
+# Search ranking weights
+# =============================================================================
+ranking:
+  # Base weights (sum should be ~100 for normalized scores)
+  name_match: 40        # Exact/substring name match
+  path_match: 15        # Path component match
+  acronym: 25           # Acronym/initialism match (e.g. "vsc" -> "Visual Studio Code")
+  fuzzy: 15             # Fuzzy/Damerau match
+  recency: 5            # Recently accessed files
+  frequency: 3          # Frequently accessed files
+  pinned: 50            # Pinned favorites (large boost)
+  # Context signals
+  recent_folders: 8     # Files in recently visited folders
+  file_type_affinity: 6 # Preferred file types per query context
+  time_of_day: 4        # Time-based usage patterns
+  session_queries: 3    # Queries in current session
+
+# =============================================================================
+# Global hotkey
+# =============================================================================
+hotkey:
+  key: "w"
+  modifiers: ["ctrl", "alt"]
+  # macOS: use "cmd" instead of "ctrl"
+  # use_command_on_macos: true
+
+# =============================================================================
+# UI overlay appearance
+# =============================================================================
+ui:
+  # Transparent glass panel (requires compositor)
+  transparent: true
+  # Backdrop blur (requires compositor + GPU)
+  blur: true
+  # Glass opacity (0.0 - 1.0)
+  opacity: 0.85
+  # Accent color (hex or named: indigo, blue, green, teal, pink, orange, red, purple, violet)
+  accent: "indigo"
+  # Base font size (10-24)
+  font_size: 14
+  # Max results to show
+  max_results: 40
+  # Animation duration (ms)
+  animation_ms: 170
+
+# =============================================================================
+# File actions
+# =============================================================================
+actions:
+  # Per-application extra actions
+  app_actions:
+    "code":
+      - "Open in VS Code"
+      - "Open folder in VS Code"
+    "firefox":
+      - "Open in Firefox"
+    "vim":
+      - "Edit with Vim"
+    "emacs":
+      - "Edit with Emacs"
+  # Named workflows (chained actions)
+  workflows:
+    "review":
+      - "open"
+      - "copy_path"
+    "edit_compile":
+      - "open_editor"
+      - "open_terminal"
+    "backup":
+      - "copy_path"
+      - "compress_zip"
+
+# =============================================================================
+# Quicklinks (parameterized)
+# =============================================================================
+quicklinks:
+  "gh":
+    url: "https://github.com/{1}"
+    desc: "Open GitHub repo"
+  "man":
+    url: "https://man.openbsd.org/{1}"
+    desc: "OpenBSD man page"
+  "pkg":
+    url: "https://www.freebsd.org/cgi/ports.cgi?query={1}&stype=all"
+    desc: "FreeBSD port search"
+  "src":
+    url: "https://src.freebsd.org/search/?q={1}"
+    desc: "FreeBSD source search"
+
+# =============================================================================
+# Macros (bang searches)
+# =============================================================================
+macros:
+  "!man": "man {query}"
+  "!pkg": "pkg search {query}"
+  "!bsd": "https://www.freebsd.org/search/?q={query}"
+  "!obsd": "https://man.openbsd.org/{query}"
+  "!nbsd": "https://man.netbsd.org/{query}"
+  "!dfly": "https://man.dragonflybsd.org/{query}"
+
+# =============================================================================
+# Package managers
+# =============================================================================
+packages:
+  # Explicitly enabled managers (empty = auto-detect)
+  managers:
+    - "pkg"
+    - "pkgin"
+    - "pkg_add"
+    - "flatpak"
+    - "brew"
+  # Per-manager options
+  options:
+    pkg:
+      timeout_ms: 15000
+    pkgin:
+      timeout_ms: 15000
+    pkg_add:
+      timeout_ms: 15000
+
+# =============================================================================
+# System toggles (BSD-specific)
+# =============================================================================
+toggles:
+  # WiFi - requires wpa_supplicant/ifconfig
+  wifi:
+    enabled: true
+    interface: "wlan0"  # FreeBSD/DragonFly
+    # OpenBSD: "iwn0", "urtwn0", etc.
+    # NetBSD: "wlan0", "ural0", etc.
+  # Bluetooth - not yet implemented on BSD
+  bluetooth:
+    enabled: false
+  # Volume - OSS mixer (FreeBSD/DragonFly), sndio (OpenBSD), sysctl (NetBSD)
+  volume:
+    enabled: true
+    step: 5
+  # Brightness - backlight/intel_backlight/acpi_video
+  brightness:
+    enabled: true
+    step: 10
+
+# =============================================================================
+# Power actions
+# =============================================================================
+power:
+  # Sleep command per OS
+  sleep_cmd:
+    freebsd: "acpiconf -s 3"
+    dragonfly: "acpiconf -s 3"
+    openbsd: "zzz"
+    netbsd: "sysctl -w hw.acpi.sleep.state=3"
+  # Shutdown
+  shutdown_cmd: "shutdown -p now"
+  # Restart
+  restart_cmd: "shutdown -r now"
+  # Logout - try desktop session managers
+  logout_cmd: "gnome-session-quit --logout --no-prompt || xfce4-session-logout --logout || mate-session-save --logout || qdbus org.kde.ksmserver /KSMServer logout 0 0 0"
+
+# =============================================================================
+# Editor/Terminal preferences
+# =============================================================================
+editor:
+  # Preferred editors (first available wins)
+  preferences:
+    - "code"
+    - "codium"
+    - "vim"
+    - "nvim"
+    - "emacs"
+    - "mg"
+    - "ee"
+
+terminal:
+  preferences:
+    - "foot"
+    - "alacritty"
+    - "kitty"
+    - "wezterm"
+    - "gnome-terminal"
+    - "konsole"
+    - "xfce4-terminal"
+    - "xterm"
+
+# =============================================================================
+# History
+# =============================================================================
+history:
+  enabled: true
+  max_entries: 1000
+  # Persist across sessions
+  persist: true
+
+# =============================================================================
+# Clipboard
+# =============================================================================
+clips:
+  max_entries: 500
+  persist: true
+  # Types to track
+  types: ["text", "url", "email", "path", "code", "ip", "image"]
+
+# =============================================================================
+# Snippets
+# =============================================================================
+snippets:
+  auto_paste: true
+  # Global abbreviations (expand anywhere)
+  global_abbreviations: false
+
+# =============================================================================
+# Backup/Sync
+# =============================================================================
+sync:
+  # Local backup directory
+  backup_dir: "~/Backups/Wilfred"
+  # Remote sync (optional)
+  remote:
+    enabled: false
+    # url: "sftp://user@host/path"
+    # or: "rclone:remote:path"
+
+# =============================================================================
+# Logging
+# =============================================================================
+logging:
+  level: "info"  # debug, info, warn, error
+  # File logging
+  file:
+    enabled: true
+    path: "~/.local/share/wilfred/logs/wilfred.log"
+    max_size_mb: 10
+    max_files: 5
+  # Console logging (daemon mode)
+  console: false
+
+# =============================================================================
+# Advanced
+# =============================================================================
+advanced:
+  # IPC socket path (empty = default)
+  ipc_socket: ""
+  # Query timeout (ms)
+  query_timeout_ms: 5000
+  # Plugin timeout (ms)
+  plugin_timeout_ms: 3000
+  # Max concurrent searches
+  max_concurrent_searches: 4
+```
+
+## BSD-Specific Notes
+
+### FreeBSD
+- WiFi interface typically `wlan0`, `wlan1`, etc.
+- Volume via OSS `mixer`
+- Sleep via `acpiconf -s 3`
+- Package manager: `pkg`
+- Ports: `/usr/ports`, packages in `/usr/local`
+
+### OpenBSD
+- WiFi interface varies: `iwn0`, `urtwn0`, `athn0`, etc.
+- Volume via `sndio`/`mixerctl`
+- Sleep via `zzz`
+- Package manager: `pkg_add`/`pkg_info`
+- No `sudo` by default; use `doas` or run as root
+- `pledge`/`unveil` restrictions apply
+
+### NetBSD
+- WiFi interface: `wlan0`, `ural0`, `athn0`, etc.
+- Volume via `sysctl hw.snd.vpc_*`
+- Sleep via `sysctl -w hw.acpi.sleep.state=3`
+- Package manager: `pkgin`
+- `getvfsstat` instead of `getmntinfo`
+
+### DragonFly BSD
+- Similar to FreeBSD
+- WiFi: `wlan0`
+- Volume: OSS `mixer`
+- Sleep: `acpiconf -s 3`
+- Package manager: `pkg`
+- HAMMER2 filesystem support
+
+## File Manager Integration
+
+The `open_parent` action (Ctrl+Enter on a file result) opens the containing
+folder in your preferred file manager. Supported managers (auto-detected):
+
+- Thunar (Xfce)
+- Dolphin (KDE)
+- Nautilus/Files (GNOME)
+- Nemo (Cinnamon)
+- PCManFM (LXDE)
+- Caja (MATE)
+- SpaceFM
+- Worker
+- Terminal: lf, ranger, nnn, vifm
+- Krusader, Double Commander
+
+If none detected, falls back to `xdg-open`.
+
+## Building on BSD
+
+```bash
+# FreeBSD
+pkg install cmake ninja pkgconf shells/bash git
+./scripts/build-bsd.sh --release --tests
+
+# OpenBSD
+pkg_add cmake ninja pkgconf bash git
+./scripts/build-bsd.sh --release --tests
+
+# NetBSD
+pkgin install cmake ninja pkgconf shells/bash git
+./scripts/build-bsd.sh --release --tests
+
+# DragonFly
+pkg install cmake ninja pkgconf shells/bash git
+./scripts/build-bsd.sh --release --tests
+```
+
+Optional GUI dependencies:
+```bash
+# FreeBSD
+pkg install webkit2-gtk3 gtk3 gtk-layer-shell libX11
+
+# OpenBSD
+pkg_add webkit2-gtk3 gtk+3 gtk-layer-shell libX11
+
+# NetBSD
+pkgin install webkit2-gtk3 gtk3 gtk-layer-shell libX11
+
+# DragonFly
+pkg install webkit2-gtk3 gtk3 gtk-layer-shell libX11
+```

@@ -29,7 +29,7 @@ namespace wilfred {
 namespace {
 
 // Canonical manager order (also the `packages` mini order).
-const char* kManagers[] = {"winget", "brew", "apt", "choco", "flatpak", "pacman", nullptr};
+const char* kManagers[] = {"winget", "brew", "apt", "choco", "flatpak", "pacman", "pkg", "pkgin", "pkg_add", nullptr};
 
 const char* kManagerExe(const std::string& mgr) {
   // Every supported manager's binary matches its id.
@@ -274,6 +274,8 @@ std::vector<std::string> allowed_managers(const Config& cfg) {
     return {"brew"};
 #elif defined(__ANDROID__) || defined(WILFRED_IOS)
     return {};
+#elif defined(WILFRED_BSD)
+    return {"pkg", "pkgin", "pkg_add", "flatpak", "brew"};
 #else
     return {"apt", "flatpak", "pacman", "brew"};
 #endif
@@ -487,7 +489,62 @@ std::string pkg_install_command(const std::string& manager, const std::string& i
   if (manager == "flatpak")
     return "flatpak install -y " + (source.empty() ? "" : source + " ") + id;
   if (manager == "pacman") return "sudo pacman -S --noconfirm " + id;
+  if (manager == "pkg") return "sudo pkg install -y " + id;
+  if (manager == "pkgin") return "sudo pkgin -y install " + id;
+  if (manager == "pkg_add") return "sudo pkg_add " + id;
   return manager + " install " + id;
+}
+
+std::vector<PkgHit> pkg_parse_pkg(const std::string& out) {
+  std::vector<PkgHit> hits;
+  std::istringstream is(out);
+  std::string line;
+  while (std::getline(is, line)) {
+    auto t = trim_copy(line);
+    if (t.empty() || t[0] == '#') continue;
+    // pkg search output: "name-version  description"
+    auto sp = t.find(' ');
+    if (sp == std::string::npos) continue;
+    std::string namever = t.substr(0, sp);
+    std::string desc = t.substr(sp + 1);
+    // Split name-version at last dash
+    auto dash = namever.rfind('-');
+    if (dash == std::string::npos || dash == 0) continue;
+    std::string name = namever.substr(0, dash);
+    std::string ver = namever.substr(dash + 1);
+    if (!valid_token(name) || ver.empty()) continue;
+    hits.push_back({name, name, ver, "pkg"});
+    if (hits.size() >= 50) break;
+  }
+  return hits;
+}
+
+std::vector<PkgHit> pkg_parse_pkgin(const std::string& out) {
+  std::vector<PkgHit> hits;
+  std::istringstream is(out);
+  std::string line;
+  while (std::getline(is, line)) {
+    auto t = trim_copy(line);
+    if (t.empty() || t[0] == '#') continue;
+    // pkgin search output: "name-version  description"
+    auto sp = t.find(' ');
+    if (sp == std::string::npos) continue;
+    std::string namever = t.substr(0, sp);
+    std::string desc = t.substr(sp + 1);
+    auto dash = namever.rfind('-');
+    if (dash == std::string::npos || dash == 0) continue;
+    std::string name = namever.substr(0, dash);
+    std::string ver = namever.substr(dash + 1);
+    if (!valid_token(name) || ver.empty()) continue;
+    hits.push_back({name, name, ver, "pkgin"});
+    if (hits.size() >= 50) break;
+  }
+  return hits;
+}
+
+std::vector<PkgHit> pkg_parse_pkg_add(const std::string& out) {
+  // pkg_add doesn't have a search mode; fall back to pkg
+  return pkg_parse_pkg(out);
 }
 
 namespace {
@@ -540,6 +597,12 @@ std::vector<PkgHit> search_with(const std::string& mgr, const std::string& q, in
     argv = {"flatpak", "search", q};
   else if (mgr == "pacman")
     argv = {"pacman", "-Ss", q};
+  else if (mgr == "pkg")
+    argv = {"pkg", "search", q};
+  else if (mgr == "pkgin")
+    argv = {"pkgin", "search", q};
+  else if (mgr == "pkg_add")
+    argv = {"pkg", "search", q};  // pkg_add uses pkg for search
   else
     return {};
   pkg_run_capture(argv, timeout_ms, 64 * 1024, body);
@@ -547,6 +610,10 @@ std::vector<PkgHit> search_with(const std::string& mgr, const std::string& q, in
   if (mgr == "apt") return pkg_parse_apt(body);
   if (mgr == "choco") return pkg_parse_choco(body);
   if (mgr == "flatpak") return pkg_parse_flatpak(body);
+  if (mgr == "pacman") return pkg_parse_pacman(body);
+  if (mgr == "pkg") return pkg_parse_pkg(body);
+  if (mgr == "pkgin") return pkg_parse_pkgin(body);
+  if (mgr == "pkg_add") return pkg_parse_pkg_add(body);
   return pkg_parse_pacman(body);
 }
 

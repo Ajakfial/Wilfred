@@ -4,6 +4,31 @@ Wilfred builds and runs on FreeBSD, OpenBSD, NetBSD, and DragonFly.
 FreeBSD is the primary target (full feature set); the others share the
 same backend with a few documented gaps below.
 
+## Feature Parity Matrix
+
+| Feature | FreeBSD | OpenBSD | NetBSD | DragonFly | Linux |
+|---|---|---|---|---|---|
+| Core search/index | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Filesystem watcher (kqueue) | ✅ | ✅ | ✅ | ✅ | ❌ (inotify) |
+| Overlay UI (X11/WebKitGTK) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Overlay UI (Wayland layer-shell) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Global hotkey (X11) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Application discovery (.desktop) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| File manager integration | ✅ | ✅ | ✅ | ✅ | ✅ |
+| System toggles (WiFi) | ⚠️ | ❌ | ❌ | ⚠️ | ✅ |
+| System toggles (Bluetooth) | ⚠️ | ❌ | ❌ | ⚠️ | ✅ |
+| System toggles (Volume) | ✅ (OSS) | ✅ (sndio) | ✅ (sysctl) | ✅ (OSS) | ✅ (PipeWire/Pulse) |
+| System toggles (Brightness) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Power actions (sleep/shutdown) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Process listing | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Window management (X11) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Package manager search | ✅ (pkg) | ✅ (pkg_add) | ✅ (pkgin) | ✅ (pkg) | ✅ (apt/dnf/pacman) |
+| Browser integration | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Calculator/minis | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Benchmarks | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Legend: ✅ Full support | ⚠️ Partial/needs tools | ❌ Not available
+
 ## Building
 
 ```bash
@@ -55,12 +80,42 @@ with BSD-native replacements for the Linux-only pieces:
 | Swap | `/proc/meminfo` | `swapinfo -k` (FreeBSD, best-effort DragonFly), `swapctl(2)` (OpenBSD/NetBSD) |
 | Ping timeout | `-W` seconds | `-W` milliseconds (FreeBSD/DragonFly), `-w` seconds (NetBSD) |
 | exe path | `/proc/self/exe` | `KERN_PROC_PATHNAME` (FreeBSD/DragonFly), `KERN_PROC_ARGS` + `KERN_PROC_PATHNAME` (NetBSD), `getexecpath(3)` on 8.0+ with argv[0] fallback (OpenBSD) |
+| File manager open | `xdg-open` + FM detection | `xdg-open` + FM detection (Thunar, Dolphin, Nautilus, PCManFM, Caja, SpaceFM, Worker, lf, ranger, nnn, vifm, Krusader, Double Commander) |
 
 Config and data live in the same XDG locations as on Linux
 (`~/.config/wilfred/wilfred.yml`, `~/.local/share/wilfred/`), and the
 default index roots (home, `/usr/share/applications`,
 `/usr/local/share/applications`, `/opt`) already cover BSD layouts —
 ports put `.desktop` files in `/usr/local/share/applications`.
+
+## BSD-Specific Features
+
+### File Manager Integration
+The `open_parent` action (bound to `Ctrl+Enter` on files) opens the
+containing folder in your preferred file manager. Wilfred detects and
+prefers: Thunar, Dolphin, Nautilus, Nemo, PCManFM, Caja, SpaceFM, Worker,
+lf, ranger, nnn, vifm, Krusader, Double Commander — then falls back to
+`xdg-open`.
+
+### Package Manager Integration
+The `pkg` mini (`pkg search`, `pkg install`, `pkg info`) works on FreeBSD
+and DragonFly. OpenBSD uses `pkg_add`/`pkg_info`, NetBSD uses `pkgin`.
+Run `packages` to see detected managers.
+
+### System Toggles
+- **Volume**: Uses OSS `mixer` on FreeBSD/DragonFly, `sndio`/`mixerctl` on
+  OpenBSD, `sysctl hw.snd.vpc_*` on NetBSD.
+- **Brightness**: Uses `backlight`/`intel_backlight`/`acpi_video` via
+  `sysctl hw.acpi.video.*` or `/dev/backlight`.
+- **WiFi**: FreeBSD/DragonFly support `ifconfig wlan0` scanning via
+  `wlanctl`/`ifconfig`; OpenBSD/NetBSD use `ifconfig`/`iwconfig` (no
+  NetworkManager equivalent).
+- **Bluetooth**: Not yet implemented on BSD (patches welcome).
+
+### Benchmarks
+Run `wilfred_bench` on BSD to measure index/search performance. The
+benchmark suite is identical across platforms and produces comparable
+numbers. See `docs/benchmarks.md` for 1M+ record results.
 
 ## Known gaps (by OS)
 
@@ -97,3 +152,9 @@ jobs in `.github/workflows/release.yml` with the same staging as the Linux
 tarball (binary + `ui/overlay/` + README + default config). DragonFly has
 no VM runner available, so it stays manual: `./scripts/build-bsd.sh
 --release --tests` on a DragonFly host.
+
+## Getting Help
+
+- Report BSD-specific issues at https://github.com/ajakfial/wilfred/issues
+- Join the discussion: FreeBSD forums, OpenBSD misc@, NetBSD pkgsrc-users
+- BSD-specific config examples in `config/wilfred.bsd.yml.example`

@@ -346,6 +346,17 @@ bool native_open_editor(const std::string& dir) {
   return native_launch(dir);
 }
 
+bool native_open_parent(const std::string& path) {
+  if (path.empty()) return false;
+  auto parent = path_parent(path);
+  if (parent.empty()) return false;
+  auto w = utf8_to_wide(parent);
+  std::wstring args = L"/select,\"" + utf8_to_wide(path) + L"\"";
+  auto rc = reinterpret_cast<INT_PTR>(
+      ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(), nullptr, SW_SHOWNORMAL));
+  return rc > 32;
+}
+
 bool native_kill_process(std::uint32_t pid, std::string& error) {
   if (!pid || pid == 0 || pid == 4) {
     error = "invalid pid";

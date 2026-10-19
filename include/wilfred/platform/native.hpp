@@ -151,5 +151,6 @@ std::vector<OpenWithApp> native_apps_for_file(const std::string& path, std::size
 bool native_open_with(const std::string& target, const std::string& file);
 bool native_open_terminal(const std::string& dir);
 bool native_open_editor(const std::string& dir);
+bool native_open_parent(const std::string& path);
 
 }  // namespace wilfred
