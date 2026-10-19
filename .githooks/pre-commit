@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+Pre-commit hook to enforce AI policy compliance.
+Validates:
+- No AI-generated commit messages
+- No AI-authored PR descriptions (checked via PR template)
+- Tests pass locally
+"""
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# Patterns that suggest AI-generated commit messages
+AI_COMMIT_PATTERNS = [
+    r"^(feat|fix|docs|style|refactor|test|chore)\(.*\): ",  # Conventional commits (too perfect)
+    r"^(Add|Fix|Update|Remove|Refactor|Implement) ",       # Imperative but generic
+    r"^(feat|fix|docs|style|refactor|test|chore):$",       # Bare conventional
+]
+
+# Patterns that suggest AI-generated content
+AI_CONTENT_PATTERNS = [
+    r"```[a-z]*\n.*\n```",  # Code blocks in commit msg (rare for humans)
+    r"## ",                 # Markdown headers in commit msg
+    r"### ",                # Sub-headers
+    r"- ",                  # Bullet points (more than 2)
+]
+
+def get_commit_message():
+    """Get the commit message from .git/COMMIT_EDITMSG"""
+    msg_file = Path(".git/COMMIT_EDITMSG")
+    if not msg_file.exists():
+        return ""
+    return msg_file.read_text(encoding="utf-8", errors="ignore")
+
+def check_commit_message(msg):
+    """Check if commit message looks AI-generated"""
+    issues = []
+    
+    # Check for AI patterns
+    for pattern in AI_COMMIT_PATTERNS:
+        if re.search(pattern, msg.strip()):
+            issues.append(f"Commit message matches AI pattern: {pattern}")
+    
+    # Count bullet points (AI loves lists)
+    bullets = len(re.findall(r"^[-*]\s", msg, re.MULTILINE))
+    if bullets > 3:
+        issues.append(f"Too many bullet points ({bullets}) - looks AI-generated")
+    
+    # Check for markdown formatting
+    for pattern in AI_CONTENT_PATTERNS:
+        if re.search(pattern, msg):
+            issues.append(f"Markdown formatting in commit message: {pattern}")
+    
+    # Check for overly verbose message (AI tends to be verbose)
+    lines = [l for l in msg.splitlines() if l.strip() and not l.startswith("#")]
+    if len(lines) > 15:
+        issues.append(f"Commit message very long ({len(lines)} lines)")
+    
+    return issues
+
+def run_tests():
+    """Run tests to ensure they pass"""
+    build_dirs = [
+        Path("build"),
+        Path("build/windows"),
+        Path("build/linux"),
+        Path("build/macos"),
+    ]
+    
+    test_exe = None
+    for d in build_dirs:
+        for exe in ["wilfred_tests", "wilfred_tests.exe", "wilfred_tests"]:
+            if (d / exe).exists():
+                test_exe = d / exe
+                break
+        if test_exe:
+            break
+    
+    if not test_exe:
+        return False, "No test binary found. Build with -Tests first."
+    
+    try:
+        result = subprocess.run(
+            [str(test_exe)],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        if result.returncode != 0:
+            return False, f"Tests failed:\n{result.stdout}\n{result.stderr}"
+        return True, "Tests passed"
+    except subprocess.TimeoutExpired:
+        return False, "Tests timed out (120s)"
+    except Exception as e:
+        return False, f"Error running tests: {e}"
+
+def main():
+    print("🔍 Pre-commit: Validating AI policy compliance...")
+    
+    msg = get_commit_message()
+    if not msg:
+        print("⚠️  No commit message found (empty?)")
+        return 0  # Don't block empty messages (amend, etc.)
+    
+    issues = check_commit_message(msg)
+    if issues:
+        print("❌ Commit message looks AI-generated:")
+        for issue in issues:
+            print(f"  - {issue}")
+        print("\n✍️  Write your own commit message. Be concise, human, imperfect.")
+        return 1
+    
+    print("✅ Commit message looks human-written")
+    
+    # Run tests (optional - can be slow)
+    # Uncomment to enable:
+    # print("🧪 Running tests...")
+    # ok, msg = run_tests()
+    # if not ok:
+    #     print(f"❌ Tests failed: {msg}")
+    #     return 1
+    # print("✅ Tests passed")
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())

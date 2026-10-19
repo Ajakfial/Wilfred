@@ -27,6 +27,7 @@ able to test all three (Windows / macOS / Linux).
       `src/platform/` behind the existing `native.hpp` interface
 - [ ] I did not introduce new third-party dependencies without prior discussion
 - [ ] Docs (`README.md` / `docs/`) updated if user-facing behavior changed
+- [ ] **This PR was written by a human (not AI-generated)**
 
 ## Plugin submission (only if this PR adds `plugins/<id>/`)
 

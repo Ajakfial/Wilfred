@@ -79,3 +79,5 @@ body:
           required: true
         - label: This is not a security-sensitive issue (see SECURITY.md).
           required: true
+        - label: This issue was written by a human (not AI-generated).
+          required: true

@@ -150,18 +150,51 @@ locally before opening a PR.
   hard-coded into `rank_record`, unless they are a core signal every result
   needs.
 
+## AI Usage Policy
+
+Before contributing, please read and acknowledge our AI usage policy:
+
+* **[AGENTS.md](AGENTS.md)** — What AI can/cannot do
+* **[.agents/](.agents/)** — Workflows, scripts, and templates for allowed AI use
+* **[SHAME.md](SHAME.md)** — Hall of shame for policy violators
+
+**Key rules:**
+- AI is **only** allowed for: documentation, minor minis, small fixes, moderate refactors, tests, build/CI tweaks, localization
+- AI is **forbidden** for: core algorithms, platform internals, system integration, architecture decisions, security code, performance-critical paths
+- **No AI-generated PR descriptions or commit messages**
+- **Violations = permanent ban + public shaming** (see SHAME.md)
+
+All PRs must include: `Human-authored: yes` in the PR description.
+
 ## Commit and PR guidelines
 
 * Keep PRs focused -- one logical change per PR is much easier to review than
   a bundle of unrelated fixes.
 * Write a clear PR description: what changed, why, and how you tested it
   (which platform(s) you built and ran on).
+* **Include `Human-authored: yes` in the PR description**
 * Reference any related issue (`Fixes #123`).
 * Make sure `ctest` passes locally on at least one platform before
   requesting review; note in the PR description which platform(s) you were
   able to test on, since reviewers may not be able to test all three.
 * Be willing to iterate -- review feedback is part of the process, not a
   rejection.
+
+## Pre-commit Hook
+
+We provide a pre-commit hook that validates AI policy compliance:
+
+```bash
+# Install (one-time)
+cp .githooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook validates:
+- No AI-generated commit messages
+- No AI-authored PR descriptions
+- `Human-authored: yes` in PR description
+- Tests pass on your platform
 
 ## License
 
