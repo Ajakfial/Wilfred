@@ -13,7 +13,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-macos.zip",
-          "sha256": "88c62e188dd60128c725fc302242c146ee39af8b1c0b711bb5025b83addad405"
+          "sha256": "3c4d88f1b06f18596bcf5cb5cb6374ad34802c3ba9b859f99dacb6b2ae25fed6"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/cheatsheets-1.0.0-windows.zip",
@@ -34,7 +34,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-macos.zip",
-          "sha256": "88781eebbeee227855825f2299f2f73c7318b4eecd875cf9c4d19df39e0efd43"
+          "sha256": "a9bb03f4fb0bf2597002315aca1ba6b44d3b4966bc6053968b9db27e835006f9"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/dice-1.0.0-windows.zip",
@@ -72,7 +72,7 @@
       "artifacts": {
         "linux": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-linux.zip",
-          "sha256": "b7bdd6706ace42f9a5006d66a708b837f74eb60fa9912195d79c5058a8d0807e"
+          "sha256": "a1e7b0d7b30045f7ba957d29fbc4470f77372500614f7ad0f006d7c0b38cc958"
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/password-1.0.0-macos.zip",
@@ -97,7 +97,7 @@
         },
         "macos": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/roman-1.0.0-macos.zip",
-          "sha256": "49a5bb71e9ba979d2e6ab2819e811acc4b27dc315f9f0595515faecb66604140"
+          "sha256": "9030021b08972d145e0c82fa3d7c6795182b8e9e8e82fe66fa6fe0f59fc4f343"
         },
         "windows": {
           "url": "https://ajakfial.github.io/Wilfred/plugins/roman-1.0.0-windows.zip",
