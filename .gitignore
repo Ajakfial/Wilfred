@@ -23,3 +23,6 @@ www/node_modules/
 www/dist/
 www/public/plugins/
 plugins/dist/
+
+# Local Claude Code link to the canonical skills in .agents/skills/
+.claude/skills

@@ -135,8 +135,7 @@ Human:  Apply → ./build/wilfred_tests → git commit -m "fix: typo in mini hel
 ### Run Tests
 ```bash
 ./build/wilfred_tests
-# Or specific test
-./build/wilfred_tests --gtest_filter=test_my_feature
+# The in-tree harness has no per-test filter; the whole binary runs quickly.
 ```
 
 ---

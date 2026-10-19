@@ -11,6 +11,17 @@ This directory contains the workflows, scripts, and instructions for the **very 
 | `workflows.md` | Step-by-step workflows for each exception |
 | `scripts/` | Helper scripts for allowed tasks |
 | `templates/` | Code templates for common tasks |
+| `skills/` | Loadable skills for Claude Code and other AI agents |
+
+## Skills
+
+`skills/` contains task-scoped `SKILL.md` packs an agent can load on demand:
+policy gate, project orientation, documentation, tests, minor minis,
+localization, build/CI, and commit/PR. See
+[`skills/README.md`](skills/README.md) for the format and how to expose the
+directory to Claude Code (`.claude/skills/`).
+
+Always load `skills/wilfred-ai-policy/SKILL.md` first.
 
 ## Quick Reference
 

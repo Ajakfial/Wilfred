@@ -35,6 +35,14 @@ You are PERMANENTLY BANNED from this repository and will be PUBLICLY SHAMED if y
 
 Even for allowed uses, ALL AI-assisted changes must pass human code review. The human author is fully responsible for correctness, style, and security.
 
+## Project Skills
+
+Task-scoped agent skills live in `.agents/skills/`. Start with
+`.agents/skills/wilfred-ai-policy/SKILL.md`; it restates this policy and points
+to the workflow for each allowed task. Skills never expand what AI may do. See
+`.agents/skills/README.md` for the format and for linking the directory into
+`.claude/skills/` for Claude Code.
+
 ---
 
 *This policy exists because Wilfred is a human-crafted project. AI is a tool, not a contributor.*

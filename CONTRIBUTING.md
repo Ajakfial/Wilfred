@@ -156,6 +156,7 @@ Before contributing, please read and acknowledge our AI usage policy:
 
 * **[AGENTS.md](AGENTS.md)** — What AI can/cannot do
 * **[.agents/](.agents/)** — Workflows, scripts, and templates for allowed AI use
+* **[.agents/skills/](.agents/skills/)** — Loadable project skills for Claude Code and similar agents
 * **[SHAME.md](SHAME.md)** — Hall of shame for policy violators
 
 **Key rules:**
