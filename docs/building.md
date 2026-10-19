@@ -80,6 +80,15 @@ The resulting binaries land in `<build-dir>/wilfred[.exe]`,
 (exact subpath varies slightly by generator -- Visual Studio/Xcode
 multi-config generators nest a `<Config>/` folder).
 
+## Containerized development
+
+`.devcontainer/` defines a reproducible Ubuntu 24.04 environment with the
+same Linux packages as CI (GCC, CMake, Ninja, X11 headers, lint tools). Open
+the repository in VS Code/Cursor with the Dev Containers extension, create a
+GitHub Codespace, or run `devcontainer up --workspace-folder .`. See
+[.devcontainer/README.md](../.devcontainer/README.md) for build commands and
+limitations (headless overlay, no Android/iOS SDKs).
+
 ## Manual CMake invocation
 
 If you'd rather not use the scripts:

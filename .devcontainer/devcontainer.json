@@ -1,0 +1,25 @@
+{
+  "name": "Wilfred (Linux, C++20)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "cmake --preset linux-debug",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake"
+      ],
+      "settings": {
+        "cmake.useCMakePresets": "always",
+        "cmake.configureOnOpen": true,
+        "C_Cpp.default.cppStandard": "c++20",
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "files.eol": "\n"
+      }
+    }
+  }
+}
