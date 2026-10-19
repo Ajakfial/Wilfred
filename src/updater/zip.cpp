@@ -149,12 +149,16 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     }
     std::uint16_t method = rd16(c + 10);
     std::uint32_t comp_size = rd32(c + 20);
-    std::uint16_t name_len = rd16(c + 24);
-    std::uint16_t extra_len = rd16(c + 26);
-    std::uint16_t comment_len = rd16(c + 28);
-    std::uint32_t local_offset = rd32(c + 38);
+    std::uint16_t name_len = rd16(c + 28);
+    std::uint16_t extra_len = rd16(c + 30);
+    std::uint16_t comment_len = rd16(c + 32);
+    std::uint32_t local_offset = rd32(c + 42);
 
     std::string name(reinterpret_cast<const char*>(data.data() + offset + 46), name_len);
+    // Normalize Windows-style archive paths (e.g. zips made by
+    // PowerShell's Compress-Archive use '\' separators) to '/'.
+    for (char& ch : name)
+      if (ch == '\\') ch = '/';
 
     // Skip directories
     if (!name.empty() && name.back() == '/') {
@@ -174,7 +178,7 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
       return false;
     }
 
-    std::uint32_t data_off = local_off + 30 + rd16(lh + 22) + rd16(lh + 24) + rd16(lh + 26);
+    std::uint32_t data_off = local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
 
     if (data_off + comp_size > data.size()) {
       if (error) *error = "invalid ZIP: compressed data out of bounds";
