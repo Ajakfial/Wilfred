@@ -11,6 +11,10 @@ single summonable search bar.
 
 **FAST. DEEP. MODULAR. LOW-RESOURCE. CROSS-PLATFORM. EXTENSIBLE.**
 
+Wilfred is human-crafted. AI is a tool used only for a short list of
+exceptions, never a contributor: see [AI usage](#ai-usage) for what is
+allowed, what is refused, and how the repository enforces it.
+
 ## Features
 
 * Incremental, persistent filename/path/metadata index with a write-ahead log
@@ -80,6 +84,86 @@ single summonable search bar.
 </a>
 
 
+
+## AI usage
+
+Wilfred is human-crafted. The implementation is written by hand, reviewed by
+hand, and owned by the person who submits it. AI has not written the search
+engine, the ranking pipeline, the index structures, the fuzzy matcher, the
+query parser, the platform backends, the overlay UI, or any security or
+performance-critical path. The repository is deliberately arranged so that
+the forbidden path is the hard path.
+
+This README is the documented exception: its prose is AI-assisted. The code
+is not.
+
+### What AI may do
+
+Only these tasks, each with a written workflow in `.agents/allowed.md`:
+
+* **Documentation** (`docs/`, `README.md`, `*.md`) expanded from a human
+  outline, with every word reviewed for technical accuracy.
+* **Minor minis** added to `src/search/minis.cpp` only after a human has
+  written the enum value, parser hook, and switch-case skeleton.
+* **Small fixes** such as one-line bug fixes, typos, missing includes, and
+  `const` corrections, identified and applied by a human.
+* **Moderate refactors** confined to one file, with no public API or data
+  structure changes.
+* **Test additions** for existing behavior, with the human defining the test
+  name and the expected result.
+* **Build and CI tweaks** such as warning flags, matrix entries, timeouts,
+  and flaky-test retries.
+* **Localization** of `lang/*.yml`, with placeholders and command syntax kept
+  byte-identical and translations spot-checked by a human.
+
+Even for these, a human defines the content or skeleton and reviews every
+line. Humans write commit messages and PR descriptions, sign their commits,
+and include `Human-authored: yes` in pull requests. AI-authored commits, PRs,
+and PR descriptions are explicitly banned.
+
+### What AI may not do
+
+The zero-tolerance list lives in `.agents/forbidden.md`. It covers core
+algorithms and ranking, index and query structures, platform backends,
+filesystem watchers, hotkeys, overlays, autostart, power actions, toggles,
+window management, media keys, security-sensitive code, performance-critical
+paths, architecture decisions, and new dependencies. An agent may not produce
+this work as a patch, draft, pseudocode, example, or test.
+
+### How the rules are enforced
+
+* **`AGENTS.md`** is the canonical policy. It defines the allowed exceptions,
+  the forbidden areas, the human review requirement, and the consequences.
+* **`.agents/`** contains the detailed rules: `allowed.md`, `forbidden.md`,
+  `workflows.md`, helper scripts, and code templates.
+* **`.agents/skills/`** contains loadable skills for Claude Code and other
+  agents. `wilfred-ai-policy` is the entry skill: it tells an agent to stop
+  before touching a forbidden path and to hand back a plan instead of code.
+  Task skills encode the documentation, tests, minor-mini, localization,
+  build/CI, and commit workflows.
+* **Ignore files** for Cursor (`.cursorignore`), Gemini CLI
+  (`.geminiignore`), Aider (`.aiderignore`), Codeium/Windsurf
+  (`.codeiumignore`), Google AI (`.aiexclude`), Cline (`.clineignore`), Roo
+  Code (`.rooignore`), Augment (`.augmentignore`), Copilot
+  (`.copilotignore`), and Antigravity (`.antigravityignore`) carry the same
+  forbidden-path list. They all mirror `.cursorignore`, so the default
+  context for an AI tool excludes the code it is not allowed to change.
+* **Instruction files** (`CLAUDE.md`, `GEMINI.md`, and
+  `.github/copilot-instructions.md`) point agents back to `AGENTS.md`, the
+  policy skill, and the allowed workflows instead of restating the rules in
+  ten different dialects.
+* **`.githooks/pre-commit`** checks AI policy compliance before a commit
+  lands, and `SHAME.md` is the public record for violations.
+
+Violations mean a permanent ban and a public entry in `SHAME.md`. The policy
+has no "I only used it a little" exception.
+
+These guardrails are not a sandbox. An AI tool can ignore an ignore file, and
+a terminal can bypass it. That is why the policy, the hooks, the human review
+requirement, and the public violation record exist: the editor defaults are
+the first layer, not the only one. In practice, refusal is the default: an
+agent has to deliberately bypass a documented rule to touch a forbidden path,
+and the result still has to pass human review.
 
 ## Build
 
