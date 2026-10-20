@@ -21,6 +21,7 @@ Every AI-assisted change needs line-by-line human review. Do not generate
 commit messages or PR descriptions. PR descriptions must include
 `Human-authored: yes`.
 
-`.copilotignore` mirrors `.cursorignore` where the Copilot surface supports
-it. Repository-level content exclusions are configured in GitHub settings, so
-that file is advisory only.
+`.agents/ai-ignore/.copilotignore` mirrors
+`.agents/ai-ignore/.cursorignore` where the Copilot surface supports it, but it
+only takes effect when copied to the repository root. Repository-level content
+exclusions are configured in GitHub settings, so that file is advisory only.

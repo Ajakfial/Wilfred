@@ -22,6 +22,8 @@ developers extending it.
 | [ipc-and-api.md](ipc-and-api.md) | The local IPC protocol and the optional local HTTP API |
 | [sync-and-backup.md](sync-and-backup.md) | Backup archive format and remote sync |
 | [localization.md](localization.md) | UI languages, catalog files, and adding a translation |
+| [i18n/](i18n/README.md) | Translated READMEs and the language index |
+| [repo-layout.md](repo-layout.md) | Where top-level files live and why |
 
 If something you need isn't covered, the header files under
 `include/wilfred/<module>/` are the source of truth -- each doc below points

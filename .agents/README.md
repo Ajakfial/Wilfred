@@ -33,20 +33,45 @@ paths out of an AI tool's context:
 | `CLAUDE.md` | Claude Code project instructions |
 | `GEMINI.md` | Gemini CLI project instructions |
 | `.github/copilot-instructions.md` | GitHub Copilot repository instructions |
-| `.cursorignore` | Cursor (reference pattern list) |
-| `.geminiignore` | Gemini CLI |
-| `.aiderignore` | Aider |
-| `.codeiumignore` | Codeium / Windsurf |
-| `.aiexclude` | Google AI / Gemini Code Assist |
-| `.clineignore` | Cline |
-| `.rooignore` | Roo Code |
-| `.augmentignore` | Augment Code |
-| `.copilotignore` | GitHub Copilot (best effort) |
-| `.antigravityignore` | Google Antigravity |
+| `ai-ignore/.cursorignore` | Cursor (reference pattern list) |
+| `ai-ignore/.geminiignore` | Gemini CLI |
+| `ai-ignore/.aiderignore` | Aider |
+| `ai-ignore/.codeiumignore` | Codeium / Windsurf |
+| `ai-ignore/.aiexclude` | Google AI / Gemini Code Assist |
+| `ai-ignore/.clineignore` | Cline |
+| `ai-ignore/.rooignore` | Roo Code |
+| `ai-ignore/.augmentignore` | Augment Code |
+| `ai-ignore/.copilotignore` | GitHub Copilot (best effort) |
+| `ai-ignore/.antigravityignore` | Google Antigravity |
+| `ai-ignore/.sccignore` | scc code counter |
 
-The ignore files mirror `.cursorignore`. Update that file first, then copy the
-same pattern list to the others. They are advisory and never replace human
-review.
+The ignore files mirror `ai-ignore/.cursorignore`. Update that file first, then
+copy the same pattern list to the others. They are advisory and never replace
+human review.
+
+### Why the ignore files are not at the root
+
+AI tools look for their ignore file in the repository root only, so moving them
+into `ai-ignore/` keeps the root tidy at the cost of switching the lists off
+until they are copied back. Restore them before an AI session if you want the
+tool to honor them:
+
+```bash
+cp .agents/ai-ignore/.[a-z]*ignore .
+cp .agents/ai-ignore/.aiexclude .
+```
+
+```powershell
+Copy-Item .agents\ai-ignore\.cursorignore, .agents\ai-ignore\.geminiignore, `
+  .agents\ai-ignore\.aiderignore, .agents\ai-ignore\.codeiumignore, `
+  .agents\ai-ignore\.aiexclude, .agents\ai-ignore\.clineignore, `
+  .agents\ai-ignore\.rooignore, .agents\ai-ignore\.augmentignore, `
+  .agents\ai-ignore\.copilotignore, .agents\ai-ignore\.antigravityignore, `
+  .agents\ai-ignore\.sccignore .
+```
+
+The policy does not change either way: `AGENTS.md` is enforced by review and
+the pre-commit hook, not by the ignore lists.
 
 ## Quick Reference
 

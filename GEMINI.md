@@ -3,8 +3,12 @@
 `AGENTS.md` is the authoritative AI policy for this repository. Read it before
 any edit. This file is a pointer to the detailed rules, not a replacement.
 
-`.geminiignore` mirrors `.cursorignore` and keeps the forbidden paths out of
-Gemini CLI's context. It is advisory; the policy still applies.
+`.agents/ai-ignore/.geminiignore` mirrors `.agents/ai-ignore/.cursorignore`
+and keeps the forbidden paths out of Gemini CLI's context. Gemini CLI only
+reads the file at the repository root, so copy it there before a session
+(`Copy-Item .agents\ai-ignore\.geminiignore .` on Windows, or
+`cp .agents/ai-ignore/.geminiignore .` elsewhere). It is advisory; the policy
+still applies.
 
 ## Before editing
 

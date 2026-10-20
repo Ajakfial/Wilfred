@@ -32,6 +32,7 @@ plugins/dist/
 .cursor
 .aider*
 !.aiderignore
+!.agents/ai-ignore/.aiderignore
 .zed
 
 # Python bytecode caches

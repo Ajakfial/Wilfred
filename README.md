@@ -4,6 +4,14 @@
 
 **Website:** https://ajakfial.github.io/Wilfred/
 
+**Languages:**
+[Deutsch](docs/i18n/README_de.md) · [Español](docs/i18n/README_es.md) ·
+[Français](docs/i18n/README_fr.md) · [Italiano](docs/i18n/README_it.md) ·
+[日本語](docs/i18n/README_ja.md) · [한국어](docs/i18n/README_ko.md) ·
+[Nederlands](docs/i18n/README_nl.md) · [Polski](docs/i18n/README_pl.md) ·
+[Português](docs/i18n/README_pt.md) · [Русский](docs/i18n/README_ru.md) ·
+[简体中文](docs/i18n/README_zh.md) · [All translations](docs/i18n/README.md)
+
 Wilfred is a fast, lightweight, cross-platform desktop search engine and
 application launcher. It is designed as a deep OS search layer: files, folders,
 applications, browser integration, calculator, and filtered queries from a
@@ -141,13 +149,12 @@ this work as a patch, draft, pseudocode, example, or test.
   before touching a forbidden path and to hand back a plan instead of code.
   Task skills encode the documentation, tests, minor-mini, localization,
   build/CI, and commit workflows.
-* **Ignore files** for Cursor (`.cursorignore`), Gemini CLI
-  (`.geminiignore`), Aider (`.aiderignore`), Codeium/Windsurf
-  (`.codeiumignore`), Google AI (`.aiexclude`), Cline (`.clineignore`), Roo
-  Code (`.rooignore`), Augment (`.augmentignore`), Copilot
-  (`.copilotignore`), and Antigravity (`.antigravityignore`) carry the same
-  forbidden-path list. They all mirror `.cursorignore`, so the default
-  context for an AI tool excludes the code it is not allowed to change.
+* **Ignore files** for Cursor, Gemini CLI, Aider, Codeium/Windsurf, Google
+  AI, Cline, Roo Code, Augment, Copilot, Antigravity, and `scc` live in
+  `.agents/ai-ignore/`. They carry the same forbidden-path list and mirror
+  `.agents/ai-ignore/.cursorignore`. AI tools only discover these files at
+  the repository root, so they are dormant in this checkout; see
+  `.agents/README.md` for the restore step.
 * **Instruction files** (`CLAUDE.md`, `GEMINI.md`, and
   `.github/copilot-instructions.md`) point agents back to `AGENTS.md`, the
   policy skill, and the allowed workflows instead of restating the rules in
