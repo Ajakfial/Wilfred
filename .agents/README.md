@@ -23,6 +23,31 @@ directory to Claude Code (`.claude/skills/`).
 
 Always load `skills/wilfred-ai-policy/SKILL.md` first.
 
+## Tool entrypoints
+
+`AGENTS.md` is the canonical policy. These files point to it or keep forbidden
+paths out of an AI tool's context:
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Claude Code project instructions |
+| `GEMINI.md` | Gemini CLI project instructions |
+| `.github/copilot-instructions.md` | GitHub Copilot repository instructions |
+| `.cursorignore` | Cursor (reference pattern list) |
+| `.geminiignore` | Gemini CLI |
+| `.aiderignore` | Aider |
+| `.codeiumignore` | Codeium / Windsurf |
+| `.aiexclude` | Google AI / Gemini Code Assist |
+| `.clineignore` | Cline |
+| `.rooignore` | Roo Code |
+| `.augmentignore` | Augment Code |
+| `.copilotignore` | GitHub Copilot (best effort) |
+| `.antigravityignore` | Google Antigravity |
+
+The ignore files mirror `.cursorignore`. Update that file first, then copy the
+same pattern list to the others. They are advisory and never replace human
+review.
+
 ## Quick Reference
 
 | Task | Allowed? | See |

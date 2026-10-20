@@ -1,0 +1,32 @@
+# Claude Code Instructions
+
+`AGENTS.md` is the authoritative AI policy for this repository. Read it before
+any edit. This file is a pointer to the detailed rules, not a replacement.
+
+## Before editing
+
+1. Load `.agents/skills/wilfred-ai-policy/SKILL.md`.
+2. Load the matching task skill from `.agents/skills/`.
+3. Check the target paths against `.agents/forbidden.md`.
+
+Project skills live in `.agents/skills/` and are linked at `.claude/skills/`.
+If the link is missing, follow `.agents/skills/README.md`.
+
+## Allowed exceptions
+
+Documentation, minor minis, small fixes, moderate refactors, test additions,
+build/CI tweaks, and localization. Each has a workflow in
+`.agents/allowed.md` and a skill where applicable.
+
+## Forbidden
+
+Core algorithms, platform internals, system integration, architecture
+decisions, security-sensitive code, and performance-critical paths. Do not
+write forbidden code in any form, including drafts, pseudocode, examples, or
+tests for forbidden behavior.
+
+## Review and commits
+
+Every AI-assisted change needs line-by-line human review. Do not write commit
+messages or PR descriptions, and do not commit or push on the human's behalf.
+PR descriptions must include `Human-authored: yes`.

@@ -31,6 +31,7 @@ plugins/dist/
 .codex
 .cursor
 .aider*
+!.aiderignore
 .zed
 
 # Python bytecode caches
