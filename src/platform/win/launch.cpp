@@ -769,6 +769,53 @@ bool native_brightness_set(int percent, std::string& error) {
   return true;
 }
 
+bool native_focus_status(bool& enabled, std::string& detail, std::string& error) {
+  // Windows Focus Assist / Do Not Disturb is stored as the toast switch in
+  // the per-user notification settings key. 0 = notifications suppressed.
+  const wchar_t* path = L"Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings";
+  HKEY key = nullptr;
+  LONG rc = RegOpenKeyExW(HKEY_CURRENT_USER, path, 0, KEY_QUERY_VALUE, &key);
+  if (rc != ERROR_SUCCESS) {
+    error = "cannot open notification settings";
+    return false;
+  }
+  DWORD toasts = 1;
+  DWORD size = sizeof(toasts);
+  DWORD type = 0;
+  rc = RegQueryValueExW(key, L"NOC_GLOBAL_SETTING_TOASTS_ENABLED", nullptr, &type,
+                        reinterpret_cast<LPBYTE>(&toasts), &size);
+  RegCloseKey(key);
+  // Missing value means notifications are on (the Windows default).
+  enabled = rc == ERROR_SUCCESS && toasts == 0;
+  detail = enabled ? "notifications off" : "notifications on";
+  return true;
+}
+
+bool native_focus_set(bool enabled, std::string& error) {
+  const wchar_t* path = L"Software\\Microsoft\\Windows\\CurrentVersion\\Notifications\\Settings";
+  HKEY key = nullptr;
+  DWORD disposition = 0;
+  LONG rc = RegCreateKeyExW(HKEY_CURRENT_USER, path, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key,
+                            &disposition);
+  if (rc != ERROR_SUCCESS) {
+    error = "cannot open notification settings";
+    return false;
+  }
+  DWORD value = enabled ? 0 : 1;
+  rc = RegSetValueExW(key, L"NOC_GLOBAL_SETTING_TOASTS_ENABLED", 0, REG_DWORD,
+                      reinterpret_cast<const BYTE*>(&value), sizeof(value));
+  RegCloseKey(key);
+  if (rc != ERROR_SUCCESS) {
+    error = "cannot write notification settings";
+    return false;
+  }
+  bool cur = false;
+  std::string detail;
+  if (native_focus_status(cur, detail, error) && cur == enabled) return true;
+  error = enabled ? "could not enable Do Not Disturb" : "could not disable Do Not Disturb";
+  return false;
+}
+
 bool native_open_settings(const std::string& page, std::string& error) {
   std::string uri = "ms-settings:";
   if (page == "wifi")

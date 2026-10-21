@@ -21,6 +21,8 @@
 #include "wilfred/search/transcribe.hpp"
 #include "wilfred/search/workflows.hpp"
 
+#include <cctype>
+
 void test_powertools() {
   using namespace wilfred;
   set_mini_network_enabled(false);
@@ -309,6 +311,50 @@ app_actions:
     CHECK(!rx.empty());
     auto ue = mini_results("urlencode a b", cfg, "");
     CHECK(!ue.empty());
+  }
+
+  // --- Ports, passwords, epoch conversion, Focus/DND ---
+  {
+    Config cfg;
+    CHECK(parse_mini_intent("ports").kind == MiniKind::Ports);
+    CHECK(parse_mini_intent("listening").kind == MiniKind::Ports);
+    CHECK(parse_mini_intent("netstat tcp").kind == MiniKind::Ports);
+    CHECK(parse_mini_intent("password").kind == MiniKind::Password);
+    CHECK(parse_mini_intent("pass 24 symbols").kind == MiniKind::Password);
+    CHECK(parse_mini_intent("epoch").kind == MiniKind::Epoch);
+    CHECK(parse_mini_intent("unix 1700000000").kind == MiniKind::Epoch);
+    CHECK(parse_mini_intent("focus").kind == MiniKind::Focus);
+    CHECK(parse_mini_intent("dnd toggle").kind == MiniKind::Focus);
+
+    auto pw = mini_results("password 24 symbols", cfg, "");
+    CHECK(!pw.empty());
+    CHECK_EQ(pw.front().payload.size(), 24u);
+    bool has_digit = false, has_symbol = false;
+    for (char c : pw.front().payload) {
+      if (c >= '0' && c <= '9') has_digit = true;
+      if (!std::isalnum(static_cast<unsigned char>(c))) has_symbol = true;
+    }
+    CHECK(has_digit);
+    CHECK(has_symbol);
+
+    auto pin = mini_results("password pin", cfg, "");
+    CHECK(!pin.empty());
+    CHECK_EQ(pin.front().payload.size(), 6u);
+    for (char c : pin.front().payload)
+      CHECK(c >= '0' && c <= '9');
+
+    auto ep = mini_results("epoch 1700000000", cfg, "");
+    CHECK(!ep.empty());
+    CHECK(ep.front().payload.find("2023-11-14 22:13:20 UTC") != std::string::npos);
+    auto ep2 = mini_results("epoch 2024-01-01 00:00 utc", cfg, "");
+    CHECK(!ep2.empty());
+    bool found_ts = false;
+    for (auto& c : ep2)
+      if (c.payload == "1704067200") found_ts = true;
+    CHECK(found_ts);
+
+    auto ports = mini_results("ports", cfg, "");
+    CHECK(!ports.empty());
   }
 
   // --- Genuine cross-platform media: pure framing + safe error paths ---

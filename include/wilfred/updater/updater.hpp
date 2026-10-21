@@ -96,9 +96,10 @@ bool download_file(const std::string& url, const std::string& dest_path,
 bool extract_archive(const std::string& archive_path, const std::string& dest_dir,
                      std::string* error = nullptr);
 
-// Platform-specific extractors
+// Platform-specific extractors. entries_out, when non-null, receives the
+// number of regular files written.
 bool extract_zip(const std::string& archive_path, const std::string& dest_dir,
-                 std::string* error = nullptr);
+                 std::string* error = nullptr, std::size_t* entries_out = nullptr);
 bool extract_tarball(const std::string& archive_path, const std::string& dest_dir,
                      std::string* error = nullptr);
 

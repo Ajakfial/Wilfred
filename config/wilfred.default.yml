@@ -114,7 +114,13 @@ macros:
 scopes:
   home: []
 
-# Optional extra key/value tags consumed by plugins or custom rankers.
+# Arbitrary key/value pairs you want to keep next to your config. Read back
+# with the `meta` mini (`meta` lists every entry, `meta owner` shows one) and
+# printed by `wilfred doctor`. Plugins receive them through the config too.
+# Example:
+#   custom_metadata:
+#     machine: studio-desktop
+#     owner: jay
 custom_metadata: {}
 
 history:
@@ -374,3 +380,23 @@ quicklinks:
 app_actions:
   code: [open_terminal, open_editor, copy_path]
   # photoshop: [reveal]
+
+# Named saved searches. The `saved` mini lists them and pressing Enter drops
+# the query into the search box ready to run again. Keys are lowercased.
+# Example:
+#   searches:
+#     inbox: "type:email in Mail"
+#     screenshots: "*.png in Pictures"
+#     big downloads: "size:>100mb in Downloads"
+searches: {}
+
+# Overlay keybindings. "mod" is Command on macOS and Ctrl elsewhere; chords
+# are case-insensitive and joined with '+'. Valid actions: preview, actions,
+# settings, next, prev, page_down, page_up, first, last, complete.
+# Example:
+#   keybinds:
+#     preview: F3
+#     actions: mod+k
+#     settings: mod+,
+#     complete: tab
+keybinds: {}

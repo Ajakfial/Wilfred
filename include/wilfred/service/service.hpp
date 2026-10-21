@@ -46,6 +46,10 @@ public:
   int run_preview(const std::string& path);
   int run_index_now();
   int run_status();
+  // Read-only self-diagnosis: config validity, paths, index health, plugin
+  // and provider state, plus a list of ok/warn/fail checks. Exit code 1 when
+  // a check fails outright (config unparsable, unwritable data dir).
+  int run_doctor();
   int launch_by_query(const std::string& query);
   int run_backup(const std::string& dest, bool include_index);
   int run_restore(const std::string& src);

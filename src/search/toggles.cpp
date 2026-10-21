@@ -339,6 +339,37 @@ std::vector<SearchResult> brightness_results(const std::string& remainder, const
   return out;
 }
 
+std::vector<SearchResult> focus_results(const std::string& remainder, const Config&) {
+  std::vector<SearchResult> out;
+  auto op = parse_toggle_arg(remainder);
+  bool enabled = false;
+  std::string detail, err;
+  bool ok = native_focus_status(enabled, detail, err);
+  std::string status = !ok ? ("Unavailable" + (err.empty() ? "" : " · " + err))
+                           : (enabled ? "On" : "Off") + (detail.empty() ? "" : " · " + detail);
+  if (op == ToggleOp::Status) {
+    out.push_back(tcard("Do Not Disturb: " + status,
+                        "focus on | focus off | focus toggle -- enter toggles",
+                        "toggle:focus:toggle", "focus", "toggle"));
+    if (ok) {
+      out.push_back(tcard("Turn Do Not Disturb on", "focus on", "toggle:focus:on", "focus",
+                          "toggle"));
+      out.push_back(tcard("Turn Do Not Disturb off", "focus off", "toggle:focus:off", "focus",
+                          "toggle"));
+    }
+    return out;
+  }
+  std::string payload = op == ToggleOp::On    ? "toggle:focus:on"
+                        : op == ToggleOp::Off ? "toggle:focus:off"
+                                              : "toggle:focus:toggle";
+  std::string label = op == ToggleOp::On    ? "Turn Do Not Disturb on"
+                      : op == ToggleOp::Off ? "Turn Do Not Disturb off"
+                                            : "Toggle Do Not Disturb (now " + status + ")";
+  out.push_back(
+      tcard(label, "Do Not Disturb · " + status + " -- enter applies", payload, "focus", "toggle"));
+  return out;
+}
+
 std::vector<SearchResult> settings_results(const std::string& remainder, const Config& cfg) {
   std::vector<SearchResult> out;
   auto t = trim(remainder);
@@ -486,6 +517,15 @@ bool execute_toggle_payload(const std::string& payload, const Config&, std::stri
     }
     error = "unknown brightness op '" + op + "'";
     return false;
+  }
+  if (payload.rfind("toggle:focus:", 0) == 0) {
+    auto op = payload.substr(13);
+    if (op == "on") return native_focus_set(true, error);
+    if (op == "off") return native_focus_set(false, error);
+    bool cur = false;
+    std::string detail;
+    if (!native_focus_status(cur, detail, error)) return false;
+    return native_focus_set(!cur, error);
   }
   if (payload.rfind("settings:", 0) == 0) {
     return native_open_settings(payload.substr(9), error);

@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
   test_plugins();
   test_settings();
   test_autostart();
+  test_agent_extras();
   std::cout << "passed " << wilfred::test::g_passes << ", failed " << wilfred::test::g_fails
             << "\n";
   return wilfred::test::g_fails == 0 ? 0 : 1;

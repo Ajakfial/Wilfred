@@ -60,6 +60,13 @@ constexpr Entry kEnglish[] = {
     {"overlay.settings_back", "Back to search"},
     {"overlay.settings_note",
      "Keys marked \u201c{live}\u201d apply on next summon; the rest {restart}."},
+    {"overlay.selection_count", "{n} selected"},
+    {"overlay.selection_clear", "Clear selection"},
+    {"overlay.selection_cleared", "Selection cleared"},
+    {"overlay.confirm_delete", "Move {n} item(s) to the trash?"},
+    {"overlay.confirm_delete_action", "Move to trash"},
+    {"overlay.cancel", "Cancel"},
+    {"overlay.cancelled", "Cancelled"},
     // --- Result action labels ---
     {"action.open", "Open"},
     {"action.open_parent", "Open in file manager"},
@@ -74,6 +81,8 @@ constexpr Entry kEnglish[] = {
     {"action.copy", "Copy"},
     {"action.hash_file", "Copy SHA-256 hash"},
     {"action.compress_zip", "Compress to .zip"},
+    {"action.extract_zip", "Extract archive here"},
+    {"action.delete_file", "Move to trash"},
     {"action.move_to", "Move to \u2026 (uses clipboard path)"},
     {"action.move_to_short", "Move to \u2026"},
     {"action.bulk_rename", "Bulk rename\u2026 (uses clipboard pattern)"},
@@ -130,7 +139,7 @@ constexpr Entry kEnglish[] = {
     {"overlay.completion_accepted", "Completion accepted"},
     {"overlay.correction_available", "Did you mean {correction}?"},
     {"overlay.completion_available", "Press Right Arrow to accept completion"},
-    // --- Help mini (help.01..help.47 follow query-language order) ---
+    // --- Help mini (help.01..help.51 follow query-language order) ---
     {"help.01", "weather [city]  \u00b7  local forecast"},
     {"help.02", "time [zone]  \u00b7  clock and date"},
     {"help.03", "define <word> \u00b7 thesaurus <word>  \u00b7  offline dictionary"},
@@ -178,6 +187,10 @@ constexpr Entry kEnglish[] = {
     {"help.45", "snip save <name>  \u00b7  save clipboard as snippet"},
     {"help.46", "os / cores / screen"},
     {"help.47", "macros  \u00b7  bang searches  (!yt cats)"},
+    {"help.48", "ports [filter]  \u00b7  listening TCP/UDP ports"},
+    {"help.49", "password [length]  \u00b7  secure password generator"},
+    {"help.50", "epoch [unix|date]  \u00b7  Unix timestamp converter"},
+    {"help.51", "focus / dnd [on|off|toggle]  \u00b7  do not disturb"},
     {"help.sub", "Mini commands \u00b7 enter copies"},
     // --- Define / thesaurus mini ---
     {"define.usage_title", "define <word>"},

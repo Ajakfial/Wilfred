@@ -32,6 +32,7 @@ std::vector<SearchResult> wifi_results(const std::string& remainder, const Confi
 std::vector<SearchResult> bluetooth_results(const std::string& remainder, const Config& cfg);
 std::vector<SearchResult> volume_results(const std::string& remainder, const Config& cfg);
 std::vector<SearchResult> brightness_results(const std::string& remainder, const Config& cfg);
+std::vector<SearchResult> focus_results(const std::string& remainder, const Config& cfg);
 std::vector<SearchResult> settings_results(const std::string& remainder, const Config& cfg);
 
 // Execute a toggle/settings payload. Returns true when payload was handled

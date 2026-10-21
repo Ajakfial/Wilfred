@@ -37,6 +37,10 @@ export interface PreviewMsg {
   modified?: string;
   text?: string;
   image?: string;
+  /** data: URL for small audio/video files, else empty. */
+  media?: string;
+  /** "audio" | "video" when `media` is set. */
+  mediaKind?: string;
   error?: string;
 }
 
@@ -68,6 +72,12 @@ export interface ShowMsg {
   transparent?: boolean;
   opacity?: number;
   blur?: boolean;
+  accent?: string;
+  fontSize?: number;
+  lang?: string;
+  strings?: Record<string, string>;
+  /** action name -> chord, e.g. { preview: "F3", actions: "mod+k" }. */
+  keybinds?: Record<string, string>;
 }
 
 export interface ConfigMsg {

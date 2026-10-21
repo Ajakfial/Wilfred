@@ -62,6 +62,9 @@ enum class MiniKind {
   Jwt,
   Dupes,
   Large,
+  Recent,
+  Saved,
+  Meta,
   Workflow,
   Quicklink,
   Transcribe,
@@ -86,6 +89,10 @@ enum class MiniKind {
   ContactAdd,
   FileOp,
   Update,
+  Ports,
+  Password,
+  Epoch,
+  Focus,
 };
 
 struct MiniIntent {

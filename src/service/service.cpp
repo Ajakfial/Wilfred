@@ -30,6 +30,7 @@
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
 #include "wilfred/search/semantic.hpp"
+#include "wilfred/search/setup.hpp"
 #include "wilfred/search/suggest.hpp"
 #include "wilfred/search/workflows.hpp"
 #include "wilfred/sources/sources.hpp"
@@ -42,6 +43,7 @@
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <sstream>
@@ -637,6 +639,169 @@ int Service::run_preview(const std::string& path) {
   if (!pv.image_data_url.empty()) std::cout << "[image " << pv.image_data_url.size() << " bytes]\n";
   if (!pv.text.empty()) std::cout << pv.text << "\n";
   return 0;
+}
+
+namespace {
+
+std::string doctor_bytes(std::uint64_t n) {
+  const char* u[] = {"B", "KB", "MB", "GB", "TB"};
+  double v = static_cast<double>(n);
+  int i = 0;
+  while (v >= 1024.0 && i < 4) {
+    v /= 1024.0;
+    ++i;
+  }
+  char buf[48];
+  if (i == 0)
+    std::snprintf(buf, sizeof(buf), "%llu %s", static_cast<unsigned long long>(n), u[i]);
+  else
+    std::snprintf(buf, sizeof(buf), "%.1f %s", v, u[i]);
+  return buf;
+}
+
+std::string doctor_file_size(const std::string& path) {
+  std::error_code ec;
+  auto sz = std::filesystem::file_size(std::filesystem::u8path(path), ec);
+  return ec ? std::string("absent") : doctor_bytes(static_cast<std::uint64_t>(sz));
+}
+
+bool doctor_dir_writable(const std::string& dir) {
+  std::error_code ec;
+  std::filesystem::create_directories(std::filesystem::u8path(dir), ec);
+  auto probe = std::filesystem::u8path(dir) / "wilfred-doctor.tmp";
+  {
+    std::ofstream f(probe, std::ios::binary | std::ios::trunc);
+    if (!f) return false;
+    f << "ok";
+  }
+  std::filesystem::remove(probe, ec);
+  return true;
+}
+
+}  // namespace
+
+int Service::run_doctor() {
+  struct Check {
+    bool ok;
+    std::string text;
+  };
+  std::vector<Check> checks;
+  auto note = [&](bool ok, std::string text) { checks.push_back({ok, std::move(text)}); };
+
+  std::cout << "Wilfred doctor " << wilfred_version() << "\n";
+  std::cout << "platform   " << platform_name() << "\n";
+
+  // ---- Config ----
+  std::string config_path = default_config_path();
+  bool config_exists = false;
+  std::string config_text;
+  if (read_file_all(config_path, config_text)) config_exists = true;
+  std::cout << "config     " << config_path << " (" << (config_exists ? "present" : "missing")
+            << ")\n";
+  if (config_exists) {
+    std::string msg;
+    bool valid = validate_config_text(config_text, msg);
+    note(valid, valid ? "config file parses" : ("config error: " + msg));
+  } else {
+    note(false, "config file is missing; defaults are in use (run `wilfred setup`)");
+  }
+
+  // ---- Paths ----
+  auto data_dir = data_directory();
+  bool writable = doctor_dir_writable(data_dir);
+  std::cout << "data       " << data_dir << " (" << (writable ? "writable" : "NOT writable")
+            << ")\n";
+  note(writable, writable ? "data directory is writable"
+                          : ("data directory is not writable: " + data_dir));
+
+  auto index_path = default_index_path();
+  auto snapshot = index_path + "/index.snapshot";
+  auto wal = index_path + "/index.wal";
+  std::cout << "index      " << index_path << " (snapshot " << doctor_file_size(snapshot)
+            << ", wal " << doctor_file_size(wal) << ")\n";
+
+  if (!boot()) {
+    note(false, "index/config could not be opened");
+    std::cout << "\nchecks\n";
+    for (auto& c : checks) std::cout << (c.ok ? "[ok]   " : "[FAIL] ") << c.text << "\n";
+    return 1;
+  }
+
+  // ---- Index ----
+  auto st = index_.stats();
+  std::cout << "records    " << st.files << " files, " << st.dirs << " dirs, " << st.apps
+            << " apps, " << st.errors << " errors\n";
+  std::cout << "scan       " << (st.scanning ? "running" : "idle") << ", last "
+            << st.last_scan_seconds << "s\n";
+  note(st.files > 0, st.files > 0 ? ("index has " + std::to_string(st.files) + " files")
+                                  : "index is empty -- run `wilfred index`");
+  if (st.errors > 0) note(false, std::to_string(st.errors) + " paths failed to index (check logging.*)");
+  if (st.apps == 0) note(false, "no applications discovered -- app search will be empty");
+
+  auto roots = cfg_.index.paths;
+  if (roots.empty()) roots = default_index_roots();
+  std::cout << "roots      " << roots.size() << " configured";
+  if (roots.size() <= 4) {
+    std::cout << " (";
+    for (std::size_t i = 0; i < roots.size(); ++i) {
+      if (i) std::cout << ", ";
+      std::cout << roots[i];
+    }
+    std::cout << ")";
+  }
+  std::cout << "\n";
+  note(!roots.empty(), roots.empty() ? "no index roots configured" : "index roots are configured");
+
+  // ---- Services ----
+  std::string chord;
+  for (auto& m : cfg_.hotkey.modifiers) {
+    if (!chord.empty()) chord += "+";
+    chord += m;
+  }
+  if (!chord.empty()) chord += "+";
+  chord += cfg_.hotkey.key;
+  std::cout << "hotkey     " << (cfg_.hotkey.enabled ? "enabled" : "DISABLED") << " (" << chord
+            << "), " << cfg_.hotkeys.size() << " extra\n";
+  if (!cfg_.hotkey.enabled) note(false, "global hotkey is disabled");
+
+  std::cout << "overlay    theme " << cfg_.ui.theme << ", accent "
+            << (cfg_.ui.accent.empty() ? "default" : cfg_.ui.accent) << ", font "
+            << (cfg_.ui.font_size > 0 ? std::to_string(cfg_.ui.font_size) : "default") << "\n";
+
+  std::cout << "locale     " << LocaleStore::instance().code() << "\n";
+  std::cout << "history    " << history_.recent_queries().size() << " queries ("
+            << (cfg_.history.enabled ? "enabled" : "off") << ")\n";
+  std::cout << "plugins    " << plugins_.manifests().size() << " (registry="
+            << (cfg_.plugins.registry.empty() ? "off" : "on")
+            << " approval=" << (cfg_.plugins.require_approval ? "on" : "off") << ")\n";
+  std::cout << "snippets   " << snippets_.all().size() << "\n";
+  std::cout << "vectors    " << (index_.vectors().enabled() ? "on" : "off") << " ("
+            << index_.vectors().size() << ")\n";
+  std::cout << "semantic   " << (cfg_.providers.semantic ? "on" : "off") << "\n";
+  std::cout << "ai         " << (cfg_.ai.enabled ? "on" : "off") << "\n";
+  std::cout << "remotes    " << (cfg_.remotes.enabled ? "on" : "off") << " ("
+            << cfg_.remotes.sources.size() << ")\n";
+  std::cout << "api        " << (cfg_.api.enabled ? "on" : "off") << " (" << cfg_.api.bind << ":"
+            << cfg_.api.port << ")\n";
+  std::cout << "searches   " << cfg_.searches.size() << " saved\n";
+  std::cout << "keybinds   " << cfg_.keybinds.size() << " override(s)\n";
+  std::cout << "metadata   " << cfg_.custom_metadata.size() << " entr"
+            << (cfg_.custom_metadata.size() == 1 ? "y" : "ies") << "\n";
+
+  if (cfg_.ai.enabled && cfg_.ai.api_key.empty())
+    note(false, "ai.enabled is true but ai.api_key is empty");
+  if (cfg_.remotes.enabled && cfg_.remotes.sources.empty())
+    note(false, "remotes.enabled is true but no remotes.sources are configured");
+
+  // ---- Report ----
+  std::cout << "\nchecks\n";
+  int failures = 0;
+  for (auto& c : checks) {
+    std::cout << (c.ok ? "[ok]   " : "[FAIL] ") << c.text << "\n";
+    if (!c.ok) ++failures;
+  }
+  if (failures == 0) std::cout << "\nAll checks passed.\n";
+  return failures == 0 ? 0 : 1;
 }
 
 int Service::run_status() {

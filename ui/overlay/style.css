@@ -1127,3 +1127,105 @@ html.no-blur .action-menu {
   white-space: nowrap;
   border: 0;
 }
+
+/* ===================== Multi-select, confirm, media ===================== */
+
+/* Extra leading column for the checkbox, only on selectable rows. */
+.row.is-selecting {
+  grid-template-columns: 18px 28px minmax(0, 1fr) auto auto;
+}
+
+.check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 5px;
+  color: transparent;
+  background: transparent;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.check svg { display: block; }
+.check.is-on {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.row.is-checked { background: var(--hover); }
+.row.is-checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  pointer-events: none;
+}
+
+.bar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--sel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.bar-chip svg { display: block; opacity: 0.7; }
+.bar-chip:hover { background: var(--hover); }
+
+.confirm {
+  position: relative;
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 8px 6px 14px;
+  background: var(--bar-bg);
+  border-top: 1px solid var(--line);
+  animation: confirm-in 140ms ease;
+}
+.confirm-text { font-size: 12.5px; color: var(--ink); }
+.confirm-actions { display: flex; align-items: center; gap: 4px; }
+.bar-danger { color: #ff7b7b; }
+.bar-danger:hover { background: rgba(255, 80, 80, 0.14); color: #ff9d9d; }
+@keyframes confirm-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.pv-video {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #000;
+}
+.pv-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+.pv-media-glyph {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--sel);
+  color: var(--muted);
+}
+.pv-audio { width: 100%; max-width: 320px; }

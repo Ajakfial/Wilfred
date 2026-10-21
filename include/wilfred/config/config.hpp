@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace wilfred {
@@ -353,6 +354,14 @@ struct Config {
   // Per-app extra context actions: app-name substring (lowercased)
   // -> additional action ids appended to file/app results.
   std::unordered_map<std::string, std::vector<std::string>> app_actions;
+  // Named saved searches: name -> query text. Lowercased keys. Surfaced by
+  // the `saved` mini, which inserts the query for one-keystroke recall.
+  std::unordered_map<std::string, std::string> searches;
+  // Overlay keybindings: action name -> chord (e.g. "preview: F3"). Keys are
+  // canonical action names (see kKeybindDefaults in config.cpp); unknown
+  // actions are rejected so typos fail loudly instead of silently doing
+  // nothing. "mod" means Cmd on macOS and Ctrl elsewhere.
+  std::unordered_map<std::string, std::string> keybinds;
 
   std::string source_path;
 };
@@ -360,6 +369,10 @@ struct Config {
 struct ConfigError {
   std::string message;
 };
+
+// Canonical overlay keybind action names with their default chords. The
+// overlay receives the merged result (defaults + keybinds:) on every show.
+const std::vector<std::pair<std::string, std::string>>& keybind_defaults();
 
 bool load_config_text(const std::string& text, Config& out, ConfigError& err);
 bool load_config_file(const std::string& path, Config& out, ConfigError& err);

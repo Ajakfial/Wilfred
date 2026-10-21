@@ -45,7 +45,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <map>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <thread>
 #include <utility>
@@ -1205,6 +1207,725 @@ static std::string first_ipv4() {
 }
 #endif
 
+// --- Listening ports -------------------------------------------------------
+
+struct ListeningPort {
+  std::uint16_t port{0};
+  std::string proto;
+  std::string address;
+  std::string process;
+  std::uint32_t pid{0};
+};
+
+static std::string ipv4_bytes_text(const unsigned char* b) {
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "%u.%u.%u.%u", b[0], b[1], b[2], b[3]);
+  return buf;
+}
+
+static std::string ipv6_bytes_text(const unsigned char* b) {
+  unsigned groups[8];
+  for (int i = 0; i < 8; ++i)
+    groups[i] = (static_cast<unsigned>(b[i * 2]) << 8) | b[i * 2 + 1];
+  int best = -1;
+  int best_len = 0;
+  for (int i = 0; i < 8;) {
+    if (groups[i]) {
+      ++i;
+      continue;
+    }
+    int j = i;
+    while (j < 8 && !groups[j])
+      ++j;
+    if (j - i > best_len) {
+      best = i;
+      best_len = j - i;
+    }
+    i = j;
+  }
+  if (best_len < 2) best = -1;
+  std::string out = "[";
+  for (int i = 0; i < 8; ++i) {
+    if (i == best) {
+      out += "::";
+      i += best_len - 1;
+      continue;
+    }
+    if (out.back() != '[' && out.back() != ':') out += ":";
+    char buf[8];
+    std::snprintf(buf, sizeof(buf), "%x", groups[i]);
+    out += buf;
+  }
+  out += "]";
+  return out;
+}
+
+#ifdef _WIN32
+static std::map<std::uint32_t, std::string> win_process_names() {
+  std::map<std::uint32_t, std::string> names;
+  HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snap == INVALID_HANDLE_VALUE) return names;
+  PROCESSENTRY32W pe{};
+  pe.dwSize = sizeof(pe);
+  if (Process32FirstW(snap, &pe)) {
+    do {
+      names[pe.th32ProcessID] = wide_to_utf8(pe.szExeFile);
+    } while (Process32NextW(snap, &pe));
+  }
+  CloseHandle(snap);
+  return names;
+}
+
+static bool win_get_tcp_table(ULONG af, TCP_TABLE_CLASS cls, std::vector<char>& buf) {
+  DWORD size = 0;
+  DWORD rc = GetExtendedTcpTable(nullptr, &size, FALSE, af, cls, 0);
+  if (rc != ERROR_INSUFFICIENT_BUFFER && rc != NO_ERROR) return false;
+  if (!size) return false;
+  buf.assign(size, '\0');
+  return GetExtendedTcpTable(buf.data(), &size, FALSE, af, cls, 0) == NO_ERROR;
+}
+
+static bool win_get_udp_table(ULONG af, UDP_TABLE_CLASS cls, std::vector<char>& buf) {
+  DWORD size = 0;
+  DWORD rc = GetExtendedUdpTable(nullptr, &size, FALSE, af, cls, 0);
+  if (rc != ERROR_INSUFFICIENT_BUFFER && rc != NO_ERROR) return false;
+  if (!size) return false;
+  buf.assign(size, '\0');
+  return GetExtendedUdpTable(buf.data(), &size, FALSE, af, cls, 0) == NO_ERROR;
+}
+
+static std::vector<ListeningPort> win_listening_ports() {
+  std::vector<ListeningPort> out;
+  auto names = win_process_names();
+  auto add = [&](ListeningPort p) {
+    auto it = names.find(p.pid);
+    if (it != names.end()) p.process = it->second;
+    if (p.port) out.push_back(std::move(p));
+  };
+  std::vector<char> buf;
+  if (win_get_tcp_table(AF_INET, TCP_TABLE_OWNER_PID_LISTENER, buf)) {
+    auto* t = reinterpret_cast<MIB_TCPTABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      ListeningPort p;
+      p.proto = "TCP";
+      p.port = ntohs(static_cast<u_short>(row.dwLocalPort));
+      unsigned char b[4];
+      std::memcpy(b, &row.dwLocalAddr, 4);
+      p.address = ipv4_bytes_text(b);
+      p.pid = row.dwOwningPid;
+      add(std::move(p));
+    }
+  }
+  if (win_get_tcp_table(AF_INET6, TCP_TABLE_OWNER_PID_LISTENER, buf)) {
+    auto* t = reinterpret_cast<MIB_TCP6TABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      ListeningPort p;
+      p.proto = "TCP";
+      p.port = ntohs(static_cast<u_short>(row.dwLocalPort));
+      p.address = ipv6_bytes_text(row.ucLocalAddr);
+      p.pid = row.dwOwningPid;
+      add(std::move(p));
+    }
+  }
+  if (win_get_udp_table(AF_INET, UDP_TABLE_OWNER_PID, buf)) {
+    auto* t = reinterpret_cast<MIB_UDPTABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      ListeningPort p;
+      p.proto = "UDP";
+      p.port = ntohs(static_cast<u_short>(row.dwLocalPort));
+      unsigned char b[4];
+      std::memcpy(b, &row.dwLocalAddr, 4);
+      p.address = ipv4_bytes_text(b);
+      p.pid = row.dwOwningPid;
+      add(std::move(p));
+    }
+  }
+  if (win_get_udp_table(AF_INET6, UDP_TABLE_OWNER_PID, buf)) {
+    auto* t = reinterpret_cast<MIB_UDP6TABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      ListeningPort p;
+      p.proto = "UDP";
+      p.port = ntohs(static_cast<u_short>(row.dwLocalPort));
+      p.address = ipv6_bytes_text(row.ucLocalAddr);
+      p.pid = row.dwOwningPid;
+      add(std::move(p));
+    }
+  }
+  return out;
+}
+#else
+static std::string mini_capture(const char* cmd) {
+  std::string out;
+  FILE* f = popen(cmd, "r");
+  if (!f) return out;
+  char buf[512];
+  while (fgets(buf, sizeof(buf), f))
+    out += buf;
+  pclose(f);
+  return out;
+}
+
+#if defined(__linux__)
+static void linux_socket_owners(
+    std::map<std::string, std::pair<std::uint32_t, std::string>>& owners) {
+  DIR* proc = opendir("/proc");
+  if (!proc) return;
+  while (dirent* e = readdir(proc)) {
+    char* end = nullptr;
+    long pid = std::strtol(e->d_name, &end, 10);
+    if (!end || *end || pid <= 0) continue;
+    std::string base = std::string("/proc/") + e->d_name;
+    std::string name;
+    {
+      std::ifstream comm(base + "/comm");
+      std::getline(comm, name);
+    }
+    std::string fd_dir = base + "/fd";
+    DIR* fds = opendir(fd_dir.c_str());
+    if (!fds) continue;
+    while (dirent* fe = readdir(fds)) {
+      if (fe->d_name[0] == '.') continue;
+      std::string link = fd_dir + "/" + fe->d_name;
+      char target[256];
+      ssize_t n = readlink(link.c_str(), target, sizeof(target) - 1);
+      if (n <= 0) continue;
+      target[n] = '\0';
+      if (std::strncmp(target, "socket:[", 8) != 0) continue;
+      std::string inode(target + 8);
+      if (!inode.empty() && inode.back() == ']') inode.pop_back();
+      owners[inode] = {static_cast<std::uint32_t>(pid), name};
+    }
+    closedir(fds);
+  }
+  closedir(proc);
+}
+
+static void linux_parse_net(const char* path, const char* proto, bool tcp_listen,
+                            const std::map<std::string, std::pair<std::uint32_t, std::string>>& owners,
+                            std::vector<ListeningPort>& out) {
+  std::ifstream in(path);
+  if (!in) return;
+  std::string line;
+  std::getline(in, line);
+  while (std::getline(in, line)) {
+    std::istringstream iss(line);
+    std::string slot, local, remote, state;
+    if (!(iss >> slot >> local >> remote >> state)) continue;
+    if (tcp_listen && state != "0A") continue;
+    std::string token;
+    std::string inode;
+    for (int i = 0; i < 6 && (iss >> token); ++i)
+      inode = token;
+    auto colon = local.rfind(':');
+    if (colon == std::string::npos) continue;
+    std::string addr = local.substr(0, colon);
+    unsigned long port = 0;
+    try {
+      port = std::stoul(local.substr(colon + 1), nullptr, 16);
+    } catch (...) {
+      continue;
+    }
+    ListeningPort p;
+    p.proto = proto;
+    p.port = static_cast<std::uint16_t>(port);
+    try {
+      if (addr.size() == 8) {
+        unsigned long v = std::stoul(addr, nullptr, 16);
+        unsigned char b[4] = {static_cast<unsigned char>(v & 0xff),
+                              static_cast<unsigned char>((v >> 8) & 0xff),
+                              static_cast<unsigned char>((v >> 16) & 0xff),
+                              static_cast<unsigned char>((v >> 24) & 0xff)};
+        p.address = ipv4_bytes_text(b);
+      } else if (addr.size() == 32) {
+        unsigned char b[16]{};
+        for (int g = 0; g < 4; ++g) {
+          unsigned long w =
+              std::stoul(addr.substr(static_cast<std::size_t>(g) * 8, 8), nullptr, 16);
+          b[g * 4] = static_cast<unsigned char>(w & 0xff);
+          b[g * 4 + 1] = static_cast<unsigned char>((w >> 8) & 0xff);
+          b[g * 4 + 2] = static_cast<unsigned char>((w >> 16) & 0xff);
+          b[g * 4 + 3] = static_cast<unsigned char>((w >> 24) & 0xff);
+        }
+        p.address = ipv6_bytes_text(b);
+      } else {
+        continue;
+      }
+    } catch (...) {
+      continue;
+    }
+    auto it = owners.find(inode);
+    if (it != owners.end()) {
+      p.pid = it->second.first;
+      p.process = it->second.second;
+    }
+    if (p.port) out.push_back(std::move(p));
+  }
+}
+
+static std::vector<ListeningPort> linux_listening_ports() {
+  std::map<std::string, std::pair<std::uint32_t, std::string>> owners;
+  linux_socket_owners(owners);
+  std::vector<ListeningPort> out;
+  linux_parse_net("/proc/net/tcp", "TCP", true, owners, out);
+  linux_parse_net("/proc/net/tcp6", "TCP", true, owners, out);
+  linux_parse_net("/proc/net/udp", "UDP", false, owners, out);
+  linux_parse_net("/proc/net/udp6", "UDP", false, owners, out);
+  return out;
+}
+#else
+static void bsd_parse_lsof(const std::string& text, std::vector<ListeningPort>& out) {
+  std::istringstream all(text);
+  std::string line;
+  std::getline(all, line);
+  while (std::getline(all, line)) {
+    std::istringstream ls(line);
+    std::string command, user, fd, type, dev, size, node, name;
+    unsigned long pid = 0;
+    if (!(ls >> command >> pid >> user >> fd >> type >> dev >> size >> node >> name)) continue;
+    auto arrow = name.find("->");
+    if (arrow != std::string::npos) name.resize(arrow);
+    auto colon = name.rfind(':');
+    if (colon == std::string::npos) continue;
+    std::string addr = name.substr(0, colon);
+    std::string port_text = name.substr(colon + 1);
+    auto space = port_text.find(' ');
+    if (space != std::string::npos) port_text.resize(space);
+    unsigned long port = 0;
+    try {
+      port = std::stoul(port_text);
+    } catch (...) {
+      continue;
+    }
+    if (addr.size() >= 2 && addr.front() == '[' && addr.back() == ']')
+      addr = addr.substr(1, addr.size() - 2);
+    ListeningPort p;
+    p.proto = node;
+    p.port = static_cast<std::uint16_t>(port);
+    p.address = addr;
+    p.pid = static_cast<std::uint32_t>(pid);
+    p.process = command;
+    if (p.port) out.push_back(std::move(p));
+  }
+}
+
+static void bsd_parse_netstat(const std::string& text, std::vector<ListeningPort>& out) {
+  std::istringstream all(text);
+  std::string line;
+  while (std::getline(all, line)) {
+    std::istringstream ls(line);
+    std::string proto, recvq, sendq, local, foreign, state;
+    if (!(ls >> proto >> recvq >> sendq >> local >> foreign)) continue;
+    if (proto.rfind("tcp", 0) == 0) {
+      if (!(ls >> state) || state != "LISTEN") continue;
+    } else if (proto.rfind("udp", 0) != 0) {
+      continue;
+    }
+    auto sep = local.find_last_of(".:");
+    if (sep == std::string::npos) continue;
+    std::string addr = local.substr(0, sep);
+    unsigned long port = 0;
+    try {
+      port = std::stoul(local.substr(sep + 1));
+    } catch (...) {
+      continue;
+    }
+    ListeningPort p;
+    p.proto = proto.rfind("tcp", 0) == 0 ? "TCP" : "UDP";
+    p.port = static_cast<std::uint16_t>(port);
+    p.address = addr;
+    if (p.port) out.push_back(std::move(p));
+  }
+}
+
+static std::vector<ListeningPort> bsd_listening_ports() {
+  std::vector<ListeningPort> out;
+  auto lsof = mini_capture("lsof -nP -iTCP -sTCP:LISTEN -iUDP 2>/dev/null");
+  if (lsof.find("COMMAND") != std::string::npos) bsd_parse_lsof(lsof, out);
+  if (out.empty()) {
+    auto text = mini_capture("netstat -an -p tcp 2>/dev/null; netstat -an -p udp 2>/dev/null");
+    bsd_parse_netstat(text, out);
+  }
+  return out;
+}
+#endif
+#endif
+
+static std::vector<ListeningPort> listening_ports() {
+#ifdef _WIN32
+  auto out = win_listening_ports();
+#elif defined(__linux__)
+  auto out = linux_listening_ports();
+#else
+  auto out = bsd_listening_ports();
+#endif
+  std::sort(out.begin(), out.end(), [](const ListeningPort& a, const ListeningPort& b) {
+    if (a.port != b.port) return a.port < b.port;
+    if (a.proto != b.proto) return a.proto < b.proto;
+    return a.address < b.address;
+  });
+  out.erase(std::unique(out.begin(), out.end(),
+                        [](const ListeningPort& a, const ListeningPort& b) {
+                          return a.port == b.port && a.proto == b.proto &&
+                                 a.address == b.address && a.pid == b.pid;
+                        }),
+            out.end());
+  return out;
+}
+
+static std::vector<SearchResult> ports_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto needle = to_lower_utf8(trim_sv(remainder));
+  std::string proto_filter;
+  for (const char* p : {"tcp", "udp"}) {
+    std::string pl(p);
+    if (needle == pl) {
+      proto_filter = pl;
+      needle.clear();
+      break;
+    }
+    if (needle.rfind(pl + " ", 0) == 0) {
+      proto_filter = pl;
+      needle = trim_sv(needle.substr(pl.size() + 1));
+      break;
+    }
+  }
+  auto rows = listening_ports();
+  std::vector<ListeningPort> hits;
+  int tcp = 0, udp = 0;
+  for (auto& p : rows) {
+    auto pl = to_lower_utf8(p.proto);
+    if (pl == "tcp")
+      ++tcp;
+    else if (pl == "udp")
+      ++udp;
+    if (!proto_filter.empty() && pl != proto_filter) continue;
+    if (!needle.empty()) {
+      std::string hay = to_lower_utf8(p.proto + " " + p.address + " " + std::to_string(p.port) +
+                                      " " + p.process + " " + std::to_string(p.pid));
+      if (hay.find(needle) == std::string::npos) continue;
+    }
+    hits.push_back(p);
+  }
+  if (hits.empty()) {
+    std::string sub = needle.empty() ? "Nothing is listening right now"
+                                     : "No listening port matches \"" + trim_sv(remainder) + "\"";
+    out.push_back(card("No listening ports", sub, "No listening ports", "ports", 9000,
+                       ResultAction::None));
+    return out;
+  }
+  if (needle.empty() && proto_filter.empty()) {
+    auto title = std::to_string(tcp + udp) + " listening · TCP " + std::to_string(tcp) + " · UDP " +
+                 std::to_string(udp);
+    out.push_back(card(title, "Local sockets · enter copies the summary", title, "ports", 10050));
+  }
+  int n = 0;
+  for (auto& p : hits) {
+    if (n >= 64) break;
+    std::string endpoint = p.address + ":" + std::to_string(p.port);
+    std::string title = p.proto + "  " + endpoint;
+    if (!p.process.empty()) title += "  ·  " + p.process;
+    if (p.pid) title += " (" + std::to_string(p.pid) + ")";
+    std::string sub = p.proto == "UDP" ? "Bound · enter copies " + endpoint
+                                      : "Listening · enter copies " + endpoint;
+    if (!p.process.empty()) sub += " · " + p.process;
+    auto r = card(title, sub, endpoint, "ports", 10000 - n);
+    r.category = "ports";
+    out.push_back(std::move(r));
+    ++n;
+  }
+  return out;
+}
+
+// --- Password generator ----------------------------------------------------
+
+struct PasswordOptions {
+  std::size_t length{20};
+  bool lower{true};
+  bool upper{true};
+  bool digits{true};
+  bool symbols{true};
+};
+
+static std::uint32_t secure_rand_below(std::uint32_t bound) {
+  if (bound <= 1) return 0;
+  static thread_local std::random_device rd;
+  const std::uint64_t range = 0x100000000ull;
+  const std::uint64_t limit = range - (range % bound);
+  std::uint64_t r = 0;
+  do {
+    r = static_cast<std::uint64_t>(rd());
+  } while (r >= limit);
+  return static_cast<std::uint32_t>(r % bound);
+}
+
+static bool parse_password_options(const std::string& remainder, PasswordOptions& opts) {
+  std::istringstream iss(to_lower_utf8(trim_sv(remainder)));
+  std::string token;
+  bool length_set = false;
+  while (iss >> token) {
+    bool numeric = !token.empty();
+    for (char c : token)
+      if (!std::isdigit(static_cast<unsigned char>(c))) numeric = false;
+    if (numeric) {
+      try {
+        auto v = static_cast<std::size_t>(std::stoul(token));
+        if (v < 4) v = 4;
+        if (v > 128) v = 128;
+        opts.length = v;
+        length_set = true;
+      } catch (...) {
+        return false;
+      }
+    } else if (token == "pin" || token == "numeric" || token == "numbers") {
+      opts.lower = opts.upper = opts.symbols = false;
+      opts.digits = true;
+      if (!length_set) opts.length = 6;
+    } else if (token == "alpha" || token == "letters" || token == "text") {
+      opts.digits = opts.symbols = false;
+      opts.lower = opts.upper = true;
+    } else if (token == "simple" || token == "alnum" || token == "nosymbols" ||
+               token == "no-symbols" || token == "no_symbols") {
+      opts.symbols = false;
+    } else if (token == "symbols" || token == "special" || token == "specials") {
+      opts.symbols = true;
+    } else if (token == "strong" || token == "long") {
+      if (!length_set) opts.length = 32;
+      opts.symbols = true;
+    } else if (token == "short") {
+      if (!length_set) opts.length = 12;
+    } else if (token == "lower" || token == "lowercase") {
+      opts.lower = true;
+      opts.upper = false;
+    } else if (token == "upper" || token == "uppercase") {
+      opts.upper = true;
+      opts.lower = false;
+    } else if (token == "digits") {
+      opts.digits = true;
+    } else if (token == "no-digits" || token == "nodigits" || token == "no_digits") {
+      opts.digits = false;
+    } else {
+      return false;
+    }
+  }
+  if (!opts.lower && !opts.upper && !opts.digits && !opts.symbols) opts.lower = true;
+  return true;
+}
+
+static std::string generate_password(const PasswordOptions& opts) {
+  static const std::string kLower = "abcdefghijklmnopqrstuvwxyz";
+  static const std::string kUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  static const std::string kDigits = "0123456789";
+  static const std::string kSymbols = "!@#$%^&*()-_=+[]{};:,.?/|~";
+  std::vector<std::string> sets;
+  if (opts.lower) sets.push_back(kLower);
+  if (opts.upper) sets.push_back(kUpper);
+  if (opts.digits) sets.push_back(kDigits);
+  if (opts.symbols) sets.push_back(kSymbols);
+  std::string all;
+  for (auto& s : sets)
+    all += s;
+  std::string out;
+  out.reserve(opts.length);
+  for (auto& s : sets) {
+    if (out.size() >= opts.length) break;
+    out.push_back(s[secure_rand_below(static_cast<std::uint32_t>(s.size()))]);
+  }
+  while (out.size() < opts.length)
+    out.push_back(all[secure_rand_below(static_cast<std::uint32_t>(all.size()))]);
+  for (std::size_t i = out.size(); i > 1; --i) {
+    std::size_t j = secure_rand_below(static_cast<std::uint32_t>(i));
+    std::swap(out[i - 1], out[j]);
+  }
+  return out;
+}
+
+static std::vector<SearchResult> password_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  PasswordOptions opts;
+  if (!parse_password_options(remainder, opts)) {
+    out.push_back(card("Password generator",
+                       "Try password 24 symbols · password 32 nosymbols · password pin", "",
+                       "password", 8000, ResultAction::None));
+    return out;
+  }
+  std::string pw = generate_password(opts);
+  std::string classes;
+  auto add_class = [&](const char* name) {
+    if (!classes.empty()) classes += " + ";
+    classes += name;
+  };
+  if (opts.lower) add_class("lowercase");
+  if (opts.upper) add_class("uppercase");
+  if (opts.digits) add_class("digits");
+  if (opts.symbols) add_class("symbols");
+  int meter = std::min(100, static_cast<int>(opts.length) * 4 + (opts.symbols ? 10 : 0));
+  out.push_back(card(pw,
+                     std::to_string(opts.length) + " characters · " + classes +
+                         " · enter copies",
+                     pw, "password", 10000, ResultAction::Copy, meter));
+  return out;
+}
+
+// --- Unix timestamp conversion ---------------------------------------------
+
+static std::int64_t days_from_civil(int y, unsigned m, unsigned d) {
+  y -= m <= 2;
+  const std::int64_t era = (y >= 0 ? y : y - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(y - era * 400);
+  const unsigned mp = m > 2 ? m - 3 : m + 9;
+  const unsigned doy = (153u * mp + 2u) / 5u + d - 1u;
+  const unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
+  return era * 146097 + static_cast<std::int64_t>(doe) - 719468;
+}
+
+static bool parse_epoch_number(const std::string& s, std::int64_t& value) {
+  if (s.empty()) return false;
+  std::size_t i = (s[0] == '-' || s[0] == '+') ? 1 : 0;
+  if (i >= s.size()) return false;
+  for (std::size_t j = i; j < s.size(); ++j)
+    if (!std::isdigit(static_cast<unsigned char>(s[j]))) return false;
+  try {
+    value = std::stoll(s);
+  } catch (...) {
+    return false;
+  }
+  return true;
+}
+
+static bool parse_epoch_date(const std::string& raw, std::int64_t& value) {
+  std::string s = trim_sv(raw);
+  bool as_utc = false;
+  auto low = to_lower_utf8(s);
+  if (low.size() > 4 && low.compare(low.size() - 4, 4, " utc") == 0) {
+    as_utc = true;
+    s = trim_sv(s.substr(0, s.size() - 4));
+  } else if (low.rfind("utc ", 0) == 0) {
+    as_utc = true;
+    s = trim_sv(s.substr(4));
+  }
+  int y = 0, mo = 0, d = 0, h = 0, mi = 0, sec = 0, used = 0;
+  int got = std::sscanf(s.c_str(), "%d-%d-%d%n", &y, &mo, &d, &used);
+  if (got != 3) {
+    used = 0;
+    got = std::sscanf(s.c_str(), "%d/%d/%d%n", &y, &mo, &d, &used);
+  }
+  if (got != 3) return false;
+  std::string rest_raw = s.substr(static_cast<std::size_t>(used));
+  if (!rest_raw.empty()) {
+    char sep = rest_raw[0];
+    if (sep != 'T' && sep != 't' && sep != ' ') return false;
+    std::string rest = trim_sv(rest_raw.substr(1));
+    if (rest.empty()) return false;
+    int time_used = 0;
+    if (std::sscanf(rest.c_str(), "%d:%d%n", &h, &mi, &time_used) != 2) return false;
+    std::string tail = trim_sv(rest.substr(static_cast<std::size_t>(time_used)));
+    if (!tail.empty()) {
+      if (tail[0] != ':') return false;
+      int sec_used = 0;
+      if (std::sscanf(tail.c_str() + 1, "%d%n", &sec, &sec_used) != 1) return false;
+      if (!trim_sv(std::string(tail.c_str() + 1 + sec_used)).empty()) return false;
+    }
+  }
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h < 0 || h > 23 || mi < 0 || mi > 59 || sec < 0 ||
+      sec > 60)
+    return false;
+  if (as_utc) {
+    value = days_from_civil(y, static_cast<unsigned>(mo), static_cast<unsigned>(d)) * 86400 +
+            h * 3600 + mi * 60 + sec;
+    return true;
+  }
+  std::tm tm{};
+  tm.tm_year = y - 1900;
+  tm.tm_mon = mo - 1;
+  tm.tm_mday = d;
+  tm.tm_hour = h;
+  tm.tm_min = mi;
+  tm.tm_sec = sec;
+  tm.tm_isdst = -1;
+  std::time_t t = std::mktime(&tm);
+  if (t == static_cast<std::time_t>(-1)) return false;
+  value = static_cast<std::int64_t>(t);
+  return true;
+}
+
+static std::string format_epoch_time(std::int64_t secs, bool utc) {
+  std::time_t t = static_cast<std::time_t>(secs);
+  std::tm tm{};
+#ifdef _WIN32
+  if (utc)
+    gmtime_s(&tm, &t);
+  else
+    localtime_s(&tm, &t);
+#else
+  if (utc)
+    gmtime_r(&t, &tm);
+  else
+    localtime_r(&t, &tm);
+#endif
+  char buf[128]{};
+  std::strftime(buf, sizeof(buf), utc ? "%Y-%m-%d %H:%M:%S UTC" : "%Y-%m-%d %H:%M:%S %Z", &tm);
+  std::string out(buf);
+  if (!utc && (out.empty() || out.back() == ' ')) out += "local";
+  return out;
+}
+
+static std::vector<SearchResult> epoch_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto rest = trim_sv(remainder);
+  std::int64_t secs = 0;
+  std::int64_t millis = 0;
+  bool was_date = false;
+  bool numeric = false;
+  if (rest.empty()) {
+    secs = unix_seconds();
+    millis = secs * 1000;
+  } else if (parse_epoch_number(rest, millis)) {
+    numeric = true;
+    if (std::llabs(millis) >= 100000000000ll) {
+      secs = millis / 1000;
+    } else {
+      secs = millis;
+      millis = secs * 1000;
+    }
+  } else if (parse_epoch_date(rest, secs)) {
+    was_date = true;
+    millis = secs * 1000;
+  } else {
+    out.push_back(card("Can't convert that",
+                       "Try epoch 1700000000 or epoch 2024-01-01 12:00 · add UTC for UTC input",
+                       "", "epoch", 8000, ResultAction::None));
+    return out;
+  }
+  auto utc = format_epoch_time(secs, true);
+  auto local = format_epoch_time(secs, false);
+  auto iso = format_iso8601(secs);
+  auto seconds = std::to_string(secs);
+  auto millis_text = std::to_string(millis);
+  auto add = [&](const std::string& title, const std::string& sub, const std::string& payload,
+                 int score) {
+    out.push_back(card(title, sub, payload, "epoch", score));
+  };
+  if (was_date) {
+    add(seconds, "Unix seconds · enter copies", seconds, 10000);
+    add(utc, "UTC · enter copies", utc, 9990);
+    add(local, "Local time · enter copies", local, 9980);
+    add(iso, "ISO 8601 · enter copies", iso, 9970);
+    add(millis_text, "Unix milliseconds · enter copies", millis_text, 9960);
+  } else {
+    add(utc, (numeric ? "Unix " + seconds + " · " : "Now · ") + std::string("UTC · enter copies"),
+        utc, 10000);
+    add(local, "Local time · enter copies", local, 9990);
+    add(seconds, "Unix seconds · enter copies", seconds, 9980);
+    add(iso, "ISO 8601 · enter copies", iso, 9970);
+    add(millis_text, "Unix milliseconds · enter copies", millis_text, 9960);
+  }
+  return out;
+}
+
 }  // namespace
 
 void set_mini_network_enabled(bool enabled) {
@@ -1233,6 +1954,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Weather, rest.empty());
   else if (key == "time" || key == "date" || key == "clock" || key == "now")
     set(MiniKind::Time, true);
+  else if (key == "epoch" || key == "unix" || key == "timestamp" || key == "unixtime" ||
+           key == "unixtimestamp" || key == "epochtime" || key == "ts")
+    set(MiniKind::Epoch, true);
   else if (key == "disku" || key == "diskusage" || key == "disk-usage")
     set(MiniKind::DiskUsage, true);
   else if (key == "disk" || key == "disks" || key == "storage" || key == "drives")
@@ -1435,6 +2159,12 @@ MiniIntent parse_mini_intent(std::string_view query) {
       it.remainder = rest.empty() ? key : (key + " " + rest);
       it.exact = false;
     }
+  } else if (key == "ports" || key == "port" || key == "listening" || key == "listen" ||
+             key == "netstat" || key == "openports" || key == "lsof") {
+    set(MiniKind::Ports, true);
+  } else if (key == "password" || key == "pass" || key == "pw" || key == "genpass" ||
+             key == "passgen" || key == "passwordgen" || key == "secret") {
+    set(MiniKind::Password, true);
   } else if (key == "ping")
     set(MiniKind::Ping, false);
   else if (key == "dns" || key == "nslookup" || key == "dig" || key == "resolve" || key == "lookup")
@@ -1469,6 +2199,14 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "large" || key == "largefiles" || key == "large-files" || key == "bigfiles" ||
            key == "big-files" || key == "biggest")
     set(MiniKind::Large, false);
+  else if (key == "recent" || key == "recents" || key == "recentfiles" ||
+           key == "recent-files" || key == "recently-modified" || key == "modified")
+    set(MiniKind::Recent, false);
+  else if (key == "saved" || key == "searches" || key == "savedsearches" ||
+           key == "saved-searches")
+    set(MiniKind::Saved, false);
+  else if (key == "meta" || key == "metadata" || key == "custom-meta")
+    set(MiniKind::Meta, false);
   else if (key == "workflow" || key == "workflows" || key == "flow" || key == "flows" ||
            key == "run" || key == "routines" || key == "routine")
     set(MiniKind::Workflow, false);
@@ -1511,6 +2249,10 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Volume, true);
   else if (key == "brightness" || key == "bright" || key == "backlight" || key == "dim")
     set(MiniKind::Brightness, true);
+  else if (key == "focus" || key == "dnd" || key == "donotdisturb" || key == "do-not-disturb" ||
+           key == "do_not_disturb" || key == "quietmode" || key == "quiet-hours" ||
+           key == "quiethours")
+    set(MiniKind::Focus, true);
   else if (key == "settings" || key == "setting" || key == "prefs" || key == "preferences")
     set(MiniKind::Settings, true);
   else if (key == "setup" || key == "wizard" || key == "onboard" || key == "onboarding" ||
@@ -1575,6 +2317,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Bluetooth) return bluetooth_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Volume) return volume_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Brightness) return brightness_results(intent.remainder, cfg);
+  if (intent.kind == MiniKind::Focus) return focus_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Settings) return settings_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Setup) return setup_results(intent.remainder, cfg);
   if (intent.kind == MiniKind::Config) return config_results(intent.remainder, cfg);
@@ -1605,6 +2348,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     out.push_back(card(clock, date, payload, "time"));
     return out;
   }
+
+  if (intent.kind == MiniKind::Epoch) return epoch_results(intent.remainder);
+  if (intent.kind == MiniKind::Password) return password_results(intent.remainder);
+  if (intent.kind == MiniKind::Ports) return ports_results(intent.remainder);
 
   if (intent.kind == MiniKind::Speedtest) {
     auto rest = to_lower_utf8(intent.remainder);
@@ -2973,6 +3720,127 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     return large_file_results(*index, cfg2, dir, limit);
   }
 
+  if (intent.kind == MiniKind::Recent) {
+    if (!index) {
+      out.push_back(card("Recent files need the index",
+                         "Open Wilfred with an index, or type wilfred index", "", "recent", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    // Grammar: `recent [count] [window] [filter...]` where window is 30m,
+    // 24h, 7d or 2w. Anything else is a path substring filter, with a leading
+    // "in" stripped so `recent in Projects` reads naturally.
+    int limit = 10;
+    bool limit_set = false;
+    std::int64_t window = 0;
+    std::string filter_words;
+    auto rest = trim_sv(intent.remainder);
+    std::size_t i = 0;
+    while (i < rest.size()) {
+      while (i < rest.size() && std::isspace(static_cast<unsigned char>(rest[i]))) ++i;
+      std::size_t j = i;
+      while (j < rest.size() && !std::isspace(static_cast<unsigned char>(rest[j]))) ++j;
+      std::string tok = rest.substr(i, j - i);
+      i = j;
+      if (tok.empty()) continue;
+      bool all_digits = true;
+      for (char c : tok)
+        if (!std::isdigit(static_cast<unsigned char>(c))) all_digits = false;
+      if (all_digits) {
+        if (!limit_set) {
+          int v = std::atoi(tok.c_str());
+          if (v > 0) limit = v;
+          limit_set = true;
+          continue;
+        }
+      } else if (tok.size() >= 2) {
+        char unit = static_cast<char>(std::tolower(static_cast<unsigned char>(tok.back())));
+        std::string num = tok.substr(0, tok.size() - 1);
+        bool num_digits = !num.empty();
+        for (char c : num)
+          if (!std::isdigit(static_cast<unsigned char>(c))) num_digits = false;
+        if (num_digits && (unit == 'm' || unit == 'h' || unit == 'd' || unit == 'w')) {
+          std::int64_t n = std::atoll(num.c_str());
+          std::int64_t mult =
+              unit == 'm' ? 60 : unit == 'h' ? 3600 : unit == 'd' ? 86400 : 604800;
+          window = n * mult;
+          continue;
+        }
+      }
+      if (!filter_words.empty()) filter_words += " ";
+      filter_words += tok;
+    }
+    auto fl = to_lower_utf8(filter_words);
+    if (fl.rfind("in ", 0) == 0) filter_words = trim_sv(filter_words.substr(3));
+    if (limit > 40) limit = 40;
+    std::int64_t since =
+        window > 0 ? static_cast<std::int64_t>(std::time(nullptr)) - window : 0;
+    return recent_file_results(*index, cfg, filter_words, limit, since);
+  }
+
+  if (intent.kind == MiniKind::Saved) {
+    auto q = trim_sv(intent.remainder);
+    if (cfg.searches.empty()) {
+      out.push_back(card("No saved searches yet",
+                         "Add searches: in wilfred.yml, then type saved <name>", "", "saved", 8000,
+                         ResultAction::None));
+      return out;
+    }
+    // `saved <name>` focuses one; bare `saved` lists them sorted by name so
+    // the order does not change between runs (the map is unordered).
+    if (!q.empty()) {
+      auto it = cfg.searches.find(to_lower_utf8(q));
+      if (it != cfg.searches.end()) {
+        out.push_back(card(it->first, it->second, it->second + " ", "saved", 10000,
+                           ResultAction::Habit));
+        return out;
+      }
+    }
+    std::vector<std::pair<std::string, std::string>> items(cfg.searches.begin(),
+                                                           cfg.searches.end());
+    std::sort(items.begin(), items.end(),
+              [](auto& a, auto& b) { return a.first < b.first; });
+    int n = 0;
+    for (auto& [name, text] : items) {
+      if (n++ >= 10) break;
+      // Habit action: Enter drops the query into the search box, so a saved
+      // search is one keystroke away from re-running with fresh filters.
+      out.push_back(card(name, text, text + " ", "saved", 10000 - n * 10, ResultAction::Habit));
+    }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Meta) {
+    if (cfg.custom_metadata.empty()) {
+      out.push_back(card("No custom metadata",
+                         "Add custom_metadata: in wilfred.yml (key: value pairs)", "", "meta",
+                         8000, ResultAction::None));
+      return out;
+    }
+    auto q = trim_sv(intent.remainder);
+    if (!q.empty()) {
+      auto ql = to_lower_utf8(q);
+      for (auto& [k, v] : cfg.custom_metadata) {
+        if (to_lower_utf8(k) == ql) {
+          out.push_back(card(k, v, v, "meta", 10000, ResultAction::Copy));
+          return out;
+        }
+      }
+      out.push_back(card("No metadata key '" + q + "'", "Type meta to list every key", "", "meta",
+                         8000, ResultAction::None));
+      return out;
+    }
+    std::vector<std::pair<std::string, std::string>> items(cfg.custom_metadata.begin(),
+                                                           cfg.custom_metadata.end());
+    std::sort(items.begin(), items.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    int n = 0;
+    for (auto& [k, v] : items) {
+      if (n++ >= 12) break;
+      out.push_back(card(k, v, v, "meta", 10000 - n * 10, ResultAction::Copy));
+    }
+    return out;
+  }
+
   if (intent.kind == MiniKind::Workflow) {
     auto rest = trim_sv(intent.remainder);
     // `run` doubles as the shell-command prefix (`run ipconfig`); only claim it
@@ -3658,8 +4526,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         "help.17", "help.18", "help.19", "help.20", "help.21", "help.22", "help.23", "help.24",
         "help.25", "help.26", "help.27", "help.28", "help.29", "help.30", "help.31", "help.32",
         "help.33", "help.34", "help.35", "help.36", "help.37", "help.38", "help.39", "help.40",
-        "help.41", "help.42", "help.43", "help.44", "help.45", "help.46", "help.47", nullptr};
-    // Order matches docs/query-language.md mini table (help.01..help.47);
+        "help.41", "help.42", "help.43", "help.44", "help.45", "help.46", "help.47", "help.48",
+        "help.49", "help.50", "help.51", nullptr};
+    // Order matches docs/query-language.md mini table (help.01..help.51);
     // keep the keys array and locale tables in sync when adding lines.
     for (auto** p = keys; *p; ++p) {
       auto text = tr(*p);

@@ -540,6 +540,41 @@ bool native_brightness_set(int percent, std::string& error) {
   return false;
 }
 
+bool native_focus_status(bool& enabled, std::string& detail, std::string& error) {
+  // Legacy Notification Center flag. Recent macOS versions may not expose
+  // Focus state through defaults; the toggle still writes best-effort.
+  auto out = mac_lower(mac_exec(
+      "defaults -currentHost read com.apple.notificationcenterui doNotDisturb 2>/dev/null"));
+  while (!out.empty() && (out.back() == '\n' || out.back() == '\r' || out.back() == ' '))
+    out.pop_back();
+  if (out == "1" || out == "true" || out == "yes") {
+    enabled = true;
+    detail = "Do Not Disturb on";
+    return true;
+  }
+  if (out == "0" || out == "false" || out == "no") {
+    enabled = false;
+    detail = "Do Not Disturb off";
+    return true;
+  }
+  enabled = false;
+  detail = "assumed off (legacy Focus key missing)";
+  return true;
+}
+
+bool native_focus_set(bool enabled, std::string& error) {
+  std::string cmd =
+      std::string("defaults -currentHost write com.apple.notificationcenterui doNotDisturb -bool ") +
+      (enabled ? "true" : "false");
+  if (std::system((cmd + " >/dev/null 2>&1").c_str()) != 0) {
+    error = "cannot write the Notification Center setting";
+    return false;
+  }
+  // Apply immediately on the versions that still read this flag.
+  std::system("killall NotificationCenter >/dev/null 2>&1");
+  return true;
+}
+
 bool native_open_settings(const std::string& page, std::string& error) {
   auto open_url = [](const std::string& u) {
     return std::system(("open " + mac_shell_quote(u) + " >/dev/null 2>&1").c_str()) == 0;

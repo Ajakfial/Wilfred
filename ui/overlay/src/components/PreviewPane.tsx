@@ -29,7 +29,18 @@ export function PreviewPane({ preview, path }: Props) {
         </div>
       </div>
       <div className="pv-content">
-        {preview?.image ? (
+        {preview?.media ? (
+          preview.mediaKind === "audio" ? (
+            <div className="pv-media pv-media--audio">
+              <span className="pv-media-glyph" aria-hidden="true">
+                <Icon name="music" size={26} strokeWidth={1.8} />
+              </span>
+              <audio className="pv-audio" controls preload="metadata" src={preview.media} />
+            </div>
+          ) : (
+            <video className="pv-video" controls preload="metadata" src={preview.media} />
+          )
+        ) : preview?.image ? (
           <img className="pv-img" alt="" src={preview.image} draggable={false} />
         ) : preview?.text ? (
           <pre className="pv-text">{preview.text}</pre>

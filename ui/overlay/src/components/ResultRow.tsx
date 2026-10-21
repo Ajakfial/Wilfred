@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { actionsOf, groupOf, highlightRuns, kindLabel, kindOf, parseAnswer, parseSpeed } from "../protocol";
+import { actionsOf, fileUrlForPath, groupOf, highlightRuns, kindLabel, kindOf, parseAnswer, parseSpeed } from "../protocol";
 import { Icon, iconForKind } from "./icons";
 import type { RowEntry } from "../types";
 
@@ -8,13 +8,17 @@ interface Props {
   /** Position in the visible list (a11y + quick-open number). */
   pos: number;
   selected: boolean;
+  /** Part of a multi-selection (renders the checkbox as ticked). */
+  checked: boolean;
+  /** True once any row is selected, so every row shows its checkbox. */
+  selectionMode: boolean;
   needle: string;
   expanded: boolean;
   /** Label for the quick-open chord ("⌘" / "Ctrl") while the modifier is held. */
   quickMod: string | null;
   onHover: (index: number, x: number, y: number) => void;
   onMore: (index: number) => void;
-  onSelect: (index: number) => void;
+  onSelect: (index: number, e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void;
 }
 
 function Marked({ text, needle }: { text: string; needle: string }) {
@@ -36,7 +40,7 @@ function answerSize(text: string): "xl" | "l" | "m" | "s" {
   return "s";
 }
 
-export function ResultRow({ entry, pos, selected, needle, expanded, quickMod, onHover, onMore, onSelect }: Props) {
+export function ResultRow({ entry, pos, selected, checked, selectionMode, needle, expanded, quickMod, onHover, onMore, onSelect }: Props) {
   const { item, index } = entry;
   const k = kindOf(item);
   const acts = actionsOf(item);
@@ -60,6 +64,8 @@ export function ResultRow({ entry, pos, selected, needle, expanded, quickMod, on
     "row",
     `row--${variant}`,
     selected ? "is-sel" : "",
+    checked ? "is-checked" : "",
+    selectionMode && item.path ? "is-selecting" : "",
     meter !== null && variant === "item" ? "has-meter" : "",
     item.category === "clipboard" ? "is-clip" : "",
   ]
@@ -182,14 +188,38 @@ export function ResultRow({ entry, pos, selected, needle, expanded, quickMod, on
       data-g={group}
       data-level={level}
       role="option"
-      aria-selected={selected}
+      aria-selected={selectionMode ? checked : selected}
+      draggable={Boolean(item.path)}
+      onDragStart={(e) => {
+        const p = item.path || "";
+        if (!p) {
+          e.preventDefault();
+          return;
+        }
+        const url = fileUrlForPath(p);
+        const name = p.split(/[\\/]/).pop() || "file";
+        try {
+          e.dataTransfer.setData("text/uri-list", url);
+          e.dataTransfer.setData("text/plain", p);
+          // Pseudo-format understood by WebView2/Chromium for OS drag-out.
+          e.dataTransfer.setData("DownloadURL", `application/octet-stream:${name}:${url}`);
+          e.dataTransfer.effectAllowed = "copy";
+        } catch {
+          /* host rejected a custom MIME type; the plain/path formats remain */
+        }
+      }}
       onMouseMove={(e) => onHover(index, e.clientX, e.clientY)}
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest(".more")) return;
         e.preventDefault();
-        onSelect(index);
+        onSelect(index, { ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
       }}
     >
+      {selectionMode && item.path ? (
+        <span className={checked ? "check is-on" : "check"} aria-hidden="true">
+          <Icon name="check" size={12} strokeWidth={3} />
+        </span>
+      ) : null}
       {body}
       {variant !== "item" && quick ? <kbd className="quick quick--card">{quick}</kbd> : null}
     </div>

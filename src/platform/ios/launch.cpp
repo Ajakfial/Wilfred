@@ -90,6 +90,14 @@ bool native_brightness_set(int, std::string& error) {
   error = "brightness is handled by iOS";
   return false;
 }
+bool native_focus_status(bool&, std::string&, std::string& error) {
+  error = "Do Not Disturb is handled by iOS";
+  return false;
+}
+bool native_focus_set(bool, std::string& error) {
+  error = "Do Not Disturb is handled by iOS";
+  return false;
+}
 bool native_open_settings(const std::string&, std::string& error) {
   error = "settings are handled by iOS";
   return false;

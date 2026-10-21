@@ -63,3 +63,4 @@ void test_locale();
 void test_plugins();
 void test_settings();
 void test_autostart();
+void test_agent_extras();

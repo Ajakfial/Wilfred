@@ -32,6 +32,8 @@ struct FilePreview {
   std::string modified_label;
   std::string text;            // head of text files / directory listing
   std::string image_data_url;  // data: URL for small images, else empty
+  std::string media_data_url;  // data: URL for small audio/video, else empty
+  std::string media_kind;      // "audio" or "video" when media_data_url is set
   std::string error;
 };
 

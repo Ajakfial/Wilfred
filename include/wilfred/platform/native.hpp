@@ -92,6 +92,11 @@ bool native_volume_mute(bool mute, std::string& error);
 // percent 0..100.
 bool native_brightness_status(int& percent, std::string& error);
 bool native_brightness_set(int percent, std::string& error);
+// Do Not Disturb / Focus mode. `enabled` is true when notifications are
+// silenced. Best-effort per platform: Windows notification setting, GNOME
+// show-banners, macOS legacy Notification Center flag; mobile is unsupported.
+bool native_focus_status(bool& enabled, std::string& detail, std::string& error);
+bool native_focus_set(bool enabled, std::string& error);
 
 // --- Autostart / login items ---
 // enable registers this binary to launch at login (bare `wilfred` runs the

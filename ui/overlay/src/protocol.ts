@@ -23,6 +23,175 @@ export function nativeSend(msg: object): void {
   }
 }
 
+/** Structural subset of KeyboardEvent, so this module needs no React import. */
+export type KeyEventLike = {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+};
+
+export type KeybindMap = Record<string, string>;
+
+/** Mirrors keybind_defaults() in src/config/config.cpp. */
+const DEFAULT_KEYBINDS: KeybindMap = {
+  preview: "F3",
+  actions: "mod+k",
+  settings: "mod+,",
+  next: "down",
+  prev: "up",
+  page_down: "page_down",
+  page_up: "page_up",
+  first: "home",
+  last: "end",
+  complete: "tab",
+};
+
+const MODIFIER_PARTS = new Set([
+  "mod",
+  "ctrl",
+  "control",
+  "cmd",
+  "command",
+  "meta",
+  "shift",
+  "alt",
+  "option",
+]);
+
+let keybinds: KeybindMap = { ...DEFAULT_KEYBINDS };
+
+/** Replace the active bindings with defaults merged over the host payload. */
+export function setKeybinds(input: unknown): void {
+  keybinds = { ...DEFAULT_KEYBINDS };
+  if (!input || typeof input !== "object") return;
+  for (const [name, chord] of Object.entries(input as Record<string, unknown>)) {
+    if (typeof chord === "string" && chord.trim()) keybinds[name] = chord;
+  }
+}
+
+export function keybindFor(action: string): string {
+  return keybinds[action] ?? "";
+}
+
+function normalizeKeyName(raw: string): string {
+  const lower = raw.trim().toLowerCase();
+  const named: Record<string, string> = {
+    arrowdown: "down",
+    arrowup: "up",
+    arrowleft: "left",
+    arrowright: "right",
+    pagedown: "page_down",
+    pageup: "page_up",
+    " ": "space",
+    spacebar: "space",
+    escape: "esc",
+    esc: "esc",
+    return: "enter",
+    del: "delete",
+  };
+  if (named[lower]) return named[lower];
+  // Make "Page_Down"/"page-down" interchangeable with "page_down".
+  return lower.replace(/[\s-]+/g, "_");
+}
+
+/**
+ * True when `e` matches a chord like "F3", "mod+k" or "ctrl+shift+p".
+ * "mod" means Ctrl or Cmd; a chord with no modifier must be pressed alone.
+ */
+export function keyMatches(e: KeyEventLike, chord: string): boolean {
+  if (!chord) return false;
+  const parts = chord
+    .toLowerCase()
+    .split("+")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const keyPart = parts.find((p) => !MODIFIER_PARTS.has(p));
+  if (!keyPart) return false;
+  const wantMod = parts.includes("mod");
+  const wantCtrl = parts.includes("ctrl") || parts.includes("control");
+  const wantMeta =
+    parts.includes("cmd") || parts.includes("command") || parts.includes("meta");
+  const wantShift = parts.includes("shift");
+  const wantAlt = parts.includes("alt") || parts.includes("option");
+  const mod = e.ctrlKey || e.metaKey;
+  if (wantMod !== mod) return false;
+  if (wantCtrl && !e.ctrlKey) return false;
+  if (wantMeta && !e.metaKey) return false;
+  if (wantShift !== e.shiftKey) return false;
+  if (wantAlt !== e.altKey) return false;
+  return normalizeKeyName(e.key) === normalizeKeyName(keyPart);
+}
+
+/** True when `e` matches the chord bound to `action`. */
+export function actionMatches(e: KeyEventLike, action: string): boolean {
+  return keyMatches(e, keybindFor(action));
+}
+
+/**
+ * Navigation variant: Shift is ignored when the bound chord does not ask for
+ * it, so Shift+Arrow still moves the cursor (extending a selection) after the
+ * user rebinds next/prev to a non-Shift chord.
+ */
+export function actionMatchesNav(e: KeyEventLike, action: string): boolean {
+  if (actionMatches(e, action)) return true;
+  if (!e.shiftKey) return false;
+  return keyMatches(
+    { key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: false, altKey: e.altKey },
+    keybindFor(action),
+  );
+}
+
+/** Human-readable chord for the footer, e.g. "mod+k" -> "Ctrl K". */
+export function chordLabel(chord: string, modLabel: string): string {
+  const named: Record<string, string> = {
+    mod: modLabel,
+    ctrl: "Ctrl",
+    control: "Ctrl",
+    cmd: "⌘",
+    command: "⌘",
+    meta: "⌘",
+    shift: "Shift",
+    alt: "Alt",
+    option: "Alt",
+    down: "↓",
+    up: "↑",
+    left: "←",
+    right: "→",
+    page_down: "PgDn",
+    page_up: "PgUp",
+    esc: "Esc",
+    enter: "↵",
+    space: "Space",
+    tab: "Tab",
+  };
+  const parts = chord
+    .split("+")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!parts.length) return "";
+  return parts
+    .map((p) => {
+      const lower = p.toLowerCase();
+      if (named[lower]) return named[lower];
+      return p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1);
+    })
+    .join(" ");
+}
+
+/** file:// URL for a local path, used for drag-out. */
+export function fileUrlForPath(path: string): string {
+  let p = path.replace(/\\/g, "/");
+  if (/^[A-Za-z]:/.test(p)) p = "/" + p;
+  if (!p.startsWith("/")) p = "/" + p;
+  const encoded = p
+    .split("/")
+    .map((seg) => encodeURIComponent(seg).replace(/%3A/gi, ":"))
+    .join("/");
+  return "file://" + encoded;
+}
+
 /**
  * Auto-size vs. user-size.
  *

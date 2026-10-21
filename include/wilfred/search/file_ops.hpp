@@ -40,6 +40,18 @@ bool bulk_rename_in_dir(const std::string& dir, const std::string& pattern,
 // Move files/dirs into dest_dir (created when missing). Returns moved paths.
 bool move_paths_to(const std::vector<std::string>& sources, const std::string& dest_dir,
                    std::vector<std::string>& moved_out, std::string& error);
+
+// Move files/dirs to the OS trash (Recycle Bin on Windows, ~/.Trash on macOS,
+// the XDG trash on Linux/BSD). Recoverable, unlike a plain unlink. Returns the
+// paths that were trashed; nothing is removed if the whole batch fails first.
+bool trash_paths(const std::vector<std::string>& sources, std::vector<std::string>& trashed_out,
+                 std::string& error);
+
+// Extract a .zip (stored or deflate) into dest_dir, creating it when needed.
+// Entry names are sanitized against traversal; count_out receives the number
+// of files written. False on a corrupt archive or an unwritable destination.
+bool unzip_to(const std::string& archive, const std::string& dest_dir, std::size_t& count_out,
+              std::string& error);
 // Create a file from a built-in template: empty|txt|md|python|py|cpp|h|
 // html|json|gitignore|todo. new_name may omit the extension (added).
 bool create_from_template(const std::string& dir, const std::string& template_name,

@@ -73,7 +73,9 @@ void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
 #endif
   if (!is_dir) add("hash_file", tr("action.hash_file"));
   add("compress_zip", tr("action.compress_zip"));
+  if (r.kind == FileKind::Archive) add("extract_zip", tr("action.extract_zip"));
   add("move_to", tr("action.move_to"));
+  add("delete_file", tr("action.delete_file"));
   if (is_dir) {
     add("bulk_rename", tr("action.bulk_rename"));
     add("new_from_template", tr("action.new_from_template"));
@@ -250,6 +252,8 @@ std::string action_label_for(const std::string& id) {
   if (id == "copy_text") return tr("action.copy_text");
   if (id == "hash_file") return tr("action.hash_file");
   if (id == "compress_zip") return tr("action.compress_zip");
+  if (id == "extract_zip") return tr("action.extract_zip");
+  if (id == "delete_file") return tr("action.delete_file");
   if (id == "bulk_rename" || id.rfind("bulk_rename:", 0) == 0)
     return tr("action.bulk_rename_short");
   if (id == "move_to" || id.rfind("move_to:", 0) == 0) return tr("action.move_to_short");
@@ -362,6 +366,7 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id.empty() || action_id == "open" || action_id == "open_parent" || action_id == "reveal" || action_id == "paste" ||
       action_id == "expand" || action_id == "open_terminal" || action_id == "open_editor" ||
       action_id == "compress_zip" || action_id == "new_file" || action_id == "new_folder" ||
+      action_id == "extract_zip" || action_id == "delete_file" ||
       action_id == "bulk_rename" || action_id.rfind("bulk_rename:", 0) == 0 ||
       action_id == "move_to" || action_id.rfind("move_to:", 0) == 0 ||
       action_id == "new_from_template" || action_id.rfind("new_from_template:", 0) == 0 ||
@@ -796,6 +801,35 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       }
       reveal_path(dest);
       return true;
+    }
+    if (id == "extract_zip") {
+      if (p.empty() || !fs_exists(p)) return false;
+      auto dir = path_parent(p);
+      if (dir.empty()) return false;
+      auto stem = path_stem(p);
+      if (stem.empty()) stem = path_filename(p);
+      if (stem.empty()) stem = "extracted";
+      // Refuse to flatten into an existing folder: unique_sibling_path only
+      // returns a free name, so the destination is always new.
+      auto dest = unique_sibling_path(dir, stem, "");
+      std::size_t entries = 0;
+      std::string err;
+      if (!unzip_to(p, dest, entries, err)) {
+        log_warn("fileops", err.empty() ? "extract failed" : err);
+        return false;
+      }
+      reveal_path(dest);
+      return true;
+    }
+    if (id == "delete_file") {
+      if (p.empty() || !fs_exists(p)) return false;
+      std::vector<std::string> trashed;
+      std::string err;
+      if (!trash_paths({p}, trashed, err)) {
+        log_warn("fileops", err.empty() ? "delete failed" : err);
+        return false;
+      }
+      return !trashed.empty();
     }
     if (id == "new_file" || id == "new_folder") {
       auto base = fs_is_directory(p) ? p : path_parent(p);

@@ -614,6 +614,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_plugins.cpp
   tests/test_settings.cpp
   tests/test_autostart.cpp
+  tests/test_agent_extras.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

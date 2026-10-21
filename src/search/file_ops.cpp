@@ -1,15 +1,23 @@
 #include "wilfred/search/file_ops.hpp"
 
 #include "wilfred/core/crc32.hpp"
+#include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/updater/updater.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
 
 namespace wilfred {
 namespace fs = std::filesystem;
@@ -689,6 +697,201 @@ bool create_from_template(const std::string& dir, const std::string& template_na
   if (!body.empty()) std::fwrite(body.data(), 1, body.size(), f);
   std::fclose(f);
   out_path = dest;
+  return true;
+}
+
+namespace {
+
+#ifndef _WIN32
+std::string shell_quote(const std::string& s) {
+  std::string o = "'";
+  for (char c : s) {
+    if (c == '\'')
+      o += "'\\''";
+    else
+      o.push_back(c);
+  }
+  o += "'";
+  return o;
+}
+
+std::string trash_root() {
+#ifdef __APPLE__
+  return path_join(home_directory(), ".Trash");
+#else
+  const char* xdg = std::getenv("XDG_DATA_HOME");
+  std::string base =
+      (xdg && *xdg) ? std::string(xdg) : path_join(home_directory(), ".local/share");
+  return path_join(base, "Trash");
+#endif
+}
+
+// Percent-encode an absolute path for the .trashinfo Path= field (RFC 2396).
+std::string trashinfo_path_field(const std::string& path) {
+  static const char* hex = "0123456789ABCDEF";
+  std::string out;
+  out.reserve(path.size());
+  for (unsigned char c : path) {
+    bool keep = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                c == '/' || c == '-' || c == '.' || c == '_' || c == '~' || c == ':';
+    if (keep) {
+      out.push_back(static_cast<char>(c));
+    } else {
+      out.push_back('%');
+      out.push_back(hex[c >> 4]);
+      out.push_back(hex[c & 0x0F]);
+    }
+  }
+  return out;
+}
+
+// Move one path into the desktop trash. macOS just renames into ~/.Trash; the
+// XDG spec additionally wants a .trashinfo record so file managers can offer
+// "restore", so that file is written before the rename and removed if the
+// rename fails.
+bool move_into_trash(const std::string& src, std::string& out, std::string& error) {
+  auto root = trash_root();
+  auto files_dir = path_join(root, "files");
+  std::error_code ec;
+  fs::create_directories(fs::u8path(files_dir), ec);
+  auto name = path_filename(src);
+  if (name.empty()) name = "file";
+  auto dest = path_join(files_dir, name);
+
+#ifdef __APPLE__
+  for (int i = 2; fs::exists(fs::u8path(dest), ec); ++i) {
+    if (i >= 10000) {
+      error = "Trash is full";
+      return false;
+    }
+    dest = path_join(files_dir, name + " " + std::to_string(i));
+  }
+  fs::rename(fs::u8path(src), fs::u8path(dest), ec);
+  if (ec) {
+    error = "Could not move to Trash: " + src;
+    return false;
+  }
+  out = dest;
+  return true;
+#else
+  auto info_dir = path_join(root, "info");
+  fs::create_directories(fs::u8path(info_dir), ec);
+  auto info = path_join(info_dir, name + ".trashinfo");
+  for (int i = 2; fs::exists(fs::u8path(dest), ec) || fs::exists(fs::u8path(info), ec); ++i) {
+    if (i >= 10000) {
+      error = "Trash is full";
+      return false;
+    }
+    dest = path_join(files_dir, name + "." + std::to_string(i));
+    info = path_join(info_dir, name + "." + std::to_string(i) + ".trashinfo");
+  }
+  std::error_code abs_ec;
+  auto abs = fs::absolute(fs::u8path(src), abs_ec);
+  std::string abs_path = abs_ec ? src : fs_to_utf8(abs);
+  std::time_t now = std::time(nullptr);
+  std::tm tmv{};
+  localtime_r(&now, &tmv);
+  char stamp[32]{};
+  std::strftime(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%S", &tmv);
+  std::string body =
+      "[Trash Info]\nPath=" + trashinfo_path_field(abs_path) + "\nDeletionDate=" + stamp + "\n";
+  if (!write_file_atomic(info, body.data(), body.size())) {
+    error = "Could not write the trash record";
+    return false;
+  }
+  fs::rename(fs::u8path(src), fs::u8path(dest), ec);
+  if (ec) {
+    std::error_code ignored;
+    fs::remove(fs::u8path(info), ignored);
+    error = "Could not move to Trash: " + src;
+    return false;
+  }
+  out = dest;
+  return true;
+#endif
+}
+#endif  // !_WIN32
+
+}  // namespace
+
+bool trash_paths(const std::vector<std::string>& sources, std::vector<std::string>& trashed_out,
+                 std::string& error) {
+  trashed_out.clear();
+  error.clear();
+  if (sources.empty()) {
+    error = "Nothing to delete";
+    return false;
+  }
+#ifdef _WIN32
+  // SHFileOperationW takes a double-null terminated list of absolute paths.
+  std::wstring list;
+  for (auto& s : sources) {
+    if (s.empty() || !fs_exists(s)) {
+      error = "No such file: " + s;
+      return false;
+    }
+    std::error_code ec;
+    auto abs = fs::absolute(fs::u8path(s), ec);
+    list += (ec ? fs::u8path(s) : abs).wstring();
+    list.push_back(L'\0');
+  }
+  list.push_back(L'\0');
+  SHFILEOPSTRUCTW op{};
+  op.wFunc = FO_DELETE;
+  op.pFrom = list.c_str();
+  op.fFlags =
+      static_cast<FILEOP_FLAGS>(FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT);
+  int rc = SHFileOperationW(&op);
+  if (rc != 0 || op.fAnyOperationsAborted) {
+    error = "Could not move to the Recycle Bin";
+    return false;
+  }
+  trashed_out = sources;
+  return true;
+#else
+  // Prefer `gio trash`: it understands per-mount trash directories, which the
+  // plain ~/.local/share/Trash rename cannot do for files on another volume.
+  std::vector<std::string> pending;
+  for (auto& s : sources) {
+    if (s.empty() || !fs_exists(s)) {
+      error = "No such file: " + s;
+      return false;
+    }
+    auto cmd = "gio trash -- " + shell_quote(s) + " >/dev/null 2>&1";
+    bool ok = std::system(cmd.c_str()) == 0 && !fs_exists(s);
+    if (ok)
+      trashed_out.push_back(s);
+    else
+      pending.push_back(s);
+  }
+  for (auto& s : pending) {
+    std::string moved;
+    if (!move_into_trash(s, moved, error)) return false;
+    trashed_out.push_back(s);
+  }
+  return !trashed_out.empty();
+#endif
+}
+
+bool unzip_to(const std::string& archive, const std::string& dest_dir, std::size_t& count_out,
+              std::string& error) {
+  count_out = 0;
+  error.clear();
+  if (archive.empty() || !fs_exists(archive)) {
+    error = "No such archive: " + archive;
+    return false;
+  }
+  std::error_code ec;
+  fs::create_directories(fs::u8path(dest_dir), ec);
+  if (!fs::is_directory(fs::u8path(dest_dir), ec)) {
+    error = "Cannot create " + dest_dir;
+    return false;
+  }
+  std::string err;
+  if (!extract_zip(archive, dest_dir, &err, &count_out)) {
+    error = err.empty() ? "Extraction failed" : err;
+    return false;
+  }
   return true;
 }
 

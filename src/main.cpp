@@ -38,6 +38,7 @@ static void print_help() {
             << "  wilfred bgremove <src> [--out <dst>] [--tolerance N]  Remove image background\n"
             << "  wilfred index           Scan configured roots and persist the index\n"
             << "  wilfred status          Print index statistics\n"
+            << "  wilfred doctor          Diagnose config, paths, index and services\n"
             << "  wilfred backup [path]   Write config/snippets/index archive\n"
             << "  wilfred restore [path]  Restore from a backup archive\n"
             << "  wilfred sync-push       Upload backup to sync.url\n"
@@ -173,6 +174,7 @@ static int wilfred_main(int argc, char** argv) {
     }
     if (cmd == "index") return svc.run_index_now();
     if (cmd == "status") return svc.run_status();
+  if (cmd == "doctor" || cmd == "diagnose" || cmd == "diagnostics") return svc.run_doctor();
     if (cmd == "setup" || cmd == "wizard" || cmd == "onboard") {
       bool overwrite = false;
       for (int i = 2; i < argc; ++i) {

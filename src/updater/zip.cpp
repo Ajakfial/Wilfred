@@ -7,6 +7,7 @@
 #include "wilfred/core/log.hpp"
 
 #include <cstring>
+#include <cstddef>
 #include <fstream>
 #include <vector>
 
@@ -91,7 +92,44 @@ bool write_file(const std::string& path, const std::vector<std::uint8_t>& data) 
 
 }  // namespace
 
-bool extract_zip(const std::string& archive_path, const std::string& dest_dir, std::string* error) {
+namespace {
+
+// Reject entry names that could escape dest_dir. Archives arrive from
+// arbitrary places (downloads, mail attachments), so an entry such as
+// "/etc/cron.d/x", "C:\\Windows\\x" or "../../x" must never be honoured.
+bool safe_entry_name(const std::string& name, std::string& why) {
+  if (name.empty()) {
+    why = "empty entry name";
+    return false;
+  }
+  if (name[0] == '/' || name[0] == '\\') {
+    why = "absolute path";
+    return false;
+  }
+  if (name.size() >= 2 && name[1] == ':') {
+    why = "drive-qualified path";
+    return false;
+  }
+  std::size_t start = 0;
+  while (start <= name.size()) {
+    auto end = name.find('/', start);
+    std::string seg =
+        name.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    if (seg == "..") {
+      why = "parent traversal";
+      return false;
+    }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  return true;
+}
+
+}  // namespace
+
+bool extract_zip(const std::string& archive_path, const std::string& dest_dir, std::string* error,
+                 std::size_t* entries_out) {
+  if (entries_out) *entries_out = 0;
   std::vector<std::uint8_t> data;
   if (!read_file(archive_path, data)) {
     if (error) *error = "cannot read archive: " + archive_path;
@@ -207,6 +245,16 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
       return false;
     }
 
+    // Security: entry names must stay inside dest_dir. This runs before the
+    // output path is built so an absolute or drive-qualified entry cannot
+    // escape by construction rather than by string matching afterwards.
+    std::string why;
+    if (!safe_entry_name(name, why)) {
+      log_warn("updater", "skipping unsafe path (" + why + "): " + name);
+      offset += 46 + name_len + extra_len + comment_len;
+      continue;
+    }
+
     // Build output path
     std::string out_path = dest_dir;
     if (!out_path.empty() && out_path.back() != '/' && out_path.back() != '\\') {
@@ -214,17 +262,11 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     }
     out_path += name;
 
-    // Security: prevent path traversal
-    if (out_path.find("..") != std::string::npos) {
-      log_warn("updater", "skipping suspicious path: " + name);
-      offset += 46 + name_len + extra_len + comment_len;
-      continue;
-    }
-
     if (!write_file(out_path, file_data)) {
       if (error) *error = "failed to write: " + out_path;
       return false;
     }
+    if (entries_out) ++*entries_out;
 
     offset += 46 + name_len + extra_len + comment_len;
   }

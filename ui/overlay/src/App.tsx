@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { demoAssist, demoQuery } from "./demo";
 import {
+  actionMatches,
+  actionMatchesNav,
   actionsOf,
   ghostSuffix,
   habitsOf,
@@ -16,6 +18,7 @@ import {
   enterFitMode,
   rowsOf,
   sectionsOf,
+  setKeybinds,
   setUiStrings,
   tips,
   uiStr,
@@ -45,6 +48,8 @@ interface SettingResultMsg {
 interface State {
   items: ResultItem[];
   sel: number;
+  /** Original item indices in a multi-selection; empty means single-select. */
+  selected: number[];
   visible: boolean;
   entered: boolean;
   menuOpen: boolean;
@@ -66,6 +71,7 @@ interface State {
 const initialState: State = {
   items: [],
   sel: 0,
+  selected: [],
   visible: false,
   entered: false,
   menuOpen: false,
@@ -94,6 +100,8 @@ type Action =
   | { type: "DISMISS_CORRECTION" }
   | { type: "NAV"; delta: number; count: number }
   | { type: "SELECT"; index: number }
+  | { type: "SEL_SET"; indices: number[] }
+  | { type: "SEL_CLEAR" }
   | { type: "MENU_TOGGLE" }
   | { type: "MENU_CYCLE"; delta: number; count: number }
   | { type: "MENU_SET"; index: number }
@@ -117,6 +125,9 @@ function reducer(s: State, a: Action): State {
         ...s,
         items: a.items,
         sel,
+        // A new query invalidates the old selection; a late provider merge
+        // (resetSel=false) must keep it so the user's batch survives.
+        selected: a.resetSel ? [] : s.selected,
         menuOpen: false,
         menuSel: 0,
         correction: a.correction,
@@ -141,6 +152,10 @@ function reducer(s: State, a: Action): State {
     case "SELECT":
       if (a.index === s.sel) return s;
       return { ...s, sel: a.index, menuOpen: false, menuSel: 0 };
+    case "SEL_SET":
+      return { ...s, selected: a.indices, menuOpen: false, menuSel: 0 };
+    case "SEL_CLEAR":
+      return s.selected.length ? { ...s, selected: [] } : s;
     case "MENU_TOGGLE":
       return { ...s, menuOpen: !s.menuOpen, menuSel: 0 };
     case "MENU_CYCLE": {
@@ -313,6 +328,10 @@ export function App() {
   const mouseRef = useRef({ x: -1, y: -1 });
   const [modHeld, setModHeld] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  /** Action id awaiting a destructive-action confirmation (see `runAction`). */
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  /** Visible-list position where the current Shift range started. */
+  const anchorRef = useRef(0);
   const resultsListId = useId();
   const searchInputId = useId();
   const liveRegionId = useId();
@@ -374,7 +393,70 @@ export function App() {
       return;
     }
     dispatch({ type: "SELECT", index: pos });
+    // A live multi-selection is applied as a batch: one submit per selected
+    // row, using the same action id. Hosts queue these, and destructive
+    // actions (trash/move/compress) run once per item.
+    if (s.selected.length > 0) {
+      if (!actionId) {
+        // Enter on a batch has no obvious target; show the action menu.
+        toggleMenu();
+        announce(uiStr("overlay.actions_opened", "Actions opened"));
+        return;
+      }
+      for (const idx of s.selected) {
+        nativeSend({ type: "submit", index: idx, action: actionId });
+      }
+      dispatch({ type: "SEL_CLEAR" });
+      return;
+    }
     nativeSend({ type: "submit", index: rows[pos].index, action: actionId || "" });
+  };
+
+  /**
+   * Actions that destroy or move data ask first. The confirmation bar is
+   * keyboard-first (Enter confirms, Esc cancels) so the flow stays launcher-y.
+   */
+  const runAction = (actionId: string) => {
+    if (actionId === "delete_file") {
+      setPendingDelete(actionId);
+      return;
+    }
+    submit(actionId);
+  };
+
+  const confirmDelete = () => {
+    const action = pendingDelete;
+    setPendingDelete(null);
+    if (action) submit(action);
+  };
+
+  // ---- Multi-selection -------------------------------------------------
+  const batchCount = s.selected.length;
+  const selectionMode = batchCount > 0;
+
+  const toggleSelect = (index: number, range: boolean) => {
+    const pos = rows.findIndex((r) => r.index === index);
+    if (pos < 0) return;
+    // Only rows that point at a file can be batched.
+    if (!rows[pos].item.path) return;
+    if (range && rows.length) {
+      const from = Math.min(anchorRef.current, pos);
+      const to = Math.max(anchorRef.current, pos);
+      const next = rows.slice(from, to + 1).map((r) => r.index);
+      dispatch({ type: "SEL_SET", indices: next });
+      dispatch({ type: "SELECT", index: pos });
+      return;
+    }
+    anchorRef.current = pos;
+    const next = s.selected.includes(index)
+      ? s.selected.filter((i) => i !== index)
+      : [...s.selected, index];
+    dispatch({ type: "SEL_SET", indices: next });
+    dispatch({ type: "SELECT", index: pos });
+  };
+
+  const selectAll = () => {
+    dispatch({ type: "SEL_SET", indices: rows.map((r) => r.index) });
   };
 
   const toggleMenu = (rowPos?: number) => {
@@ -402,6 +484,7 @@ export function App() {
       if (!msg || typeof msg !== "object") return;
       if (msg.type === "show") {
         setUiStrings((msg as unknown as { strings?: unknown }).strings);
+        setKeybinds((msg as unknown as { keybinds?: unknown }).keybinds);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
         window.clearTimeout(hideTimer.current);
         dispatch({ type: "SHOW" });
@@ -412,6 +495,7 @@ export function App() {
         });
       } else if (msg.type === "config") {
         setUiStrings((msg as unknown as { strings?: unknown }).strings);
+        setKeybinds((msg as unknown as { keybinds?: unknown }).keybinds);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
       } else if (msg.type === "fit") {
         enterFitMode();
@@ -674,7 +758,25 @@ export function App() {
     const el = e.currentTarget;
     const atEnd = (el.selectionStart ?? el.value.length) >= el.value.length;
     const mod = e.ctrlKey || e.metaKey;
+    const match = (action: string) => actionMatches(e, action);
+    const navMatch = (action: string) => actionMatchesNav(e, action);
     if (e.key === "Control" || e.key === "Meta") setModHeld(true);
+
+    // The delete confirmation owns Enter/Escape while it is up.
+    if (pendingDelete) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setPendingDelete(null);
+        announce(uiStr("overlay.cancelled", "Cancelled"));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmDelete();
+        return;
+      }
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       if (s.settingsOpen) {
@@ -685,6 +787,11 @@ export function App() {
       if (s.menuOpen) {
         dispatch({ type: "MENU_TOGGLE" });
         announce(uiStr("overlay.actions_closed", "Actions closed"));
+        return;
+      }
+      if (selectionMode) {
+        dispatch({ type: "SEL_CLEAR" });
+        announce(uiStr("overlay.selection_cleared", "Selection cleared"));
         return;
       }
       if (s.correction) {
@@ -698,7 +805,7 @@ export function App() {
         return;
       }
       dismiss();
-    } else if (e.key === "Tab") {
+    } else if (match("complete")) {
       e.preventDefault();
       // Typo-first: a confident correction wins over the action menu.
       if (s.correction) {
@@ -733,45 +840,43 @@ export function App() {
       e.preventDefault();
       const n = actionsOf(rows[s.sel]?.item).length;
       if (n) dispatch({ type: "MENU_CYCLE", delta: e.key === "ArrowDown" ? 1 : -1, count: n });
-    } else if (e.key === "ArrowDown") {
+    } else if (navMatch("next") || navMatch("prev")) {
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        if (rows.length) dispatch({ type: "SELECT", index: rows.length - 1 });
-      } else if (rows.length) dispatch({ type: "NAV", delta: 1, count: rows.length });
-      if (rows.length) {
-        const item = rows[s.sel]?.item;
-        if (item) announce(`${item.title}, ${kindLabel(kindOf(item))}`);
+      if (!rows.length) return;
+      const dir = navMatch("next") ? 1 : -1;
+      if (mod && e.shiftKey) {
+        // Ctrl/Cmd+Shift+Down/Up jump to the ends.
+        dispatch({ type: "SELECT", index: dir > 0 ? rows.length - 1 : 0 });
+      } else if (e.shiftKey) {
+        // Shift extends the batch from the anchor to the new row.
+        const nextPos = (s.sel + dir + rows.length) % rows.length;
+        toggleSelect(rows[nextPos].index, true);
+      } else {
+        dispatch({ type: "NAV", delta: dir, count: rows.length });
       }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        if (rows.length) dispatch({ type: "SELECT", index: 0 });
-      } else if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
-      if (rows.length) {
-        const item = rows[s.sel]?.item;
-        if (item) announce(`${item.title}, ${kindLabel(kindOf(item))}`);
-      }
-    } else if (e.key === "Home") {
+      const item = rows[s.sel]?.item;
+      if (item) announce(`${item.title}, ${kindLabel(kindOf(item))}`);
+    } else if (navMatch("first")) {
       if (rows.length) {
         e.preventDefault();
         dispatch({ type: "SELECT", index: 0 });
       }
-    } else if (e.key === "End") {
+    } else if (navMatch("last")) {
       if (rows.length) {
         e.preventDefault();
         dispatch({ type: "SELECT", index: rows.length - 1 });
       }
-    } else if (e.key === "PageDown") {
+    } else if (navMatch("page_down")) {
       if (rows.length) {
         e.preventDefault();
         dispatch({ type: "NAV", delta: Math.min(8, rows.length - 1), count: rows.length });
       }
-    } else if (e.key === "PageUp") {
+    } else if (navMatch("page_up")) {
       if (rows.length) {
         e.preventDefault();
         dispatch({ type: "NAV", delta: -Math.min(8, rows.length - 1), count: rows.length });
       }
-    } else if (e.key === "F3") {
+    } else if (match("preview")) {
       e.preventDefault();
       dispatch({ type: "PREVIEW_TOGGLE" });
     } else if (e.key === "Enter") {
@@ -779,7 +884,11 @@ export function App() {
       const item = rows[s.sel]?.item;
       if (s.menuOpen) {
         const act = actionsOf(item)[s.menuSel];
-        submit(act ? act.id : "");
+        if (act) runAction(act.id);
+      } else if (selectionMode) {
+        // A batch needs a target action; open the menu instead of guessing.
+        toggleMenu();
+        announce(uiStr("overlay.actions_opened", "Actions opened"));
       } else if (e.shiftKey || e.altKey) {
         const acts = actionsOf(item);
         submit(acts[1] ? acts[1].id : acts[0] ? acts[0].id : "");
@@ -792,10 +901,16 @@ export function App() {
     } else if (mod && (e.key === "p" || e.key === "P")) {
       e.preventDefault();
       if (rows.length) dispatch({ type: "NAV", delta: -1, count: rows.length });
-    } else if (mod && (e.key === "k" || e.key === "K")) {
+    } else if (match("actions")) {
       // Raycast convention: ⌘K / Ctrl+K opens the actions popover.
       e.preventDefault();
       toggleMenu();
+    } else if (match("settings")) {
+      e.preventDefault();
+      toggleSettings();
+    } else if (mod && (e.key === "a" || e.key === "A")) {
+      e.preventDefault();
+      selectAll();
     } else if (e.ctrlKey && (e.key === "u" || e.key === "U")) {
       // Clear the query (was ⌘/Ctrl+K before the actions popover took it).
       e.preventDefault();
@@ -820,8 +935,15 @@ export function App() {
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) toggleMenu(pos);
   };
-  const onRowAction = (actionId: string) => submit(actionId);
-  const onRowSelect = (index: number) => {
+  const onRowAction = (actionId: string) => runAction(actionId);
+  const onRowSelect = (
+    index: number,
+    e?: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
+  ) => {
+    if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+      toggleSelect(index, e.shiftKey);
+      return;
+    }
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) submit(undefined, pos);
   };
@@ -1084,6 +1206,8 @@ export function App() {
                             entry={entry}
                             pos={pos}
                             selected={pos === s.sel}
+                            checked={s.selected.includes(entry.index)}
+                            selectionMode={selectionMode}
                             needle={needle}
                             expanded={s.menuOpen}
                             quickMod={modHeld ? modLabel : null}
@@ -1108,7 +1232,41 @@ export function App() {
         <div id={statusRegionId} role="status" aria-live="polite" className="sr-only">
           {status}
         </div>
-        {(rows.length > 0 || s.settingsOpen) && (
+        {pendingDelete && (
+          <div className="confirm" role="alertdialog" aria-label={uiStr("overlay.confirm_delete_action", "Move to trash")}>
+            <span className="confirm-text">
+              {uiStr("overlay.confirm_delete", "Move {n} item(s) to the trash?", {
+                n: Math.max(1, batchCount),
+              })}
+            </span>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="bar-btn"
+                tabIndex={-1}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setPendingDelete(null);
+                }}
+              >
+                {uiStr("overlay.cancel", "Cancel")}
+              </button>
+              <button
+                type="button"
+                className="bar-btn bar-danger"
+                tabIndex={-1}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  confirmDelete();
+                }}
+              >
+                <Icon name="trash" size={14} strokeWidth={2} />
+                {uiStr("overlay.confirm_delete_action", "Move to trash")}
+              </button>
+            </div>
+          </div>
+        )}
+        {!pendingDelete && (rows.length > 0 || s.settingsOpen) && (
           <ActionBar
             status={s.settingsOpen ? uiStr("overlay.settings_title", "Settings") : status}
             primary={primaryLabel(selItem)}
@@ -1119,6 +1277,8 @@ export function App() {
             hasCorrection={Boolean(s.correction)}
             modLabel={modLabel}
             settingsOpen={s.settingsOpen}
+            selectionCount={batchCount}
+            onClearSelection={() => dispatch({ type: "SEL_CLEAR" })}
             onPrimary={() => submit()}
             onActions={() => toggleMenu()}
             onPreview={() => dispatch({ type: "PREVIEW_TOGGLE" })}

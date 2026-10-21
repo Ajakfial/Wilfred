@@ -924,6 +924,41 @@ bool native_brightness_set(int percent, std::string& error) {
   return false;
 }
 
+bool native_focus_status(bool& enabled, std::string& detail, std::string& error) {
+  // GNOME exposes Do Not Disturb as the inverse of show-banners.
+  if (have_tool("gsettings")) {
+    auto out =
+        lin_lower(lin_trim(lin_exec("gsettings get org.gnome.desktop.notifications show-banners "
+                                    "2>/dev/null")));
+    if (out == "true" || out == "false") {
+      enabled = out == "false";
+      detail = enabled ? "GNOME notifications off" : "GNOME notifications on";
+      return true;
+    }
+  }
+  error = "Do Not Disturb needs GNOME (gsettings)";
+  return false;
+}
+
+bool native_focus_set(bool enabled, std::string& error) {
+  if (have_tool("gsettings")) {
+    if (sys(std::string("gsettings set org.gnome.desktop.notifications show-banners ") +
+            (enabled ? "false" : "true") + " >/dev/null 2>&1")) {
+      bool cur = false;
+      std::string detail;
+      if (native_focus_status(cur, detail, error) && cur != enabled) {
+        error = "GNOME rejected the notification setting";
+        return false;
+      }
+      return true;
+    }
+    error = "cannot write the GNOME notification setting";
+    return false;
+  }
+  error = "cannot change Do Not Disturb (need gsettings / GNOME)";
+  return false;
+}
+
 bool native_open_settings(const std::string& page, std::string& error) {
   auto try_cmd = [](const std::string& c) { return sys(c + " >/dev/null 2>&1 &"); };
   // GNOME.

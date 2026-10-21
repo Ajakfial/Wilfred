@@ -17,4 +17,11 @@ std::vector<SearchResult> large_file_results(IndexEngine& index, const Config& c
 std::vector<SearchResult> dupe_file_results(IndexEngine& index, const Config& cfg,
                                             const std::string& dir_filter, int limit = 8);
 
+// Most recently modified files from the index, newest first. since_epoch (when
+// non-zero) drops anything modified before that time; dir_filter is a
+// case-insensitive path substring.
+std::vector<SearchResult> recent_file_results(IndexEngine& index, const Config& cfg,
+                                              const std::string& dir_filter, int limit = 10,
+                                              std::int64_t since_epoch = 0);
+
 }  // namespace wilfred

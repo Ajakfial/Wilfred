@@ -161,6 +161,7 @@ synthetic result card instead of searching the index
 | `symbol [name]` | `symbols`, `glyph`, `glyphs` | Punctuation, math, and currency signs |
 | `fx [amount from to]` | `currency`, `forex`, `ccy` | Currency conversion (`fx 100 usd to eur` or `fx 25 gbp jpy`); bare `fx` lists spot rates |
 | `tz [zone]` | `timezone`, `worldclock` | World clock (`tz tokyo`) or zone convert (`tz 3pm est to pst`) |
+| `epoch [value]` | `unix`, `timestamp`, `unixtime`, `ts` | Unix timestamp conversion (`epoch 1700000000`, `epoch 1700000000000`, `epoch 2024-01-01 12:00`, `epoch 2024-01-01 12:00 UTC`; bare `epoch` shows now) |
 | `color [value]` | `colour` | Color convert (`color #ff5500`); enter copies hex/rgb/hsl |
 | `define <word>` | `def`, `thesaurus`, `synonym`, `dict` | Offline definition + synonyms (enter copies; `define` alone shows usage) |
 | `pins` | `favorites`, `pinlist` | List pinned favorites (`pin <text>` pins, `unpin <text>` removes) |
@@ -170,6 +171,7 @@ synthetic result card instead of searching the index
 | `rename <dir> <pattern>` | `bulk-rename` | Bulk rename with `{n}` `{name}` `{ext}` (e.g. `rename ./photos photo-{n}.jpg`) |
 | `template <kind> [name] [in <dir>]` | `templates` | New file from template (`empty/md/python/cpp/html/json/gitignore`) |
 | `uuid` | `uuid4`, `guid`, `uuidv4` | Generate a UUID v4 (enter copies) |
+| `password [length] [options]` | `pass`, `pw`, `genpass`, `passgen` | Cryptographically secure password from the OS RNG (`password 24 symbols`, `password 32 nosymbols`, `password pin`, `password alpha`; enter copies) |
 | `base64 [text]` | `b64`, `encode64` | Base64-encode the argument or clipboard |
 | `base64d [text]` | `b64d`, `decode64` | Base64-decode the argument or clipboard |
 | `sha256 [text]` | `sha`, `hash` (with text) | SHA-256 of the argument or clipboard |
@@ -190,6 +192,7 @@ synthetic result card instead of searching the index
 | `ping <host>` | | Ping summary via the OS ping CLI |
 | `dns <host>` | `nslookup`, `resolve` | DNS lookup via getaddrinfo |
 | `myip` | `publicip`, `ip public` | Public IP (via api.ipify.org) + local IP |
+| `ports [filter]` | `port`, `listening`, `listen`, `netstat`, `lsof` | Listening TCP/UDP sockets with the owning process and PID (`ports 8080`, `ports tcp`, `ports chrome`; enter copies the endpoint) |
 | `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
 | `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
 | `transcribe <file>` | `stt`, `transcription` | Speech-to-text for mp3/wav/m4a/mp4 via whisper or spoke (`transcription.engine`, enter transcribes) |
@@ -212,6 +215,7 @@ synthetic result card instead of searching the index
 | `bluetooth [on\|off\|toggle]` | `bt` | Bluetooth status + on/off (enter applies) |
 | `volume [N\|mute\|up\|down]` | `vol` | Volume level + mute (enter applies; `volume 50`, `volume mute`) |
 | `brightness [N\|up\|down]` | `bright`, `backlight`, `dim` | Display brightness (enter applies; `brightness 70`) |
+| `focus [on\|off\|toggle]` | `dnd`, `donotdisturb`, `do-not-disturb`, `quietmode` | Do Not Disturb / Focus mode status + toggle (Windows notification setting, GNOME `show-banners`, macOS legacy Notification Center flag) |
 | `settings [page]` | `setting`, `prefs` | Settings deep-links (`settings wifi`, `bluetooth`, `sound`, `display`, `battery`, `power`, `apps`, `privacy`, `update`, `about`; enter opens) |
 | `settings edit <key> <value>` | `settings set` | Update one setting in place, validated (`settings edit search.max_results 40`; `wilfred config-set`) |
 | `settings get <key>` | | Show one setting's value (enter copies; `wilfred config-get`) |

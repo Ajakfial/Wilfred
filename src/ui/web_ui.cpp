@@ -321,6 +321,26 @@ std::string preview_scrub(std::string s, std::size_t cap) {
   return o;
 }
 
+// Browser-playable audio/video types, keyed by extension. Formats the
+// WebView cannot play (mkv, avi, wma, ...) deliberately return nullptr so the
+// pane falls back to a text card instead of a broken player.
+const char* media_mime_for(const std::string& path) {
+  auto ext = to_lower_utf8(path_extension(path));
+  if (ext == ".mp4" || ext == ".m4v") return "video/mp4";
+  if (ext == ".webm") return "video/webm";
+  if (ext == ".ogv") return "video/ogg";
+  if (ext == ".mov") return "video/quicktime";
+  if (ext == ".mp3") return "audio/mpeg";
+  if (ext == ".m4a") return "audio/mp4";
+  if (ext == ".aac") return "audio/aac";
+  if (ext == ".wav") return "audio/wav";
+  if (ext == ".flac") return "audio/flac";
+  if (ext == ".ogg" || ext == ".oga") return "audio/ogg";
+  if (ext == ".opus") return "audio/opus";
+  if (ext == ".weba") return "audio/webm";
+  return nullptr;
+}
+
 const char* sniff_image_mime(const std::string& head) {
   auto u = reinterpret_cast<const unsigned char*>(head.data());
   auto n = head.size();
@@ -416,6 +436,25 @@ FilePreview build_file_preview(const std::string& path, std::size_t max_text,
       }
     }
   }
+  // Audio/video: inline small files as data URLs so the overlay can render a
+  // real <video>/<audio> element without a custom resource handler.
+  if (pv.kind == "video" || pv.kind == "audio") {
+    constexpr std::uint64_t kMaxMedia = 10ull * 1024 * 1024;
+    const char* mime = media_mime_for(path);
+    if (mime && st.size > 0 && st.size <= kMaxMedia) {
+      std::string bytes;
+      if (read_file_all(path, bytes) && bytes.size() == st.size) {
+        pv.media_data_url = std::string("data:") + mime + ";base64," + preview_b64(bytes);
+        pv.media_kind = pv.kind;
+        pv.text = pv.title + "\n" + preview_human_bytes(st.size) + " · " + pv.kind;
+        return pv;
+      }
+    }
+    pv.text = pv.title + "\n" + preview_human_bytes(st.size) + " · " + pv.kind +
+              (mime ? " · too large to preview inline"
+                    : " · no inline player for this format");
+    return pv;
+  }
   // Documents: extract real text (PDF/Office/RTF/HTML) for rich previews.
   if (is_document_extension(path)) {
     std::string doc;
@@ -468,6 +507,10 @@ std::string overlay_preview_json(const std::string& path) {
   o += overlay_json_escape(pv.text);
   o += "\",\"image\":\"";
   o += overlay_json_escape(pv.image_data_url);
+  o += "\",\"media\":\"";
+  o += overlay_json_escape(pv.media_data_url);
+  o += "\",\"mediaKind\":\"";
+  o += overlay_json_escape(pv.media_kind);
   o += "\",\"error\":\"";
   o += overlay_json_escape(pv.error);
   o += "\"}";
@@ -477,11 +520,23 @@ std::string overlay_preview_json(const std::string& path) {
 namespace {
 std::string g_accent;
 int g_font_size = 0;
+std::vector<std::pair<std::string, std::string>> g_keybinds;
 }  // namespace
 
 void set_overlay_appearance(const Config& cfg) {
   g_accent = cfg.ui.accent;
   g_font_size = cfg.ui.font_size;
+  // Merge keybinds: overrides replace the matching default, so a partial
+  // map keeps every other binding working.
+  g_keybinds = keybind_defaults();
+  for (auto& [name, chord] : cfg.keybinds) {
+    for (auto& [def_name, def_chord] : g_keybinds) {
+      if (def_name == name) {
+        def_chord = chord;
+        break;
+      }
+    }
+  }
 }
 
 std::string overlay_show_json() {
@@ -508,6 +563,20 @@ std::string overlay_show_json() {
     o += overlay_json_escape(k);
     o += "\":\"";
     o += overlay_json_escape(v);
+    o += "\"";
+  }
+  o += "}";
+  // Overlay keybindings (defaults merged with keybinds:). The UI matches
+  // these on every keydown instead of hardcoding F3 / mod+k.
+  o += ",\"keybinds\":{";
+  bool first_bind = true;
+  for (auto& [name, chord] : g_keybinds) {
+    if (!first_bind) o += ",";
+    first_bind = false;
+    o += "\"";
+    o += overlay_json_escape(name);
+    o += "\":\"";
+    o += overlay_json_escape(chord);
     o += "\"";
   }
   o += "}";

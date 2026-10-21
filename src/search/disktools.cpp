@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <ctime>
 #include <unordered_map>
 
 namespace wilfred {
@@ -49,6 +50,20 @@ bool under_filter(const std::string& path, const std::string& filter) {
   auto p = to_lower_utf8(path);
   auto f = to_lower_utf8(filter);
   return p.find(f) != std::string::npos;
+}
+
+// "3m ago" / "5h ago" / "2d ago" / "3w ago" for a mtime in epoch seconds.
+std::string ago_label(std::int64_t mtime, std::int64_t now) {
+  if (mtime <= 0) return "";
+  std::int64_t d = now - mtime;
+  if (d < 0) d = 0;
+  if (d < 60) return "just now";
+  if (d < 3600) return std::to_string(d / 60) + "m ago";
+  if (d < 86400) return std::to_string(d / 3600) + "h ago";
+  if (d < 86400 * 7) return std::to_string(d / 86400) + "d ago";
+  if (d < 86400 * 30) return std::to_string(d / (86400 * 7)) + "w ago";
+  if (d < 86400 * 365) return std::to_string(d / (86400 * 30)) + "mo ago";
+  return std::to_string(d / (86400 * 365)) + "y ago";
 }
 
 }  // namespace
@@ -175,6 +190,56 @@ std::vector<SearchResult> dupe_file_results(IndexEngine& index, const Config& cf
     SearchResult r = card_local("No duplicates found",
                                 dir_filter.empty() ? "No same-size files in index" : dir_filter, "",
                                 "dupe", 9000);
+    r.action = ResultAction::None;
+    out.push_back(std::move(r));
+  }
+  return out;
+}
+
+std::vector<SearchResult> recent_file_results(IndexEngine& index, const Config& cfg,
+                                              const std::string& dir_filter, int limit,
+                                              std::int64_t since_epoch) {
+  (void)cfg;
+  if (limit <= 0) limit = 10;
+  if (limit > 40) limit = 40;
+  struct Item {
+    std::string path;
+    std::int64_t mtime{0};
+    std::uint64_t size{0};
+  };
+  std::vector<Item> items;
+  {
+    auto& store = index.store();
+    std::lock_guard<std::recursive_mutex> lock(store.mutex());
+    for (auto& rec : store.records()) {
+      if (has_flag(rec.flags, RecordFlags::Directory)) continue;
+      if (rec.mtime <= 0) continue;
+      if (since_epoch > 0 && rec.mtime < since_epoch) continue;
+      std::string_view pv = store.pool().get(rec.path_id);
+      if (pv.empty()) continue;
+      std::string path(pv);
+      if (!under_filter(path, dir_filter)) continue;
+      items.push_back({path, rec.mtime, rec.size});
+    }
+  }
+  std::sort(items.begin(), items.end(), [](auto& a, auto& b) { return a.mtime > b.mtime; });
+  std::int64_t now = static_cast<std::int64_t>(std::time(nullptr));
+  std::vector<SearchResult> out;
+  int n = 0;
+  for (auto& it : items) {
+    if (n >= limit) break;
+    std::string fn = path_filename(it.path);
+    auto ago = ago_label(it.mtime, now);
+    std::string title = fn;
+    if (!ago.empty()) title += "  ·  " + ago;
+    auto r = card_local(title, it.path, it.path, "recent", 10000 - n * 10);
+    out.push_back(std::move(r));
+    ++n;
+  }
+  if (out.empty()) {
+    SearchResult r = card_local(
+        "Nothing recent", dir_filter.empty() ? "No files with a modification time" : dir_filter, "",
+        "recent", 9000);
     r.action = ResultAction::None;
     out.push_back(std::move(r));
   }

@@ -300,6 +300,8 @@ bool is_valid_action_step(const std::string& s) {
                                 "copy",
                                 "hash_file",
                                 "compress_zip",
+                                "extract_zip",
+                                "delete_file",
                                 "open_terminal",
                                 "open_editor",
                                 "new_file",
@@ -345,6 +347,24 @@ bool is_valid_action_step(const std::string& s) {
 }
 
 }  // namespace
+
+const std::vector<std::pair<std::string, std::string>>& keybind_defaults() {
+  // Keep in sync with the overlay's key handling (ui/overlay/src/App.tsx).
+  // "mod" resolves to Cmd on macOS and Ctrl elsewhere on the UI side.
+  static const std::vector<std::pair<std::string, std::string>> kDefaults = {
+      {"preview", "F3"},
+      {"actions", "mod+k"},
+      {"settings", "mod+,"},
+      {"next", "down"},
+      {"prev", "up"},
+      {"page_down", "page_down"},
+      {"page_up", "page_up"},
+      {"first", "home"},
+      {"last", "end"},
+      {"complete", "tab"},
+  };
+  return kDefaults;
+}
 
 bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
   err = {};
@@ -392,6 +412,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "workflows",
                                           "quicklinks",
                                           "app_actions",
+                                          "searches",
+                                          "keybinds",
                                           "hotkeys",
                                           "pins",
                                           "favorites"};
@@ -1432,6 +1454,55 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         return false;
       }
       c.quicklinks[to_lower_utf8(k)] = tmpl;
+    }
+  }
+
+  if (auto* sv = root.get("searches")) {
+    if (!sv->is_map()) {
+      err.message =
+          "searches: must be a mapping of name -> query, e.g.\nsearches:\n  inbox: "
+          "\"type:email in Mail\"";
+      return false;
+    }
+    for (auto& [k, v] : sv->as_map()) {
+      if (!v.is_string() || v.as_string().empty()) {
+        err.message = "searches.'" + k + "' must be a non-empty query string";
+        return false;
+      }
+      c.searches[to_lower_utf8(k)] = v.as_string();
+    }
+  }
+
+  if (auto* kb = root.get("keybinds")) {
+    if (!kb->is_map()) {
+      err.message = "keybinds: must be a mapping of action -> key, e.g.\nkeybinds:\n  preview: F3";
+      return false;
+    }
+    for (auto& [k, v] : kb->as_map()) {
+      auto name = to_lower_utf8(k);
+      bool known = false;
+      for (auto& [def_name, def_key] : keybind_defaults()) {
+        (void)def_key;
+        if (def_name == name) {
+          known = true;
+          break;
+        }
+      }
+      if (!known) {
+        std::string valid;
+        for (auto& [def_name, def_key] : keybind_defaults()) {
+          if (!valid.empty()) valid += ", ";
+          valid += def_name;
+        }
+        err.message = "Unknown keybind action '" + k + "'. Valid actions are: " + valid;
+        return false;
+      }
+      if (!v.is_string() || v.as_string().empty()) {
+        err.message =
+            "keybinds.'" + k + "' must be a key chord like F3, mod+k or ctrl+shift+p";
+        return false;
+      }
+      c.keybinds[name] = v.as_string();
     }
   }
 
