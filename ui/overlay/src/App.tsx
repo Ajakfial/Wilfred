@@ -418,6 +418,7 @@ export function App() {
    */
   const runAction = (actionId: string) => {
     if (actionId === "delete_file") {
+      if (s.menuOpen) dispatch({ type: "MENU_TOGGLE" });
       setPendingDelete(actionId);
       return;
     }
@@ -440,9 +441,14 @@ export function App() {
     // Only rows that point at a file can be batched.
     if (!rows[pos].item.path) return;
     if (range && rows.length) {
-      const from = Math.min(anchorRef.current, pos);
-      const to = Math.max(anchorRef.current, pos);
-      const next = rows.slice(from, to + 1).map((r) => r.index);
+      // With no prior selection, extend from the cursor instead of row 0.
+      const anchor = s.selected.length ? anchorRef.current : s.sel;
+      const from = Math.min(anchor, pos);
+      const to = Math.max(anchor, pos);
+      const next = rows
+        .slice(from, to + 1)
+        .filter((r) => Boolean(r.item.path))
+        .map((r) => r.index);
       dispatch({ type: "SEL_SET", indices: next });
       dispatch({ type: "SELECT", index: pos });
       return;
@@ -456,7 +462,10 @@ export function App() {
   };
 
   const selectAll = () => {
-    dispatch({ type: "SEL_SET", indices: rows.map((r) => r.index) });
+    dispatch({
+      type: "SEL_SET",
+      indices: rows.filter((r) => Boolean(r.item.path)).map((r) => r.index),
+    });
   };
 
   const toggleMenu = (rowPos?: number) => {
@@ -487,6 +496,7 @@ export function App() {
         setKeybinds((msg as unknown as { keybinds?: unknown }).keybinds);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
         window.clearTimeout(hideTimer.current);
+        setPendingDelete(null);
         dispatch({ type: "SHOW" });
         requestAnimationFrame(() => {
           inputRef.current?.focus();
@@ -501,6 +511,7 @@ export function App() {
         enterFitMode();
       } else if (msg.type === "hide") {
         setModHeld(false);
+        setPendingDelete(null);
         dispatch({ type: "HIDE" });
       } else if (msg.type === "preview") {
         dispatch({ type: "PREVIEW", preview: msg as PreviewMsg });
@@ -934,18 +945,26 @@ export function App() {
   const onMore = (index: number) => {
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) toggleMenu(pos);
+    inputRef.current?.focus();
   };
-  const onRowAction = (actionId: string) => runAction(actionId);
+  const onRowAction = (actionId: string) => {
+    runAction(actionId);
+    inputRef.current?.focus();
+  };
   const onRowSelect = (
     index: number,
     e?: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => {
     if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) {
       toggleSelect(index, e.shiftKey);
+      // Rows are clicked, not mousedown-ed (so drag-out works); return focus
+      // to the query field for the next keystroke.
+      inputRef.current?.focus();
       return;
     }
     const pos = rows.findIndex((x) => x.index === index);
     if (pos >= 0) submit(undefined, pos);
+    inputRef.current?.focus();
   };
   // Hover selects, but only on genuine pointer movement: a list that scrolls
   // under a resting cursor must not steal the keyboard selection.

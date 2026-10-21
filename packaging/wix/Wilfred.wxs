@@ -6,7 +6,7 @@
     -dProductVersion=1.2.3   (sanitized numeric X.Y.Z from the release tag)
     -dSourceDir=<staging>    (Package step output: wilfred.exe + ui/overlay + docs)
     -dOverlaySource=<staging>\ui\overlay  (heat fragment source)
-    -dHasIcon=yes|no, -dIconPath=<path>   (optional packaging/wix/icon.ico drop-in)
+    -dHasIcon=yes|no, -dIconPath=<path>   (defaults to appicon/appicon.ico)
 
   Identity rules (do not change lightly):
   - Manufacturer is always "Wilfred Open Contributors" (matches the
@@ -56,6 +56,7 @@
       <ComponentRef Id="WilfredDefaults" />
       <ComponentRef Id="WilfredPath" />
       <ComponentRef Id="WilfredMenuShortcuts" />
+      <ComponentRef Id="WilfredDesktopShortcut" />
     </ComponentGroup>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
@@ -119,10 +120,39 @@
         </Directory>
       </Directory>
 
+      <Directory Id="DesktopFolder" />
+
       <Directory Id="ProgramMenuFolder">
         <Directory Id="ApplicationProgramsFolder" Name="Wilfred" />
       </Directory>
     </Directory>
+
+    <!-- Per-user Desktop shortcut (DesktopFolder resolves to the current
+         user's desktop because the install scope is perUser). -->
+    <DirectoryRef Id="DesktopFolder">
+      <Component Id="WilfredDesktopShortcut" Guid="*">
+        <RegistryValue Root="HKCU"
+                       Key="Software\Wilfred Open Contributors\Wilfred"
+                       Name="desktopshortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+        <?if $(var.HasIcon) = "yes" ?>
+        <Shortcut Id="DesktopWilfred"
+                  Name="Wilfred"
+                  Description="Wilfred - fast desktop search and launcher"
+                  Target="[INSTALLDIR]wilfred.exe"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="WilfredIcon" IconIndex="0" />
+        <?else ?>
+        <Shortcut Id="DesktopWilfred"
+                  Name="Wilfred"
+                  Description="Wilfred - fast desktop search and launcher"
+                  Target="[INSTALLDIR]wilfred.exe"
+                  WorkingDirectory="INSTALLDIR" />
+        <?endif ?>
+      </Component>
+    </DirectoryRef>
 
     <!-- Start Menu shortcuts (per-user ProgramMenuFolder, no elevation). -->
     <DirectoryRef Id="ApplicationProgramsFolder">

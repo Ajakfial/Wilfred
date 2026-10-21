@@ -139,6 +139,27 @@ providers: probe "quarterly report"
 The same numbers accumulate over the daemon's lifetime and appear as a
 `providers` array on the authenticated HTTP `GET /status` endpoint.
 
+## `wilfred doctor` / `diagnose` / `diagnostics`
+
+One-shot health report. Prints the resolved config/data/index paths, record
+counts, index roots, hotkey, overlay theme, locale, history, plugins,
+snippets, vector/semantic/AI/remote state, saved-search count, keybind
+overrides, and `custom_metadata` entries. It ends with a checklist:
+
+```
+checks
+[ok]   config file parses
+[ok]   data directory is writable
+[ok]   index has 70760 files
+[warn] no applications discovered -- app search will be empty
+[ok]   index roots are configured
+```
+
+`[warn]` lines are advisory (the overlay still works); `[FAIL]` lines make the
+command exit `1`, which is handy in setup scripts. Output can be redirected
+(`wilfred doctor > report.txt`) even though Windows builds are GUI-subsystem
+apps.
+
 ## `wilfred preview <path>`
 
 Prints a bounded preview of a file or directory without opening it: kind,

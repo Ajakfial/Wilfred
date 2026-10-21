@@ -116,7 +116,11 @@ export function keyMatches(e: KeyEventLike, chord: string): boolean {
   const wantShift = parts.includes("shift");
   const wantAlt = parts.includes("alt") || parts.includes("option");
   const mod = e.ctrlKey || e.metaKey;
-  if (wantMod !== mod) return false;
+  if (!MODIFIER_PARTS.has(parts[0]) && parts.length === 1) {
+    // A bare key must be pressed alone.
+    if (mod || e.shiftKey || e.altKey) return false;
+  }
+  if (wantMod && !mod) return false;
   if (wantCtrl && !e.ctrlKey) return false;
   if (wantMeta && !e.metaKey) return false;
   if (wantShift !== e.shiftKey) return false;

@@ -8,7 +8,7 @@ the binary (see [signing.md](signing.md)).
 ## What installing does
 
 - Installs per-user to `%LocalAppData%\Wilfred` -- no UAC elevation.
-- Adds Start Menu shortcuts (Wilfred + Uninstall).
+- Adds a desktop shortcut plus Start Menu shortcuts (Wilfred + Uninstall).
 - Appends the install dir to the **user** `PATH` (removed on uninstall),
   so `wilfred search ...` works from any terminal.
 - Registers Publisher **Wilfred Open Contributors** in Add/Remove Programs.
@@ -47,9 +47,10 @@ a Microsoft-trusted signature plus reputation (see [signing.md](signing.md)).
 
 ## Customization points
 
-- App icon: drop an `icon.ico` at `packaging/wix/icon.ico` -- the build
-  picks it up automatically for shortcuts and Add/Remove Programs.
-  Without it the installer builds icon-less (valid, just generic).
+- App icon: the executable embeds `appicon/appicon.ico`; the installer uses
+  the same file for shortcuts and Add/Remove Programs. Override just the
+  installer icon with `-IconPath <file.ico>` if needed. Without an icon the
+  installer builds icon-less (valid, just generic).
 - Scope is intentionally per-user. Switching to per-machine would require
   `InstallScope="perMachine"`, elevation, and HKLM/Program Files moves --
   a deliberate change, not a flag.
@@ -84,10 +85,11 @@ default config).
 - `.deb`: installable with `apt install ./wilfred-*.deb`; puts the binary
   at `/usr/bin/wilfred`, the overlay under `/usr/share/wilfred/`, and a
   `wilfred.desktop` + icon in the standard locations
-  (`packaging/linux/wilfred.desktop`, icon is `www/public/favicon.svg`).
+  (`packaging/linux/wilfred.desktop`, icon is `appicon/appicon-512.png`).
   Build: `./scripts/build-deb.sh --staging <dir> --out <file.deb> --version v1.2.3`
   (needs `dpkg-deb`).
 - AppImage: portable single file, no install; run with
-  `./wilfred-*.AppImage` (AppRun just execs the bundled binary).
+  `./wilfred-*.AppImage` (AppRun just execs the bundled binary; icon is
+  `appicon/appicon-512.png`).
   Build: `./scripts/build-appimage.sh --staging <dir> --out <file.AppImage> --version v1.2.3`
   (downloads appimagetool, extracted so no FUSE is needed).

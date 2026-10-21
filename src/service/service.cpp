@@ -678,15 +678,21 @@ bool doctor_dir_writable(const std::string& dir) {
   return true;
 }
 
+const char* doctor_prefix(int level) {
+  return level == 2 ? "[ok]   " : level == 1 ? "[warn] " : "[FAIL] ";
+}
+
 }  // namespace
 
 int Service::run_doctor() {
+  // 0 = FAIL (exit 1), 1 = WARN (advisory), 2 = OK.
   struct Check {
-    bool ok;
+    int level;
     std::string text;
   };
   std::vector<Check> checks;
-  auto note = [&](bool ok, std::string text) { checks.push_back({ok, std::move(text)}); };
+  auto note = [&](int level, std::string text) { checks.push_back({level, std::move(text)}); };
+  auto ok = [](bool cond) { return cond ? 2 : 0; };
 
   std::cout << "Wilfred doctor " << wilfred_version() << "\n";
   std::cout << "platform   " << platform_name() << "\n";
@@ -701,9 +707,9 @@ int Service::run_doctor() {
   if (config_exists) {
     std::string msg;
     bool valid = validate_config_text(config_text, msg);
-    note(valid, valid ? "config file parses" : ("config error: " + msg));
+    note(valid ? 2 : 0, valid ? "config file parses" : ("config error: " + msg));
   } else {
-    note(false, "config file is missing; defaults are in use (run `wilfred setup`)");
+    note(1, "config file is missing; defaults are in use (run `wilfred setup`)");
   }
 
   // ---- Paths ----
@@ -711,8 +717,8 @@ int Service::run_doctor() {
   bool writable = doctor_dir_writable(data_dir);
   std::cout << "data       " << data_dir << " (" << (writable ? "writable" : "NOT writable")
             << ")\n";
-  note(writable, writable ? "data directory is writable"
-                          : ("data directory is not writable: " + data_dir));
+  note(ok(writable),
+       writable ? "data directory is writable" : ("data directory is not writable: " + data_dir));
 
   auto index_path = default_index_path();
   auto snapshot = index_path + "/index.snapshot";
@@ -721,9 +727,10 @@ int Service::run_doctor() {
             << ", wal " << doctor_file_size(wal) << ")\n";
 
   if (!boot()) {
-    note(false, "index/config could not be opened");
+    note(0, "index/config could not be opened");
     std::cout << "\nchecks\n";
-    for (auto& c : checks) std::cout << (c.ok ? "[ok]   " : "[FAIL] ") << c.text << "\n";
+    for (auto& c : checks)
+      std::cout << doctor_prefix(c.level) << c.text << "\n";
     return 1;
   }
 
@@ -733,12 +740,16 @@ int Service::run_doctor() {
             << " apps, " << st.errors << " errors\n";
   std::cout << "scan       " << (st.scanning ? "running" : "idle") << ", last "
             << st.last_scan_seconds << "s\n";
-  note(st.files > 0, st.files > 0 ? ("index has " + std::to_string(st.files) + " files")
-                                  : "index is empty -- run `wilfred index`");
-  if (st.errors > 0) note(false, std::to_string(st.errors) + " paths failed to index (check logging.*)");
-  if (st.apps == 0) note(false, "no applications discovered -- app search will be empty");
+  note(st.files > 0 ? 2 : 1, st.files > 0 ? ("index has " + std::to_string(st.files) + " files")
+                                          : "index is empty -- run `wilfred index`");
+  if (st.errors > 0)
+    note(1, std::to_string(st.errors) + " paths failed to index (check logging.*)");
+  if (st.apps == 0) note(1, "no applications discovered -- app search will be empty");
 
   auto roots = cfg_.index.paths;
+  roots.erase(
+      std::remove_if(roots.begin(), roots.end(), [](const std::string& r) { return r.empty(); }),
+      roots.end());
   if (roots.empty()) roots = default_index_roots();
   std::cout << "roots      " << roots.size() << " configured";
   if (roots.size() <= 4) {
@@ -750,7 +761,8 @@ int Service::run_doctor() {
     std::cout << ")";
   }
   std::cout << "\n";
-  note(!roots.empty(), roots.empty() ? "no index roots configured" : "index roots are configured");
+  note(ok(!roots.empty()),
+       roots.empty() ? "no index roots configured" : "index roots are configured");
 
   // ---- Services ----
   std::string chord;
@@ -762,7 +774,7 @@ int Service::run_doctor() {
   chord += cfg_.hotkey.key;
   std::cout << "hotkey     " << (cfg_.hotkey.enabled ? "enabled" : "DISABLED") << " (" << chord
             << "), " << cfg_.hotkeys.size() << " extra\n";
-  if (!cfg_.hotkey.enabled) note(false, "global hotkey is disabled");
+  if (!cfg_.hotkey.enabled) note(1, "global hotkey is disabled");
 
   std::cout << "overlay    theme " << cfg_.ui.theme << ", accent "
             << (cfg_.ui.accent.empty() ? "default" : cfg_.ui.accent) << ", font "
@@ -789,16 +801,16 @@ int Service::run_doctor() {
             << (cfg_.custom_metadata.size() == 1 ? "y" : "ies") << "\n";
 
   if (cfg_.ai.enabled && cfg_.ai.api_key.empty())
-    note(false, "ai.enabled is true but ai.api_key is empty");
+    note(1, "ai.enabled is true but ai.api_key is empty");
   if (cfg_.remotes.enabled && cfg_.remotes.sources.empty())
-    note(false, "remotes.enabled is true but no remotes.sources are configured");
+    note(1, "remotes.enabled is true but no remotes.sources are configured");
 
   // ---- Report ----
   std::cout << "\nchecks\n";
   int failures = 0;
   for (auto& c : checks) {
-    std::cout << (c.ok ? "[ok]   " : "[FAIL] ") << c.text << "\n";
-    if (!c.ok) ++failures;
+    std::cout << doctor_prefix(c.level) << c.text << "\n";
+    if (c.level == 0) ++failures;
   }
   if (failures == 0) std::cout << "\nAll checks passed.\n";
   return failures == 0 ? 0 : 1;

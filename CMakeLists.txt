@@ -535,6 +535,10 @@ endif()
 # what Explorer shows under Details > Copyright; SmartScreen trust still
 # requires Authenticode signing, see docs/signing.md.
 if(WIN32)
+  set(WILFRED_ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/appicon/appicon.ico")
+  if(NOT EXISTS "${WILFRED_ICON_PATH}")
+    message(FATAL_ERROR "Missing Windows application icon: ${WILFRED_ICON_PATH}")
+  endif()
   set(WILFRED_VERSION_RC "${CMAKE_CURRENT_BINARY_DIR}/generated/wilfred_version_info.rc")
   configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/win_version_info.rc.in
@@ -542,6 +546,8 @@ if(WIN32)
     @ONLY
   )
   target_sources(wilfred PRIVATE ${WILFRED_VERSION_RC})
+  set_source_files_properties(${WILFRED_VERSION_RC} PROPERTIES
+    OBJECT_DEPENDS "${WILFRED_ICON_PATH}")
 endif()
 
 # Ship only the runtime overlay files (index.html, style.css, vendor assets,
@@ -637,4 +643,11 @@ if(NOT ANDROID AND NOT IOS)
 install(TARGETS wilfred RUNTIME DESTINATION bin)
 install(FILES config/wilfred.default.yml DESTINATION share/wilfred)
 install(DIRECTORY lang/ DESTINATION share/wilfred/lang)
+if(UNIX AND NOT APPLE)
+  install(FILES appicon/appicon-512.png
+    DESTINATION share/icons/hicolor/512x512/apps
+    RENAME wilfred.png)
+  install(FILES packaging/linux/wilfred.desktop
+    DESTINATION share/applications)
+endif()
 endif()

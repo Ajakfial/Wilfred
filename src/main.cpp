@@ -95,8 +95,19 @@ static void print_import_help() {
 }
 
 #ifdef _WIN32
+// True when the caller already redirected stdout (a pipe or a file). In that
+// case attaching to the parent console would rebind stdout to CONOUT$ and
+// silently swallow output like `wilfred doctor > report.txt`.
+static bool stdout_is_redirected() {
+  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (!h || h == INVALID_HANDLE_VALUE) return false;
+  DWORD type = GetFileType(h);
+  return type == FILE_TYPE_PIPE || type == FILE_TYPE_DISK;
+}
+
 static void attach_stdio_to_parent_console() {
   if (GetConsoleWindow()) return;
+  if (stdout_is_redirected()) return;
   if (!AttachConsole(ATTACH_PARENT_PROCESS)) return;
   FILE* fp = nullptr;
   freopen_s(&fp, "CONOUT$", "w", stdout);

@@ -42,7 +42,7 @@ trap 'rm -rf "$ROOT"' EXIT
 
 PKG="$ROOT/wilfred_${DEBVER}_${ARCH}"
 mkdir -p "$PKG/DEBIAN" "$PKG/usr/bin" "$PKG/usr/share/applications" \
-  "$PKG/usr/share/icons/hicolor/scalable/apps" "$PKG/usr/share/doc/wilfred"
+  "$PKG/usr/share/icons/hicolor/512x512/apps" "$PKG/usr/share/doc/wilfred"
 
 cp "$STAGING/wilfred" "$PKG/usr/bin/wilfred"
 chmod 755 "$PKG/usr/bin/wilfred"
@@ -51,7 +51,7 @@ if [[ -d "$STAGING/ui/overlay" ]]; then
   cp -R "$STAGING/ui/overlay" "$PKG/usr/share/wilfred/overlay"
 fi
 cp packaging/linux/wilfred.desktop "$PKG/usr/share/applications/wilfred.desktop"
-cp www/public/favicon.svg "$PKG/usr/share/icons/hicolor/scalable/apps/wilfred.svg"
+cp appicon/appicon-512.png "$PKG/usr/share/icons/hicolor/512x512/apps/wilfred.png"
 [[ -f README.md ]] && cp README.md "$PKG/usr/share/doc/wilfred/" || true
 [[ -f config/wilfred.default.yml ]] && cp config/wilfred.default.yml "$PKG/usr/share/doc/wilfred/" || true
 

@@ -2,6 +2,8 @@
 
 # Wilfred
 
+<img src="appicon/branding-text.png" alt="Wilfred" width="720">
+
 **Website:** https://ajakfial.github.io/Wilfred/
 
 **Languages:**
@@ -62,6 +64,11 @@ allowed, what is refused, and how the repository enforces it.
 * Composable filters (`*.cpp in Projects`, `type:image`, `size:>10mb`, named scopes)
 * Application discovery (Start Menu / `.app` bundles / `.desktop` files)
 * Rich file actions (copy path flavors, SHA-256 hash, zip, terminal/editor here, new file/folder, Open With)
+* Move to trash and extract archives from the overlay (inline confirm before deleting; zip entries are path-traversal checked)
+* Inline audio/video previews in the details pane (browser-playable formats up to 10 MB, no external player)
+* Multi-select results (`Ctrl`/`⌘`-click to toggle, `Shift`-click or `Shift`+arrows for ranges) and batch actions, plus drag files out of the overlay onto other apps
+* Configurable overlay keybindings (`keybinds:`), saved searches (`searches:` + `saved` mini), a `recent` mini, and `custom_metadata:` surfaced by `meta`
+* `wilfred doctor` health report (config, data dir, index, hotkey, overlay, services) with `[ok]`/`[warn]`/`[FAIL]` checks
 * Default-browser detection, URL open, and web-search fallback
 * Safe expression parser (arithmetic, functions, unit/currency/color/date conversion, uuid/base64/sha256/lorem/json, hex/dec/bin/oct, bits, regex/url/jwt)
 * Native and stdio plugins, plus extra search backends via providers

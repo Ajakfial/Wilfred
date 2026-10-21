@@ -106,15 +106,21 @@ bool safe_entry_name(const std::string& name, std::string& why) {
     why = "absolute path";
     return false;
   }
-  if (name.size() >= 2 && name[1] == ':') {
+  // Any colon means a drive prefix or an NTFS alternate data stream.
+  if (name.find(':') != std::string::npos) {
     why = "drive-qualified path";
     return false;
   }
+  // ZIP uses '/', but archives written on Windows also use '\'. Normalise
+  // before splitting, otherwise "..\\..\\x" would slip past the check.
+  std::string norm = name;
+  for (char& c : norm)
+    if (c == '\\') c = '/';
   std::size_t start = 0;
-  while (start <= name.size()) {
-    auto end = name.find('/', start);
+  while (start <= norm.size()) {
+    auto end = norm.find('/', start);
     std::string seg =
-        name.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        norm.substr(start, end == std::string::npos ? std::string::npos : end - start);
     if (seg == "..") {
       why = "parent traversal";
       return false;

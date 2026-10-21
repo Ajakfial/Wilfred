@@ -176,10 +176,55 @@ scopes:
 
 ## `custom_metadata:`
 
-An open key/value map (`std::unordered_map<std::string, std::string>`, empty
-by default) with no built-in meaning -- intended for plugins or a custom
-`RankPipeline` signal to read project-specific tags out of the config
-without Wilfred needing to know about them.
+```yaml
+custom_metadata:
+  team: platform
+  repo: wilfred
+```
+
+An open key/value map (empty by default) with no built-in meaning. Plugins or a
+custom `RankPipeline` signal can read project-specific tags out of it, and the
+built-in `meta` mini surfaces every pair in the overlay (`meta` lists them,
+`meta team` shows one) for a quick copy. `wilfred doctor` prints the entry
+count so a mis-indented block is easy to spot.
+
+## `searches:` -- saved searches
+
+```yaml
+searches:
+  Inbox: "type:email in Mail"
+  Large files: "size:>100mb"
+```
+
+Names are lowercased and shown in the `saved` mini in alphabetical order.
+Pressing Enter on a saved search inserts its query into the search field
+instead of running it, so it can be edited first. Empty queries are rejected
+by validation.
+
+## `keybinds:` -- overlay keybindings
+
+```yaml
+keybinds:
+  preview: F4
+  actions: "ctrl+shift+p"
+```
+
+Overrides replace the built-in defaults; anything not listed keeps its default.
+`mod` means Cmd on macOS and Ctrl elsewhere. Chord syntax is
+`[mod+][ctrl+][shift+][alt+]<key>`, where `<key>` is an arrow
+(`up`/`down`/`left`/`right`), `page_up`, `page_down`, `home`, `end`, `tab`,
+`enter`, `space`, `esc`, or a single character. Unknown action names and empty
+chords fail config validation.
+
+| Action | Default | Meaning |
+|---|---|---|
+| `preview` | `F3` | Toggle the details pane |
+| `actions` | `mod+k` | Open the action menu |
+| `settings` | `mod+,` | Open settings |
+| `next` / `prev` | `down` / `up` | Move the selection |
+| `page_down` / `page_up` | `page_down` / `page_up` | Jump a page |
+| `first` / `last` | `home` / `end` | Jump to the ends |
+| `complete` | `tab` | Accept the correction / ghost / menu |
 
 ## `history:`
 

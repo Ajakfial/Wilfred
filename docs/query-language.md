@@ -194,6 +194,9 @@ synthetic result card instead of searching the index
 | `myip` | `publicip`, `ip public` | Public IP (via api.ipify.org) + local IP |
 | `ports [filter]` | `port`, `listening`, `listen`, `netstat`, `lsof` | Listening TCP/UDP sockets with the owning process and PID (`ports 8080`, `ports tcp`, `ports chrome`; enter copies the endpoint) |
 | `large [n] [dir]` | `largefiles`, `bigfiles` | Largest files from the index |
+| `recent [n] [30m\|24h\|7d\|2w] [filter]` | `recents`, `recent-files`, `modified` | Most recently modified indexed files (`recent 10`, `recent 7d`, `recent 24h invoice`; enter opens) |
+| `saved [name]` | `searches`, `savedsearches` | Saved searches from `searches:`; enter inserts the query |
+| `meta [key]` | `metadata`, `custommetadata` | `custom_metadata:` key/value pairs; enter copies the value |
 | `dupes [dir]` | `dups`, `duplicates`, `dedupe` | Duplicate candidates (same size + hash) |
 | `transcribe <file>` | `stt`, `transcription` | Speech-to-text for mp3/wav/m4a/mp4 via whisper or spoke (`transcription.engine`, enter transcribes) |
 | `convert <file> to <fmt>` | `transcode`, `conversion` | File conversion: audio (`convert song.wav to mp3`, `convert clip.mp4 to wav`) and images (`convert photo.bmp to png`, `convert scan.tga to jpg`); WAV/WAV+RAW and BMP/PNG/PPM/TGA run natively, compressed targets use `ffmpeg` when installed (enter converts + reveals) |

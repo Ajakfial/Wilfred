@@ -86,7 +86,7 @@ foreach ($ref in @('ProductComponents', 'OverlayFiles')) {
     $hit = Select-Xml -Xml $xml -XPath "//wix:ComponentGroupRef[@Id='$ref']" -Namespace $ns
     if (-not $hit) { throw "Template missing ComponentGroupRef $ref." }
 }
-foreach ($id in @('WilfredExe', 'WilfredReadme', 'WilfredDefaults', 'WilfredPath', 'WilfredMenuShortcuts')) {
+foreach ($id in @('WilfredExe', 'WilfredReadme', 'WilfredDefaults', 'WilfredPath', 'WilfredMenuShortcuts', 'WilfredDesktopShortcut')) {
     $hit = Select-Xml -Xml $xml -XPath "//wix:Component[@Id='$id']" -Namespace $ns
     if (-not $hit) { throw "Template missing Component $id." }
 }
@@ -104,7 +104,7 @@ $msiVersion = Get-MsiVersion $Version
 Write-Host "ProductVersion: $msiVersion (from $Version)"
 
 if (-not $IconPath) {
-    $defaultIcon = Join-Path $Root 'packaging\wix\icon.ico'
+    $defaultIcon = Join-Path $Root 'appicon\appicon.ico'
     if (Test-Path $defaultIcon) { $IconPath = $defaultIcon }
 }
 $hasIcon = 'no'

@@ -164,6 +164,17 @@ struct Parser {
       return v;
     }
     auto s = parse_plain();
+    // Empty flow collections are the common way to write "no entries". The
+    // parser does not expand non-empty flow syntax, but treating these two
+    // literals as real containers keeps `searches: {}` and `paths: []` sane.
+    if (s == "[]") {
+      v.data = YamlList{};
+      return v;
+    }
+    if (s == "{}") {
+      v.data = YamlMap{};
+      return v;
+    }
     if (!s.empty() && (s.front() == '[' || s.front() == '{')) {
       char close = s.front() == '[' ? ']' : '}';
       if (s.size() < 2 || s.back() != close) fail("unclosed flow collection");
@@ -521,7 +532,9 @@ std::vector<std::string> YamlValue::string_list(std::string_view key) const {
   if (!v) return out;
   if (v->is_list()) {
     for (auto& i : v->as_list()) {
-      if (i.is_string()) out.push_back(i.as_string());
+      // Skip empty scalars: an inline `[]` parses as one empty string, and a
+      // blank list item (e.g. `paths: [""]`) must not become a root of "".
+      if (i.is_string() && !i.as_string().empty()) out.push_back(i.as_string());
     }
   } else if (v->is_string() && !v->as_string().empty()) {
     out.push_back(v->as_string());

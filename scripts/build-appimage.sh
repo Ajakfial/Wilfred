@@ -40,8 +40,8 @@ if [[ -d "$STAGING/ui/overlay" ]]; then
   cp -R "$STAGING/ui/overlay" "$APPDIR/usr/share/wilfred/overlay"
 fi
 cp packaging/linux/wilfred.desktop "$APPDIR/wilfred.desktop"
-cp www/public/favicon.svg "$APPDIR/wilfred.svg"
-cp www/public/favicon.svg "$APPDIR/.DirIcon"
+cp appicon/appicon-512.png "$APPDIR/wilfred.png"
+cp appicon/appicon-512.png "$APPDIR/.DirIcon"
 cp packaging/linux/AppRun "$APPDIR/AppRun"
 chmod 755 "$APPDIR/AppRun"
 

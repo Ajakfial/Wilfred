@@ -209,9 +209,8 @@ export function ResultRow({ entry, pos, selected, checked, selectionMode, needle
         }
       }}
       onMouseMove={(e) => onHover(index, e.clientX, e.clientY)}
-      onMouseDown={(e) => {
+      onClick={(e) => {
         if ((e.target as HTMLElement).closest(".more")) return;
-        e.preventDefault();
         onSelect(index, { ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
       }}
     >

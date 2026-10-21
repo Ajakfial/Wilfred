@@ -10,6 +10,7 @@
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/minis.hpp"
+#include "wilfred/ui/web_ui.hpp"
 #include "wilfred/updater/updater.hpp"
 
 #include <chrono>
@@ -18,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -139,6 +141,21 @@ void test_agent_extras() {
     CHECK(has_actions);
   }
 
+  // ---- shipped default config still parses ----------------------------
+#ifdef WILFRED_SOURCE_DIR
+  {
+    std::string text;
+    CHECK(wilfred::read_file_all(std::string(WILFRED_SOURCE_DIR) + "/config/wilfred.default.yml",
+                                 text));
+    wilfred::Config def;
+    wilfred::ConfigError derr;
+    CHECK(load_config_text(text, def, derr));
+    CHECK(def.searches.empty());
+    CHECK(def.keybinds.empty());
+    CHECK(def.custom_metadata.empty());
+  }
+#endif
+
   // ---- mini routing ---------------------------------------------------
   {
     CHECK_EQ(parse_mini_intent("recent").kind, wilfred::MiniKind::Recent);
@@ -233,6 +250,47 @@ void test_agent_extras() {
     fs::remove_all(root, ec);
   }
 
+  // ---- inline media preview + overlay keybind payload -----------------
+  {
+    auto root = fs::temp_directory_path() / "wilfred_agent_media";
+    std::error_code ec;
+    fs::remove_all(root, ec);
+    fs::create_directories(root, ec);
+    auto wav_path = root / "tone.wav";
+    std::string wav(64, '\0');
+    std::memcpy(wav.data(), "RIFF", 4);
+    std::memcpy(wav.data() + 8, "WAVEfmt ", 8);
+    CHECK(wilfred::write_file_atomic(wav_path.string(), wav.data(), wav.size()));
+
+    auto pv = wilfred::build_file_preview(wav_path.string());
+    CHECK_EQ(pv.kind, "audio");
+    CHECK_EQ(pv.media_kind, "audio");
+    CHECK(pv.media_data_url.rfind("data:audio/wav;base64,", 0) == 0);
+    CHECK(pv.image_data_url.empty());
+
+    auto json = wilfred::overlay_preview_json(wav_path.string());
+    CHECK(json.find("\"mediaKind\":\"audio\"") != std::string::npos);
+    CHECK(json.find("data:audio/wav;base64,") != std::string::npos);
+
+    // A format the WebView cannot play stays a text card (no broken player).
+    auto avi = root / "clip.avi";
+    CHECK(wilfred::write_file_atomic(avi.string(), "RIFF....AVI ", 12));
+    auto avi_pv = wilfred::build_file_preview(avi.string());
+    CHECK(avi_pv.media_data_url.empty());
+
+    // keybinds: overrides merge over the defaults in the `show` payload.
+    wilfred::Config cfg;
+    cfg.keybinds["preview"] = "F4";
+    wilfred::set_overlay_appearance(cfg);
+    auto show = wilfred::overlay_show_json();
+    CHECK(show.find("\"preview\":\"F4\"") != std::string::npos);
+    CHECK(show.find("\"actions\":\"mod+k\"") != std::string::npos);
+
+    // Reset so a leftover F4 cannot affect other tests.
+    wilfred::set_overlay_appearance(wilfred::Config{});
+    fs::remove_all(root, ec);
+  }
+
   // ---- zip extraction: round trip + traversal guard -------------------
   {
     auto root = fs::temp_directory_path() / "wilfred_agent_zip";
@@ -258,6 +316,18 @@ void test_agent_extras() {
     CHECK_EQ(evil_entries, 0u);
     CHECK(!path_exists(root / "escape.txt"));
     CHECK(!path_exists(root / "safe" / "escape.txt"));
+
+    // Windows separators and drive prefixes are rejected too.
+    for (auto& [file, entry] : std::vector<std::pair<std::string, std::string>>{
+             {"evil_bs.zip", "..\\escape.txt"},
+             {"evil_drive.zip", "C:\\evil.txt"},
+             {"evil_unc.zip", "\\\\server\\share\\evil.txt"}}) {
+      auto bytes = make_stored_zip(entry, "pwned");
+      CHECK(wilfred::write_file_atomic((root / file).string(), bytes.data(), bytes.size()));
+      std::size_t n = 0;
+      CHECK(wilfred::unzip_to((root / file).string(), (root / "safe").string(), n, err));
+      CHECK_EQ(n, 0u);
+    }
 
     fs::remove_all(root, ec);
   }
