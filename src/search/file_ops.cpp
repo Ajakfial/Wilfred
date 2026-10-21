@@ -3,6 +3,7 @@
 #include "wilfred/core/crc32.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/platform/platform.hpp"
 #include "wilfred/updater/updater.hpp"
 
 #include <algorithm>
@@ -857,12 +858,17 @@ bool trash_paths(const std::vector<std::string>& sources, std::vector<std::strin
       error = "No such file: " + s;
       return false;
     }
+#if !defined(WILFRED_IOS)
     auto cmd = "gio trash -- " + shell_quote(s) + " >/dev/null 2>&1";
     bool ok = std::system(cmd.c_str()) == 0 && !fs_exists(s);
     if (ok)
       trashed_out.push_back(s);
     else
       pending.push_back(s);
+#else
+    // system() is unavailable on iOS; use the in-process Apple trash path.
+    pending.push_back(s);
+#endif
   }
   for (auto& s : pending) {
     std::string moved;
