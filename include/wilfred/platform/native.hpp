@@ -145,6 +145,60 @@ enum class NativeScreenshotMode { Fullscreen, Window, Region };
 bool native_take_screenshot(NativeScreenshotMode mode, std::string& out_path, std::string& error);
 std::string native_screenshot_save_directory();
 
+// --- Screen color sampling ---
+// 8-bit sRGB channels, as displayed. Not linearized, not premultiplied.
+struct NativeColor {
+  unsigned char r{0};
+  unsigned char g{0};
+  unsigned char b{0};
+};
+
+// Samples the pixel under the mouse cursor in virtual-screen coordinates.
+// The caller is responsible for the magnifier/overlay; this only reads a point.
+// Returns false with error set where the platform cannot read the screen:
+// iOS and Android (sandboxed), and Wayland compositors without a screencopy
+// portal. Those are expected outcomes, not bugs.
+bool native_color_at_cursor(NativeColor& out, std::string& error);
+
+// Same, for an explicit point in virtual-screen coordinates.
+bool native_color_at_point(int x, int y, NativeColor& out, std::string& error);
+
+// "#rrggbb", lowercase. Formatting only; no platform dependency.
+inline std::string color_hex(const NativeColor& c) {
+  static const char* kDigits = "0123456789abcdef";
+  const unsigned char v[3] = {c.r, c.g, c.b};
+  std::string s = "#";
+  for (const unsigned char ch : v) {
+    s += kDigits[ch >> 4];
+    s += kDigits[ch & 0x0f];
+  }
+  return s;
+}
+
+// --- Active app menu (desktop only) ---
+struct NativeMenuItem {
+  std::string id;        // opaque, stable for this app/session
+  std::string title;     // "Export as PNG"
+  std::string path;      // "File > Export > PNG"
+  std::string shortcut;  // "Ctrl+Shift+E" when the app reports one
+  std::string app;       // owning application name
+};
+
+// Enumerates the focused application's menu tree through the platform
+// accessibility API. Expensive (tens to hundreds of ms), so callers cache.
+// Returns false with error set where no menu tree is exposed: mobile, and
+// Linux until AT-SPI is wired up.
+bool native_active_menu_items(std::vector<NativeMenuItem>& out, std::string& error);
+
+// Runs a previously enumerated item. Fails when the menu changed shape since
+// enumeration, which is expected when the user switched apps.
+bool native_invoke_menu_item(const std::string& id, std::string& error);
+
+// Records the app that is focused right now. Call this when the launcher is
+// summoned: once the overlay takes focus, the "active app" is Wilfred itself,
+// so menu search needs the app that was in front a moment earlier.
+void native_menu_remember_foreground();
+
 struct OpenWithApp {
   std::string name;    // display name, e.g. "Visual Studio Code"
   std::string target;  // opaque id passed back to native_open_with

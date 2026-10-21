@@ -93,6 +93,7 @@ enum class MiniKind {
   Password,
   Epoch,
   Focus,
+  PickColor,
 };
 
 struct MiniIntent {

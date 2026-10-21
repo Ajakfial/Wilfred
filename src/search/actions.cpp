@@ -26,6 +26,7 @@
 #include "wilfred/search/timers.hpp"
 #include "wilfred/search/toggles.hpp"
 #include "wilfred/search/transcribe.hpp"
+#include "wilfred/sources/vault.hpp"
 
 #include <chrono>
 #include <cstdlib>
@@ -196,6 +197,19 @@ void attach_impl(SearchResult& r, bool include_open_with) {
     add("copy_path", tr("action.capture_copy"));
     return;
   }
+  if (r.category == "pickcolor") {
+    add("copy_text", tr("action.copy_color"));
+    return;
+  }
+  if (r.category == "menu") {
+    add("open", tr("action.run_menu"));
+    return;
+  }
+  if (r.category == "vault") {
+    add("copy_secret", tr("action.copy_secret"));
+    add("copy_name", tr("action.copy_name"));
+    return;
+  }
   if (r.kind == FileKind::Application) {
     add("open", tr("action.open"));
     add("reveal", tr("action.reveal"));
@@ -220,7 +234,8 @@ void attach_result_actions(std::vector<SearchResult>& results) {
     if (!r.actions.empty() || r.action == ResultAction::Habit) continue;
     bool include = true;
     if (r.kind != FileKind::Application && r.kind != FileKind::Directory &&
-        r.action != ResultAction::Screenshot && r.category != "screenshot") {
+        r.action != ResultAction::Screenshot && r.category != "screenshot" &&
+        r.category != "pickcolor" && r.category != "menu" && r.category != "vault") {
       if (budget == 0)
         include = false;
       else
@@ -421,6 +436,37 @@ bool native_simulate_paste() {
 }
 
 bool execute_result_action(const SearchResult& r, const Config& cfg, const std::string& action_id) {
+  // Screen color cards sample the cursor now, not when the card was built.
+  if (r.category == "pickcolor") {
+    NativeColor c;
+    std::string err;
+    if (!native_color_at_cursor(c, err)) {
+      log_warn("pickcolor", err.empty() ? "could not sample the screen" : err);
+      return false;
+    }
+    return write_clipboard(color_hex(c));
+  }
+  // Menu items are re-resolved by id at activation; the cached list may be stale.
+  if (r.category == "menu") {
+    std::string err;
+    auto raw = r.payload.empty() ? r.path : r.payload;
+    if (raw.rfind("menu:", 0) == 0) raw = raw.substr(5);
+    if (!native_invoke_menu_item(raw, err)) {
+      log_warn("menu", err.empty() ? "could not run the menu item" : err);
+      return false;
+    }
+    return true;
+  }
+  // Vault cards carry only an item id; the secret never reaches SearchResult.
+  if (r.category == "vault") {
+    if (action_id == "copy_name") return write_clipboard(r.title);
+    std::string err;
+    if (!vault_copy_secret_to_clipboard(cfg, r.path, err)) {
+      log_warn("vault", err.empty() ? "could not copy the password" : err);
+      return false;
+    }
+    return true;
+  }
   auto id = action_id;
   if (id.empty()) {
     // Toggle/settings/config/setup/remote/plugin cards apply on Enter.

@@ -131,6 +131,11 @@ const SettingMeta kTable[] = {
     B("sources.ocr"),
     S("sources.ocr_languages"),
     I("sources.max_results"),
+    B("sources.menu"),
+    B("sources.vault"),
+    S("sources.vault_command"),
+    I("sources.vault_cache_secs"),
+    I("sources.vault_clear_after_secs"),
     // remotes
     B("remotes.enabled"),
     I("remotes.timeout_ms"),

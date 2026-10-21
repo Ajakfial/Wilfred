@@ -34,6 +34,8 @@
 #include "wilfred/search/suggest.hpp"
 #include "wilfred/search/workflows.hpp"
 #include "wilfred/sources/sources.hpp"
+#include "wilfred/sources/menu.hpp"
+#include "wilfred/sources/vault.hpp"
 #include "wilfred/sync/backup.hpp"
 #include "wilfred/ui/overlay.hpp"
 #include "wilfred/ui/web_ui.hpp"
@@ -164,6 +166,8 @@ bool Service::boot() {
   if (cfg_.sources.calendar) interpreter_.providers().add(std::make_unique<CalendarProvider>());
   if (cfg_.sources.contacts) interpreter_.providers().add(std::make_unique<ContactsProvider>());
   if (cfg_.sources.notes) interpreter_.providers().add(std::make_unique<NotesProvider>());
+  if (cfg_.sources.menu) interpreter_.providers().add(std::make_unique<MenuProvider>());
+  if (cfg_.sources.vault) interpreter_.providers().add(std::make_unique<VaultProvider>());
   if (cfg_.browser.library)
     interpreter_.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (cfg_.remotes.enabled && !cfg_.remotes.sources.empty())
@@ -177,10 +181,14 @@ bool Service::boot() {
 
 void Service::on_hotkey() {
   if (ui_) {
-    if (ui_->visible())
+    if (ui_->visible()) {
       ui_->hide();
-    else
+    } else {
+      // Snapshot the frontmost app before the overlay steals focus, so menu
+      // search can still see that app's menu bar.
+      native_menu_remember_foreground();
       ui_->show();
+    }
   }
 }
 
@@ -205,14 +213,26 @@ void Service::on_provider_results(std::uint64_t gen, std::vector<SearchResult> e
 }
 
 // System-wide automation: run one hotkey binding action from anywhere.
-// `show` toggles the overlay; macro/system/media/workflow actions run
-// headless against the clipboard (workflows use targetless steps here).
+// `show` toggles the overlay; pickcolor samples the cursor into the clipboard;
+// macro/system/media/workflow actions run headless against the clipboard
+// (workflows use targetless steps here).
 void Service::run_hotkey_action(const std::string& run) {
   auto l = to_lower_utf8(run);
   while (!l.empty() && (l.front() == ' ' || l.front() == '\t'))
     l.erase(l.begin());
   if (l == "show") {
     on_hotkey();
+    return;
+  }
+  // Sample the pixel under the cursor and copy it, no overlay involved.
+  if (l == "pickcolor" || l == "color" || l == "color:pick") {
+    NativeColor c;
+    std::string err;
+    if (!native_color_at_cursor(c, err)) {
+      log_warn("hotkey", err.empty() ? "could not sample the screen" : err);
+      return;
+    }
+    write_clipboard(color_hex(c));
     return;
   }
   if (l.rfind("system:", 0) == 0) {

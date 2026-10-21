@@ -964,6 +964,11 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.sources.ocr = so->boolean("ocr", false);
     c.sources.ocr_languages = so->str("ocr_languages", "eng");
     c.sources.max_results = static_cast<int>(so->integer("max_results", 8));
+    c.sources.menu = so->boolean("menu", false);
+    c.sources.vault = so->boolean("vault", false);
+    c.sources.vault_command = so->str("vault_command", "op");
+    c.sources.vault_cache_secs = static_cast<int>(so->integer("vault_cache_secs", 60));
+    c.sources.vault_clear_after_secs = static_cast<int>(so->integer("vault_clear_after_secs", 30));
     if (c.sources.max_results < 1 || c.sources.max_results > 50) {
       err.message = "sources.max_results must be between 1 and 50";
       return false;

@@ -2079,6 +2079,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Tz, true);
   else if (key == "color" || key == "colour")
     set(MiniKind::Color, true);
+  else if (key == "pickcolor" || key == "pickcolour" || key == "colorpicker" ||
+           key == "colourpicker" || key == "eyedropper")
+    set(MiniKind::PickColor, true);
   else if (key == "uuid" || key == "uuid4" || key == "guid" || key == "uuidv4")
     set(MiniKind::Uuid, true);
   else if (key == "base64" || key == "b64" || key == "base64encode" || key == "encode64" ||
@@ -3138,6 +3141,31 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     out.push_back(
         card("Color", "Type #ff5500  or  rgb(255, 85, 0)", "", "color", 8000, ResultAction::None));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::PickColor) {
+    NativeColor c;
+    std::string err;
+    if (native_color_at_cursor(c, err)) {
+      const auto hex = color_hex(c);
+      char rgb[64];
+      std::snprintf(rgb, sizeof(rgb), "rgb(%u, %u, %u)", static_cast<unsigned>(c.r),
+                    static_cast<unsigned>(c.g), static_cast<unsigned>(c.b));
+      SearchResult r;
+      r.title = hex;
+      r.subtitle = std::string("Screen color · ") + rgb + " · Enter copies";
+      r.payload = hex;
+      r.path = hex;
+      r.action = ResultAction::Copy;
+      r.score = 10000;
+      r.kind_label = "pickcolor";
+      r.category = "pickcolor";
+      out.push_back(std::move(r));
+    } else {
+      out.push_back(
+          card("Screen color picker", err, "", "pickcolor", 8000, ResultAction::None));
+    }
     return out;
   }
 

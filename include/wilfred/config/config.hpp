@@ -214,6 +214,14 @@ struct Config {
     bool ocr{false};
     std::string ocr_languages{"eng"};
     int max_results{8};
+    // Desktop-only. Menu search reads the focused app's accessibility menu
+    // tree; vault search shells out to a password manager CLI. Both are opt-in
+    // because they spawn processes and touch other apps.
+    bool menu{false};
+    bool vault{false};
+    std::string vault_command{"op"};
+    int vault_cache_secs{60};
+    int vault_clear_after_secs{30};
   } sources;
 
   struct RemoteSourceCfg {

@@ -107,6 +107,8 @@ set(WILFRED_CORE_SOURCES
   src/search/os_search.cpp
   src/search/async_providers.cpp
   src/sources/sources.cpp
+  src/sources/vault.cpp
+  src/sources/menu.cpp
   src/ai/assistant.cpp
   src/ai/vision.cpp
   src/plugin/host.cpp
@@ -253,6 +255,8 @@ if(WIN32)
     src/platform/win/windows.cpp
     src/platform/win/volumes.cpp
     src/platform/win/screenshot.cpp
+    src/platform/win/color_picker.cpp
+    src/platform/win/menu_search.cpp
     src/platform/win/autostart.cpp
     src/platform/win/usn.cpp
     src/ui/win_overlay.cpp
@@ -269,6 +273,8 @@ elseif(IOS)
     src/platform/ios/launch.cpp
     src/platform/ios/volumes.cpp
     src/platform/ios/screenshot.cpp
+    src/platform/ios/color_picker.cpp
+    src/platform/ios/menu_search.cpp
     src/platform/ios/windows.cpp
     src/platform/ios/fs_watch.cpp
     src/platform/ios/hotkey.cpp
@@ -285,6 +291,8 @@ elseif(APPLE)
     src/platform/mac/windows.mm
     src/platform/mac/volumes.mm
     src/platform/mac/screenshot.mm
+    src/platform/mac/color_picker.cpp
+    src/platform/mac/menu_search.mm
     src/platform/mac/autostart.cpp
     src/ui/mac_overlay.mm
   )
@@ -298,6 +306,8 @@ elseif(ANDROID)
     src/platform/android/launch.cpp
     src/platform/android/volumes.cpp
     src/platform/android/screenshot.cpp
+    src/platform/android/color_picker.cpp
+    src/platform/android/menu_search.cpp
     src/platform/android/windows.cpp
     src/platform/android/fs_watch.cpp
     src/platform/android/hotkey.cpp
@@ -315,6 +325,8 @@ elseif(BSD)
     src/platform/linux/launch.cpp
     src/platform/linux/windows.cpp
     src/platform/linux/screenshot.cpp
+    src/platform/linux/color_picker.cpp
+    src/platform/linux/menu_search.cpp
     src/platform/linux/autostart.cpp
     src/platform/bsd/fs_watch.cpp
     src/platform/bsd/volumes.cpp
@@ -330,6 +342,8 @@ else()
     src/platform/linux/windows.cpp
     src/platform/linux/volumes.cpp
     src/platform/linux/screenshot.cpp
+    src/platform/linux/color_picker.cpp
+    src/platform/linux/menu_search.cpp
     src/platform/linux/autostart.cpp
     src/ui/x11_overlay.cpp
   )
@@ -399,7 +413,7 @@ target_include_directories(wilfred_core PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/inclu
 if(WIN32)
   # SearchSDK.lib provides the Windows Search CLSIDs (CLSID_CSearchManager)
   # for the native SystemIndex provider (search/os_search.hpp).
-  target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version
+  target_link_libraries(wilfred_core PUBLIC ole32 uuid shell32 advapi32 user32 gdi32 comdlg32 oleaut32 dwmapi version uiautomationcore
     winhttp psapi iphlpapi ws2_32 powrprof SearchSDK)
 
   include(FetchContent)
