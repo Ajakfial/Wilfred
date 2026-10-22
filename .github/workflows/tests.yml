@@ -46,11 +46,6 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja
 
-      - name: Build + test (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: ./scripts/build-windows.ps1 -Config Release -Tests
-
       # TEMPORARY DEBUG: capture a crash dump when the Windows test binary
       # segfaults on hosted runners; upload it plus the exe/pdb for
       # off-runner symbolization. Remove once the flake is identified.
@@ -62,6 +57,11 @@ jobs:
           New-Item -Path $key -Force | Out-Null
           Set-ItemProperty $key -Name DumpFolder -Value 'C:\dumps' -Type ExpandString
           Set-ItemProperty $key -Name DumpType -Value 2 -Type DWord
+
+      - name: Build + test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Config Release -Tests
 
       - name: Upload crash dump (Windows)
         if: always() && runner.os == 'Windows'
