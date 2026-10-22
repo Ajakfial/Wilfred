@@ -23,8 +23,7 @@ struct Config;
 struct SearchResult;
 
 bool ai_query_is_request(const std::string& query, std::string& prompt_out);
-bool ai_chat_is_request(const std::string& query, std::string& prompt_out,
-                        bool& reset_out);
+bool ai_chat_is_request(const std::string& query, std::string& prompt_out, bool& reset_out);
 bool ai_vision_is_request(const std::string& query, std::string& prompt_out);
 std::string ai_provider_default_model(const std::string& provider);
 std::string ai_provider_default_endpoint(const std::string& provider);
@@ -47,8 +46,8 @@ public:
 
   // Same, but carrying prior turns so the model sees the whole thread.
   // `history` is oldest-first and does NOT include the new prompt.
-  AiAnswer ask_conversation(const std::vector<ChatMessage>& history,
-                            const std::string& prompt, const Config& cfg) const;
+  AiAnswer ask_conversation(const std::vector<ChatMessage>& history, const std::string& prompt,
+                            const Config& cfg) const;
 
   // Same, but with a PNG/JPEG screenshot attached as vision input.
   AiAnswer ask_with_image(const std::string& prompt, const std::vector<std::uint8_t>& png_bytes,

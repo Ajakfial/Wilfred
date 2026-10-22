@@ -298,7 +298,8 @@ void ClipStore::clear_all() {
 void ClipStore::set_privacy(std::vector<std::string> ignore_patterns) {
   // Lowercase once at config-apply time; matching is a plain case-insensitive
   // substring scan over each captured text.
-  for (auto& p : ignore_patterns) p = to_lower_utf8(p);
+  for (auto& p : ignore_patterns)
+    p = to_lower_utf8(p);
   ignore_patterns.erase(std::remove_if(ignore_patterns.begin(), ignore_patterns.end(),
                                        [](const std::string& p) { return p.empty(); }),
                         ignore_patterns.end());
@@ -310,7 +311,9 @@ void ClipStore::set_paused(bool paused) {
   paused_.store(paused, std::memory_order_relaxed);
 }
 
-bool ClipStore::paused() const { return paused_.load(std::memory_order_relaxed); }
+bool ClipStore::paused() const {
+  return paused_.load(std::memory_order_relaxed);
+}
 
 void ClipStore::set_clear_on_exit(bool on) {
   std::lock_guard<std::mutex> lock(mu_);

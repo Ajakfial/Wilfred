@@ -25,7 +25,7 @@ struct ChatMessage {
 };
 
 class ChatStore {
- public:
+public:
   static ChatStore& instance();
 
   // Snapshot of the stored conversation (oldest first, capped).
@@ -44,7 +44,7 @@ class ChatStore {
 
   void reset();
 
- private:
+private:
   ChatStore() = default;
   mutable std::mutex mu_;
   std::vector<ChatMessage> messages_;

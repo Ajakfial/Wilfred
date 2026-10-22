@@ -13,6 +13,12 @@
 #include <windows.h>
 #endif
 
+#if defined(__APPLE__)
+// The Xcode (iOS) target compiles this file without WILFRED_IOS defined, so
+// Apple platform detection has to come from TargetConditionals instead.
+#include <TargetConditionals.h>
+#endif
+
 namespace wilfred {
 
 namespace {
@@ -48,7 +54,10 @@ std::string shell_quote(const std::string& s) {
 }  // namespace
 
 void notify_user(const std::string& title, const std::string& body) {
-#ifdef WILFRED_IOS
+#if defined(WILFRED_IOS) || (defined(TARGET_OS_IOS) && TARGET_OS_IOS) || \
+    (defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR)
+  // iOS: no shell, no NSUserNotification from this layer; the Swift side owns
+  // UNUserNotificationCenter. Keep this branch ahead of __APPLE__.
   (void)title;
   (void)body;
 #elif defined(__APPLE__)

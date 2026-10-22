@@ -193,14 +193,15 @@ void test_fork_features() {
   {
     ConfigError err;
     Config cfg;
-    std::string yml = "clipboard:\n"
-                      "  manager: true\n"
-                      "  max_entries: 40\n"
-                      "  persist: false\n"
-                      "  ignore_patterns:\n"
-                      "    - \"otp:\"\n"
-                      "    - card\n"
-                      "  clear_on_exit: true\n";
+    std::string yml =
+        "clipboard:\n"
+        "  manager: true\n"
+        "  max_entries: 40\n"
+        "  persist: false\n"
+        "  ignore_patterns:\n"
+        "    - \"otp:\"\n"
+        "    - card\n"
+        "  clear_on_exit: true\n";
     CHECK(load_config_text(yml, cfg, err));
     CHECK_EQ(cfg.clipboard.max_entries, 40);
     CHECK(!cfg.clipboard.persist);

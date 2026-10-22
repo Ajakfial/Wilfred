@@ -51,6 +51,29 @@ jobs:
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Config Release -Tests
 
+      # TEMPORARY DEBUG: capture a crash dump when the Windows test binary
+      # segfaults on hosted runners; upload it plus the exe/pdb for
+      # off-runner symbolization. Remove once the flake is identified.
+      - name: Enable WER dumps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wilfred_tests.exe'
+          New-Item -Path $key -Force | Out-Null
+          Set-ItemProperty $key -Name DumpFolder -Value 'C:\dumps' -Type ExpandString
+          Set-ItemProperty $key -Name DumpType -Value 2 -Type DWord
+
+      - name: Upload crash dump (Windows)
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilfred-tests-dump
+          path: |
+            C:/dumps/*
+            build/windows/wilfred_tests.exe
+            build/windows/wilfred_tests.pdb
+          if-no-files-found: ignore
+
       - name: Build + test (Linux)
         if: runner.os == 'Linux'
         shell: bash

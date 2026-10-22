@@ -49,7 +49,9 @@ bool take_i64(const char*& p, const char* end, std::int64_t& v) {
   return true;
 }
 
-std::string lower_copy(const std::string& s) { return to_lower_utf8(s); }
+std::string lower_copy(const std::string& s) {
+  return to_lower_utf8(s);
+}
 
 // "9am", "9:30pm", "14:30", "09:05" -> hour/min in 24h form. Bare generic
 // numbers are durations, not clocks, so hour-only needs an am/pm suffix.
@@ -151,9 +153,11 @@ bool parse_reminder_due(const std::string& text, std::int64_t now_ms, std::int64
   int clock_h = -1;
   int clock_m = -1;
   while (pos < text.size()) {
-    while (pos < text.size() && (text[pos] == ' ' || text[pos] == '\t')) ++pos;
+    while (pos < text.size() && (text[pos] == ' ' || text[pos] == '\t'))
+      ++pos;
     std::size_t start = pos;
-    while (pos < text.size() && text[pos] != ' ' && text[pos] != '\t') ++pos;
+    while (pos < text.size() && text[pos] != ' ' && text[pos] != '\t')
+      ++pos;
     if (start == pos) break;
     auto tok = lower_copy(text.substr(start, pos - start));
     int day = 0;
@@ -293,13 +297,13 @@ bool ReminderStore::load() {
   }
   std::lock_guard<std::mutex> lock(mu_);
   items_ = std::move(items);
-  for (auto& e : items_) next_id_ = std::max(next_id_, e.id + 1);
+  for (auto& e : items_)
+    next_id_ = std::max(next_id_, e.id + 1);
   // Truncate to the cap, oldest due first.
-  std::stable_sort(items_.begin(), items_.end(),
-                   [](const ReminderSpec& a, const ReminderSpec& b) {
-                     if (a.notified != b.notified) return !a.notified;
-                     return a.due_ms < b.due_ms;
-                   });
+  std::stable_sort(items_.begin(), items_.end(), [](const ReminderSpec& a, const ReminderSpec& b) {
+    if (a.notified != b.notified) return !a.notified;
+    return a.due_ms < b.due_ms;
+  });
   if (items_.size() > kMaxItems) items_.resize(kMaxItems);
   return true;
 }
@@ -374,11 +378,10 @@ std::vector<ReminderSpec> ReminderStore::list() const {
   std::lock_guard<std::mutex> lock(mu_);
   auto items = items_;
   // Due (unnotified, soonest) first; already-rang entries trail.
-  std::stable_sort(items.begin(), items.end(),
-                   [](const ReminderSpec& a, const ReminderSpec& b) {
-                     if (a.notified != b.notified) return !a.notified;
-                     return a.due_ms < b.due_ms;
-                   });
+  std::stable_sort(items.begin(), items.end(), [](const ReminderSpec& a, const ReminderSpec& b) {
+    if (a.notified != b.notified) return !a.notified;
+    return a.due_ms < b.due_ms;
+  });
   return items;
 }
 

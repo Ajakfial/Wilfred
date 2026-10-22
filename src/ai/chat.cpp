@@ -56,10 +56,9 @@ bool ChatStore::active() const {
 
 int ChatStore::turns() const {
   std::lock_guard<std::mutex> lock(mu_);
-  return static_cast<int>(std::count_if(messages_.begin(), messages_.end(),
-                                        [](const ChatMessage& m) {
-                                          return m.role == "assistant";
-                                        }));
+  return static_cast<int>(
+      std::count_if(messages_.begin(), messages_.end(),
+                    [](const ChatMessage& m) { return m.role == "assistant"; }));
 }
 
 std::string ChatStore::topic() const {

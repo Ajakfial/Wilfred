@@ -2742,11 +2742,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     }
     if (to_lower_utf8(filter) == "status") {
       auto& store = ClipStore::instance();
-      SearchResult r = card(
-          store.paused() ? "Clipboard history paused" : "Clipboard history recording",
-          "Set ignore_patterns (patterns) in wilfred.yml to block captures; "
-          "clear_on_exit wipes on shutdown",
-          "clipboard privacy status", "clips", 10000, ResultAction::Copy);
+      SearchResult r =
+          card(store.paused() ? "Clipboard history paused" : "Clipboard history recording",
+               "Set ignore_patterns (patterns) in wilfred.yml to block captures; "
+               "clear_on_exit wipes on shutdown",
+               "clipboard privacy status", "clips", 10000, ResultAction::Copy);
       r.category = "clips";
       r.kind_label = "clips";
       out.push_back(std::move(r));
@@ -2809,17 +2809,16 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     for (auto& e : entries)
       hits.push_back(e.text);
     if (hits.empty()) {
-      std::string empty_title = text_filter.empty() && type_filter.empty()
-                                    ? tr("clips.empty")
-                                    : (type_filter.empty() ? tr("clips.no_match")
-                                                           : tr("clips.no_type_match",
-                                                                {{"type", type_filter}}));
+      std::string empty_title =
+          text_filter.empty() && type_filter.empty()
+              ? tr("clips.empty")
+              : (type_filter.empty() ? tr("clips.no_match")
+                                     : tr("clips.no_type_match", {{"type", type_filter}}));
       if (store.paused() && text_filter.empty() && type_filter.empty())
         empty_title = "Clipboard history paused · clips resume to record again";
-      out.push_back(
-          card(empty_title,
-               filter.empty() ? tr("clips.empty_hint") : tr("clips.no_match_hint"), "", "clips",
-               9000, ResultAction::None));
+      out.push_back(card(empty_title,
+                         filter.empty() ? tr("clips.empty_hint") : tr("clips.no_match_hint"), "",
+                         "clips", 9000, ResultAction::None));
     } else {
       int n = 0;
       for (auto& e : entries) {
@@ -3428,12 +3427,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         std::string sub;
         if (e.notified) {
           title = "Missed · " + e.label;
-          sub = "Rang " + format_reminder_when(e.due_ms) + " · remind rm " +
-                std::to_string(e.id);
+          sub = "Rang " + format_reminder_when(e.due_ms) + " · remind rm " + std::to_string(e.id);
         } else {
           title = "#" + std::to_string(e.id) + " · " + e.label;
-          sub = format_reminder_eta(e.due_ms, unix_millis()) + " · " +
-                format_reminder_when(e.due_ms);
+          sub =
+              format_reminder_eta(e.due_ms, unix_millis()) + " · " + format_reminder_when(e.due_ms);
         }
         SearchResult r = card(title, sub, e.label, "remind", 10000 - n, ResultAction::Copy);
         r.actions.push_back({"copy_text", "Copy"});

@@ -194,9 +194,7 @@ std::string build_chat_body(const std::string& provider, const std::string& mode
       merged.push_back({role, m.content, m.when});
     }
   }
-  auto esc = [](const ChatMessage& m) {
-    return json_escape(m.content);
-  };
+  auto esc = [](const ChatMessage& m) { return json_escape(m.content); };
   if (provider == "anthropic") {
     std::string body = "{\"model\":\"" + json_escape(model) +
                        "\",\"max_tokens\":" + std::to_string(max_tokens) + ",\"messages\":[";
@@ -504,13 +502,11 @@ std::vector<SearchResult> AiAssistant::results_for_chat(const std::string& promp
     out.push_back(std::move(r));
   };
   auto lr = lower_trim(prompt);
-  if (lr == "reset" || lr == "clear" || lr == "new" || lr == "stop" || lr == "off" ||
-      lr == "end") {
+  if (lr == "reset" || lr == "clear" || lr == "new" || lr == "stop" || lr == "off" || lr == "end") {
     ChatStore& chat = ChatStore::instance();
-    std::string msg = chat.active()
-                          ? "Chat ended · " + std::to_string(chat.turns()) +
-                                " turn(s) cleared · `ai <question>` is single-shot again"
-                          : "No chat thread to clear";
+    std::string msg = chat.active() ? "Chat ended · " + std::to_string(chat.turns()) +
+                                          " turn(s) cleared · `ai <question>` is single-shot again"
+                                    : "No chat thread to clear";
     chat.reset();
     card(msg, "AI chat · multisession is memory-only, nothing is saved", "", 9500);
     return out;
@@ -529,8 +525,8 @@ std::vector<SearchResult> AiAssistant::results_for_chat(const std::string& promp
     }
     auto last = chat.last_answer();
     card(last.size() > 220 ? last.substr(0, 217) + "…" : last,
-         "AI chat · " + std::to_string(chat.turns()) + " turn(s) · thread: " +
-             (chat.topic().empty() ? "…" : chat.topic()) +
+         "AI chat · " + std::to_string(chat.turns()) +
+             " turn(s) · thread: " + (chat.topic().empty() ? "…" : chat.topic()) +
              " · `ai <question>` continues · `ai chat reset` clears",
          last, 9500);
     return out;

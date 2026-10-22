@@ -42,7 +42,7 @@ std::string format_reminder_eta(std::int64_t due_ms, std::int64_t now_ms);
 std::string format_reminder_when(std::int64_t due_ms);
 
 class ReminderStore {
- public:
+public:
   static ReminderStore& instance();
 
   // Path may be empty to disable persistence (no-args default in tests).
@@ -62,7 +62,7 @@ class ReminderStore {
   // the list as a "missed" record until removed or cleared.
   std::vector<ReminderSpec> due(std::int64_t now_ms);
 
- private:
+private:
   ReminderStore() = default;
   mutable std::mutex mu_;
   std::vector<ReminderSpec> items_;
