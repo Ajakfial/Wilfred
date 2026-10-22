@@ -14,6 +14,7 @@ What lives at the top level, and why. The module tour is in
 | `scripts/`, `packaging/` | Build, packaging, and release tooling |
 | `lang/` | UI translation catalogs (`en.yml` is the reference) |
 | `docs/` | Documentation; start at [README.md](README.md) |
+| `installer/` | TypeScript setup wizard and its Win32/WebView2 host |
 | `ui/`, `www/`, `android/`, `ios/` | Overlay and platform clients |
 | `spoke.cpp/` | Vendored in-process transcription engine (built by CMake) |
 | `.agents/` | AI policy, workflows, skills, and the tool ignore lists |

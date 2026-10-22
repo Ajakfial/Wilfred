@@ -1,7 +1,8 @@
 # Windows Installer (.msi)
 
-Releases ship `wilfred-<tag>-windows-x64.msi` alongside the portable zip.
-The installer is built with WiX Toolset v3 from
+Releases ship `wilfred-<tag>-windows-x64.msi` (plus the friendlier
+`wilfred-<tag>-windows-x64-setup.exe` wizard described below) alongside the
+portable zip. The installer is built with WiX Toolset v3 from
 `packaging/wix/Wilfred.wxs` and carries the same publisher identity as
 the binary (see [signing.md](signing.md)).
 
@@ -51,6 +52,54 @@ The release workflow signs the `.msi` with the same identity as the `.exe`
 (PFX secrets first, Azure Trusted Signing second) and attaches it to the
 GitHub Release. Unsigned MSIs install fine; SmartScreen still warns until
 a Microsoft-trusted signature plus reputation (see [signing.md](signing.md)).
+
+## Setup wizard (`Setup.exe`)
+
+Releases also ship `wilfred-<tag>-windows-x64-setup.exe`, a friendly
+bootstrapper for people who do not want the stock MSI pages. It installs
+exactly the same files through the same MSI, which remains the source of
+truth for enterprise and silent deployments.
+
+The wizard is a TypeScript app (`installer/ui`) hosted in WebView2 by a
+small Win32/C++ host (`installer/host`, see its README). At build time the
+bundled HTML and the MSI are embedded as resources, so `Setup.exe` is
+self-contained. The flow is Welcome → License (accept required) → Options
+(shows the install location and a launch-after-setup toggle) → Progress →
+Finish, with an error page and retry. The license text is read from
+`packaging/wix/Wilfred-License.txt`, the same file that generates the MSI
+license page, so the two cannot drift.
+
+Behavior:
+
+- Installs the embedded MSI with `MsiInstallProductW`; progress, the
+  current action, and failures are surfaced in the wizard.
+- `wilfred-setup.exe /S` installs silently and returns the MSI result code
+  (`0` on success), so it can be scripted. Logs go to
+  `%TEMP%\wilfred-setup.log`.
+- `wilfred-setup.exe --check` verifies the embedded MSI and wizard bundle,
+  then exits; `--ui-check` additionally loads the wizard in WebView2 and
+  waits for its ready message. `Build-Setup.ps1` always runs `--check`
+  (and `--ui-check` with `-UiCheck`), and CI runs both.
+- `--msi <path>` installs a specific MSI instead of the embedded one.
+- If the WebView2 Runtime is missing, Setup explains why and falls back to
+  the standard Windows Installer UI (`msiexec /i`). It also falls back to
+  an adjacent `wilfred*.msi` if the embedded payload cannot be extracted.
+
+Build it:
+
+```powershell
+# One command: builds the binary, stages it, then produces both installers
+./scripts/build-windows.ps1 -Config Release -Setup
+
+# Direct form (used by CI after the MSI exists)
+./scripts/Build-Setup.ps1 -Msi dist\wilfred-v1.2.3-windows-x64.msi `
+    -Out dist\wilfred-v1.2.3-windows-x64-setup.exe -Version v1.2.3 -UiCheck
+```
+
+Requires Node.js/npm, the Visual Studio C++ tools, CMake, and internet on
+the first run to fetch the WebView2 SDK from NuGet. The release workflow
+builds `Setup.exe` after signing the MSI (so the embedded package is the
+signed one) and signs the wizard with the same identity.
 
 ## Customization points
 

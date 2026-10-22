@@ -1,0 +1,15 @@
+{
+  "name": "wilfred-setup-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wilfred Windows setup wizard UI (TypeScript, bundled into the WebView2 host)",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.4"
+  }
+}

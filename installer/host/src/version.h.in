@@ -1,0 +1,3 @@
+#pragma once
+
+#define WILFRED_SETUP_VERSION L"@SETUP_VERSION@"

@@ -1,10 +1,11 @@
 name: Tests
 
-# Runs the unit tests on every PR, plus the overlay typecheck/bundle check.
-# Mobile (Android/iOS) compile gates run here too: both only built on
-# release tags before, which let a broken iOS compile and a broken Android
-# link ship in v35.0.0. BSD coverage stays on the nightly workflow (VM
-# runners are slow); the release workflow builds every platform on tags.
+# Runs the unit tests on every PR, plus the overlay and installer wizard
+# typecheck/bundle checks. Mobile (Android/iOS) compile gates run here too:
+# both only built on release tags before, which let a broken iOS compile
+# and a broken Android link ship in v35.0.0. BSD coverage stays on the
+# nightly workflow (VM runners are slow); the release workflow builds every
+# platform on tags.
 
 on:
   pull_request:
@@ -80,6 +81,29 @@ jobs:
           ./scripts/Build-Msi.ps1 -Staging $staging -Out dist\msi-smoke.msi -Version v45.0.9
           if ($LASTEXITCODE -ne 0) { throw "MSI smoke build failed ($LASTEXITCODE)" }
 
+      - name: Set up Node (Windows setup wizard)
+        if: runner.os == 'Windows'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: installer/ui/package-lock.json
+
+      # Builds the WebView2 host and the TypeScript wizard, embeds the MSI,
+      # and runs the hard --check payload self-test. --ui-check is a soft
+      # check because hosted runners occasionally lack the WebView2 runtime.
+      - name: Setup wizard smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = 'dist\msi-smoke-setup.exe'
+          ./scripts/Build-Setup.ps1 -Msi dist\msi-smoke.msi -Out $setup -Version v45.0.9
+          if ($LASTEXITCODE -ne 0) { throw "Setup build failed ($LASTEXITCODE)" }
+          $ui = Start-Process -FilePath $setup -ArgumentList '--ui-check' -Wait -PassThru
+          if ($ui.ExitCode -ne 0) {
+            Write-Host "::warning::Setup --ui-check failed (exit $($ui.ExitCode)); WebView2 runtime may be unavailable on this runner."
+          }
+
       - name: Upload crash dump (Windows)
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
@@ -135,6 +159,34 @@ jobs:
             echo "::error::ui/overlay/dist/ is stale -- run 'npm run build' in ui/overlay and commit it."
             exit 1
           fi
+
+  installer-ui:
+    # The setup wizard bundle is generated and embedded by Build-Setup.ps1,
+    # so it is not committed; this job only guards the TypeScript sources.
+    name: Installer UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer/ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: installer/ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build bundle
+        run: npm run build
 
   android:
     # Compile gate: the NDK/JNI build only ran on release tags before,

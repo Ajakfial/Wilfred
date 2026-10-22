@@ -19,6 +19,8 @@ bench_*.snapshot
 .wilfred/
 .DS_Store
 ui/overlay/node_modules/
+installer/ui/node_modules/
+installer/ui/dist/
 www/node_modules/
 www/dist/
 www/public/plugins/

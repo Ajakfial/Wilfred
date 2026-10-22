@@ -15,6 +15,7 @@ param(
     [string]$SignTimestamp = 'http://timestamp.digicert.com',
     [switch]$Msi,
     [string]$MsiVersion = '',
+    [switch]$Setup,
     [switch]$Choco,
     [string]$ChocoVersion = '',
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -159,7 +160,7 @@ function Get-ReleaseTag {
     return 'v' + $verLine.Matches[0].Groups[1].Value
 }
 
-if ($Msi -or $Choco) {
+if ($Msi -or $Choco -or $Setup) {
     Write-Host ''
     Write-Host 'Assembling release staging...'
     $pkgStaging = Join-Path ([IO.Path]::GetTempPath()) ('wilfred-pkg-staging-' + [guid]::NewGuid().ToString('N'))
@@ -171,7 +172,7 @@ if ($Msi -or $Choco) {
         Copy-Item (Join-Path $Root 'README.md') $pkgStaging -ErrorAction SilentlyContinue
         Copy-Item (Join-Path $Root 'config\wilfred.default.yml') $pkgStaging -ErrorAction SilentlyContinue
 
-        if ($Msi) {
+        if ($Msi -or $Setup) {
             Write-Host 'Building Windows installer (.msi)...'
             $msiTag = if ($MsiVersion) { $MsiVersion } else { Get-ReleaseTag }
             $msiOut = Join-Path $Root "dist\wilfred-$msiTag-windows-x64.msi"
@@ -183,6 +184,20 @@ if ($Msi -or $Choco) {
                 & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @signParams
             }
             Write-Host "Installer: $msiOut"
+
+            if ($Setup) {
+                Write-Host 'Building Windows setup wizard (.exe)...'
+                $setupOut = Join-Path $Root "dist\wilfred-$msiTag-windows-x64-setup.exe"
+                & (Join-Path $PSScriptRoot 'Build-Setup.ps1') -Msi $msiOut -Out $setupOut -Version $msiTag
+                if (-not (Test-Path $setupOut)) { throw "Setup wizard was not produced: $setupOut" }
+                if ($Sign -or $SignThumbprint -or $SignPfx -or $env:WILFRED_SIGN -eq '1') {
+                    Write-Host 'Signing setup wizard...'
+                    $setupSignParams = $signParams.Clone()
+                    $setupSignParams.ExePath = $setupOut
+                    & (Join-Path $PSScriptRoot 'Sign-WindowsBinary.ps1') @setupSignParams
+                }
+                Write-Host "Setup: $setupOut"
+            }
         }
 
         if ($Choco) {

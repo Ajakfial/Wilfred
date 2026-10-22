@@ -383,7 +383,7 @@ Release binaries and attaches one archive per platform to the GitHub Release
 
 | Job | Artifacts |
 |---|---|
-| `windows-x64` | Portable `.zip`, signed `.msi` (WiX v3, per-user, no UAC), Chocolatey `.nupkg` (embedded portable, no downloads at install) |
+| `windows-x64` | Portable `.zip`, `.msi` + Setup.exe wizard (WiX v3, per-user, no UAC), Chocolatey `.nupkg` (embedded portable, no downloads at install) |
 | `linux-x64` | Portable `.tar.gz` |
 | `freebsd-x64` | Portable `.tar.gz` (FreeBSD release job; other BSDs build from source -- see `docs/bsd.md`) |
 | `macos-arm64` | Portable `.tar.gz` |

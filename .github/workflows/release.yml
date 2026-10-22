@@ -40,6 +40,14 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja
 
+      - name: Set up Node (Windows setup wizard)
+        if: runner.os == 'Windows'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: installer/ui/package-lock.json
+
       # TEMPORARY DEBUG: capture a crash dump when the Windows test binary
       # segfaults on hosted runners; upload it plus the exe/pdb for
       # off-runner symbolization. Remove once the flake is identified.
@@ -181,6 +189,25 @@ jobs:
             ./scripts/Sign-WindowsBinary.ps1 -ExePath $msi -VerifyOnly
           }
 
+          # Friendly Setup.exe wizard that installs the same MSI using a
+          # TypeScript UI hosted by WebView2. Built after the MSI so the
+          # signed package is what gets embedded.
+          $setup = "dist\wilfred-$tag-$id-setup.exe"
+          ./scripts/Build-Setup.ps1 -Msi $msi -Out $setup -Version $tag
+          if ($signed) {
+            if ($env:WILFRED_PFX_BASE64) {
+              $pfx = 'build\windows\setup-signing.pfx'
+              [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WILFRED_PFX_BASE64))
+              ./scripts/Sign-WindowsBinary.ps1 -ExePath $setup -PfxPath $pfx
+              Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+            } else {
+              ./scripts/Sign-WindowsBinary.ps1 -ExePath $setup
+            }
+            ./scripts/Sign-WindowsBinary.ps1 -ExePath $setup -VerifyOnly
+          } else {
+            Write-Host '::warning::No signing secrets; shipping unsigned Setup.exe (installs fine, SmartScreen still warns). See docs/signing.md.'
+          }
+
       - name: Choco (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -265,6 +292,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.msi
+            dist/*.exe
             dist/*.nupkg
             dist/*.tar.gz
             dist/*.deb
@@ -660,7 +688,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(artifacts/*.zip artifacts/*.msi artifacts/*.nupkg artifacts/*.tar.gz artifacts/*.deb artifacts/*.AppImage artifacts/*.apk artifacts/*.aab)
+          files=(artifacts/*.zip artifacts/*.msi artifacts/*.exe artifacts/*.nupkg artifacts/*.tar.gz artifacts/*.deb artifacts/*.AppImage artifacts/*.apk artifacts/*.aab)
           if [[ ${#files[@]} -eq 0 ]]; then
             echo "No release files found" >&2
             find artifacts -type f || true

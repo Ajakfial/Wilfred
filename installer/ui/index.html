@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:"
+    />
+    <meta name="color-scheme" content="dark" />
+    <title>Wilfred Setup</title>
+    <style>
+      /*__STYLE__*/
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">W</span>
+          <span class="brand-text"><strong>Wilfred</strong><small>Setup</small></span>
+        </div>
+        <ol class="steps" id="steps"></ol>
+        <div class="rail-foot">
+          <span class="version" id="version">dev</span>
+          <span class="scope">Per-user install &middot; no admin required</span>
+        </div>
+      </aside>
+      <main class="main">
+        <section class="view" id="view" aria-live="polite"></section>
+        <footer class="actions">
+          <div class="status" id="status"></div>
+          <div class="buttons">
+            <button class="btn ghost" id="back" type="button">Back</button>
+            <button class="btn primary" id="next" type="button">Continue</button>
+          </div>
+        </footer>
+      </main>
+    </div>
+    <script>
+      /*__SCRIPT__*/
+    </script>
+  </body>
+</html>

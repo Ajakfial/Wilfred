@@ -180,13 +180,15 @@ Windows/Linux/macOS/FreeBSD/OpenBSD/NetBSD plus Android (`.apk`/`.aab`) and
 iOS (simulator `.app`) whenever a `v*.*.*` tag is pushed, then packages each
 platform's binary alongside `ui/overlay/`, `README.md`, and
 `config/wilfred.default.yml` into a zip/tar.gz and attaches it to a GitHub
-Release. Windows additionally produces a signed `.msi` installer and a
-Chocolatey `.nupkg` from the same staging dir, and Linux produces a `.deb`
-and an `.AppImage` (see [installer.md](installer.md)). On Windows it also stamps Publisher `Wilfred Open Contributors`
+Release. Windows additionally produces a signed `.msi` installer, a
+self-contained `Setup.exe` wizard built from the same MSI, and a Chocolatey
+`.nupkg` from the same staging dir, and Linux produces a `.deb` and an
+`.AppImage` (see [installer.md](installer.md)). On Windows it also stamps Publisher `Wilfred Open Contributors`
 via VERSIONINFO on every build and Authenticode-signs when signing secrets
 are present -- see [signing.md](signing.md). Pull requests are gated by
 `.github/workflows/tests.yml` (desktop `ctest` on Windows/Linux/macOS,
-Android/iOS compile gates, overlay typecheck + stale-`dist/` check) and
+Android/iOS compile gates, overlay typecheck + stale-`dist/` check, installer
+wizard typecheck/build + `Setup.exe --check`) and
 `.github/workflows/lint.yml` (`clang-format`/`clang-tidy` on changed files)
 -- still run `ctest` locally before submitting a change (see
 [CONTRIBUTING.md](../CONTRIBUTING.md)).
