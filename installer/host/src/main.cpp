@@ -634,7 +634,7 @@ HWND CreateMainWindow(int showCommand) {
         return nullptr;
     }
 
-    const DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+    const DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME | WS_MAXIMIZEBOX;
     RECT frame = {0, 0, kWindowWidth, kWindowHeight};
     AdjustWindowRectEx(&frame, style, FALSE, 0);
     const int width = frame.right - frame.left;

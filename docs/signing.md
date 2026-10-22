@@ -58,7 +58,9 @@ generate a fresh one per machine.
 ## Release builds (CI)
 
 `.github/workflows/release.yml` signs `wilfred.exe` after Build and before
-Package, then verifies. Publisher comes from the signing identity:
+Package, then verifies. It also signs the `.msi` installer and the
+`Setup.exe` wizard with the same identity, so all three artifacts share the
+publisher. Publisher comes from the signing identity:
 
 - **Azure Trusted Signing (recommended).** Set repository secrets
   `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, plus either
@@ -84,6 +86,8 @@ binary will show a different publisher than local builds.
 | Unsigned CI/local (VERSIONINFO only) | Wilfred Open Contributors | NotSigned | Warns (Unknown publisher) |
 | Self-signed local | Wilfred Open Contributors | Valid locally once installed, Unknown elsewhere | Still warns elsewhere |
 | Azure Trusted Signing / OV-EV | Wilfred Open Contributors (from cert) | Valid everywhere | Silent once reputation builds; may warn on first ever release |
+| Self-signed MSI / Setup.exe | Wilfred Open Contributors | Valid locally | Warns (self-signed) |
+| Trusted-signed MSI / Setup.exe | Wilfred Open Contributors | Valid everywhere | Silent after reputation |
 
 ## Troubleshooting
 
