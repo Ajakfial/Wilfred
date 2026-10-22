@@ -54,6 +54,78 @@ namespace {
 constexpr std::size_t kMaxOpenWithApps = 4;
 constexpr std::size_t kMaxOpenWithResults = 8;
 
+bool run_shell_command(const std::string& cmd, std::string& error) {
+  static const std::vector<std::string> kAllowlist = {
+    "echo", "date", "whoami", "hostname", "pwd", "ls", "dir", "ipconfig", "ifconfig",
+    "ping", "nslookup", "dig", "curl", "wget", "git", "npm", "cargo", "go", "python",
+    "python3", "node", "deno", "bun", "pnpm", "yarn", "make", "cmake", "ninja", "msbuild",
+    "dotnet", "java", "javac", "kotlinc", "swift", "swiftc", "clang", "gcc", "g++",
+    "rustc", "zig", "zig build", "meson", "bazel", "gradle", "mvn", "ant", "rake",
+    "bundle", "gem", "pip", "pip3", "uv", "poetry", "conda", "mamba", "micromamba",
+    "docker", "podman", "kubectl", "helm", "terraform", "ansible", "vagrant",
+    "ssh", "scp", "rsync", "tar", "gzip", "gunzip", "zip", "unzip", "7z", "unrar",
+    "sha256sum", "md5sum", "shasum", "openssl", "base64", "jq", "yq", "awk", "sed",
+    "grep", "rg", "fd", "find", "locate", "which", "where", "type", "whereis",
+    "ps", "top", "htop", "btop", "kill", "pkill", "killall", "df", "du", "free",
+    "lscpu", "lsmem", "lsblk", "mount", "umount", "systemctl", "service", "journalctl",
+    "dmesg", "uptime", "who", "w", "last", "history", "alias", "unalias", "export",
+    "set", "env", "printenv", "source", ".", "cd", "pushd", "popd", "dirs"
+  };
+
+  std::string executable;
+  std::string args;
+  std::size_t pos = 0;
+  while (pos < cmd.size() && cmd[pos] == ' ') ++pos;
+  std::size_t space = cmd.find(' ', pos);
+  if (space == std::string::npos) {
+    executable = cmd.substr(pos);
+  } else {
+    executable = cmd.substr(pos, space - pos);
+    args = cmd.substr(space + 1);
+  }
+
+  // Check if executable is in allowlist (exact match or prefix with path)
+  bool allowed = false;
+  for (const auto& allowed_cmd : kAllowlist) {
+    if (executable == allowed_cmd ||
+        (executable.size() > allowed_cmd.size() && executable.rfind(allowed_cmd + "/", 0) == 0) ||
+        (executable.size() > allowed_cmd.size() && executable.rfind(allowed_cmd + "\\", 0) == 0)) {
+      allowed = true;
+      break;
+    }
+  }
+  if (!allowed) {
+    error = "Command not in allowlist: " + executable;
+    return false;
+  }
+
+#ifdef _WIN32
+  std::string full_cmd = "cmd /c " + cmd;
+  int result = system(full_cmd.c_str());
+  if (result == -1) {
+    error = "Failed to execute command";
+    return false;
+  }
+  if (result != 0) {
+    error = "Command exited with code " + std::to_string(result);
+    return false;
+  }
+#else
+  std::string full_cmd = cmd;
+  int result = system(full_cmd.c_str());
+  if (result == -1) {
+    error = "Failed to execute command";
+    return false;
+  }
+  if (WIFEXITED(result) && WEXITSTATUS(result) != 0) {
+    error = "Command exited with code " + std::to_string(WEXITSTATUS(result));
+    return false;
+  }
+#endif
+
+  return true;
+}
+
 void add_file_actions(SearchResult& r, bool is_dir, bool include_open_with) {
   auto add = [&](const char* id, const std::string& label) {
     ResultActionItem it;
@@ -295,6 +367,10 @@ std::string action_label_for(const std::string& id) {
   if (id == "window_snap_left") return tr("action.window_snap_left");
   if (id == "window_snap_right") return tr("action.window_snap_right");
   if (id == "layout_apply") return tr("action.apply_layout");
+  if (id == "copy_to_clipboard") return tr("action.copy_to_clipboard");
+  if (id == "open_url") return tr("action.open_url");
+  if (id.rfind("run_shell:", 0) == 0) return tr("action.run_shell");
+  if (id == "insert_text") return tr("action.insert_text");
   return id;
 }
 
@@ -398,6 +474,10 @@ bool action_hides_overlay(const std::string& action_id) {
   if (action_id.rfind("dictate_run", 0) == 0) return true;
   if (action_id.rfind("layout_apply:", 0) == 0) return true;
   if (action_id.rfind("focus_window:", 0) == 0) return true;
+  if (action_id == "copy_to_clipboard") return true;
+  if (action_id == "open_url") return true;
+  if (action_id.rfind("run_shell:", 0) == 0) return true;
+  if (action_id == "insert_text") return true;
   return false;
 }
 
@@ -1288,6 +1368,40 @@ bool execute_result_action(const SearchResult& r, const Config& cfg, const std::
       // copy_text falls through to generic copy below (payload is the command).
     }
   }
+  // New workflow actions
+  if (id == "copy_to_clipboard") {
+    auto t = r.payload.empty() ? (r.path.empty() ? r.title : r.path) : r.payload;
+    return write_clipboard(t);
+  }
+  if (id == "open_url") {
+    auto url = r.payload.empty() ? r.path : r.payload;
+    if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0) {
+      return open_url(url);
+    }
+    return false;
+  }
+  if (id.rfind("run_shell:", 0) == 0) {
+    auto cmd = id.substr(10);
+    if (cmd.empty()) return false;
+    std::string err;
+    if (!run_shell_command(cmd, err)) {
+      log_warn("workflow", err.empty() ? "shell command failed" : err);
+      return false;
+    }
+    return true;
+  }
+  if (id == "insert_text") {
+    auto t = r.payload.empty() ? (r.path.empty() ? r.title : r.path) : r.payload;
+    if (!write_clipboard(t)) return false;
+    if (cfg.snippets.auto_paste) {
+      std::thread([] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(90));
+        native_simulate_paste();
+      }).detach();
+    }
+    return true;
+  }
+
   // Timers / notes / todos maintenance actions.
   if (id == "timer_stop") {
     TimerStore::instance().stop("");

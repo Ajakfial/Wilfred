@@ -329,6 +329,10 @@ bool is_valid_action_step(const std::string& s) {
                                 "window_close",
                                 "window_snap_left",
                                 "window_snap_right",
+                                "copy_to_clipboard",
+                                "open_url",
+                                "run_shell",
+                                "insert_text",
                                 nullptr};
   std::string low;
   for (char c : s)
