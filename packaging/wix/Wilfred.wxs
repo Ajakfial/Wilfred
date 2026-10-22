@@ -193,7 +193,6 @@
          (which must stay in sync with the repo LICENSE). -->
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
     <UIRef Id="WixUI_FeatureTree" />
-    <Property Id="WixUI_Mode" Value="FeatureTree" />
 
     <!-- Optional launch-on-exit checkbox (FeatureTree exit dialog). -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Wilfred" />
