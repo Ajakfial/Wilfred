@@ -185,7 +185,10 @@ static void tray_add() {
   g_nid.uID = 1;
   g_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
   g_nid.uCallbackMessage = WM_WILFRED_TRAY;
-  g_nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+  g_nid.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCE(101));
+  if (!g_nid.hIcon) {
+    g_nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+  }
   lstrcpynW(g_nid.szTip, L"Wilfred  (Ctrl+Alt+W)", ARRAYSIZE(g_nid.szTip));
   g_tray = Shell_NotifyIconW(NIM_ADD, &g_nid) == TRUE;
 }
