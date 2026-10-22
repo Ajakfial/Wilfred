@@ -85,6 +85,7 @@ enum class MiniKind {
   Define,
   Pins,
   PinOp,
+  Reminders,
   EventAdd,
   ContactAdd,
   FileOp,

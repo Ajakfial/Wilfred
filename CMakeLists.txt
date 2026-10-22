@@ -72,6 +72,7 @@ set(WILFRED_CORE_SOURCES
   src/search/suggest.cpp
   src/search/clipboard.cpp
   src/search/clip_history.cpp
+  src/search/reminders.cpp
   src/search/doctext.cpp
   src/search/semantic.cpp
   src/search/embedding.cpp
@@ -110,6 +111,7 @@ set(WILFRED_CORE_SOURCES
   src/sources/vault.cpp
   src/sources/menu.cpp
   src/ai/assistant.cpp
+  src/ai/chat.cpp
   src/ai/vision.cpp
   src/plugin/host.cpp
   src/plugin/trust.cpp
@@ -135,6 +137,7 @@ set(WILFRED_CORE_SOURCES
   src/ipc/http.cpp
   src/hotkey/hotkey.cpp
   src/platform/platform.cpp
+  src/platform/notify.cpp
   src/platform/android/android_bridge.cpp
   src/service/service.cpp
   src/service/autostart.cpp
@@ -635,6 +638,7 @@ set(WILFRED_TEST_SOURCES
   tests/test_settings.cpp
   tests/test_autostart.cpp
   tests/test_agent_extras.cpp
+  tests/test_fork_features.cpp
 )
 
 if(WILFRED_BUILD_TESTS AND NOT ANDROID AND NOT IOS)

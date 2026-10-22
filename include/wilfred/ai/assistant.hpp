@@ -11,6 +11,8 @@
 //  - Queries are prefixed (`ai ...`, `ask ...`) and return a single copyable
 //    card; failures produce a terse, non-blocking hint instead of an error.
 
+#include "wilfred/ai/chat.hpp"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -21,6 +23,8 @@ struct Config;
 struct SearchResult;
 
 bool ai_query_is_request(const std::string& query, std::string& prompt_out);
+bool ai_chat_is_request(const std::string& query, std::string& prompt_out,
+                        bool& reset_out);
 bool ai_vision_is_request(const std::string& query, std::string& prompt_out);
 std::string ai_provider_default_model(const std::string& provider);
 std::string ai_provider_default_endpoint(const std::string& provider);
@@ -41,12 +45,23 @@ public:
   // Blocking network call (honors ai.timeout_ms). Never throws.
   AiAnswer ask(const std::string& prompt, const Config& cfg) const;
 
+  // Same, but carrying prior turns so the model sees the whole thread.
+  // `history` is oldest-first and does NOT include the new prompt.
+  AiAnswer ask_conversation(const std::vector<ChatMessage>& history,
+                            const std::string& prompt, const Config& cfg) const;
+
   // Same, but with a PNG/JPEG screenshot attached as vision input.
   AiAnswer ask_with_image(const std::string& prompt, const std::vector<std::uint8_t>& png_bytes,
                           const std::string& mime, const Config& cfg) const;
 
   // Build overlay results for an `ai ...` query (answer card + hint card).
+  // When a chat session is active the prompt becomes a follow-up turn; use
+  // results_for_chat / `ai chat reset` to manage that session.
   std::vector<SearchResult> results_for(const std::string& prompt, const Config& cfg) const;
+
+  // Build overlay results for an `ai chat ...` query: starts or continues
+  // the session, or (with a bare / "reset" remainder) manages it.
+  std::vector<SearchResult> results_for_chat(const std::string& prompt, const Config& cfg) const;
 
   // Build overlay results for an `ai see ...` query: captures the screen,
   // then asks about it. Never captures at query time without this call.

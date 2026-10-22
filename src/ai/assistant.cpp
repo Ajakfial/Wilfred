@@ -1,5 +1,6 @@
 #include "wilfred/ai/assistant.hpp"
 
+#include "wilfred/ai/chat.hpp"
 #include "wilfred/ai/vision.hpp"
 #include "wilfred/config/config.hpp"
 #include "wilfred/core/json.hpp"
@@ -135,9 +136,6 @@ std::string https_post(const std::string& url, const std::string& body,
 
 // Extract assistant text from the major response shapes.
 std::string extract_answer_text(const std::string& provider, const std::string& body) {
-  // OpenAI / Groq (chat completions): choices[0].message.content
-  // Anthropic: content[0].text ; Gemini: candidates[0].content.parts[0].text
-  // We do tolerant substring extraction instead of full JSON parsing.
   auto grab = [&](const char* key) -> std::string {
     std::string k = std::string("\"") + key + "\"";
     auto pos = body.find(k);
@@ -178,6 +176,63 @@ std::string extract_answer_text(const std::string& provider, const std::string& 
   return {};
 }
 
+// Serialize a multiturn conversation into the provider request body. All
+// providers interleave user/assistant turns; Gemini names them user/model.
+// Consecutive same-role messages are merged, so a failed turn (which never
+// gets recorded) followed by a retry still yields a strictly alternating
+// thread.
+std::string build_chat_body(const std::string& provider, const std::string& model,
+                            const std::vector<ChatMessage>& msgs, int max_tokens,
+                            double temperature) {
+  std::vector<ChatMessage> merged;
+  merged.reserve(msgs.size());
+  for (auto& m : msgs) {
+    std::string role = provider == "gemini" && m.role == "assistant" ? "model" : m.role;
+    if (!merged.empty() && merged.back().role == role) {
+      merged.back().content += "\n\n" + m.content;
+    } else {
+      merged.push_back({role, m.content, m.when});
+    }
+  }
+  auto esc = [](const ChatMessage& m) {
+    return json_escape(m.content);
+  };
+  if (provider == "anthropic") {
+    std::string body = "{\"model\":\"" + json_escape(model) +
+                       "\",\"max_tokens\":" + std::to_string(max_tokens) + ",\"messages\":[";
+    bool first = true;
+    for (auto& m : merged) {
+      if (!first) body += ',';
+      first = false;
+      body += "{\"role\":\"" + m.role + "\",\"content\":\"" + esc(m) + "\"}";
+    }
+    return body + "]}";
+  }
+  if (provider == "gemini") {
+    std::string body = "{\"contents\":[";
+    bool first = true;
+    for (auto& m : merged) {
+      if (!first) body += ',';
+      first = false;
+      body += "{\"role\":\"" + m.role + "\",\"parts\":[{\"text\":\"" + esc(m) + "\"}]}";
+    }
+    return body + "]}";
+  }
+  // OpenAI-compatible (OpenAI + Groq + self-hosted).
+  char tmp[64];
+  std::snprintf(tmp, sizeof(tmp), "%.2f", temperature);
+  std::string body = "{\"model\":\"" + json_escape(model) +
+                     "\",\"max_tokens\":" + std::to_string(max_tokens) + ",\"temperature\":" + tmp +
+                     ",\"messages\":[";
+  bool first = true;
+  for (auto& m : merged) {
+    if (!first) body += ',';
+    first = false;
+    body += "{\"role\":\"" + m.role + "\",\"content\":\"" + esc(m) + "\"}";
+  }
+  return body + "]}";
+}
+
 }  // namespace
 
 bool ai_query_is_request(const std::string& query, std::string& prompt_out) {
@@ -200,6 +255,29 @@ bool ai_query_is_request(const std::string& query, std::string& prompt_out) {
   if (l == "ai" || l == "ask") {
     prompt_out.clear();
     return true;  // bare prefix => hint card
+  }
+  return false;
+}
+
+bool ai_chat_is_request(const std::string& query, std::string& prompt_out, bool& reset_out) {
+  reset_out = false;
+  auto l = lower_trim(query);
+  const char* prefixes[] = {"ai chat", "ask chat", "gpt chat"};
+  for (auto* p : prefixes) {
+    std::size_t n = std::strlen(p);
+    if (l.rfind(p, 0) == 0 && (l.size() == n || l[n] == ' ' || l[n] == ':')) {
+      std::string raw = normalize_query(query);
+      prompt_out = raw.size() > n ? raw.substr(n) : std::string();
+      while (!prompt_out.empty() && (prompt_out.front() == ' ' || prompt_out.front() == ':'))
+        prompt_out.erase(prompt_out.begin());
+      auto lp = lower_trim(prompt_out);
+      if (lp == "reset" || lp == "clear" || lp == "new" || lp == "stop" || lp == "off" ||
+          lp == "end") {
+        reset_out = true;
+        prompt_out.clear();
+      }
+      return true;  // empty prompt => session status card
+    }
   }
   return false;
 }
@@ -266,6 +344,11 @@ std::string AiAssistant::active_model(const Config& cfg) const {
 }
 
 AiAnswer AiAssistant::ask(const std::string& prompt, const Config& cfg) const {
+  return ask_conversation({}, prompt, cfg);
+}
+
+AiAnswer AiAssistant::ask_conversation(const std::vector<ChatMessage>& history,
+                                       const std::string& prompt, const Config& cfg) const {
   AiAnswer ans;
   if (!configured(cfg)) {
     ans.error = "AI assistant is off (set ai.enabled + ai.api_key)";
@@ -281,8 +364,15 @@ AiAnswer AiAssistant::ask(const std::string& prompt, const Config& cfg) const {
   int timeout = cfg.ai.timeout_ms > 0 ? cfg.ai.timeout_ms : 30000;
   int max_tokens = cfg.ai.max_tokens > 0 ? cfg.ai.max_tokens : 1024;
 
+  // Oldest first, with the new prompt as the trailing user turn.
+  std::vector<ChatMessage> msgs = history;
+  ChatMessage m;
+  m.role = "user";
+  m.content = prompt;
+  msgs.push_back(std::move(m));
+  std::string body = build_chat_body(provider, model, msgs, max_tokens, cfg.ai.temperature);
+
   std::string url;
-  std::string body;
   std::vector<std::string> headers;
   headers.push_back("Content-Type: application/json");
 
@@ -290,9 +380,6 @@ AiAnswer AiAssistant::ask(const std::string& prompt, const Config& cfg) const {
     url = cfg.ai.endpoint.empty() ? ai_provider_default_endpoint("anthropic") : cfg.ai.endpoint;
     headers.push_back("x-api-key: " + cfg.ai.api_key);
     headers.push_back("anthropic-version: 2023-06-01");
-    body = "{\"model\":\"" + json_escape(model) +
-           "\",\"max_tokens\":" + std::to_string(max_tokens) +
-           ",\"messages\":[{\"role\":\"user\",\"content\":\"" + json_escape(prompt) + "\"}]}";
   } else if (provider == "gemini") {
     std::string base = cfg.ai.endpoint;
     if (base.empty()) {
@@ -303,7 +390,6 @@ AiAnswer AiAssistant::ask(const std::string& prompt, const Config& cfg) const {
           (base.find('?') == std::string::npos ? "?" : "&") + std::string("key=") + cfg.ai.api_key;
     }
     url = base;
-    body = "{\"contents\":[{\"parts\":[{\"text\":\"" + json_escape(prompt) + "\"}]}]}";
   } else {
     // OpenAI-compatible (OpenAI + Groq + self-hosted).
     if (!cfg.ai.endpoint.empty())
@@ -313,11 +399,6 @@ AiAnswer AiAssistant::ask(const std::string& prompt, const Config& cfg) const {
     else
       url = ai_provider_default_endpoint("openai");
     if (!cfg.ai.api_key.empty()) headers.push_back("Authorization: Bearer " + cfg.ai.api_key);
-    char tmp[64];
-    std::snprintf(tmp, sizeof(tmp), "%.2f", cfg.ai.temperature);
-    body = "{\"model\":\"" + json_escape(model) +
-           "\",\"max_tokens\":" + std::to_string(max_tokens) + ",\"temperature\":" + tmp +
-           ",\"messages\":[{\"role\":\"user\",\"content\":\"" + json_escape(prompt) + "\"}]}";
   }
 
   int status = 0;
@@ -368,11 +449,28 @@ std::vector<SearchResult> AiAssistant::results_for(const std::string& prompt,
     out.push_back(std::move(hint));
     return out;
   }
-  AiAnswer ans = ask(prompt, cfg);
+  ChatStore& chat = ChatStore::instance();
+  // An active chat session makes `ai <q>` a follow-up turn.
+  bool chatting = chat.active();
+  AiAnswer ans;
+  if (chatting) {
+    std::vector<ChatMessage> thread = chat.history();
+    ans = ask_conversation(thread, prompt, cfg);
+    if (ans.ok) {
+      // Only completed turns enter the thread; a retry starts from the
+      // last good exchange.
+      chat.record_user(prompt);
+      chat.record_assistant(ans.text);
+    }
+  } else {
+    ans = ask(prompt, cfg);
+  }
   SearchResult r;
   if (ans.ok) {
     r.title = ans.text.size() > 220 ? ans.text.substr(0, 220) + "…" : ans.text;
-    r.subtitle = "AI · " + ans.model + " · enter copies";
+    r.subtitle = chatting ? "AI chat · turn " + std::to_string(chat.turns()) + " · " + ans.model +
+                                " · enter copies"
+                          : "AI · " + ans.model + " · enter copies";
     r.payload = ans.text;
     r.score = 9500;
   } else {
@@ -386,6 +484,70 @@ std::vector<SearchResult> AiAssistant::results_for(const std::string& prompt,
   r.kind_label = "ai";
   r.category = "ai";
   out.push_back(std::move(r));
+  return out;
+}
+
+std::vector<SearchResult> AiAssistant::results_for_chat(const std::string& prompt,
+                                                        const Config& cfg) const {
+  std::vector<SearchResult> out;
+  auto card = [&](const std::string& title, const std::string& subtitle, const std::string& payload,
+                  int score) {
+    SearchResult r;
+    r.title = title;
+    r.subtitle = subtitle;
+    r.payload = payload;
+    r.path = "";
+    r.action = ResultAction::Copy;
+    r.score = score;
+    r.kind_label = "ai";
+    r.category = "ai";
+    out.push_back(std::move(r));
+  };
+  auto lr = lower_trim(prompt);
+  if (lr == "reset" || lr == "clear" || lr == "new" || lr == "stop" || lr == "off" ||
+      lr == "end") {
+    ChatStore& chat = ChatStore::instance();
+    std::string msg = chat.active()
+                          ? "Chat ended · " + std::to_string(chat.turns()) +
+                                " turn(s) cleared · `ai <question>` is single-shot again"
+                          : "No chat thread to clear";
+    chat.reset();
+    card(msg, "AI chat · multisession is memory-only, nothing is saved", "", 9500);
+    return out;
+  }
+  if (!configured(cfg)) {
+    card("AI assistant is not configured", "Set ai.enabled: true and ai.api_key in wilfred.yml",
+         prompt, 6000);
+    return out;
+  }
+  if (prompt.empty()) {
+    ChatStore& chat = ChatStore::instance();
+    if (!chat.active()) {
+      card("Start an AI chat thread",
+           "Type `ai chat <question>` · follow-ups then work with plain `ai <question>`", "", 7000);
+      return out;
+    }
+    auto last = chat.last_answer();
+    card(last.size() > 220 ? last.substr(0, 217) + "…" : last,
+         "AI chat · " + std::to_string(chat.turns()) + " turn(s) · thread: " +
+             (chat.topic().empty() ? "…" : chat.topic()) +
+             " · `ai <question>` continues · `ai chat reset` clears",
+         last, 9500);
+    return out;
+  }
+  // Explicit `ai chat <question>` continues (or starts) the thread.
+  ChatStore& chat = ChatStore::instance();
+  std::vector<ChatMessage> thread = chat.history();
+  AiAnswer ans = ask_conversation(thread, prompt, cfg);
+  if (ans.ok) {
+    chat.record_user(prompt);
+    chat.record_assistant(ans.text);
+    card(ans.text.size() > 220 ? ans.text.substr(0, 220) + "…" : ans.text,
+         "AI chat · turn " + std::to_string(chat.turns()) + " · " + ans.model + " · enter copies",
+         ans.text, 9500);
+  } else {
+    card("AI chat request failed", ans.error + " · enter copies prompt", prompt, 5000);
+  }
   return out;
 }
 

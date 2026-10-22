@@ -132,6 +132,14 @@ clipboard:
   manager: true
   max_entries: 200
   persist: true
+  # Privacy controls. Captures containing any listed substring
+  # (case-insensitive) are never recorded into the history; the copy itself
+  # still works. Useful for passwords, one-time codes, etc.
+  #ignore_patterns:
+  #  - "otp:"
+  #  - "card number"
+  # Wipe the whole clipboard history when Wilfred exits.
+  clear_on_exit: false
 
 hotkey:
   enabled: true

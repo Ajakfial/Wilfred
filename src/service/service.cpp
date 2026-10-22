@@ -6,6 +6,7 @@
 #include "wilfred/core/log.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
+#include "wilfred/core/time_util.hpp"
 #include "wilfred/core/utf8.hpp"
 #include "wilfred/fs/volumes.hpp"
 #include "wilfred/fs/watcher.hpp"
@@ -15,6 +16,7 @@
 #include "wilfred/ipc/server.hpp"
 #include "wilfred/locale/locale.hpp"
 #include "wilfred/platform/native.hpp"
+#include "wilfred/platform/notify.hpp"
 #include "wilfred/platform/platform.hpp"
 #include "wilfred/providers/provider.hpp"
 #include "wilfred/search/actions.hpp"
@@ -29,6 +31,7 @@
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
 #include "wilfred/search/remote.hpp"
+#include "wilfred/search/reminders.hpp"
 #include "wilfred/search/semantic.hpp"
 #include "wilfred/search/setup.hpp"
 #include "wilfred/search/suggest.hpp"
@@ -119,7 +122,14 @@ Service::~Service() {
   if (ipc_) ipc_->stop();
   if (ui_) ui_->destroy();
   set_plugin_host_for_actions(nullptr);
-  ClipStore::instance().save_now();
+  ClipStore& clips = ClipStore::instance();
+  clips.save_now();
+  // Wipe-on-exit must happen after the final persist, and nothing of the
+  // history may survive on disk: clear then rewrite the empty snapshot.
+  if (clips.clear_on_exit()) {
+    clips.clear_all();
+    clips.save_now();
+  }
   history_.save(default_history_path());
   index_.close();
 }
@@ -146,6 +156,9 @@ bool Service::boot() {
   ClipStore::instance().configure(cfg_.clipboard.manager ? cfg_.clipboard.max_entries : 0,
                                   cfg_.clipboard.persist, default_clips_path());
   if (cfg_.clipboard.manager && cfg_.clipboard.persist) ClipStore::instance().load();
+  // Privacy controls: capture deny-list and the wipe-on-exit flag.
+  ClipStore::instance().set_privacy(cfg_.clipboard.ignore_patterns);
+  ClipStore::instance().set_clear_on_exit(cfg_.clipboard.clear_on_exit);
   PinStore::instance().configure(default_pins_path(), cfg_.pins);
   PinStore::instance().load();
   LocaleStore::instance().configure(cfg_.ui.language);
@@ -157,6 +170,8 @@ bool Service::boot() {
   LayoutStore::instance().configure(path_join(data_directory(), "layouts"));
   TodoStore::instance().configure(path_join(data_directory(), "todos.txt"));
   TodoStore::instance().load();
+  ReminderStore::instance().configure(path_join(data_directory(), "reminders.bin"));
+  ReminderStore::instance().load();
   for (auto& d : default_plugin_directories())
     create_directories(d);
   plugins_.load(cfg_);
@@ -1732,11 +1747,22 @@ int Service::run_daemon() {
     auto last_vol_check = std::chrono::steady_clock::now();
     auto last_sync = std::chrono::steady_clock::now();
     auto last_mon_check = std::chrono::steady_clock::now() - std::chrono::seconds(30);
+    auto last_reminder_check = std::chrono::steady_clock::now() - std::chrono::seconds(30);
     std::string last_mon_sig;
     auto volumes = list_volumes();
     while (running_) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       auto now = std::chrono::steady_clock::now();
+      // Due reminders fire an OS notification once; they stay in the store
+      // as a "missed" record until `remind rm` / `remind clear`.
+      if (std::chrono::duration_cast<std::chrono::seconds>(now - last_reminder_check).count() >=
+          3) {
+        last_reminder_check = now;
+        for (auto& r : ReminderStore::instance().due(unix_millis())) {
+          notify_user("Wilfred reminder", r.label);
+          log_info("reminders", "fired reminder #" + std::to_string(r.id) + " · " + r.label);
+        }
+      }
       if (cfg_.layouts.auto_apply &&
           std::chrono::duration_cast<std::chrono::seconds>(now - last_mon_check).count() >= 5) {
         last_mon_check = now;

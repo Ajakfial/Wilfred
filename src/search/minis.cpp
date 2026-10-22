@@ -28,6 +28,7 @@
 #include "wilfred/search/pins.hpp"
 #include "wilfred/search/pkg.hpp"
 #include "wilfred/search/quicknotes.hpp"
+#include "wilfred/search/reminders.hpp"
 #include "wilfred/search/remote.hpp"
 #include "wilfred/search/screenshot.hpp"
 #include "wilfred/search/setup.hpp"
@@ -2140,6 +2141,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
   } else if (key == "timer" || key == "timers" || key == "pomodoro" || key == "pomo" ||
              key == "alarm" || key == "countdown")
     set(MiniKind::Timer, false);
+  else if (key == "remind" || key == "reminder" || key == "reminders")
+    set(MiniKind::Reminders, false);
   else if (key == "stopwatch" || key == "stop-watch" || key == "sw")
     set(MiniKind::Stopwatch, false);
   else if (key == "note" || key == "notes" || key == "notepad" || key == "memo" || key == "memos")
@@ -2716,6 +2719,39 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       out.push_back(std::move(r));
       return out;
     }
+    // Runtime privacy toggle: `clips pause` stops history recording until
+    // `clips resume`; `clips status` reports the current gates.
+    if (to_lower_utf8(filter) == "pause") {
+      ClipStore::instance().set_paused(true);
+      SearchResult r = card("Clipboard history paused",
+                            "Nothing is recorded until you type clips resume · copies still "
+                            "reach the clipboard",
+                            "clipboard history paused", "clips", 10000, ResultAction::Copy);
+      r.category = "clips";
+      out.push_back(std::move(r));
+      return out;
+    }
+    if (to_lower_utf8(filter) == "resume" || to_lower_utf8(filter) == "unpause") {
+      ClipStore::instance().set_paused(false);
+      SearchResult r = card("Clipboard history resumed",
+                            "Captures are recorded again · clips status shows the deny-list",
+                            "clipboard history resumed", "clips", 10000, ResultAction::Copy);
+      r.category = "clips";
+      out.push_back(std::move(r));
+      return out;
+    }
+    if (to_lower_utf8(filter) == "status") {
+      auto& store = ClipStore::instance();
+      SearchResult r = card(
+          store.paused() ? "Clipboard history paused" : "Clipboard history recording",
+          "Set ignore_patterns (patterns) in wilfred.yml to block captures; "
+          "clear_on_exit wipes on shutdown",
+          "clipboard privacy status", "clips", 10000, ResultAction::Copy);
+      r.category = "clips";
+      r.kind_label = "clips";
+      out.push_back(std::move(r));
+      return out;
+    }
     // Typed search: `clips url [query]`, `clips email`, `clips path`, `clips code`,
     // `clips ip`, `clips text`. First token is the type when it matches.
     std::string type_filter;
@@ -2773,11 +2809,15 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     for (auto& e : entries)
       hits.push_back(e.text);
     if (hits.empty()) {
+      std::string empty_title = text_filter.empty() && type_filter.empty()
+                                    ? tr("clips.empty")
+                                    : (type_filter.empty() ? tr("clips.no_match")
+                                                           : tr("clips.no_type_match",
+                                                                {{"type", type_filter}}));
+      if (store.paused() && text_filter.empty() && type_filter.empty())
+        empty_title = "Clipboard history paused · clips resume to record again";
       out.push_back(
-          card(text_filter.empty() && type_filter.empty()
-                   ? tr("clips.empty")
-                   : (type_filter.empty() ? tr("clips.no_match")
-                                          : tr("clips.no_type_match", {{"type", type_filter}})),
+          card(empty_title,
                filter.empty() ? tr("clips.empty_hint") : tr("clips.no_match_hint"), "", "clips",
                9000, ResultAction::None));
     } else {
@@ -3353,6 +3393,74 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     r.actions.push_back({"copy_text", "Copy"});
     r.actions.push_back({"timer_stop", "Stop"});
     out.push_back(std::move(r));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Reminders) {
+    auto rest = trim_sv(intent.remainder);
+    auto& store = ReminderStore::instance();
+    auto info_card = [&](const std::string& title, const std::string& sub) {
+      out.push_back(card(title, sub, "", "remind", 8000, ResultAction::None));
+    };
+    // Subcommands.
+    if (rest == "clear" || rest == "clearall" || rest == "all") {
+      out.push_back(card(store.clear_all(), "Reminders · enter copies", "reminders cleared",
+                         "remind", 9500, ResultAction::Copy));
+      return out;
+    }
+    if (rest.rfind("rm ", 0) == 0 || rest.rfind("remove ", 0) == 0) {
+      out.push_back(card(store.remove(std::string(trim_sv(rest.substr(rest.find(' ') + 1)))),
+                         "Reminders · enter copies", rest, "remind", 9500, ResultAction::Copy));
+      return out;
+    }
+    // Create: "remind 30m stretch", "remind tomorrow 9am standup", ...
+    // Surface current state on the smallest remainder first.
+    auto items = store.list();
+    if (rest.empty()) {
+      if (items.empty()) {
+        info_card("Reminders",
+                  "Type remind 30m <text> · remind tomorrow 9am <text> · remind clear");
+        return out;
+      }
+      int n = 0;
+      for (auto& e : items) {
+        std::string title;
+        std::string sub;
+        if (e.notified) {
+          title = "Missed · " + e.label;
+          sub = "Rang " + format_reminder_when(e.due_ms) + " · remind rm " +
+                std::to_string(e.id);
+        } else {
+          title = "#" + std::to_string(e.id) + " · " + e.label;
+          sub = format_reminder_eta(e.due_ms, unix_millis()) + " · " +
+                format_reminder_when(e.due_ms);
+        }
+        SearchResult r = card(title, sub, e.label, "remind", 10000 - n, ResultAction::Copy);
+        r.actions.push_back({"copy_text", "Copy"});
+        out.push_back(std::move(r));
+        if (++n >= 8) break;
+      }
+      info_card("Reminders · " + std::to_string(store.size()) + " stored",
+                "remind rm <n> removes · remind clear wipes all");
+      return out;
+    }
+    // Parse the leading time spec; remainder becomes the label.
+    std::int64_t due_ms = 0;
+    std::size_t used = 0;
+    if (parse_reminder_due(std::string(rest), unix_millis(), due_ms, used)) {
+      std::string label = trim_sv(rest.substr(used));
+      if (label.empty()) label = "reminder";
+      auto msg = store.add(label, due_ms);
+      SearchResult r = card(msg,
+                            format_reminder_eta(due_ms, unix_millis()) + " · " +
+                                format_reminder_when(due_ms) + " · enter copies",
+                            label, "remind", 10000, ResultAction::Copy);
+      r.actions.push_back({"copy_text", "Copy"});
+      out.push_back(std::move(r));
+      return out;
+    }
+    info_card("Can't parse that time",
+              "Try remind 30m <text> · 1h30m · 14:30 · tomorrow 9am · remind clear");
     return out;
   }
 

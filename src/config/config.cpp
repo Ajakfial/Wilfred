@@ -706,6 +706,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.clipboard.manager = cb->boolean("manager", true);
     c.clipboard.max_entries = static_cast<int>(cb->integer("max_entries", 200));
     c.clipboard.persist = cb->boolean("persist", true);
+    c.clipboard.ignore_patterns = cb->string_list("ignore_patterns");
+    c.clipboard.clear_on_exit = cb->boolean("clear_on_exit", false);
     if (c.clipboard.max_entries < 0) {
       err.message = "clipboard.max_entries must be >= 0";
       return false;

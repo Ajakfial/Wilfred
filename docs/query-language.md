@@ -183,6 +183,7 @@ synthetic result card instead of searching the index
 | `urlencode/urldecode` | `url`, `encodeurl` | URL percent-encode/decode |
 | `jwt <token>` | `jwtdecode` | Decode JWT header/payload (signature not verified) |
 | `timer [duration]` | `timers`, `alarm`, `countdown` | Countdown (`timer 10m`, `timer 25`, `timer stop`) |
+| `remind <when> <text>` | `reminder`, `reminders` | Reminder that fires an OS notification (Windows popup, macOS Notification Center, Linux/BSD `notify-send`) and survives restarts. Time forms: durations (`remind 30m stretch`), wall clocks (`remind 14:30 pickup kid`, `remind 9:30pm meds`), day words (`remind tomorrow 9am standup`). Reminders that rang while Wilfred was closed wait as "missed" cards; `remind rm <n>` or `remind clear` removes them |
 | `pomodoro [preset]` | `pomo` | Pomodoro (`pomodoro`, `pomodoro break`, `pomodoro 5`) |
 | `stopwatch [cmd]` | `stop-watch`, `sw` | Stopwatch (`stopwatch start/stop/lap/reset`) |
 | `note [text]` | `notes`, `memo` | Quick notes (`note buy milk`, `notes`, `note clear`) |
@@ -235,6 +236,11 @@ synthetic result card instead of searching the index
 `clips code`, `clips ip`, `clips image`, `clips text` (plus an optional text
 query after the type). Copied file paths are stored as `path` clips and
 images as `image` clips so they surface with badges.
+
+`clips pause` / `clips resume` toggle clipboard history recording at runtime
+(see `clipboard.ignore_patterns` / `clear_on_exit` in
+[configuration.md](configuration.md) for the persistent privacy controls);
+`clips status` reports the current gates.
 
 Minis can be disabled entirely with `search.minis: false`. `weather`, `speedtest`,
 and live FX rates make outbound HTTPS requests (a short-timeout WinHTTP/`curl`

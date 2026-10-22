@@ -241,6 +241,13 @@ chords fail config validation.
 | `manager` | `true` | Whether clipboard texts are kept in a persistent, searchable history (`clips`) |
 | `max_entries` | `200` | Cap on unpinned clips (pinned clips always survive; oldest unpinned pruned first) |
 | `persist` | `true` | Whether clips are saved to disk between runs |
+| `ignore_patterns` | `[]` | Privacy deny-list: captures containing any listed substring (case-insensitive) are never recorded into the history — the copy itself is unaffected. Useful for passwords and one-time codes (e.g. `["otp:", "card number"]`) |
+| `clear_on_exit` | `false` | Wipe the whole clipboard history when Wilfred exits |
+
+Runtime controls from the overlay: `clips pause` stops history recording
+entirely (copies still work), `clips resume` turns it back on, and `clips
+status` reports the current state. Pausing is not persisted across restarts;
+the config deny-list and `clear_on_exit` are.
 
 ## `hotkey:`
 
@@ -346,6 +353,18 @@ quality. Vectors are stored as `vectors.bin` (HNSW) next to
 ## `ai:` -- optional assistant (OpenAI / Anthropic / Gemini / Groq)
 
 Disabled until you add a key. Query with `ai <question>` or `ask <question>`.
+
+### Multiturn chat
+
+`ai chat <question>` starts a chat thread (or continues the active one).
+While a thread is active, plain `ai <question>` follows up in it instead of
+sending a fresh single-shot prompt; `ai chat reset` ends the thread and
+`ai <question>` goes back to single-shot. Bare `ai chat` shows the thread's
+turn count and last answer. The transcript lives in memory only — it is
+never written to disk and is lost on exit (also capped at ~20 turns so
+provider payloads stay small). All four providers receive the full thread:
+`messages[]` for OpenAI/Anthropic/Groq, `contents[]` (with `model` roles)
+for Gemini. Vision (`ai see ...`) always stays single-shot.
 
 | Key | Default | Meaning |
 |---|---|---|

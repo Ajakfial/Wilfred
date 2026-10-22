@@ -184,6 +184,8 @@ const SettingMeta kTable[] = {
     B("clipboard.manager"),
     I("clipboard.max_entries"),
     B("clipboard.persist"),
+    L("clipboard.ignore_patterns"),
+    B("clipboard.clear_on_exit"),
     B("layouts.auto_apply"),
     S("layouts.auto_layout"),
     // pins

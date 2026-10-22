@@ -229,6 +229,8 @@ static const struct {
     {"clipboard.manager", GB(clipboard.manager)},
     {"clipboard.max_entries", GI(clipboard.max_entries)},
     {"clipboard.persist", GB(clipboard.persist)},
+    {"clipboard.ignore_patterns", GL(clipboard.ignore_patterns)},
+    {"clipboard.clear_on_exit", GB(clipboard.clear_on_exit)},
     {"index.follow_symlinks", GB(index.follow_symlinks)},
     {"index.format", GS(index.format)},
     {"index.index_hidden", GB(index.index_hidden)},

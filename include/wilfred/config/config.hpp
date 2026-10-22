@@ -103,6 +103,11 @@ struct Config {
     bool manager{true};
     int max_entries{200};
     bool persist{true};
+    // Privacy: case-insensitive substrings whose captures are never recorded
+    // into the history (the copy itself still works). E.g. ["otp:", "card"].
+    std::vector<std::string> ignore_patterns;
+    // Wipe the whole clipboard history when the service exits.
+    bool clear_on_exit{false};
   } clipboard;
 
   struct Hotkey {

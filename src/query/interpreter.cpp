@@ -146,7 +146,22 @@ InterpretedQuery QueryInterpreter::interpret_impl(const std::string& query, cons
     }
   }
 
+  // Multiturn AI chat (`ai chat ...`, `ask chat ...`). Checked before plain
+  // `ai ...` so the thread keyword routes here; also handles `ai chat reset`.
+  {
+    std::string chat_prompt;
+    bool chat_reset = false;
+    if (ai_chat_is_request(effective, chat_prompt, chat_reset)) {
+      AiAssistant ai;
+      auto cards = ai.results_for_chat(chat_prompt, cfg);
+      iq.results.insert(iq.results.end(), cards.begin(), cards.end());
+      if (chat_reset || ai.configured(cfg)) return finish();
+      // Unconfigured: fall through to normal search as well.
+    }
+  }
+
   // Local AI assistant (`ai ...` / `ask ...`). Optional; needs ai.api_key.
+  // When a chat session is active these prompts continue that thread.
   {
     std::string prompt;
     if (ai_query_is_request(effective, prompt)) {

@@ -64,3 +64,4 @@ void test_plugins();
 void test_settings();
 void test_autostart();
 void test_agent_extras();
+void test_fork_features();

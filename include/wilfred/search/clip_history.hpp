@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -58,8 +59,21 @@ public:
   std::vector<std::string> search(const std::string& query, int limit) const;
   std::size_t size() const;
 
+  // Privacy controls. `ignore_patterns` is a deny-list of case-insensitive
+  // substrings matching config `clipboard.ignore_patterns[...]`; a capture
+  // containing any pattern is never recorded into the history (it still
+  // copies normally). `set_paused(true)` is the runtime `clips pause`
+  // toggle: while paused nothing is recorded at all. `clear_on_exit`
+  // wipes the history when the service shuts down.
+  void set_privacy(std::vector<std::string> ignore_patterns);
+  void set_paused(bool paused);
+  bool paused() const;
+  void set_clear_on_exit(bool on);
+  bool clear_on_exit() const;
+
 private:
   ClipStore() = default;
+  bool ignored_locked(const std::string& text) const;
   void prune_locked();
   bool save_locked() const;
 
@@ -70,6 +84,9 @@ private:
   std::string path_;
   std::int64_t last_save_{0};
   bool dirty_{false};
+  std::vector<std::string> ignore_patterns_;
+  std::atomic<bool> paused_{false};
+  bool clear_on_exit_{false};
 };
 
 }  // namespace wilfred

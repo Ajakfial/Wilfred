@@ -20,7 +20,6 @@ constexpr std::size_t kMaxText = 65536;
 constexpr std::int64_t kSaveIntervalSec = 10;
 const char kMagic[8] = {'W', 'C', 'L', 'P', '0', '1', '\n', '\n'};
 const char kMagic2[8] = {'W', 'C', 'L', 'P', '0', '2', '\n', '\n'};
-
 void put_u32(std::string& o, std::uint32_t v) {
   for (int i = 0; i < 4; ++i)
     o.push_back(static_cast<char>((v >> (i * 8)) & 0xff));
@@ -175,6 +174,11 @@ void ClipStore::record_kind(const std::string& text, ClipKind kind) {
   bool changed = false;
   {
     std::lock_guard<std::mutex> lock(mu_);
+    // Privacy gates: the runtime pause stops all recording, and capture
+    // deny-list patterns (case-insensitive substrings) drop the entry
+    // entirely.
+    if (paused_.load(std::memory_order_relaxed)) return;
+    if (ignored_locked(clipped)) return;
     bool was_pinned = false;
     for (auto it = items_.begin(); it != items_.end(); ++it) {
       if (it->text == clipped) {
@@ -289,6 +293,43 @@ void ClipStore::clear_all() {
     items_.clear();
   }
   if (changed) save_throttled();
+}
+
+void ClipStore::set_privacy(std::vector<std::string> ignore_patterns) {
+  // Lowercase once at config-apply time; matching is a plain case-insensitive
+  // substring scan over each captured text.
+  for (auto& p : ignore_patterns) p = to_lower_utf8(p);
+  ignore_patterns.erase(std::remove_if(ignore_patterns.begin(), ignore_patterns.end(),
+                                       [](const std::string& p) { return p.empty(); }),
+                        ignore_patterns.end());
+  std::lock_guard<std::mutex> lock(mu_);
+  ignore_patterns_ = std::move(ignore_patterns);
+}
+
+void ClipStore::set_paused(bool paused) {
+  paused_.store(paused, std::memory_order_relaxed);
+}
+
+bool ClipStore::paused() const { return paused_.load(std::memory_order_relaxed); }
+
+void ClipStore::set_clear_on_exit(bool on) {
+  std::lock_guard<std::mutex> lock(mu_);
+  clear_on_exit_ = on;
+}
+
+bool ClipStore::clear_on_exit() const {
+  std::lock_guard<std::mutex> lock(mu_);
+  return clear_on_exit_;
+}
+
+bool ClipStore::ignored_locked(const std::string& text) const {
+  if (ignore_patterns_.empty()) return false;
+  // Patterns were lowercased at set_privacy() time; lowercase the candidate
+  // once and match each pattern as a plain substring.
+  std::string lowered = to_lower_utf8(text);
+  for (auto& p : ignore_patterns_)
+    if (lowered.find(p) != std::string::npos) return true;
+  return false;
 }
 
 std::vector<std::string> ClipStore::search(const std::string& query, int limit) const {

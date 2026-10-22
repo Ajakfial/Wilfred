@@ -2062,6 +2062,8 @@ std::string serialize_config(const Config& cfg) {
   os << "  manager: " << (cfg.clipboard.manager ? "true" : "false") << "\n";
   os << "  max_entries: " << cfg.clipboard.max_entries << "\n";
   os << "  persist: " << (cfg.clipboard.persist ? "true" : "false") << "\n";
+  emit_str_list(os, "ignore_patterns", cfg.clipboard.ignore_patterns, 2);
+  os << "  clear_on_exit: " << (cfg.clipboard.clear_on_exit ? "true" : "false") << "\n";
   os << "\nhotkey:\n";
   os << "  enabled: " << (cfg.hotkey.enabled ? "true" : "false") << "\n";
   emit_str_list(os, "modifiers", cfg.hotkey.modifiers, 2);
