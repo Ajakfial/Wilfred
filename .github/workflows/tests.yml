@@ -63,6 +63,23 @@ jobs:
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Config Release -Tests
 
+      # TEMPORARY: smoke-build the MSI so the WiX UI/license changes link
+      # cleanly on CI before the next release tag. Remove with the WER dump
+      # steps once verified.
+      - name: MSI smoke build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'build\windows\wilfred.exe')) { throw 'wilfred.exe missing from windows test build' }
+          $staging = 'dist\msi-smoke'
+          New-Item -ItemType Directory -Force -Path "$staging\ui" | Out-Null
+          Copy-Item 'build\windows\wilfred.exe' $staging
+          Copy-Item -Recurse 'ui\overlay' "$staging\ui\overlay"
+          Copy-Item 'README.md' $staging
+          Copy-Item 'config\wilfred.default.yml' $staging
+          ./scripts/Build-Msi.ps1 -Staging $staging -Out dist\msi-smoke.msi -Version v45.0.9
+          if ($LASTEXITCODE -ne 0) { throw "MSI smoke build failed ($LASTEXITCODE)" }
+
       - name: Upload crash dump (Windows)
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4

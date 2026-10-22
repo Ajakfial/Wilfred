@@ -186,7 +186,16 @@
       </Component>
     </DirectoryRef>
 
-    <!-- Optional launch-on-exit checkbox (WixUI_Minimal exit dialog). -->
+    <!-- Real license agreement page: WixUI_FeatureTree gives
+         Welcome -> License Agreement -> feature page -> Ready -> Progress -> Exit.
+         The agreement text is an RTF generated at build time by
+         scripts/Build-Msi.ps1 from packaging/wix/Wilfred-License.txt
+         (which must stay in sync with the repo LICENSE). -->
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <UIRef Id="WixUI_FeatureTree" />
+    <Property Id="WixUI_Mode" Value="FeatureTree" />
+
+    <!-- Optional launch-on-exit checkbox (FeatureTree exit dialog). -->
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Wilfred" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <CustomAction Id="LaunchWilfred"
@@ -200,7 +209,6 @@
                Event="DoAction"
                Value="LaunchWilfred">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
     </UI>
-    <UIRef Id="WixUI_Minimal" />
 
   </Product>
 </Wix>

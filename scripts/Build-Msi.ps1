@@ -9,6 +9,8 @@
 # Publisher is fixed to Wilfred Open Contributors (template Manufacturer).
 # Version is sanitized to numeric X.Y.Z for Windows Installer.
 # UpgradeCode lives in packaging/wix/Wilfred.wxs and must never change.
+# The license agreement page uses an RTF generated at build time from
+# packaging/wix/Wilfred-License.txt (kept in sync with the repo LICENSE).
 #
 # Requires WiX Toolset v3 (candle/light/heat): preinstalled on GitHub
 # windows runners, or local via: choco install wixtoolset
@@ -24,6 +26,7 @@ param(
     [string]$Version = '',
     [string]$UpgradeCode = '70E15177-4531-45D4-AEF7-D2E91D92F937',
     [string]$IconPath = '',
+    [string]$LicenseTxt = '',
     [switch]$ValidateOnly
 )
 
@@ -50,6 +53,28 @@ function Get-MsiVersion([string]$Tag) {
 # ICE38/ICE64 repair for per-user installs lives in its own file so it can
 # be unit-tested without running the full build (see Repair-HeatFragment.ps1).
 . (Join-Path $PSScriptRoot 'Repair-HeatFragment.ps1')
+
+# Converts the tracked EULA text into a minimal ANSI RTF for the WiX license
+# dialog. Input must be ASCII (checked in the template self-checks below so
+# this never silently mangles non-ASCII bytes); '#' at line start renders
+# that line bold.
+function ConvertTo-EulaRtf([string]$TextPath, [string]$RtfPath) {
+    $raw = Get-Content $TextPath -Raw
+    $out = New-Object System.Text.StringBuilder
+    [void]$out.Append('{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fcharset0 Tahoma;}}{\colortbl;\red0\green0\blue0;}')
+    foreach ($line in ($raw -split "`r?`n")) {
+        $esc = $line.Replace('\', '\\').Replace('{', '\{').Replace('}', '\}')
+        if ($esc.StartsWith('# ')) {
+            [void]$out.Append('\b\fs18 ').Append($esc.Substring(2).TrimEnd()).Append('\b0\fs16\par\par ')
+        } elseif ($esc.Trim() -eq '') {
+            [void]$out.Append('\par ')
+        } else {
+            [void]$out.Append('\fs16 ').Append($esc.TrimEnd()).Append('\par ')
+        }
+    }
+    [void]$out.Append('}')
+    [IO.File]::WriteAllText($RtfPath, $out.ToString(), (New-Object System.Text.ASCIIEncoding))
+}
 
 function Find-WixTool([string]$Name) {
     $roots = @()
@@ -89,6 +114,24 @@ foreach ($ref in @('ProductComponents', 'OverlayFiles')) {
 foreach ($id in @('WilfredExe', 'WilfredReadme', 'WilfredDefaults', 'WilfredPath', 'WilfredMenuShortcuts', 'WilfredDesktopShortcut')) {
     $hit = Select-Xml -Xml $xml -XPath "//wix:Component[@Id='$id']" -Namespace $ns
     if (-not $hit) { throw "Template missing Component $id." }
+}
+foreach ($uiRef in @('WixUI_FeatureTree')) {
+    $hit = Select-Xml -Xml $xml -XPath "//wix:UIRef[@Id='$uiRef']" -Namespace $ns
+    if (-not $hit) { throw "Template missing UIRef $uiRef (installer must show a license agreement page)." }
+}
+if (-not (Select-Xml -Xml $xml -XPath "//wix:WixVariable[@Id='WixUILicenseRtf']" -Namespace $ns)) {
+    throw "Template missing WixVariable WixUILicenseRtf (license page would render blank)."
+}
+# EULA source: must exist, name the MIT license, and stay ASCII (the RTF
+# generator assumes it; non-ASCII would garble rather than silently drop).
+if (-not $LicenseTxt) { $LicenseTxt = Join-Path $Root 'packaging\wix\Wilfred-License.txt' }
+if (-not (Test-Path $LicenseTxt)) { throw "License agreement source not found: $LicenseTxt" }
+$licenseRaw = Get-Content $LicenseTxt -Raw
+if ($licenseRaw -notmatch 'MIT License') {
+    throw "License agreement source $LicenseTxt does not contain 'MIT License'; refusing to ship unknown terms."
+}
+if ($licenseRaw -match '[^\x20-\x7E\t\r\n]') {
+    throw "License agreement source $LicenseTxt contains non-ASCII characters; the RTF generator requires plain ASCII."
 }
 Write-Host 'Template checks passed (publisher, upgrade code, feature refs).'
 
@@ -135,6 +178,10 @@ Write-Host "Using WiX: $candle"
 $work = Join-Path ([IO.Path]::GetTempPath()) ("wilfred-msi-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 try {
+    $eulaRtf = Join-Path $work 'Wilfred-License.rtf'
+    ConvertTo-EulaRtf $LicenseTxt $eulaRtf
+    Write-Host "License agreement RTF: $eulaRtf"
+
     Copy-Item $Template (Join-Path $work 'Wilfred.wxs')
     & $heat dir (Join-Path $Staging 'ui\overlay') -dr OverlayDir -cg OverlayFiles `
         -gg -g1 -scom -sreg -sfrag -srd -var var.OverlaySource `
@@ -146,7 +193,8 @@ try {
         "-dProductVersion=$msiVersion",
         "-dSourceDir=$Staging",
         "-dOverlaySource=$(Join-Path $Staging 'ui\overlay')",
-        "-dHasIcon=$hasIcon"
+        "-dHasIcon=$hasIcon",
+        "-dLicenseRtf=$eulaRtf"
     )
     if ($hasIcon -eq 'yes') { $defines += "-dIconPath=$IconPath" }
 

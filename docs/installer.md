@@ -16,6 +16,13 @@ the binary (see [signing.md](signing.md)).
   The `UpgradeCode` in `Wilfred.wxs` is stable forever -- never change it,
   or upgrades become side-by-side installs.
 - Optional checked-by-default **Launch Wilfred** on the final wizard page.
+- A real **license agreement** page (stock installer flow: Welcome →
+  License → Customize → Ready → Install → Finish). The agreement is the
+  project's MIT license plus a short "what Wilfred stores on your
+  computer" note. The wizard renders it from an RTF generated at build
+  time by `Build-Msi.ps1` from `packaging/wix/Wilfred-License.txt`
+  (ASCII only; `#`-prefixed lines are bold headings). Update that file
+  when the terms change -- never edit the RTF, it is not committed.
 
 ## Build it
 
