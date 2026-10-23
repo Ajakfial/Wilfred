@@ -23,7 +23,7 @@ import {
   tips,
   uiStr,
 } from "./protocol";
-import type { PreviewMsg, ResultItem, ShowMsg as NativeShowMsg } from "./types";
+import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
 import { ActionBar } from "./components/ActionBar";
 import { ActionMenu } from "./components/ActionMenu";
 import { PreviewPane } from "./components/PreviewPane";
