@@ -32,6 +32,10 @@
 #include <cstdlib>
 #include <thread>
 
+#if !defined(_WIN32)
+#include <sys/wait.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #elif defined(__APPLE__) && !defined(WILFRED_IOS)

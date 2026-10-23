@@ -23,7 +23,7 @@ import {
   tips,
   uiStr,
 } from "./protocol";
-import type { NativeInMsg, PreviewMsg, ResultItem } from "./types";
+import type { PreviewMsg, ResultItem, ShowMsg as NativeShowMsg } from "./types";
 import { ActionBar } from "./components/ActionBar";
 import { ActionMenu } from "./components/ActionMenu";
 import { PreviewPane } from "./components/PreviewPane";
@@ -45,7 +45,7 @@ interface SettingResultMsg {
   value?: string;
 }
 
-interface ShowMsg extends NativeInMsg {
+interface ShowMsg {
   type: "show";
   firstLaunch?: boolean;
   strings?: Record<string, string>;
