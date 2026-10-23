@@ -108,6 +108,35 @@ std::string json_ok(bool ok, const std::string& extra = {}) {
   return b;
 }
 
+void show_onboarding_tour() {
+  // Print a friendly first-launch tour to the console/log.
+  // The overlay UI can also show this on first show if needed.
+  std::cout << "\n";
+  std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
+  std::cout << "║                    Welcome to Wilfred!                       ║\n";
+  std::cout << "╚══════════════════════════════════════════════════════════════╝\n";
+  std::cout << "\n";
+  std::cout << "  Hotkey:  " << (wilfred::is_macos() ? "⌘⌥W" : "Ctrl+Alt+W") << "  (toggle overlay)\n";
+  std::cout << "\n";
+  std::cout << "  Quick start:\n";
+  std::cout << "    • Type to search apps, files, calculations, snippets...\n";
+  std::cout << "    • Press Enter to open, Tab for actions, Esc to dismiss\n";
+  std::cout << "    • Try:  \"calc 2+2\"  |  \"snip email\"  |  \"timer 5m\"  |  \"note buy milk\"\n";
+  std::cout << "\n";
+  std::cout << "  Useful commands:\n";
+  std::cout << "    wilfred setup           Run the interactive setup wizard\n";
+  std::cout << "    wilfred index           Build the search index now\n";
+  std::cout << "    wilfred doctor          Diagnose configuration & paths\n";
+  std::cout << "    wilfred status          Show daemon status\n";
+  std::cout << "    wilfred update          Check for updates\n";
+  std::cout << "\n";
+  std::cout << "  Config:  " << default_config_path() << "\n";
+  std::cout << "  Data:    " << wilfred::data_directory() << "\n";
+  std::cout << "\n";
+  std::cout << "  Docs: https://github.com/Ajakfial/Wilfred\n";
+  std::cout << "\n";
+}
+
 }  // namespace
 
 Service::Service() : search_(index_), interpreter_(index_, search_, &snippets_, &plugins_) {}
@@ -1306,55 +1335,10 @@ int Service::run_import(const std::string& launcher, const std::string& from_pat
   return 0;
 }
 
-namespace {
-
-bool is_onboarding_done() {
-  std::error_code ec;
-  return std::filesystem::exists(std::filesystem::path(default_onboard_path()), ec) && !ec;
-}
-
-void mark_onboarding_done() {
-  std::error_code ec;
-  std::filesystem::create_directories(std::filesystem::path(default_onboard_path()).parent_path(), ec);
-  std::ofstream f(default_onboard_path(), std::ios::trunc);
-  // Empty file is enough; its existence is the marker.
-}
-
-void show_onboarding_tour() {
-  // Print a friendly first-launch tour to the console/log.
-  // The overlay UI can also show this on first show if needed.
-  std::cout << "\n";
-  std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-  std::cout << "║                    Welcome to Wilfred!                       ║\n";
-  std::cout << "╚══════════════════════════════════════════════════════════════╝\n";
-  std::cout << "\n";
-  std::cout << "  Hotkey:  " << (wilfred::is_macos() ? "⌘⌥W" : "Ctrl+Alt+W") << "  (toggle overlay)\n";
-  std::cout << "\n";
-  std::cout << "  Quick start:\n";
-  std::cout << "    • Type to search apps, files, calculations, snippets...\n";
-  std::cout << "    • Press Enter to open, Tab for actions, Esc to dismiss\n";
-  std::cout << "    • Try:  \"calc 2+2\"  |  \"snip email\"  |  \"timer 5m\"  |  \"note buy milk\"\n";
-  std::cout << "\n";
-  std::cout << "  Useful commands:\n";
-  std::cout << "    wilfred setup           Run the interactive setup wizard\n";
-  std::cout << "    wilfred index           Build the search index now\n";
-  std::cout << "    wilfred doctor          Diagnose configuration & paths\n";
-  std::cout << "    wilfred status          Show daemon status\n";
-  std::cout << "    wilfred update          Check for updates\n";
-  std::cout << "\n";
-  std::cout << "  Config:  " << default_config_path() << "\n";
-  std::cout << "  Data:    " << wilfred::data_directory() << "\n";
-  std::cout << "\n";
-  std::cout << "  Docs: https://github.com/Ajakfial/Wilfred\n";
-  std::cout << "\n";
-}
-
-}  // namespace
-
 void Service::maybe_run_onboarding() {
-  if (is_onboarding_done()) return;
+  if (wilfred::is_onboarding_done()) return;
   show_onboarding_tour();
-  mark_onboarding_done();
+  wilfred::mark_onboarding_done();
 }
 
 int Service::run_daemon() {

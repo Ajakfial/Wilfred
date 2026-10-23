@@ -34,6 +34,8 @@ std::string default_history_path();
 std::string default_clips_path();
 std::string default_log_path();
 std::string default_onboard_path();
+bool is_onboarding_done();
+void mark_onboarding_done();
 std::string ipc_endpoint();
 
 std::vector<std::string> default_index_roots();

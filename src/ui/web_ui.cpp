@@ -580,6 +580,11 @@ std::string overlay_show_json() {
     o += "\"";
   }
   o += "}";
+  // First-launch onboarding: tell the UI to show the welcome screen if
+  // the onboard marker file doesn't exist yet.
+  if (!wilfred::is_onboarding_done()) {
+    o += ",\"firstLaunch\":true";
+  }
   o += "}";
   return o;
 }

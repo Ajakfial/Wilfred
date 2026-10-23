@@ -45,6 +45,18 @@ interface SettingResultMsg {
   value?: string;
 }
 
+interface ShowMsg extends NativeInMsg {
+  type: "show";
+  firstLaunch?: boolean;
+  strings?: Record<string, string>;
+  keybinds?: Record<string, string>;
+  transparent?: unknown;
+  opacity?: unknown;
+  blur?: unknown;
+  accent?: unknown;
+  fontSize?: unknown;
+}
+
 interface State {
   items: ResultItem[];
   sel: number;
@@ -66,6 +78,8 @@ interface State {
   settingsValues: Record<string, string>;
   settingResults: Record<string, SettingResult>;
   settingPending: Record<string, boolean>;
+  /** First-launch welcome screen. */
+  firstLaunch: boolean;
 }
 
 const initialState: State = {
@@ -88,10 +102,11 @@ const initialState: State = {
   settingsValues: {},
   settingResults: {},
   settingPending: {},
+  firstLaunch: false,
 };
 
 type Action =
-  | { type: "SHOW" }
+  | { type: "SHOW"; firstLaunch?: boolean }
   | { type: "HIDE" }
   | { type: "RESULTS"; items: ResultItem[]; resetSel: boolean; correction: string; ghost: string; candidates: string[] }
   | { type: "PREVIEW"; preview: PreviewMsg | null }
@@ -110,14 +125,17 @@ type Action =
   | { type: "SETTINGS_CLOSE" }
   | { type: "SETTINGS_DATA"; schema: SettingSchema[]; values: Record<string, string> }
   | { type: "SETTING_SEND"; key: string }
-  | { type: "SETTING_RESULT"; key: string; ok: boolean; error: string; value?: string };
+  | { type: "SETTING_RESULT"; key: string; ok: boolean; error: string; value?: string }
+  | { type: "FIRST_LAUNCH_DISMISS" };
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
     case "SHOW":
-      return { ...initialState, visible: true, entered: true, previewOpen: s.previewOpen, preview: null };
+      return { ...initialState, visible: true, entered: true, previewOpen: s.previewOpen, preview: null, firstLaunch: a.firstLaunch ?? s.firstLaunch };
     case "HIDE":
       return { ...s, visible: false, loading: false };
+    case "FIRST_LAUNCH_DISMISS":
+      return { ...s, firstLaunch: false };
     case "RESULTS": {
       const count = rowsOf(a.items).length;
       const sel = a.resetSel ? 0 : Math.max(0, Math.min(s.sel, Math.max(0, count - 1)));
@@ -492,12 +510,13 @@ export function App() {
     const onNative = (msg: NativeInMsg) => {
       if (!msg || typeof msg !== "object") return;
       if (msg.type === "show") {
-        setUiStrings((msg as unknown as { strings?: unknown }).strings);
-        setKeybinds((msg as unknown as { keybinds?: unknown }).keybinds);
+        const showMsg = msg as ShowMsg;
+        setUiStrings(showMsg.strings);
+        setKeybinds(showMsg.keybinds);
         applyAppearance(msg as { transparent?: unknown; opacity?: unknown; blur?: unknown });
         window.clearTimeout(hideTimer.current);
         setPendingDelete(null);
-        dispatch({ type: "SHOW" });
+        dispatch({ type: "SHOW", firstLaunch: showMsg.firstLaunch });
         requestAnimationFrame(() => {
           inputRef.current?.focus();
           reportSize();
@@ -1192,6 +1211,36 @@ export function App() {
                     ))}
                   </div>
                 )}
+              </div>
+            ) : s.firstLaunch ? (
+              <div className="welcome" role="dialog" aria-label="Welcome to Wilfred">
+                <div className="welcome-content">
+                  <span className="welcome-icon" aria-hidden="true">
+                    <Icon name="sparkles" size={36} strokeWidth={1.5} />
+                  </span>
+                  <h2>{uiStr("overlay.welcome_title", "Welcome to Wilfred!")}</h2>
+                  <p className="welcome-hotkey">
+                    <kbd>{hotkeyHint()}</kbd> {uiStr("overlay.welcome_hotkey", "to open Wilfred anywhere")}
+                  </p>
+                  <ul className="welcome-tips">
+                    <li>{uiStr("overlay.welcome_tip_search", "Type to search apps, files, calculations, snippets…")}</li>
+                    <li>{uiStr("overlay.welcome_tip_enter", "Press <kbd>Enter</kbd> to open, <kbd>Tab</kbd> for actions, <kbd>Esc</kbd> to dismiss")}</li>
+                    <li>{uiStr("overlay.welcome_tip_examples", "Try: <code>calc 2+2</code> | <code>snip email</code> | <code>timer 5m</code> | <code>note buy milk</code>")}</li>
+                  </ul>
+                  <div className="welcome-links">
+                    <button type="button" className="welcome-btn" onMouseDown={(e) => { e.preventDefault(); applyText("setup"); }}>
+                      <Icon name="settings" size={14} strokeWidth={2} />
+                      {uiStr("overlay.welcome_setup", "Run setup wizard")}
+                    </button>
+                    <button type="button" className="welcome-btn" onMouseDown={(e) => { e.preventDefault(); dispatch({ type: "FIRST_LAUNCH_DISMISS" }); }}>
+                      <Icon name="check" size={14} strokeWidth={2} />
+                      {uiStr("overlay.welcome_got_it", "Got it!")}
+                    </button>
+                  </div>
+                  <p className="welcome-footer">
+                    {uiStr("overlay.welcome_docs", "Docs: <a href=\"https://github.com/Ajakfial/Wilfred\" target=\"_blank\" rel=\"noopener\">github.com/Ajakfial/Wilfred</a>")}
+                  </p>
+                </div>
               </div>
             ) : (
               <>

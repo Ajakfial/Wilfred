@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 
 #ifdef _WIN32
 // windows.h first: shlobj.h needs its types.
@@ -274,6 +275,18 @@ std::string default_log_path() {
 }
 std::string default_onboard_path() {
   return path_join(data_directory(), "onboard");
+}
+
+bool is_onboarding_done() {
+  std::error_code ec;
+  return std::filesystem::exists(std::filesystem::path(default_onboard_path()), ec) && !ec;
+}
+
+void mark_onboarding_done() {
+  std::error_code ec;
+  std::filesystem::create_directories(std::filesystem::path(default_onboard_path()).parent_path(), ec);
+  std::ofstream f(default_onboard_path(), std::ios::trunc);
+  // Empty file is enough; its existence is the marker.
 }
 
 std::string exe_directory() {
