@@ -87,7 +87,7 @@ bool looks_system_name(std::string_view name) {
 FileStat stat_path(const std::string& path) {
   FileStat st;
   std::error_code ec;
-  auto p = fs::u8path(path);
+  fs::path p(path);
   auto s = fs::symlink_status(p, ec);
   if (ec) return st;
   st.exists = true;

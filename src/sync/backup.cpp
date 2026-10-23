@@ -266,7 +266,7 @@ static bool add_file(std::vector<BackupEntry>& files, const std::string& disk,
 static bool add_tree(std::vector<BackupEntry>& files, const std::string& dir,
                      const std::string& prefix) {
   std::error_code ec;
-  fs::path root = fs::u8path(dir);
+  fs::path root(dir);
   if (!fs::exists(root, ec)) return true;
   for (auto it = fs::recursive_directory_iterator(root, ec);
        it != fs::recursive_directory_iterator(); it.increment(ec)) {

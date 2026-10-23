@@ -99,7 +99,11 @@ bool run_shell_command(const std::string& cmd, std::string& error) {
     return false;
   }
 
-#ifdef _WIN32
+#if defined(WILFRED_IOS)
+  // system() is unavailable on iOS (sandboxed environment).
+  error = "Shell commands are not supported on iOS";
+  return false;
+#elif defined(_WIN32)
   std::string full_cmd = "cmd /c " + cmd;
   int result = system(full_cmd.c_str());
   if (result == -1) {
