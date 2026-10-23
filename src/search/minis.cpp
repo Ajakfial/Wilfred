@@ -1815,6 +1815,7 @@ static std::vector<ConnectionInfo> get_connections() {
       } catch (...) {}
       std::string process;
       std::uint32_t pid = 0;
+      std::string inode_str = std::to_string(inode);
       if (!inode_str.empty()) {
         auto it = owners.find(inode_str);
         if (it != owners.end()) {
