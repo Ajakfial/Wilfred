@@ -1641,6 +1641,290 @@ static std::vector<SearchResult> ports_results(const std::string& remainder) {
   return out;
 }
 
+// --- Network activity log --------------------------------------------------
+
+struct ConnectionInfo {
+  std::string proto;
+  std::string local_addr;
+  std::uint16_t local_port{0};
+  std::string remote_addr;
+  std::uint16_t remote_port{0};
+  std::string state;
+  std::string process;
+  std::uint32_t pid{0};
+};
+
+static std::vector<ConnectionInfo> get_connections() {
+  std::vector<ConnectionInfo> out;
+#ifdef _WIN32
+  auto names = win_process_names();
+  auto add_conn = [&](const std::string& proto, const std::string& local_addr,
+                      std::uint16_t local_port, const std::string& remote_addr,
+                      std::uint16_t remote_port, const std::string& state,
+                      std::uint32_t pid) {
+    ConnectionInfo c;
+    c.proto = proto;
+    c.local_addr = local_addr;
+    c.local_port = local_port;
+    c.remote_addr = remote_addr;
+    c.remote_port = remote_port;
+    c.state = state;
+    c.pid = pid;
+    auto it = names.find(pid);
+    if (it != names.end()) c.process = it->second;
+    out.push_back(std::move(c));
+  };
+
+  // TCP connections (both listening and established)
+  std::vector<char> buf;
+  if (win_get_tcp_table(AF_INET, TCP_TABLE_OWNER_PID_ALL, buf)) {
+    auto* t = reinterpret_cast<MIB_TCPTABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      unsigned char b[4];
+      std::memcpy(b, &row.dwLocalAddr, 4);
+      std::string local = ipv4_bytes_text(b);
+      std::memcpy(b, &row.dwRemoteAddr, 4);
+      std::string remote = ipv4_bytes_text(b);
+      std::string state;
+      switch (row.dwState) {
+        case MIB_TCP_STATE_CLOSED: state = "CLOSED"; break;
+        case MIB_TCP_STATE_LISTEN: state = "LISTEN"; break;
+        case MIB_TCP_STATE_SYN_SENT: state = "SYN_SENT"; break;
+        case MIB_TCP_STATE_SYN_RCVD: state = "SYN_RCVD"; break;
+        case MIB_TCP_STATE_ESTAB: state = "ESTABLISHED"; break;
+        case MIB_TCP_STATE_FIN_WAIT1: state = "FIN_WAIT1"; break;
+        case MIB_TCP_STATE_FIN_WAIT2: state = "FIN_WAIT2"; break;
+        case MIB_TCP_STATE_CLOSE_WAIT: state = "CLOSE_WAIT"; break;
+        case MIB_TCP_STATE_CLOSING: state = "CLOSING"; break;
+        case MIB_TCP_STATE_LAST_ACK: state = "LAST_ACK"; break;
+        case MIB_TCP_STATE_TIME_WAIT: state = "TIME_WAIT"; break;
+        case MIB_TCP_STATE_DELETE_TCB: state = "DELETE_TCB"; break;
+        default: state = "UNKNOWN"; break;
+      }
+      add_conn("TCP", local, ntohs(static_cast<u_short>(row.dwLocalPort)),
+               remote, ntohs(static_cast<u_short>(row.dwRemotePort)),
+               state, row.dwOwningPid);
+    }
+  }
+  if (win_get_tcp_table(AF_INET6, TCP_TABLE_OWNER_PID_ALL, buf)) {
+    auto* t = reinterpret_cast<MIB_TCP6TABLE_OWNER_PID*>(buf.data());
+    for (DWORD i = 0; i < t->dwNumEntries; ++i) {
+      auto& row = t->table[i];
+      std::string local = ipv6_bytes_text(row.ucLocalAddr);
+      std::string remote = ipv6_bytes_text(row.ucRemoteAddr);
+      std::string state;
+      switch (row.dwState) {
+        case MIB_TCP_STATE_CLOSED: state = "CLOSED"; break;
+        case MIB_TCP_STATE_LISTEN: state = "LISTEN"; break;
+        case MIB_TCP_STATE_SYN_SENT: state = "SYN_SENT"; break;
+        case MIB_TCP_STATE_SYN_RCVD: state = "SYN_RCVD"; break;
+        case MIB_TCP_STATE_ESTAB: state = "ESTABLISHED"; break;
+        case MIB_TCP_STATE_FIN_WAIT1: state = "FIN_WAIT1"; break;
+        case MIB_TCP_STATE_FIN_WAIT2: state = "FIN_WAIT2"; break;
+        case MIB_TCP_STATE_CLOSE_WAIT: state = "CLOSE_WAIT"; break;
+        case MIB_TCP_STATE_CLOSING: state = "CLOSING"; break;
+        case MIB_TCP_STATE_LAST_ACK: state = "LAST_ACK"; break;
+        case MIB_TCP_STATE_TIME_WAIT: state = "TIME_WAIT"; break;
+        case MIB_TCP_STATE_DELETE_TCB: state = "DELETE_TCB"; break;
+        default: state = "UNKNOWN"; break;
+      }
+      add_conn("TCP", local, ntohs(static_cast<u_short>(row.dwLocalPort)),
+               remote, ntohs(static_cast<u_short>(row.dwRemotePort)),
+               state, row.dwOwningPid);
+    }
+  }
+#else
+  // Linux/BSD/macOS: parse /proc/net/tcp, /proc/net/tcp6, /proc/net/udp, /proc/net/udp6
+  auto parse_net = [&](const char* path, const char* proto, bool is_tcp) {
+    std::ifstream in(path);
+    if (!in) return;
+    std::string line;
+    std::getline(in, line); // skip header
+    std::map<std::string, std::pair<std::uint32_t, std::string>> owners;
+    // Try to get socket owners from /proc/<pid>/fd on Linux
+#if defined(__linux__)
+    linux_socket_owners(owners);
+#endif
+    while (std::getline(in, line)) {
+      std::istringstream iss(line);
+      std::string slot, local, remote, st;
+      std::uint32_t tx_queue = 0, rx_queue = 0, timer_run = 0, timer_expires = 0;
+      std::uint32_t retr = 0, inode = 0, uid = 0;
+      int probes = 0;
+      if (is_tcp) {
+        if (!(iss >> slot >> local >> remote >> st >> tx_queue >> rx_queue >>
+              timer_run >> timer_expires >> retr >> uid >> probes >> inode))
+          continue;
+      } else {
+        // UDP format: sl local_address rem_address st tx_queue rx_queue tr tm->when retrnsm uid timeout inode ref pointer drops
+        if (!(iss >> slot >> local >> remote >> st >> tx_queue >> rx_queue >>
+              timer_run >> timer_expires >> retr >> uid >> probes >> inode))
+          continue;
+      }
+      std::string state = st;
+      if (is_tcp) {
+        static const char* tcp_states[] = {
+          "ESTABLISHED", "SYN_SENT", "SYN_RECV", "FIN_WAIT1", "FIN_WAIT2",
+          "TIME_WAIT", "CLOSE", "CLOSE_WAIT", "LAST_ACK", "LISTEN", "CLOSING"
+        };
+        int st_i = 0;
+        try { st_i = std::stoi(st, nullptr, 16); } catch (...) { st_i = 0; }
+        if (st_i >= 0 && st_i < 11) state = tcp_states[st_i];
+      } else {
+        state = "UNCONN";
+      }
+      // Parse local address:port
+      auto colon = local.rfind(':');
+      std::string local_addr, local_port_str;
+      if (colon != std::string::npos) {
+        local_addr = local.substr(0, colon);
+        local_port_str = local.substr(colon + 1);
+      }
+      // Parse remote address:port
+      colon = remote.rfind(':');
+      std::string remote_addr, remote_port_str;
+      if (colon != std::string::npos) {
+        remote_addr = remote.substr(0, colon);
+        remote_port_str = remote.substr(colon + 1);
+      }
+      // Convert hex addresses to readable format
+      auto hex_to_ip = [](const std::string& hex) -> std::string {
+        if (hex.size() == 8) { // IPv4
+          unsigned int b[4];
+          std::sscanf(hex.c_str(), "%2x%2x%2x%2x", &b[3], &b[2], &b[1], &b[0]);
+          char buf[32];
+          std::snprintf(buf, sizeof(buf), "%u.%u.%u.%u", b[0], b[1], b[2], b[3]);
+          return buf;
+        } else if (hex.size() == 32) { // IPv6
+          // Simplified IPv6 parsing
+          std::string out = "[";
+          for (int i = 0; i < 16; i += 2) {
+            if (i > 0) out += ":";
+            out += hex.substr(i, 2);
+          }
+          out += "]";
+          return out;
+        }
+        return hex;
+      };
+      std::uint16_t local_port = 0, remote_port = 0;
+      try {
+        if (!local_port_str.empty()) local_port = static_cast<std::uint16_t>(std::stoul(local_port_str, nullptr, 16));
+        if (!remote_port_str.empty()) remote_port = static_cast<std::uint16_t>(std::stoul(remote_port_str, nullptr, 16));
+      } catch (...) {}
+      std::string process;
+      std::uint32_t pid = 0;
+      if (!inode_str.empty()) {
+        auto it = owners.find(inode_str);
+        if (it != owners.end()) {
+          pid = it->second.first;
+          process = it->second.second;
+        }
+      }
+      ConnectionInfo c;
+      c.proto = proto;
+      c.local_addr = hex_to_ip(local_addr);
+      c.local_port = local_port;
+      c.remote_addr = hex_to_ip(remote_addr);
+      c.remote_port = remote_port;
+      c.state = state;
+      c.pid = pid;
+      c.process = process;
+      out.push_back(std::move(c));
+    }
+  };
+
+  parse_net("/proc/net/tcp", "TCP", true);
+  parse_net("/proc/net/tcp6", "TCP", true);
+  parse_net("/proc/net/udp", "UDP", false);
+  parse_net("/proc/net/udp6", "UDP", false);
+#endif
+  return out;
+}
+
+static std::vector<SearchResult> netlog_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto needle = to_lower_utf8(trim_sv(remainder));
+  std::string proto_filter;
+  for (const char* p : {"tcp", "udp"}) {
+    std::string pl(p);
+    if (needle == pl) {
+      proto_filter = pl;
+      needle.clear();
+      break;
+    }
+    if (needle.rfind(pl + " ", 0) == 0) {
+      proto_filter = pl;
+      needle = trim_sv(needle.substr(pl.size() + 1));
+      break;
+    }
+  }
+  // State filter
+  std::string state_filter;
+  for (const char* s : {"established", "listen", "time_wait", "close_wait", "syn_sent", "syn_recv", "fin_wait1", "fin_wait2", "last_ack", "closing", "closed"}) {
+    std::string sl(s);
+    if (needle == sl) {
+      state_filter = sl;
+      needle.clear();
+      break;
+    }
+    if (needle.rfind(sl + " ", 0) == 0) {
+      state_filter = sl;
+      needle = trim_sv(needle.substr(sl.size() + 1));
+      break;
+    }
+  }
+  auto rows = get_connections();
+  std::vector<ConnectionInfo> hits;
+  int tcp = 0, udp = 0;
+  for (auto& p : rows) {
+    auto pl = to_lower_utf8(p.proto);
+    if (pl == "tcp") ++tcp;
+    else if (pl == "udp") ++udp;
+    if (!proto_filter.empty() && pl != proto_filter) continue;
+    if (!state_filter.empty()) {
+      auto st = to_lower_utf8(p.state);
+      if (st != state_filter) continue;
+    }
+    if (!needle.empty()) {
+      std::string hay = to_lower_utf8(p.proto + " " + p.local_addr + ":" + std::to_string(p.local_port) +
+                                      " " + p.remote_addr + ":" + std::to_string(p.remote_port) +
+                                      " " + p.state + " " + p.process + " " + std::to_string(p.pid));
+      if (hay.find(needle) == std::string::npos) continue;
+    }
+    hits.push_back(std::move(p));
+  }
+  if (hits.empty()) {
+    std::string sub = needle.empty() ? "No connections match your filter"
+                                      : "No connections match \"" + trim_sv(remainder) + "\"";
+    out.push_back(card("No connections", sub, "No connections", "netlog", 9000,
+                        ResultAction::None));
+    return out;
+  }
+  if (needle.empty() && proto_filter.empty() && state_filter.empty()) {
+    auto title = std::to_string(tcp + udp) + " connections · TCP " + std::to_string(tcp) + " · UDP " +
+                 std::to_string(udp);
+    out.push_back(card(title, "Network connections · enter copies the summary", title, "netlog", 10050));
+  }
+  int n = 0;
+  for (auto& p : hits) {
+    if (n >= 64) break;
+    std::string local_endpoint = p.local_addr + ":" + std::to_string(p.local_port);
+    std::string remote_endpoint = p.remote_addr + ":" + std::to_string(p.remote_port);
+    std::string title = p.proto + "  " + local_endpoint + " → " + remote_endpoint;
+    if (!p.process.empty()) title += "  ·  " + p.process;
+    if (p.pid) title += " (" + std::to_string(p.pid) + ")";
+    std::string sub = p.state + " · enter copies " + local_endpoint + " → " + remote_endpoint;
+    if (!p.process.empty()) sub += " · " + p.process;
+    auto r = card(title, sub, local_endpoint + " → " + remote_endpoint, "netlog", 10000 - n);
+    r.category = "netlog";
+    out.push_back(std::move(r));
+    ++n;
+  }
+  return out;
+}
+
 // --- Password generator ----------------------------------------------------
 
 struct PasswordOptions {
@@ -2168,6 +2452,10 @@ MiniIntent parse_mini_intent(std::string_view query) {
   } else if (key == "ports" || key == "port" || key == "listening" || key == "listen" ||
              key == "netstat" || key == "openports" || key == "lsof") {
     set(MiniKind::Ports, true);
+  } else if (key == "netlog" || key == "networklog" || key == "netlog" ||
+             key == "connections" || key == "conn" || key == "netstat" ||
+             key == "established") {
+    set(MiniKind::NetLog, true);
   } else if (key == "password" || key == "pass" || key == "pw" || key == "genpass" ||
              key == "passgen" || key == "passwordgen" || key == "secret") {
     set(MiniKind::Password, true);
@@ -2358,6 +2646,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Epoch) return epoch_results(intent.remainder);
   if (intent.kind == MiniKind::Password) return password_results(intent.remainder);
   if (intent.kind == MiniKind::Ports) return ports_results(intent.remainder);
+  if (intent.kind == MiniKind::NetLog) return netlog_results(intent.remainder);
 
   if (intent.kind == MiniKind::Speedtest) {
     auto rest = to_lower_utf8(intent.remainder);

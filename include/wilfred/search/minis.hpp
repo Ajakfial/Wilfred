@@ -91,6 +91,7 @@ enum class MiniKind {
   FileOp,
   Update,
   Ports,
+  NetLog,
   Password,
   Epoch,
   Focus,
