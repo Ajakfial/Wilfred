@@ -33,6 +33,7 @@ std::string default_index_path();
 std::string default_history_path();
 std::string default_clips_path();
 std::string default_log_path();
+std::string default_onboard_path();
 std::string ipc_endpoint();
 
 std::vector<std::string> default_index_roots();

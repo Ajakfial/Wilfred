@@ -76,6 +76,7 @@ private:
   void on_hotkey();
   void run_hotkey_action(const std::string& run);
   void apply_logging();
+  void maybe_run_onboarding();
 
   Config cfg_;
   IndexEngine index_;

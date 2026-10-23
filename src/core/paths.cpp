@@ -272,6 +272,9 @@ std::string default_clips_path() {
 std::string default_log_path() {
   return path_join(data_directory(), "wilfred.log");
 }
+std::string default_onboard_path() {
+  return path_join(data_directory(), "onboard");
+}
 
 std::string exe_directory() {
 #ifdef _WIN32
