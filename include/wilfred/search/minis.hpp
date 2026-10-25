@@ -96,6 +96,7 @@ enum class MiniKind {
   Epoch,
   Focus,
   PickColor,
+  QrCode,
 };
 
 struct MiniIntent {

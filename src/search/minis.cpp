@@ -50,6 +50,7 @@
 #include <mutex>
 #include <random>
 #include <sstream>
+#include <climits>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -2056,6 +2057,601 @@ static std::vector<SearchResult> password_results(const std::string& remainder) 
   return out;
 }
 
+// --- QR Code Generator with Reed-Solomon -----------------------------------
+
+struct QRCode {
+  int version;
+  int size;
+  std::vector<std::vector<bool>> modules;
+  int ecc_level;
+};
+
+enum class QRECCLevel { L = 1, M = 0, Q = 3, H = 2 };
+
+// Galois Field GF(256) arithmetic for Reed-Solomon
+class GaloisField {
+public:
+  static const int PRIMITIVE = 0x11D; // x^8 + x^4 + x^3 + x^2 + 1
+  std::vector<int> exp_table;
+  std::vector<int> log_table;
+
+  GaloisField() {
+    exp_table.resize(512);
+    log_table.resize(256);
+    int x = 1;
+    for (int i = 0; i < 255; ++i) {
+      exp_table[i] = x;
+      log_table[x] = i;
+      x <<= 1;
+      if (x & 0x100) x ^= PRIMITIVE;
+    }
+    for (int i = 255; i < 512; ++i) {
+      exp_table[i] = exp_table[i - 255];
+    }
+  }
+
+  int add(int a, int b) const { return a ^ b; }
+  int sub(int a, int b) const { return a ^ b; }
+  int mul(int a, int b) const {
+    if (a == 0 || b == 0) return 0;
+    return exp_table[(log_table[a] + log_table[b]) % 255];
+  }
+  int div(int a, int b) const {
+    if (a == 0) return 0;
+    if (b == 0) return -1;
+    return exp_table[(log_table[a] - log_table[b] + 255) % 255];
+  }
+  int pow(int a, int n) const {
+    if (a == 0) return 0;
+    return exp_table[(log_table[a] * n) % 255];
+  }
+  int inverse(int a) const {
+    if (a == 0) return -1;
+    return exp_table[255 - log_table[a]];
+  }
+};
+
+// Reed-Solomon encoder
+class ReedSolomon {
+  const GaloisField& gf;
+
+public:
+  ReedSolomon(const GaloisField& field) : gf(field) {}
+
+  std::vector<int> encode(const std::vector<int>& data, int ecc_symbols) {
+    std::vector<int> generator = {1};
+    for (int i = 0; i < ecc_symbols; ++i) {
+      std::vector<int> next(generator.size() + 1);
+      for (size_t j = 0; j < generator.size(); ++j) {
+        next[j] = gf.add(next[j], gf.mul(generator[j], gf.exp_table[i]));
+        next[j + 1] = gf.add(next[j + 1], generator[j]);
+      }
+      generator = std::move(next);
+    }
+
+    std::vector<int> msg(data.size() + ecc_symbols);
+    std::copy(data.begin(), data.end(), msg.begin());
+
+    for (size_t i = 0; i < data.size(); ++i) {
+      int coef = msg[i];
+      if (coef != 0) {
+        for (size_t j = 1; j <= generator.size(); ++j) {
+          msg[i + j] = gf.add(msg[i + j], gf.mul(generator[j - 1], coef));
+        }
+      }
+    }
+
+    std::vector<int> ecc(ecc_symbols);
+    for (int i = 0; i < ecc_symbols; ++i) {
+      ecc[i] = msg[data.size() + i];
+    }
+    return ecc;
+  }
+};
+
+// QR Code constants
+static const int QR_MODE_NUMERIC = 1;
+static const int QR_MODE_ALPHANUMERIC = 2;
+static const int QR_MODE_BYTE = 4;
+static const int QR_MODE_KANJI = 8;
+
+// Version info: {data_codewords, ecc_codewords_per_block, num_blocks_group1, num_blocks_group2}
+struct VersionInfo {
+  int total_codewords;
+  int ecc_per_block;
+  int blocks_group1;
+  int blocks_group2;
+  int data_codewords_group1;
+  int data_codewords_group2;
+};
+
+static const VersionInfo VERSIONS[40] = {
+  // Ver 1-L
+  {26, 7, 1, 0, 19, 0}, {44, 10, 1, 0, 34, 0}, {70, 15, 1, 0, 55, 0}, {100, 20, 1, 0, 80, 0},
+  // Ver 5-L
+  {134, 26, 1, 0, 108, 0}, {172, 18, 2, 0, 68, 0}, {196, 20, 2, 0, 78, 0}, {242, 24, 2, 0, 97, 0},
+  // Ver 9-L
+  {292, 30, 2, 0, 116, 0}, {346, 18, 4, 0, 68, 0}, {404, 20, 4, 0, 78, 0}, {466, 24, 4, 0, 97, 0},
+  // Ver 13-L
+  {532, 26, 4, 0, 116, 0}, {581, 30, 4, 0, 116, 0}, {655, 22, 6, 0, 68, 0}, {733, 24, 6, 0, 78, 0},
+  // Ver 17-L
+  {815, 26, 6, 0, 87, 0}, {901, 28, 6, 0, 97, 0}, {991, 30, 6, 0, 107, 0}, {1085, 30, 6, 0, 116, 0},
+  // Ver 21-L
+  {1156, 28, 8, 0, 97, 0}, {1258, 30, 8, 0, 107, 0}, {1364, 26, 8, 0, 116, 0}, {1474, 28, 8, 0, 116, 0},
+  // Ver 25-L
+  {1588, 30, 8, 0, 126, 0}, {1706, 26, 10, 0, 116, 0}, {1828, 28, 10, 0, 126, 0}, {1921, 24, 10, 0, 136, 0},
+  // Ver 29-L
+  {2051, 26, 10, 0, 146, 0}, {2185, 28, 10, 0, 156, 0}, {2323, 26, 10, 0, 166, 0}, {2465, 28, 10, 0, 176, 0},
+  // Ver 33-L
+  {2611, 26, 10, 0, 186, 0}, {2761, 28, 10, 0, 196, 0}, {2876, 26, 10, 0, 206, 0}, {3034, 28, 10, 0, 216, 0},
+  // Ver 37-L
+  {3196, 26, 10, 0, 226, 0}, {3362, 28, 10, 0, 236, 0}, {3532, 26, 10, 0, 246, 0}, {3706, 28, 10, 0, 256, 0}
+};
+
+static const int ALPHANUMERIC_TABLE[128] = {
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  36,-1,-1,-1,37,38,-1,-1,-1,-1,39,40,-1,41,42,43,
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 44,-1,-1,-1,-1,-1,
+  -1,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+  25,26,27,28,29,30,31,32,33,34,35,-1,-1,-1,-1,-1,
+  -1,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
+  25,26,27,28,29,30,31,32,33,34,35,-1,-1,-1,-1,-1
+};
+
+static int get_mode(const std::string& data) {
+  bool numeric = true, alphanumeric = true;
+  for (unsigned char c : data) {
+    if (c < '0' || c > '9') numeric = false;
+    if (c >= 128 || ALPHANUMERIC_TABLE[c] == -1) alphanumeric = false;
+  }
+  if (numeric) return QR_MODE_NUMERIC;
+  if (alphanumeric) return QR_MODE_ALPHANUMERIC;
+  return QR_MODE_BYTE;
+}
+
+static int count_bits(int mode, int len, int version) {
+  int indicator = 4;
+  int char_count_bits;
+  if (version <= 9) {
+    char_count_bits = (mode == QR_MODE_NUMERIC) ? 10 : (mode == QR_MODE_ALPHANUMERIC) ? 9 : 8;
+  } else if (version <= 26) {
+    char_count_bits = (mode == QR_MODE_NUMERIC) ? 12 : (mode == QR_MODE_ALPHANUMERIC) ? 11 : 16;
+  } else {
+    char_count_bits = (mode == QR_MODE_NUMERIC) ? 14 : (mode == QR_MODE_ALPHANUMERIC) ? 13 : 16;
+  }
+  int data_bits = 0;
+  if (mode == QR_MODE_NUMERIC) data_bits = (len * 10 + 2) / 3;
+  else if (mode == QR_MODE_ALPHANUMERIC) data_bits = (len * 11 + 1) / 2;
+  else data_bits = len * 8;
+  return indicator + char_count_bits + data_bits;
+}
+
+static void write_bits(std::vector<uint8_t>& buffer, int value, int bits) {
+  for (int i = bits - 1; i >= 0; --i) {
+    buffer.push_back((value >> i) & 1);
+  }
+}
+
+static std::vector<uint8_t> encode_data(const std::string& data, int mode, int version) {
+  std::vector<uint8_t> bits;
+  write_bits(bits, mode, 4);
+  int char_count_bits = (version <= 9) ? (mode == QR_MODE_NUMERIC ? 10 : mode == QR_MODE_ALPHANUMERIC ? 9 : 8)
+                        : (version <= 26) ? (mode == QR_MODE_NUMERIC ? 12 : mode == QR_MODE_ALPHANUMERIC ? 11 : 16)
+                        : (mode == QR_MODE_NUMERIC ? 14 : mode == QR_MODE_ALPHANUMERIC ? 13 : 16);
+  write_bits(bits, data.size(), char_count_bits);
+
+  if (mode == QR_MODE_NUMERIC) {
+    for (size_t i = 0; i < data.size(); i += 3) {
+      int chunk = std::min(3, static_cast<int>(data.size() - i));
+      int val = 0;
+      for (int j = 0; j < chunk; ++j) val = val * 10 + (data[i + j] - '0');
+      write_bits(bits, val, chunk == 3 ? 10 : chunk == 2 ? 7 : 4);
+    }
+  } else if (mode == QR_MODE_ALPHANUMERIC) {
+    for (size_t i = 0; i < data.size(); i += 2) {
+      if (i + 1 < data.size()) {
+        int val = ALPHANUMERIC_TABLE[(unsigned char)data[i]] * 45 + ALPHANUMERIC_TABLE[(unsigned char)data[i + 1]];
+        write_bits(bits, val, 11);
+      } else {
+        write_bits(bits, ALPHANUMERIC_TABLE[(unsigned char)data[i]], 6);
+      }
+    }
+  } else {
+    for (unsigned char c : data) write_bits(bits, c, 8);
+  }
+  return bits;
+}
+
+static void add_terminator(std::vector<uint8_t>& bits, int max_bits) {
+  int terminator = std::min(4, max_bits - static_cast<int>(bits.size()));
+  for (int i = 0; i < terminator; ++i) bits.push_back(0);
+  while (bits.size() % 8 != 0) bits.push_back(0);
+}
+
+static void add_pad_bytes(std::vector<uint8_t>& bits, int max_bits) {
+  static const uint8_t pad1 = 0xEC, pad2 = 0x11;
+  bool use_pad1 = true;
+  while (static_cast<int>(bits.size()) + 8 <= max_bits) {
+    write_bits(bits, use_pad1 ? pad1 : pad2, 8);
+    use_pad1 = !use_pad1;
+  }
+}
+
+static std::vector<int> bits_to_codewords(const std::vector<uint8_t>& bits) {
+  std::vector<int> codewords;
+  for (size_t i = 0; i + 7 < bits.size(); i += 8) {
+    int val = 0;
+    for (int j = 0; j < 8; ++j) val = (val << 1) | bits[i + j];
+    codewords.push_back(val);
+  }
+  return codewords;
+}
+
+static int choose_version(int mode, int len, int ecc_level) {
+  for (int v = 1; v <= 40; ++v) {
+    const VersionInfo& vi = VERSIONS[v - 1];
+    int max_data_bits = (vi.blocks_group1 * vi.data_codewords_group1 + vi.blocks_group2 * vi.data_codewords_group2) * 8;
+    if (count_bits(mode, len, v) <= max_data_bits) return v;
+  }
+  return -1;
+}
+
+static void place_finder_pattern(std::vector<std::vector<bool>>& modules, int row, int col) {
+  for (int i = -1; i <= 7; ++i) {
+    for (int j = -1; j <= 7; ++j) {
+      int r = row + i, c = col + j;
+      if (r < 0 || c < 0 || r >= (int)modules.size() || c >= (int)modules.size()) continue;
+      bool black = (i >= 0 && i <= 6 && j >= 0 && j <= 6) &&
+                   (i == 0 || i == 6 || j == 0 || j == 6 || (i >= 2 && i <= 4 && j >= 2 && j <= 4));
+      modules[r][c] = black;
+    }
+  }
+}
+
+static void place_timing_patterns(std::vector<std::vector<bool>>& modules) {
+  int n = modules.size();
+  for (int i = 8; i < n - 8; ++i) {
+    modules[6][i] = (i % 2 == 0);
+    modules[i][6] = (i % 2 == 0);
+  }
+}
+
+static void place_dark_module(std::vector<std::vector<bool>>& modules) {
+  int n = modules.size();
+  modules[n - 8][8] = true;
+}
+
+static void place_alignment_patterns(std::vector<std::vector<bool>>& modules, int version) {
+  if (version < 2) return;
+  static const int positions[40][7] = {
+    {}, {6,18}, {6,22}, {6,26}, {6,30}, {6,34}, {6,22,38}, {6,24,42}, {6,26,46}, {6,28,50},
+    {6,30,54}, {6,32,58}, {6,34,62}, {6,26,46,66}, {6,26,48,70}, {6,26,50,74}, {6,30,54,78}, {6,30,56,82},
+    {6,30,58,86}, {6,34,62,90}, {6,28,50,72,94}, {6,26,50,74,98}, {6,30,54,78,102}, {6,28,54,80,106},
+    {6,32,58,84,110}, {6,30,58,86,114}, {6,34,62,90,118}, {6,26,50,74,98,122}, {6,30,54,78,102,126},
+    {6,26,52,78,104,130}, {6,30,56,82,108,134}, {6,34,60,86,112,138}, {6,30,58,86,114,142},
+    {6,34,62,90,118,146}, {6,30,54,78,102,126,150}, {6,24,50,76,102,128,154}, {6,28,54,80,106,132,158},
+    {6,32,58,84,110,136,162}, {6,26,54,82,110,138,166}, {6,30,58,86,114,142,170}
+  };
+  const int* pos = positions[version - 1];
+  int count = 0;
+  while (pos[count] != 0 && count < 7) ++count;
+  for (int i = 0; i < count; ++i) {
+    for (int j = 0; j < count; ++j) {
+      if ((i == 0 && j == 0) || (i == 0 && j == count - 1) || (i == count - 1 && j == 0)) continue;
+      int row = pos[i], col = pos[j];
+      for (int dr = -2; dr <= 2; ++dr) {
+        for (int dc = -2; dc <= 2; ++dc) {
+          modules[row + dr][col + dc] = (dr == -2 || dr == 2 || dc == -2 || dc == 2 || (dr == 0 && dc == 0));
+        }
+      }
+    }
+  }
+}
+
+static void place_version_info(std::vector<std::vector<bool>>& modules, int version) {
+  if (version < 7) return;
+  static const uint32_t version_info[34] = {
+    0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78,
+    0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EE, 0x18EC4, 0x191AF, 0x1AFA5,
+    0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B,
+    0x2542E, 0x26A64, 0x27541, 0x28C69
+  };
+  uint32_t vinfo = version_info[version - 7];
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      bool bit = (vinfo >> (i * 3 + j)) & 1;
+      modules[modules.size() - 11 + j][i] = bit;
+      modules[i][modules.size() - 11 + j] = bit;
+    }
+  }
+}
+
+static void place_format_info(std::vector<std::vector<bool>>& modules, int ecc_level, int mask) {
+  static const int format_info[32] = {
+    0x5412, 0x5125, 0x5E7C, 0x5B4B, 0x45F9, 0x40CE, 0x4F97, 0x4AA0,
+    0x77C4, 0x72F3, 0x7D8A, 0x78BD, 0x660F, 0x6338, 0x6C41, 0x6976,
+    0x1689, 0x13BE, 0x1CE7, 0x19D0, 0x0762, 0x0255, 0x0D0C, 0x083B,
+    0x355F, 0x3068, 0x3F31, 0x3A06, 0x24B4, 0x2183, 0x2EFA, 0x2BCD
+  };
+  int idx = ecc_level * 8 + mask;
+  int fi = format_info[idx];
+  for (int i = 0; i < 15; ++i) {
+    bool bit = (fi >> i) & 1;
+    int r, c;
+    if (i < 6) { r = 8; c = i; }
+    else if (i < 8) { r = 8; c = i + 1; }
+    else if (i < 9) { r = 7; c = 8; }
+    else { r = 14 - i; c = 8; }
+    modules[r][c] = bit;
+    if (i < 8) { r = modules.size() - 1 - i; c = 8; }
+    else { r = 8; c = modules.size() - 15 + i; }
+    modules[r][c] = bit;
+  }
+}
+
+static int evaluate_mask(const std::vector<std::vector<bool>>& modules) {
+  int n = modules.size();
+  int penalty = 0;
+  // Rule 1: Adjacent modules in row/col
+  for (int i = 0; i < n; ++i) {
+    int run = 1;
+    for (int j = 1; j < n; ++j) {
+      if (modules[i][j] == modules[i][j-1]) run++; else run = 1;
+      if (run >= 5) penalty += 3 + (run - 5);
+    }
+    run = 1;
+    for (int j = 1; j < n; ++j) {
+      if (modules[j][i] == modules[j-1][i]) run++; else run = 1;
+      if (run >= 5) penalty += 3 + (run - 5);
+    }
+  }
+  // Rule 2: 2x2 blocks
+  for (int i = 0; i < n - 1; ++i) {
+    for (int j = 0; j < n - 1; ++j) {
+      bool c = modules[i][j];
+      if (modules[i][j+1] == c && modules[i+1][j] == c && modules[i+1][j+1] == c) penalty += 3;
+    }
+  }
+  // Rule 3: Finder-like patterns
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n - 6; ++j) {
+      if (modules[i][j] && !modules[i][j+1] && modules[i][j+2] && modules[i][j+3] &&
+          modules[i][j+4] && !modules[i][j+5] && modules[i][j+6]) penalty += 40;
+      if (modules[j][i] && !modules[j+1][i] && modules[j+2][i] && modules[j+3][i] &&
+          modules[j+4][i] && !modules[j+5][i] && modules[j+6][i]) penalty += 40;
+    }
+  }
+  // Rule 4: Dark module ratio
+  int dark = 0;
+  for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) if (modules[i][j]) dark++;
+  int ratio = (dark * 100) / (n * n);
+  penalty += ((ratio - 50) / 5) * 10;
+  return penalty;
+}
+
+static bool mask_func(int mask, int row, int col) {
+  switch (mask) {
+    case 0: return (row + col) % 2 == 0;
+    case 1: return row % 2 == 0;
+    case 2: return col % 3 == 0;
+    case 3: return (row + col) % 3 == 0;
+    case 4: return (row / 2 + col / 3) % 2 == 0;
+    case 5: return (row * col) % 2 + (row * col) % 3 == 0;
+    case 6: return ((row * col) % 2 + (row * col) % 3) % 2 == 0;
+    case 7: return ((row * col) % 3 + (row + col) % 2) % 2 == 0;
+  }
+  return false;
+}
+
+static void apply_mask(std::vector<std::vector<bool>>& modules, int mask) {
+  int n = modules.size();
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      if (!((i < 9 && (j < 9 || j >= n - 8)) || (i >= n - 8 && j < 9) ||
+            (i == 6) || (j == 6) || (i == n - 8 && j == 8))) {
+        if (mask_func(mask, i, j)) modules[i][j] = !modules[i][j];
+      }
+    }
+  }
+}
+
+static void place_data(std::vector<std::vector<bool>>& modules, const std::vector<int>& codewords) {
+  int n = modules.size();
+  std::vector<uint8_t> bits;
+  for (int cw : codewords) {
+    for (int i = 7; i >= 0; --i) bits.push_back((cw >> i) & 1);
+  }
+  int bit_idx = 0;
+  bool up = true;
+  for (int col = n - 1; col > 0; col -= 2) {
+    if (col == 6) col--;
+    for (int i = 0; i < n; ++i) {
+      int row = up ? n - 1 - i : i;
+      for (int c = 0; c < 2; ++c) {
+        int cc = col - c;
+        if (cc < 0) continue;
+        if (row == 6 || cc == 6 || (row == n - 8 && cc == 8) ||
+            (row < 9 && (cc < 9 || cc >= n - 8)) || (row >= n - 8 && cc < 9)) continue;
+        if (bit_idx < (int)bits.size()) modules[row][cc] = bits[bit_idx++];
+      }
+    }
+    up = !up;
+  }
+}
+
+static QRCode generate_qr(const std::string& data, QRECCLevel ecc_level) {
+  int mode = get_mode(data);
+  int version = choose_version(mode, data.size(), static_cast<int>(ecc_level));
+  if (version == -1) version = 40;
+  const VersionInfo& vi = VERSIONS[version - 1];
+  int ecc_level_idx = static_cast<int>(ecc_level);
+  int size = version * 4 + 17;
+  std::vector<std::vector<bool>> modules(size, std::vector<bool>(size, false));
+
+  // Encode data
+  auto data_bits = encode_data(data, mode, version);
+  int max_bits = (vi.blocks_group1 * vi.data_codewords_group1 + vi.blocks_group2 * vi.data_codewords_group2) * 8;
+  add_terminator(data_bits, max_bits);
+  add_pad_bytes(data_bits, max_bits);
+  auto codewords = bits_to_codewords(data_bits);
+
+  // Reed-Solomon encoding
+  GaloisField gf;
+  ReedSolomon rs(gf);
+  std::vector<int> final_codewords;
+  int ecc_per_block = vi.ecc_per_block;
+  int data_idx = 0;
+  for (int g = 0; g < 2; ++g) {
+    int blocks = (g == 0) ? vi.blocks_group1 : vi.blocks_group2;
+    int data_per_block = (g == 0) ? vi.data_codewords_group1 : vi.data_codewords_group2;
+    for (int b = 0; b < blocks; ++b) {
+      std::vector<int> block_data(codewords.begin() + data_idx, codewords.begin() + data_idx + data_per_block);
+      data_idx += data_per_block;
+      auto ecc = rs.encode(block_data, ecc_per_block);
+      final_codewords.insert(final_codewords.end(), block_data.begin(), block_data.end());
+      final_codewords.insert(final_codewords.end(), ecc.begin(), ecc.end());
+    }
+  }
+
+  // Place patterns
+  place_finder_pattern(modules, 0, 0);
+  place_finder_pattern(modules, 0, size - 7);
+  place_finder_pattern(modules, size - 7, 0);
+  place_timing_patterns(modules);
+  place_dark_module(modules);
+  place_alignment_patterns(modules, version);
+  place_version_info(modules, version);
+
+  // Try all masks
+  int best_mask = 0;
+  int best_penalty = INT_MAX;
+  std::vector<std::vector<bool>> best_modules;
+  for (int mask = 0; mask < 8; ++mask) {
+    auto test_modules = modules;
+    place_format_info(test_modules, ecc_level_idx, mask);
+    place_data(test_modules, final_codewords);
+    apply_mask(test_modules, mask);
+    int penalty = evaluate_mask(test_modules);
+    if (penalty < best_penalty) {
+      best_penalty = penalty;
+      best_mask = mask;
+      best_modules = std::move(test_modules);
+    }
+  }
+  place_format_info(modules, ecc_level_idx, best_mask);
+  place_data(modules, final_codewords);
+  apply_mask(modules, best_mask);
+
+  QRCode qr;
+  qr.version = version;
+  qr.size = size;
+  qr.modules = std::move(modules);
+  qr.ecc_level = ecc_level_idx;
+  return qr;
+}
+
+static std::string qr_to_svg(const QRCode& qr, int scale = 4, int border = 4) {
+  int size = qr.size + 2 * border;
+  int img_size = size * scale;
+  std::ostringstream svg;
+  svg << "<svg xmlns='http://www.w3.org/2000/svg' width='" << img_size << "' height='" << img_size
+      << "' viewBox='0 0 " << size << " " << size << "' shape-rendering='crispEdges'>";
+  svg << "<rect width='100%' height='100%' fill='white'/>";
+  svg << "<g fill='black'>";
+  for (int y = 0; y < qr.size; ++y) {
+    for (int x = 0; x < qr.size; ++x) {
+      if (qr.modules[y][x]) {
+        svg << "<rect x='" << (x + border) << "' y='" << (y + border) << "' width='1' height='1'/>";
+      }
+    }
+  }
+  svg << "</g></svg>";
+  return svg.str();
+}
+
+static std::string qr_to_ascii(const QRCode& qr, int border = 2) {
+  std::ostringstream out;
+  for (int y = -border; y < qr.size + border; ++y) {
+    for (int x = -border; x < qr.size + border; ++x) {
+      bool black = (x >= 0 && x < qr.size && y >= 0 && y < qr.size) ? qr.modules[y][x] : false;
+      out << (black ? "██" : "  ");
+    }
+    out << "\n";
+  }
+  return out.str();
+}
+
+static QRECCLevel parse_ecc(const std::string& s) {
+  auto low = to_lower_utf8(s);
+  if (low == "l" || low == "low") return QRECCLevel::L;
+  if (low == "m" || low == "medium") return QRECCLevel::M;
+  if (low == "q" || low == "quartile") return QRECCLevel::Q;
+  if (low == "h" || low == "high") return QRECCLevel::H;
+  return QRECCLevel::M;
+}
+
+static std::vector<SearchResult> qrcode_results(const std::string& remainder, const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  std::string data = remainder.empty() ? clipboard : remainder;
+  if (data.empty()) {
+    out.push_back(card("QR Code Generator",
+                       "Type qr <text> · qr https://example.com · qr H \"hello world\" (ECC level)",
+                       "", "qrcode", 8000, ResultAction::None));
+    return out;
+  }
+
+  QRECCLevel ecc = QRECCLevel::M;
+  std::string rest = trim_sv(data);
+  if (rest.size() >= 2 && (rest[0] == '"' || rest[0] == '\'') && rest.back() == rest[0]) {
+    rest = rest.substr(1, rest.size() - 2);
+  }
+  // Check for ECC prefix: "L|M|Q|H <data>"
+  auto sp = rest.find(' ');
+  if (sp != std::string::npos) {
+    std::string first = trim_sv(rest.substr(0, sp));
+    auto low = to_lower_utf8(first);
+    if (low == "l" || low == "m" || low == "q" || low == "h" ||
+        low == "low" || low == "medium" || low == "quartile" || low == "high") {
+      ecc = parse_ecc(first);
+      rest = trim_sv(rest.substr(sp + 1));
+    }
+  }
+
+  QRCode qr = generate_qr(rest, ecc);
+  std::string svg = qr_to_svg(qr);
+  std::string ascii = qr_to_ascii(qr);
+  std::string ecc_str = ecc == QRECCLevel::L ? "L (7%)" :
+                        ecc == QRECCLevel::M ? "M (15%)" :
+                        ecc == QRECCLevel::Q ? "Q (25%)" : "H (30%)";
+
+  SearchResult r;
+  r.title = "QR Code · v" + std::to_string(qr.version) + " · " + ecc_str + " · " + std::to_string(qr.size) + "×" + std::to_string(qr.size);
+  r.subtitle = rest.size() > 60 ? rest.substr(0, 57) + "..." : rest;
+  r.payload = svg;
+  r.path = svg;
+  r.action = ResultAction::Copy;
+  r.score = 10000;
+  r.kind_label = "qrcode";
+  r.category = "qrcode";
+  r.meter = 100;
+  out.push_back(std::move(r));
+
+  // Also offer ASCII version
+  SearchResult r2;
+  r2.title = "ASCII Preview";
+  r2.subtitle = "Text-based QR code · enter copies SVG";
+  r2.payload = ascii;
+  r2.path = svg;
+  r2.action = ResultAction::Copy;
+  r2.score = 9900;
+  r2.kind_label = "qrcode";
+  r2.category = "qrcode";
+  out.push_back(std::move(r2));
+
+  return out;
+}
+
 // --- Unix timestamp conversion ---------------------------------------------
 
 static std::int64_t days_from_civil(int y, unsigned m, unsigned d) {
@@ -2368,6 +2964,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "pickcolor" || key == "pickcolour" || key == "colorpicker" ||
            key == "colourpicker" || key == "eyedropper")
     set(MiniKind::PickColor, true);
+  else if (key == "qr" || key == "qrcode" || key == "qr-code" || key == "qr_code" ||
+           key == "qrgen" || key == "qrcodegen")
+    set(MiniKind::QrCode, true);
   else if (key == "uuid" || key == "uuid4" || key == "guid" || key == "uuidv4")
     set(MiniKind::Uuid, true);
   else if (key == "base64" || key == "b64" || key == "base64encode" || key == "encode64" ||
@@ -3496,6 +4095,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
           card("Screen color picker", err, "", "pickcolor", 8000, ResultAction::None));
     }
     return out;
+  }
+
+  if (intent.kind == MiniKind::QrCode) {
+    return qrcode_results(intent.remainder, clipboard);
   }
 
   if (intent.kind == MiniKind::Uuid) {
