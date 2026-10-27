@@ -2808,6 +2808,482 @@ static std::vector<SearchResult> epoch_results(const std::string& remainder) {
   return out;
 }
 
+// --- HTTP status lookup -----------------------------------------------------
+
+struct HttpStatusRow {
+  int code;
+  const char* reason;
+};
+
+static const HttpStatusRow kHttpStatusRows[] = {
+    {100, "Continue"},
+    {101, "Switching Protocols"},
+    {102, "Processing"},
+    {103, "Early Hints"},
+    {200, "OK"},
+    {201, "Created"},
+    {202, "Accepted"},
+    {203, "Non-Authoritative Information"},
+    {204, "No Content"},
+    {205, "Reset Content"},
+    {206, "Partial Content"},
+    {207, "Multi-Status"},
+    {208, "Already Reported"},
+    {226, "IM Used"},
+    {300, "Multiple Choices"},
+    {301, "Moved Permanently"},
+    {302, "Found"},
+    {303, "See Other"},
+    {304, "Not Modified"},
+    {305, "Use Proxy"},
+    {307, "Temporary Redirect"},
+    {308, "Permanent Redirect"},
+    {400, "Bad Request"},
+    {401, "Unauthorized"},
+    {402, "Payment Required"},
+    {403, "Forbidden"},
+    {404, "Not Found"},
+    {405, "Method Not Allowed"},
+    {406, "Not Acceptable"},
+    {407, "Proxy Authentication Required"},
+    {408, "Request Timeout"},
+    {409, "Conflict"},
+    {410, "Gone"},
+    {411, "Length Required"},
+    {412, "Precondition Failed"},
+    {413, "Content Too Large"},
+    {414, "URI Too Long"},
+    {415, "Unsupported Media Type"},
+    {416, "Range Not Satisfiable"},
+    {417, "Expectation Failed"},
+    {418, "I'm a Teapot"},
+    {421, "Misdirected Request"},
+    {422, "Unprocessable Content"},
+    {423, "Locked"},
+    {424, "Failed Dependency"},
+    {425, "Too Early"},
+    {426, "Upgrade Required"},
+    {428, "Precondition Required"},
+    {429, "Too Many Requests"},
+    {431, "Request Header Fields Too Large"},
+    {451, "Unavailable For Legal Reasons"},
+    {500, "Internal Server Error"},
+    {501, "Not Implemented"},
+    {502, "Bad Gateway"},
+    {503, "Service Unavailable"},
+    {504, "Gateway Timeout"},
+    {505, "HTTP Version Not Supported"},
+    {506, "Variant Also Negotiates"},
+    {507, "Insufficient Storage"},
+    {508, "Loop Detected"},
+    {510, "Not Extended"},
+    {511, "Network Authentication Required"},
+};
+
+static const char* http_status_class(int code) {
+  switch (code / 100) {
+    case 1:
+      return "Informational";
+    case 2:
+      return "Success";
+    case 3:
+      return "Redirection";
+    case 4:
+      return "Client Error";
+    case 5:
+      return "Server Error";
+    default:
+      return "Unknown";
+  }
+}
+
+static const HttpStatusRow* find_http_status(int code) {
+  for (const auto& row : kHttpStatusRows)
+    if (row.code == code) return &row;
+  return nullptr;
+}
+
+static std::vector<SearchResult> http_status_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto rest = to_lower_utf8(trim_sv(remainder));
+  if (rest.rfind("status ", 0) == 0) rest = trim_sv(rest.substr(7));
+  if (rest.rfind("code ", 0) == 0) rest = trim_sv(rest.substr(5));
+  if (rest.empty()) {
+    out.push_back(card("HTTP status codes", "Try http 404 · http 2xx · http not found · http 418",
+                       "", "http", 8000, ResultAction::None));
+    return out;
+  }
+
+  if (rest.size() == 3 && std::isdigit(static_cast<unsigned char>(rest[0])) && rest[1] == 'x' &&
+      rest[2] == 'x') {
+    int cls = rest[0] - '0';
+    if (cls >= 1 && cls <= 5) {
+      auto name = std::to_string(cls) + "xx " + http_status_class(cls * 100);
+      out.push_back(card(name, "Status class · enter copies", name, "http", 10000));
+      int score = 9990;
+      for (const auto& row : kHttpStatusRows) {
+        if (row.code / 100 != cls) continue;
+        auto title = std::to_string(row.code) + " " + row.reason;
+        out.push_back(card(title, name + " · enter copies", title, "http", score));
+        score = score > 9000 ? score - 10 : 9000;
+      }
+      return out;
+    }
+  }
+
+  auto first = rest.substr(0, rest.find(' '));
+  bool numeric = !first.empty() && std::all_of(first.begin(), first.end(), [](char c) {
+    return std::isdigit(static_cast<unsigned char>(c));
+  });
+  if (numeric && first.size() <= 3) {
+    int code = std::atoi(first.c_str());
+    if (const auto* row = find_http_status(code)) {
+      auto title = std::to_string(row->code) + " " + row->reason;
+      out.push_back(card(title, std::string(http_status_class(row->code)) + " · enter copies",
+                         title, "http", 10000));
+    } else {
+      out.push_back(card("Unknown HTTP status",
+                         "No standard status for " + first + " · try http 404 · http 2xx", "",
+                         "http", 8000, ResultAction::None));
+    }
+    return out;
+  }
+
+  int score = 10000;
+  for (const auto& row : kHttpStatusRows) {
+    auto reason = to_lower_utf8(row.reason);
+    if (reason.find(rest) == std::string::npos) continue;
+    auto title = std::to_string(row.code) + " " + row.reason;
+    out.push_back(card(title, std::string(http_status_class(row.code)) + " · enter copies", title,
+                       "http", score));
+    score -= 10;
+    if (out.size() >= 12) break;
+  }
+  if (out.empty())
+    out.push_back(card("No matching HTTP status", "Try a code (http 404) or a class (http 4xx)", "",
+                       "http", 8000, ResultAction::None));
+  return out;
+}
+
+// --- Case conversion --------------------------------------------------------
+
+static std::string to_upper_ascii(const std::string& text) {
+  std::string out = text;
+  for (char& c : out) {
+    unsigned char u = static_cast<unsigned char>(c);
+    if (u < 128) c = static_cast<char>(std::toupper(u));
+  }
+  return out;
+}
+
+static std::vector<std::string> split_case_words(const std::string& text) {
+  std::vector<std::string> words;
+  std::string word;
+  auto flush = [&]() {
+    if (!word.empty()) {
+      words.push_back(word);
+      word.clear();
+    }
+  };
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    unsigned char c = static_cast<unsigned char>(text[i]);
+    if (c < 128 && !std::isalnum(c)) {
+      flush();
+      continue;
+    }
+    if (c < 128 && c >= 'A' && c <= 'Z' && !word.empty()) {
+      unsigned char prev = static_cast<unsigned char>(word.back());
+      bool prev_lower = prev >= 'a' && prev <= 'z';
+      bool prev_digit = prev >= '0' && prev <= '9';
+      bool prev_upper = prev >= 'A' && prev <= 'Z';
+      bool prev_non_ascii = prev >= 128;
+      bool next_lower = i + 1 < text.size() && text[i + 1] >= 'a' && text[i + 1] <= 'z';
+      if (prev_lower || prev_digit || prev_non_ascii || (prev_upper && next_lower)) flush();
+    }
+    word.push_back(static_cast<char>(c));
+  }
+  flush();
+  return words;
+}
+
+static std::string join_case_words(const std::string& text, char separator) {
+  auto words = split_case_words(text);
+  std::string out;
+  for (auto& word : words) {
+    if (!out.empty()) out.push_back(separator);
+    out += to_lower_utf8(word);
+  }
+  return out;
+}
+
+static std::string camel_case_words(const std::string& text) {
+  auto words = split_case_words(text);
+  std::string out;
+  for (std::size_t i = 0; i < words.size(); ++i) {
+    auto word = to_lower_utf8(words[i]);
+    if (i > 0 && !word.empty())
+      word[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(word[0])));
+    out += word;
+  }
+  return out;
+}
+
+static std::string title_case_words(const std::string& text) {
+  std::string out = to_lower_utf8(text);
+  bool start = true;
+  for (char& c : out) {
+    unsigned char u = static_cast<unsigned char>(c);
+    if (u < 128 && std::isalpha(u)) {
+      if (start) c = static_cast<char>(std::toupper(u));
+      start = false;
+    } else if (u < 128 && (std::isspace(u) || c == '-' || c == '_')) {
+      start = true;
+    }
+  }
+  return out;
+}
+
+static std::string normalize_case_mode(std::string mode) {
+  mode = to_lower_utf8(trim_sv(mode));
+  std::replace(mode.begin(), mode.end(), '-', '_');
+  if (mode == "uppercase" || mode == "upper_case" || mode == "up") return "upper";
+  if (mode == "lowercase" || mode == "lower_case" || mode == "low") return "lower";
+  if (mode == "titlecase" || mode == "title_case" || mode == "capitalize") return "title";
+  if (mode == "snakecase" || mode == "snake_case") return "snake";
+  if (mode == "camelcase" || mode == "camel_case") return "camel";
+  if (mode == "kebabcase" || mode == "kebab_case" || mode == "dash") return "kebab";
+  return mode;
+}
+
+static bool is_case_mode(const std::string& mode) {
+  return mode == "upper" || mode == "lower" || mode == "title" || mode == "snake" ||
+         mode == "camel" || mode == "kebab";
+}
+
+static std::string convert_case(const std::string& mode, const std::string& text) {
+  if (mode == "upper") return to_upper_ascii(text);
+  if (mode == "lower") return to_lower_utf8(text);
+  if (mode == "title") return title_case_words(text);
+  if (mode == "snake") return join_case_words(text, '_');
+  if (mode == "kebab") return join_case_words(text, '-');
+  if (mode == "camel") return camel_case_words(text);
+  return text;
+}
+
+static std::vector<SearchResult> case_results(const std::string& remainder,
+                                              const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  auto rest = trim_sv(remainder);
+  std::string mode;
+  std::string text = rest;
+  auto space = rest.find(' ');
+  if (space == std::string::npos) {
+    auto candidate = normalize_case_mode(rest);
+    if (is_case_mode(candidate)) {
+      mode = candidate;
+      text.clear();
+    }
+  } else {
+    auto candidate = normalize_case_mode(rest.substr(0, space));
+    if (is_case_mode(candidate)) {
+      mode = candidate;
+      text = trim_sv(rest.substr(space + 1));
+    }
+  }
+  if (text.empty()) text = clipboard;
+  if (text.empty()) {
+    out.push_back(card("Case converter",
+                       "Try case upper hello · case snake Hello World · or just case <text>", "",
+                       "case", 8000, ResultAction::None));
+    return out;
+  }
+
+  static const char* modes[] = {"upper", "lower", "title", "snake", "camel", "kebab", nullptr};
+  int score = 10000;
+  for (auto** p = modes; *p; ++p) {
+    if (!mode.empty() && mode != *p) continue;
+    auto converted = convert_case(*p, text);
+    if (converted.empty()) {
+      out.push_back(card(std::string("No letters for ") + *p + " case",
+                         "Nothing to convert · enter copies the input", text, "case", score));
+    } else {
+      out.push_back(
+          card(converted, std::string(*p) + " case · enter copies", converted, "case", score));
+    }
+    score -= 10;
+  }
+  return out;
+}
+
+// --- chmod explainer --------------------------------------------------------
+
+static std::string chmod_symbolic(int mode) {
+  std::string out = "---------";
+  const char bits[3] = {'r', 'w', 'x'};
+  for (int cls = 0; cls < 3; ++cls) {
+    int shift = (2 - cls) * 3;
+    for (int b = 0; b < 3; ++b) {
+      if (mode & (1 << (shift + (2 - b)))) out[static_cast<std::size_t>(cls * 3 + b)] = bits[b];
+    }
+  }
+  if (mode & (1 << 11)) out[2] = out[2] == 'x' ? 's' : 'S';
+  if (mode & (1 << 10)) out[5] = out[5] == 'x' ? 's' : 'S';
+  if (mode & (1 << 9)) out[8] = out[8] == 'x' ? 't' : 'T';
+  return out;
+}
+
+static bool parse_chmod_octal(const std::string& text, int& mode) {
+  std::string s = trim_sv(text);
+  if (s.size() > 2 && s[0] == '0' && (s[1] == 'o' || s[1] == 'O')) s = s.substr(2);
+  if (s.empty() || s.size() > 4) return false;
+  int value = 0;
+  for (char c : s) {
+    if (c < '0' || c > '7') return false;
+    value = value * 8 + (c - '0');
+  }
+  mode = value;
+  return true;
+}
+
+static bool parse_chmod_symbolic(const std::string& text, int& mode) {
+  std::string s = trim_sv(text);
+  if (s.size() != 9) return false;
+  int value = 0;
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    int bit = 1 << (8 - static_cast<int>(i));
+    if (c == 'r' || c == 'w' || c == 'x') {
+      char expected = i % 3 == 0 ? 'r' : (i % 3 == 1 ? 'w' : 'x');
+      if (c != expected) return false;
+      value |= bit;
+    } else if (c == 's' && (i == 2 || i == 5)) {
+      value |= bit;
+      value |= i == 2 ? (1 << 11) : (1 << 10);
+    } else if (c == 'S' && (i == 2 || i == 5)) {
+      value |= i == 2 ? (1 << 11) : (1 << 10);
+    } else if (c == 't' && i == 8) {
+      value |= bit;
+      value |= 1 << 9;
+    } else if (c == 'T' && i == 8) {
+      value |= 1 << 9;
+    } else if (c != '-') {
+      return false;
+    }
+  }
+  mode = value;
+  return true;
+}
+
+static std::vector<SearchResult> chmod_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto rest = trim_sv(remainder);
+  int mode = 0;
+  bool ok = parse_chmod_octal(rest, mode);
+  if (!ok) ok = parse_chmod_symbolic(rest, mode);
+  if (!ok) {
+    out.push_back(card("chmod explainer", "Try chmod 755 · chmod 0644 · chmod rwxr-xr-x", "",
+                       "chmod", 8000, ResultAction::None));
+    return out;
+  }
+
+  auto symbolic = chmod_symbolic(mode);
+  char octal[8];
+  std::snprintf(octal, sizeof(octal), "%o", mode & 07777);
+  auto owner = symbolic.substr(0, 3);
+  auto group = symbolic.substr(3, 3);
+  auto other = symbolic.substr(6, 3);
+  auto title = std::string(octal) + " = " + symbolic;
+  auto sub =
+      "Owner " + owner + " · Group " + group + " · Other " + other + " · enter copies symbolic";
+  out.push_back(card(title, sub, symbolic, "chmod", 10000));
+  auto command = std::string("chmod ") + octal;
+  out.push_back(card(command, "Enter copies the command", command, "chmod", 9900));
+  if (mode & 07000) {
+    std::string special;
+    if (mode & 04000) special += "setuid ";
+    if (mode & 02000) special += "setgid ";
+    if (mode & 01000) special += "sticky";
+    special = trim_sv(special);
+    out.push_back(card("Special bits: " + special, "Execute slots show s/S/t/T · enter copies",
+                       special, "chmod", 9800));
+  }
+  return out;
+}
+
+// --- Text statistics and ROT13 ---------------------------------------------
+
+static bool ascii_space(unsigned char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+}
+
+static std::vector<SearchResult> words_results(const std::string& remainder,
+                                               const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  bool from_clipboard = trim_sv(remainder).empty();
+  std::string text = from_clipboard ? clipboard : remainder;
+  if (text.empty()) {
+    out.push_back(card("Word count", "Type words <text>, or copy text first", "", "words", 8000,
+                       ResultAction::None));
+    return out;
+  }
+
+  std::size_t words = 0;
+  bool in_word = false;
+  for (unsigned char c : text) {
+    if (ascii_space(c)) {
+      in_word = false;
+    } else if (!in_word) {
+      ++words;
+      in_word = true;
+    }
+  }
+  std::size_t characters = utf8_codepoints(text).size();
+  std::size_t lines = 1;
+  for (char c : text)
+    if (c == '\n') ++lines;
+  if (!text.empty() && text.back() == '\n') --lines;
+
+  auto title = std::to_string(words) + " words · " + std::to_string(characters) + " characters · " +
+               std::to_string(lines) + " lines";
+  auto sub = (from_clipboard ? "From clipboard · " : "Text statistics · ") +
+             std::to_string(text.size()) + " bytes · enter copies";
+  auto payload = "words: " + std::to_string(words) + "\ncharacters: " + std::to_string(characters) +
+                 "\nlines: " + std::to_string(lines) + "\nbytes: " + std::to_string(text.size());
+  out.push_back(card(title, sub, payload, "words", 10000));
+  return out;
+}
+
+static std::string rot13_text(const std::string& text) {
+  std::string out = text;
+  for (char& c : out) {
+    unsigned char u = static_cast<unsigned char>(c);
+    if (u >= 'a' && u <= 'z')
+      c = static_cast<char>('a' + (u - 'a' + 13) % 26);
+    else if (u >= 'A' && u <= 'Z')
+      c = static_cast<char>('A' + (u - 'A' + 13) % 26);
+  }
+  return out;
+}
+
+static std::vector<SearchResult> rot13_results(const std::string& remainder,
+                                               const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  bool from_clipboard = trim_sv(remainder).empty();
+  std::string text = from_clipboard ? clipboard : remainder;
+  if (text.empty()) {
+    out.push_back(card("ROT13", "Type rot13 <text>, or copy text first", "", "rot13", 8000,
+                       ResultAction::None));
+    return out;
+  }
+
+  auto transformed = rot13_text(text);
+  auto title = trim_sv(transformed);
+  if (title.empty()) title = "ROT13";
+  auto sub = from_clipboard ? "ROT13 · from clipboard · enter copies" : "ROT13 · enter copies";
+  out.push_back(card(title, sub, transformed, "rot13", 10000));
+  return out;
+}
+
 }  // namespace
 
 void set_mini_network_enabled(bool enabled) {
@@ -3087,6 +3563,20 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::UrlCodec, rest.empty());
   else if (key == "jwt" || key == "jwtdecode" || key == "jwt-decode")
     set(MiniKind::Jwt, rest.empty());
+  else if (key == "http" || key == "httpstatus" || key == "http-status" || key == "httpcode" ||
+           key == "http-code")
+    set(MiniKind::HttpStatus, rest.empty());
+  else if (key == "status" && !rest.empty() &&
+           std::isdigit(static_cast<unsigned char>(rest[0])))
+    set(MiniKind::HttpStatus, false);
+  else if (key == "case")
+    set(MiniKind::CaseText, rest.empty());
+  else if (key == "chmod" || key == "perms" || key == "permissions")
+    set(MiniKind::Chmod, rest.empty());
+  else if (key == "words" || key == "wordcount" || key == "word-count" || key == "wc")
+    set(MiniKind::Words, rest.empty());
+  else if (key == "rot13" || key == "rot-13")
+    set(MiniKind::Rot13, rest.empty());
   else if (key == "dupes" || key == "dups" || key == "duplicates" || key == "duplicate" ||
            key == "dedup" || key == "dedupe")
     set(MiniKind::Dupes, false);
@@ -3247,6 +3737,11 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Password) return password_results(intent.remainder);
   if (intent.kind == MiniKind::Ports) return ports_results(intent.remainder);
   if (intent.kind == MiniKind::NetLog) return netlog_results(intent.remainder);
+  if (intent.kind == MiniKind::HttpStatus) return http_status_results(intent.remainder);
+  if (intent.kind == MiniKind::CaseText) return case_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::Chmod) return chmod_results(intent.remainder);
+  if (intent.kind == MiniKind::Words) return words_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::Rot13) return rot13_results(intent.remainder, clipboard);
 
   if (intent.kind == MiniKind::Speedtest) {
     auto rest = to_lower_utf8(intent.remainder);
@@ -5554,8 +6049,9 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
         "help.25", "help.26", "help.27", "help.28", "help.29", "help.30", "help.31", "help.32",
         "help.33", "help.34", "help.35", "help.36", "help.37", "help.38", "help.39", "help.40",
         "help.41", "help.42", "help.43", "help.44", "help.45", "help.46", "help.47", "help.48",
-        "help.49", "help.50", "help.51", nullptr};
-    // Order matches docs/query-language.md mini table (help.01..help.51);
+        "help.49", "help.50", "help.51", "help.52", "help.53", "help.54", "help.55",
+        "help.56", nullptr};
+    // Order matches docs/query-language.md mini table (help.01..help.56);
     // keep the keys array and locale tables in sync when adding lines.
     for (auto** p = keys; *p; ++p) {
       auto text = tr(*p);

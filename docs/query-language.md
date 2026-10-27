@@ -231,6 +231,11 @@ synthetic result card instead of searching the index
 | `layout tile <preset>` | `tile`, `tiling` | Tile open windows (`halves`, `thirds`, `grid`, `columns N`, `rows N`, `stack`; `wilfred tile …`) |
 | `<manager> <query>` | `pkg <manager> <query>` | Package search (`winget firefox`, `brew switch`, `apt vlc`; Enter installs, `Tab` copies the command) |
 | `packages [filter]` | `package`, `pkg` | Detected manager list with usage examples |
+| `http <code>` | `httpstatus`, `http-status`, `httpcode`, `status <code>` | HTTP status code lookup (`http 404`, `http 2xx`, `http not found`; enter copies) |
+| `case [mode] <text>` | | Case conversion (`upper`, `lower`, `title`, `snake`, `camel`, `kebab`); bare `case <text>` shows every mode |
+| `chmod <mode>` | `perms`, `permissions` | Explain octal or symbolic Unix permissions (`chmod 755`, `chmod rwxr-xr-x`; enter copies) |
+| `words <text>` | `wc`, `wordcount`, `word-count` | Word, character, and line counts; uses the clipboard when no text is given |
+| `rot13 <text>` | `rot-13` | ROT13 text transform; uses the clipboard when no text is given |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
 `clips code`, `clips ip`, `clips image`, `clips text` (plus an optional text

@@ -97,6 +97,11 @@ enum class MiniKind {
   Focus,
   PickColor,
   QrCode,
+  HttpStatus,
+  CaseText,
+  Chmod,
+  Words,
+  Rot13,
 };
 
 struct MiniIntent {
