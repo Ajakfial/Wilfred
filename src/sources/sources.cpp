@@ -10,6 +10,9 @@
 #include <chrono>
 #include <filesystem>
 #include <mutex>
+#include <regex>
+#include <regex>
+#include <set>
 
 namespace wilfred {
 namespace fs = std::filesystem;
@@ -565,6 +568,257 @@ bool create_contact(const Config& cfg, const std::string& name, const std::strin
   }
   out_path = dest;
   return true;
+}
+
+
+namespace {
+std::vector<std::string> default_project_roots() {
+  std::vector<std::string> out;
+  auto home = home_directory();
+  if (home.empty()) return out;
+  const char* subs[] = {"", "code", "dev", "projects", "src", "repos", "workspace", "work",
+                        "Development", "Documents"};
+  for (auto* sub : subs) {
+    auto p = sub[0] ? path_join(home, sub) : home;
+    out.push_back(p);
+  }
+  return out;
+}
+
+std::vector<std::string> home_variants(const std::string& home) {
+  std::vector<std::string> out;
+  out.push_back(home);
+#ifdef _WIN32
+  // Windows uses %USERPROFILE%
+#else
+#endif
+  return out;
+}
+
+std::string normalize_project_path(std::string p) {
+  // Replace $USER_HOME$ / ${user.home} / ~ placeholders.
+  // Best-effort; paths are returned as-is otherwise.
+  return p;
+}
+
+std::vector<std::string> collect_git_repos() {
+  std::vector<std::string> out;
+  std::set<std::string> seen;
+  auto roots = default_project_roots();
+  for (auto& r : roots) {
+    if (out.size() > 400) break;
+    std::error_code ec;
+    std::vector<std::pair<std::string, int>> stack{{r, 0}};
+    while (!stack.empty() && out.size() < 400) {
+      auto [cur, d] = stack.back();
+      stack.pop_back();
+      std::error_code ec2;
+      auto st = fs::status(fs::u8path(cur), ec2);
+      if (ec2) continue;
+      if (!fs::is_directory(st) || d > 6) continue;
+      // Check if this dir is a git repo.
+      std::error_code ec3;
+      if (fs::exists(fs::u8path(cur) / ".git", ec3)) {
+        if (seen.insert(cur).second) out.push_back(cur);
+        // Don't descend into .git; but still may contain nested repos? skip descend into repo.
+        continue;
+      }
+      for (auto it = fs::directory_iterator(fs::u8path(cur), ec2); it != fs::directory_iterator();
+           it.increment(ec2)) {
+        if (ec2) break;
+        stack.emplace_back(it->path().string(), d + 1);
+      }
+    }
+  }
+  return out;
+}
+
+std::vector<std::string> vscode_workspace_storage_dirs() {
+  std::vector<std::string> out;
+  auto home = home_directory();
+  if (home.empty()) return out;
+#ifdef _WIN32
+  const char* appdata = std::getenv("APPDATA");
+  if (appdata) out.push_back(path_join(appdata, "Code/User/workspaceStorage"));
+  out.push_back(path_join(path_join(home, "AppData/Roaming"), "Code/User/workspaceStorage"));
+#else
+#ifdef __APPLE__
+  out.push_back(path_join(path_join(path_join(home, "Library"), "Application Support"), "Code/User/workspaceStorage"));
+#else
+  out.push_back(path_join(path_join(path_join(home, ".config"), "Code"), "User/workspaceStorage"));
+#endif
+#endif
+  return out;
+}
+
+std::vector<std::string> collect_vscode_projects() {
+  std::vector<std::string> out;
+  std::set<std::string> seen;
+  for (auto& base : vscode_workspace_storage_dirs()) {
+    std::error_code ec;
+    if (!fs::exists(fs::u8path(base), ec)) continue;
+    for (auto it = fs::directory_iterator(fs::u8path(base), ec); it != fs::directory_iterator();
+         it.increment(ec)) {
+      if (ec) break;
+      auto ws = it->path() / "workspace.json";
+      std::error_code ec2;
+      if (!fs::exists(ws, ec2)) continue;
+      std::string raw;
+      if (!read_file_all(ws.string(), raw)) continue;
+      // Extract "folder" or "workspace" URI.
+      std::smatch m;
+      std::regex re("\"(?:folder|workspace)\"\\s*:\\s*\"([^\"]+)\"");
+      if (std::regex_search(raw, m, re) && m.size() > 1) {
+        std::string uri = m.str(1);
+        std::string path = uri;
+        // file:// URI -> path
+        if (path.rfind("file://", 0) == 0) {
+          path = path.substr(7);
+          // decode %20 etc minimal
+        }
+        // Windows drive URI like file:///c:/...
+        if (path.size() > 2 && path[0] == '/' && path[2] == ':') path = path.substr(1);
+        if (!path.empty() && seen.insert(path).second) out.push_back(path);
+      }
+    }
+  }
+  return out;
+}
+
+std::vector<std::string> jetbrains_config_dirs() {
+  std::vector<std::string> out;
+  auto home = home_directory();
+  if (home.empty()) return out;
+#ifdef _WIN32
+  const char* appdata = std::getenv("APPDATA");
+  if (appdata) {
+    // JetBrains config under %APPDATA%/JetBrains
+    std::error_code ec;
+    for (auto it = fs::directory_iterator(fs::u8path(appdata) / "JetBrains", ec); it != fs::directory_iterator(); it.increment(ec)) {
+      if (ec) break;
+      out.push_back(it->path().string());
+    }
+  }
+#else
+#ifdef __APPLE__
+  auto base = path_join(path_join(home, "Library"), "Application Support/JetBrains");
+#else
+  auto base = path_join(path_join(home, ".config"), "JetBrains");
+#endif
+  std::error_code ec;
+  for (auto it = fs::directory_iterator(fs::u8path(base), ec); it != fs::directory_iterator(); it.increment(ec)) {
+    if (ec) break;
+    out.push_back(it->path().string());
+  }
+#endif
+  return out;
+}
+
+std::vector<std::string> collect_jetbrains_projects() {
+  std::vector<std::string> out;
+  std::set<std::string> seen;
+  for (auto& cfgdir : jetbrains_config_dirs()) {
+    std::vector<std::string> xmls;
+    // recentProjects.xml / recentProjectDirectories.xml under options/
+    std::error_code ec;
+    auto opts = fs::u8path(cfgdir) / "options";
+    if (!fs::exists(opts, ec)) continue;
+    for (auto it = fs::directory_iterator(opts, ec); it != fs::directory_iterator(); it.increment(ec)) {
+      if (ec) break;
+      auto name = to_lower_utf8(it->path().filename().string());
+      if (name == "recentprojects.xml" || name == "recentprojectdirectories.xml") xmls.push_back(it->path().string());
+    }
+    for (auto& xf : xmls) {
+      std::string raw;
+      if (!read_file_all(xf, raw)) continue;
+      std::smatch m;
+      std::regex re("<(?:Path|entry)\\s+(?:value|key)=\"([^\"]+)\"");
+      auto begin = raw.cbegin();
+      auto end = raw.cend();
+      std::sregex_iterator it(raw.begin(), raw.end(), re), fin;
+      for (; it != fin; ++it) {
+        std::string val = (*it).str(1);
+        // Replace $USER_HOME$ placeholder.
+        auto home = home_directory();
+        size_t pos = 0;
+        while ((pos = val.find("$USER_HOME$", pos)) != std::string::npos) {
+          val.replace(pos, 11, home);
+          pos += home.size();
+        }
+        // Only keep paths that look like directories.
+        if (val.find('/') == std::string::npos && val.find('\\') == std::string::npos) continue;
+        if (seen.insert(val).second) out.push_back(val);
+      }
+    }
+  }
+  return out;
+}
+}  // namespace
+
+std::vector<SearchResult> ProjectsProvider::query(const std::string& text, const Config& cfg,
+                                                  std::size_t limit) {
+  std::vector<SearchResult> out;
+  if (!cfg.sources.projects || limit == 0) return out;
+  auto needle = fold_search(normalize_query(text));
+  // Allow empty-ish queries to list all? Require at least 1 char.
+  static std::mutex mu;
+  static std::vector<std::pair<std::string, std::string>> cache; // path, kind
+  static std::int64_t cache_at = 0;
+  auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                 std::chrono::steady_clock::now().time_since_epoch())
+                 .count();
+  std::lock_guard<std::mutex> lock(mu);
+  if (cache.empty() || now - cache_at > 120) {
+    cache.clear();
+    cache_at = now;
+    for (auto& p : collect_git_repos()) cache.push_back({p, "Git repo"});
+    for (auto& p : collect_vscode_projects()) cache.push_back({p, "VS Code"});
+    for (auto& p : collect_jetbrains_projects()) cache.push_back({p, "JetBrains"});
+  }
+  int budget = (int)std::min<std::size_t>(limit, (std::size_t)cfg.sources.max_results);
+  struct Hit { int score; std::size_t idx; };
+  std::vector<Hit> hits;
+  for (std::size_t i = 0; i < cache.size(); ++i) {
+    auto& [path, kind] = cache[i];
+    std::string title = path;
+    // last component
+    auto pos = title.find_last_of("/\\");
+    if (pos != std::string::npos) title = title.substr(pos + 1);
+    if (title.empty()) title = path;
+    int s = 0;
+    std::string hay = title + " " + path + " " + kind;
+    if (needle.empty()) {
+      s = 1000;
+    } else {
+      auto h = fold_search(hay);
+      if (h.find(needle) != std::string::npos) s = 6400;
+      else {
+        auto fm = score_fuzzy(needle, h, hay);
+        if (fm.matched) s = 4200 + fm.score;
+      }
+    }
+    if (s > 0) hits.push_back({s, i});
+  }
+  std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) { return a.score > b.score; });
+  for (auto& h : hits) {
+    if ((int)out.size() >= budget) break;
+    auto& [path, kind] = cache[h.idx];
+    std::string title = path;
+    auto pos = title.find_last_of("/\\");
+    if (pos != std::string::npos) title = title.substr(pos + 1);
+    if (title.empty()) title = path;
+    SearchResult r;
+    r.title = title;
+    r.subtitle = path + " - " + kind;
+    r.path = path;
+    r.payload = path;
+    r.action = ResultAction::Open;
+    r.score = h.score;
+    r.kind_label = "project";
+    r.category = "project";
+    out.push_back(std::move(r));
+  }
+  return out;
 }
 
 }  // namespace wilfred

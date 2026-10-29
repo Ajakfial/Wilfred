@@ -88,6 +88,13 @@ allowed, what is refused, and how the repository enforces it.
 * Local search history (optional; disable or `wilfred history-clear`)
 * Overlay UI plus CLI (`search`, `launch`, `index`, `status`, backup/sync, `import`)
 
+## Screens
+
+| | | |
+|---|---|---|
+| ![The Wilfred overlay idle](screenshots/wilfred-idle.png) | ![Calculator mini](screenshots/wilfred-math-1plus3.png) | ![help lists mini commands](screenshots/wilfred-query-help.png) |
+| The overlay, summoned anywhere | Instant calculator results (`Did you mean` fixes included) | `help` lists every mini command |
+
 
 
 <a href="https://www.star-history.com/?repos=ajakfial%2Fwilfred&type=timeline&legend=bottom-right">

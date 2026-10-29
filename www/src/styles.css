@@ -161,6 +161,34 @@ kbd {
   color: var(--muted);
 }
 
+.shot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.shot {
+  margin: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.shot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.shot figcaption {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
 .demo-bar {
   display: flex;
   align-items: center;

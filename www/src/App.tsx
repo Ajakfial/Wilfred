@@ -46,6 +46,29 @@ function Hero() {
   );
 }
 
+const SCREENSHOTS = [
+  { src: 'screenshots/wilfred-idle.png', alt: 'The Wilfred overlay, idle with a history chip', caption: 'Summon anywhere with one hotkey' },
+  { src: 'screenshots/wilfred-math-1plus3.png', alt: 'Calculator mini showing 1+3 = 4', caption: 'Instant calculator results' },
+  { src: 'screenshots/wilfred-query-help.png', alt: 'help query listing mini commands', caption: 'help lists every mini command' },
+];
+
+function Screenshots() {
+  return (
+    <section id="screens" className="section">
+      <h2>Screens</h2>
+      <p className="muted">Real captures of the desktop overlay.</p>
+      <div className="shot-grid">
+        {SCREENSHOTS.map((s) => (
+          <figure key={s.src} className="shot">
+            <img src={s.src} alt={s.alt} loading="lazy" />
+            <figcaption>{s.caption}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function QueryDemo() {
   const [q, setQ] = useState('');
   const hits = useMemo(() => {
@@ -264,6 +287,54 @@ function Plugins() {
   );
 }
 
+function Comparison() {
+  const rows = [
+    { feature: 'Cross-platform (Win/macOS/Linux)', wilfred: 'Yes', alfred: 'macOS only', raycast: 'macOS/Win', flow: 'Windows only', ulauncher: 'Linux only' },
+    { feature: 'Open source', wilfred: 'Yes (MIT)', alfred: 'No', raycast: 'No', flow: 'Yes', ulauncher: 'Yes' },
+    { feature: 'No third-party dependencies', wilfred: 'Yes', alfred: 'N/A', raycast: 'N/A', flow: 'No', ulauncher: 'No' },
+    { feature: 'Files + apps + calc in one bar', wilfred: 'Yes', alfred: 'Yes', raycast: 'Yes', flow: 'Yes', ulauncher: 'Yes' },
+    { feature: 'Built-in timers, notes, clipboard', wilfred: 'Yes', alfred: 'Workflows', raycast: 'Extensions', flow: 'Plugins', ulauncher: 'Extensions' },
+    { feature: 'Import settings from others', wilfred: 'Yes', alfred: '�', raycast: '�', flow: '�', ulauncher: '�' },
+    { feature: 'Plugin gallery (sha256)', wilfred: 'Yes', alfred: 'Workflows', raycast: 'Store', flow: 'Plugins', ulauncher: 'Extensions' },
+    { feature: 'Local HTTP API', wilfred: 'Yes', alfred: 'No', raycast: 'No', flow: 'No', ulauncher: 'No' },
+    { feature: 'Offline-first / no account', wilfred: 'Yes', alfred: 'Yes', raycast: 'Account', flow: 'Yes', ulauncher: 'Yes' },
+  ];
+  return (
+    <section id="compare" className="section">
+      <h2>How Wilfred compares</h2>
+      <p className="muted">
+        A quick, honest comparison against the launchers Wilfred can import settings from.
+      </p>
+      <div className="install-panel" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Feature</th>
+              <th style={{ padding: '6px 8px' }}>Wilfred</th>
+              <th style={{ padding: '6px 8px' }}>Alfred</th>
+              <th style={{ padding: '6px 8px' }}>Raycast</th>
+              <th style={{ padding: '6px 8px' }}>Flow Launcher</th>
+              <th style={{ padding: '6px 8px' }}>Ulauncher</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.feature}>
+                <td style={{ padding: '6px 8px' }}>{r.feature}</td>
+                <td style={{ padding: '6px 8px', fontWeight: 600 }}>{r.wilfred}</td>
+                <td style={{ padding: '6px 8px' }}>{r.alfred}</td>
+                <td style={{ padding: '6px 8px' }}>{r.raycast}</td>
+                <td style={{ padding: '6px 8px' }}>{r.flow}</td>
+                <td style={{ padding: '6px 8px' }}>{r.ulauncher}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function Install() {
   const [tab, setTab] = useState('Windows');
   const active = INSTALL_OPTIONS.find((o) => o.os === tab) ?? INSTALL_OPTIONS[0];
@@ -340,7 +411,9 @@ export default function App() {
       <header className="nav">
         <Logo />
         <nav>
+          <a href="#screens">Screens</a>
           <a href="#features">Features</a>
+          <a href="#compare">Compare</a>
           <a href="#queries">Queries</a>
           <a href="#plugins">Plugins</a>
           <a href="#import">Import</a>
@@ -353,8 +426,10 @@ export default function App() {
       </header>
       <main>
         <Hero />
+        <Screenshots />
         <QueryDemo />
         <Features />
+        <Comparison />
         <Plugins />
         <Import />
         <Install />
