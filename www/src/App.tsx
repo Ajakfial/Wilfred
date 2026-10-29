@@ -294,7 +294,7 @@ function Comparison() {
     { feature: 'No third-party dependencies', wilfred: 'Yes', alfred: 'N/A', raycast: 'N/A', flow: 'No', ulauncher: 'No' },
     { feature: 'Files + apps + calc in one bar', wilfred: 'Yes', alfred: 'Yes', raycast: 'Yes', flow: 'Yes', ulauncher: 'Yes' },
     { feature: 'Built-in timers, notes, clipboard', wilfred: 'Yes', alfred: 'Workflows', raycast: 'Extensions', flow: 'Plugins', ulauncher: 'Extensions' },
-    { feature: 'Import settings from others', wilfred: 'Yes', alfred: '�', raycast: '�', flow: '�', ulauncher: '�' },
+    { feature: 'Import settings from others', wilfred: 'Yes', alfred: 'No', raycast: 'No', flow: 'No', ulauncher: 'No' },
     { feature: 'Plugin gallery (sha256)', wilfred: 'Yes', alfred: 'Workflows', raycast: 'Store', flow: 'Plugins', ulauncher: 'Extensions' },
     { feature: 'Local HTTP API', wilfred: 'Yes', alfred: 'No', raycast: 'No', flow: 'No', ulauncher: 'No' },
     { feature: 'Offline-first / no account', wilfred: 'Yes', alfred: 'Yes', raycast: 'Account', flow: 'Yes', ulauncher: 'Yes' },
