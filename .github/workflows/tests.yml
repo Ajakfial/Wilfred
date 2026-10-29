@@ -106,13 +106,24 @@ jobs:
 
       - name: Upload crash dump (Windows)
         if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # upload-artifact cannot combine paths on different drives (C:\dumps
+          # and D:\a\...), so stage everything under the workspace first.
+          $staging = 'dist\\crash-dump'
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          if (Test-Path 'C:\\dumps') { Copy-Item 'C:\\dumps\\*' $staging -Force -ErrorAction SilentlyContinue }
+          foreach ($f in 'build\\windows\\wilfred_tests.exe', 'build\\windows\\wilfred_tests.pdb') {
+            if (Test-Path $f) { Copy-Item $f $staging -Force }
+          }
+          Get-ChildItem $staging | Select-Object Name, Length
+
+      - name: Upload crash dump artifact (Windows)
+        if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: wilfred-tests-dump
-          path: |
-            C:/dumps/*
-            build/windows/wilfred_tests.exe
-            build/windows/wilfred_tests.pdb
+          path: dist/crash-dump/**
           if-no-files-found: ignore
 
       - name: Build + test (Linux)
