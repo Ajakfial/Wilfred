@@ -18,6 +18,15 @@
 [![Last commit](https://img.shields.io/github/last-commit/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/commits/main)
 [![Contributors](https://img.shields.io/github/contributors/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/graphs/contributors)
 [![Code size](https://img.shields.io/github/languages/code-size/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred)
+[![Coverage](https://codecov.io/gh/ajakfial/Wilfred/branch/main/graph/badge.svg)](https://codecov.io/gh/ajakfial/Wilfred)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/commits/main)
+[![Open issues](https://img.shields.io/github/issues/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/issues)
+[![Open PRs](https://img.shields.io/github/issues-pr/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/pulls)
+[![Forks](https://img.shields.io/github/forks/ajakfial/Wilfred?style=social)](https://github.com/ajakfial/Wilfred/network/members)
+[![Top language](https://img.shields.io/github/languages/top/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred)
+[![Repo size](https://img.shields.io/github/repo-size/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ajakfial/Wilfred/commits/main)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/ajakfial/Wilfred/blob/main/CONTRIBUTING.md)
 
 **Website:** https://ajakfial.github.io/Wilfred/
 
