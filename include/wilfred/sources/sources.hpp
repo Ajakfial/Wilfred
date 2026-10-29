@@ -46,6 +46,13 @@ public:
                                   std::size_t limit) override;
 };
 
+class ProjectsProvider : public SearchProvider {
+public:
+  std::string id() const override { return "projects"; }
+  std::vector<SearchResult> query(const std::string& text, const Config& cfg,
+                                   std::size_t limit) override;
+};
+
 // Creation (used by `event add ...` / `contact add ...` minis).
 // Writes a minimal .ics VEVENT / .vcf VCARD under the first configured root
 // (creating a data-dir fallback when none exists) and returns its path.

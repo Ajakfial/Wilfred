@@ -238,9 +238,11 @@ sources:
   calendar: true
   contacts: true
   notes: true
+  projects: true
   calendar_paths: []
   contacts_paths: []
   notes_paths: []
+  project_paths: []
   # OCR needs the `tesseract` CLI on PATH; images are OCRed during indexing.
   ocr: false
   ocr_languages: "eng"

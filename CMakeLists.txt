@@ -294,7 +294,7 @@ elseif(APPLE)
     src/platform/mac/windows.mm
     src/platform/mac/volumes.mm
     src/platform/mac/screenshot.mm
-    src/platform/mac/color_picker.cpp
+    src/platform/mac/color_picker.mm
     src/platform/mac/menu_search.mm
     src/platform/mac/autostart.cpp
     src/ui/mac_overlay.mm
@@ -462,6 +462,7 @@ elseif(APPLE)
     "-framework CoreFoundation"
     "-framework WebKit"
     "-framework IOKit"
+    "-framework ScreenCaptureKit"
   )
 elseif(ANDROID)
   # Android NDK: no X11/WebKit/desktop daemons. Kotlin owns the UI; the
@@ -493,7 +494,16 @@ else()
       pkg_check_modules(WEBKIT QUIET webkit2gtk-4.0)
     endif()
     pkg_check_modules(GTK3 QUIET gtk+-3.0)
-    if(WEBKIT_FOUND AND GTK3_FOUND)
+    # AT-SPI 2 (Linux desktop accessibility) for real menu search.
+   pkg_check_modules(ATSPI QUIET atspi-2)
+   if(ATSPI_FOUND)
+     target_include_directories(wilfred_core PUBLIC ${ATSPI_INCLUDE_DIRS})
+     target_link_libraries(wilfred_core PUBLIC ${ATSPI_LIBRARIES})
+     target_compile_options(wilfred_core PUBLIC ${ATSPI_CFLAGS_OTHER})
+     target_compile_definitions(wilfred_core PUBLIC WILFRED_HAS_ATSPI=1)
+     message(STATUS "Wilfred: AT-SPI menu search enabled (${ATSPI_VERSION})")
+   endif()
+   if(WEBKIT_FOUND AND GTK3_FOUND)
       target_include_directories(wilfred_core PUBLIC ${WEBKIT_INCLUDE_DIRS} ${GTK3_INCLUDE_DIRS})
       target_link_libraries(wilfred_core PUBLIC ${WEBKIT_LIBRARIES} ${GTK3_LIBRARIES})
       target_compile_options(wilfred_core PUBLIC ${WEBKIT_CFLAGS_OTHER} ${GTK3_CFLAGS_OTHER})

@@ -554,6 +554,19 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
         static_cast<int>(index->integer("persist_every_records", 50000));
     c.index.wal_compact_bytes =
         static_cast<std::uint64_t>(index->integer("wal_compact_bytes", 8 * 1024 * 1024));
+    if (auto* pp = index->get("path_priorities")) {
+      if (!pp->is_map()) {
+        err.message = "index.path_priorities must be a mapping of path -> integer";
+        return false;
+      }
+      for (auto& [k, v] : pp->as_map()) {
+        if (!v.is_string() || !is_int_string(v.as_string())) {
+          err.message = "index.path_priorities '" + k + "' must be an integer";
+          return false;
+        }
+        c.index.path_priorities[k] = static_cast<int>(std::stoi(v.as_string()));
+      }
+    }
     if (auto* ext = index->get("extensions")) {
       if (!ext->is_map()) {
         err.message = "index.extensions must be a mapping with include/exclude lists";
@@ -967,6 +980,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.sources.calendar_paths = so->string_list("calendar_paths");
     c.sources.contacts_paths = so->string_list("contacts_paths");
     c.sources.notes_paths = so->string_list("notes_paths");
+    c.sources.projects = so->boolean("projects", true);
+    c.sources.project_paths = so->string_list("project_paths");
     c.sources.ocr = so->boolean("ocr", false);
     c.sources.ocr_languages = so->str("ocr_languages", "eng");
     c.sources.max_results = static_cast<int>(so->integer("max_results", 8));

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -85,6 +86,8 @@ struct Config {
     std::uint64_t wal_compact_bytes{8 * 1024 * 1024};
     std::vector<std::string> ext_include;
     std::vector<std::string> ext_exclude;
+     // Per-folder indexing priority boost (path -> boost, higher = more).
+     std::map<std::string, int> path_priorities;
   } index;
 
   RankingWeights ranking;
@@ -224,6 +227,8 @@ struct Config {
     // because they spawn processes and touch other apps.
     bool menu{false};
     bool vault{false};
+    bool projects{true};
+    std::vector<std::string> project_paths;
     std::string vault_command{"op"};
     int vault_cache_secs{60};
     int vault_clear_after_secs{30};

@@ -120,6 +120,7 @@ bool MobileCore::boot(const std::string& files_dir, std::string& error) {
   if (st.cfg.sources.calendar) st.interpreter.providers().add(std::make_unique<CalendarProvider>());
   if (st.cfg.sources.contacts) st.interpreter.providers().add(std::make_unique<ContactsProvider>());
   if (st.cfg.sources.notes) st.interpreter.providers().add(std::make_unique<NotesProvider>());
+  if (st.cfg.sources.projects) st.interpreter.providers().add(std::make_unique<ProjectsProvider>());
   if (st.cfg.browser.library)
     st.interpreter.providers().add(std::make_unique<BrowserLibraryProvider>());
   if (st.cfg.remotes.enabled && !st.cfg.remotes.sources.empty())

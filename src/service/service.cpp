@@ -210,6 +210,7 @@ bool Service::boot() {
   if (cfg_.sources.calendar) interpreter_.providers().add(std::make_unique<CalendarProvider>());
   if (cfg_.sources.contacts) interpreter_.providers().add(std::make_unique<ContactsProvider>());
   if (cfg_.sources.notes) interpreter_.providers().add(std::make_unique<NotesProvider>());
+  if (cfg_.sources.projects) interpreter_.providers().add(std::make_unique<ProjectsProvider>());
   if (cfg_.sources.menu) interpreter_.providers().add(std::make_unique<MenuProvider>());
   if (cfg_.sources.vault) interpreter_.providers().add(std::make_unique<VaultProvider>());
   if (cfg_.browser.library)
@@ -813,6 +814,20 @@ int Service::run_doctor() {
   if (st.errors > 0)
     note(1, std::to_string(st.errors) + " paths failed to index (check logging.*)");
   if (st.apps == 0) note(1, "no applications discovered -- app search will be empty");
+   // Index health view.
+   std::string health = (st.files == 0) ? "empty" : (st.errors > 0 ? "degraded" : "healthy");
+   std::cout << "index health: " << health << " (" << st.files << " files, " << st.errors
+             << " errors, " << st.dirs << " dirs)\n";
+   if (!cfg_.index.path_priorities.empty()) {
+     std::cout << "priorities: ";
+     bool first = true;
+     for (auto& [pp, v] : cfg_.index.path_priorities) {
+       if (!first) std::cout << ", ";
+       first = false;
+       std::cout << pp << "=" << v;
+     }
+     std::cout << "\n";
+   }
 
   auto roots = cfg_.index.paths;
   roots.erase(
@@ -911,6 +926,7 @@ int Service::run_status() {
             << "sources: calendar=" << (cfg_.sources.calendar ? "on" : "off")
             << " contacts=" << (cfg_.sources.contacts ? "on" : "off")
             << " notes=" << (cfg_.sources.notes ? "on" : "off")
+            << " projects=" << (cfg_.sources.projects ? "on" : "off")
             << " ocr=" << (cfg_.sources.ocr ? "on" : "off") << "\n"
             << "remotes: " << (cfg_.remotes.enabled ? "on" : "off") << " ("
             << cfg_.remotes.sources.size() << " sources)\n"
