@@ -17,7 +17,6 @@
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/define.hpp"
-#include "wilfred/search/remote.hpp"
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/fuzzy.hpp"
@@ -3840,7 +3839,7 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     std::string url = "https://en.wikipedia.org/wiki/Special:Search?search=";
     if (!q.empty()) url += percent_encode(q);
     SearchResult r = card(q.empty() ? "Wikipedia" : q, "Wikipedia search", url, "wikipedia", 9900,
-                         ResultAction::WebSearch);
+                          ResultAction::WebSearch);
     r.path = url;
     r.payload = url;
     out.push_back(std::move(r));
