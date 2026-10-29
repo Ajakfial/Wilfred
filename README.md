@@ -18,7 +18,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/commits/main)
 [![Contributors](https://img.shields.io/github/contributors/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/graphs/contributors)
 [![Code size](https://img.shields.io/github/languages/code-size/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred)
-[![Coverage](https://codecov.io/gh/ajakfial/Wilfred/branch/main/graph/badge.svg)](https://codecov.io/gh/ajakfial/Wilfred)
+[![Coverage](https://img.shields.io/coveralls/github/ajakfial/Wilfred)](https://coveralls.io/github/ajakfial/Wilfred)
 [![Commit activity](https://img.shields.io/github/commit-activity/m/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/commits/main)
 [![Open issues](https://img.shields.io/github/issues/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/pulls)
