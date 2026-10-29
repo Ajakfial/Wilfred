@@ -214,15 +214,15 @@ int main() {
   // Ranking
   std::vector<ScoredHit> hits_10k;
   for (size_t i = 0; i < 10000; ++i) {
-    hits_10k.push_back({static_cast<std::uint32_t>(i), 50, store_10k.get(i + 1)});
+    hits_10k.push_back({static_cast<std::uint32_t>(i), 50, store_10k.get(static_cast<std::uint32_t>(i + 1))});
   }
   std::vector<ScoredHit> hits_100k;
   for (size_t i = 0; i < 100000; ++i) {
-    hits_100k.push_back({static_cast<std::uint32_t>(i), 50, store_100k.get(i + 1)});
+    hits_100k.push_back({static_cast<std::uint32_t>(i), 50, store_100k.get(static_cast<std::uint32_t>(i + 1))});
   }
   std::vector<ScoredHit> hits_1m;
   for (size_t i = 0; i < 1000000; ++i) {
-    hits_1m.push_back({static_cast<std::uint32_t>(i), 50, store_1m.get(i + 1)});
+    hits_1m.push_back({static_cast<std::uint32_t>(i), 50, store_1m.get(static_cast<std::uint32_t>(i + 1))});
   }
 
   results.push_back(run_benchmark("Ranking: 10K scored hits", iters, [&]() {
@@ -259,7 +259,7 @@ int main() {
   results.push_back(run_benchmark("Filter chain: 10K records", iters, [&]() {
     size_t match_count = 0;
     for (size_t i = 0; i < 10000; ++i) {
-      if (auto rec = store_10k.get(i + 1)) {
+      if (auto rec = store_10k.get(static_cast<std::uint32_t>(i + 1))) {
         if (record_matches_filter(f, store_10k, *rec)) match_count++;
       }
     }
@@ -267,7 +267,7 @@ int main() {
   results.push_back(run_benchmark("Filter chain: 100K records", 5, [&]() {
     size_t match_count = 0;
     for (size_t i = 0; i < 100000; ++i) {
-      if (auto rec = store_100k.get(i + 1)) {
+      if (auto rec = store_100k.get(static_cast<std::uint32_t>(i + 1))) {
         if (record_matches_filter(f, store_100k, *rec)) match_count++;
       }
     }
@@ -275,7 +275,7 @@ int main() {
   results.push_back(run_benchmark("Filter chain: 1M records", 2, [&]() {
     size_t match_count = 0;
     for (size_t i = 0; i < 1000000; ++i) {
-      if (auto rec = store_1m.get(i + 1)) {
+      if (auto rec = store_1m.get(static_cast<std::uint32_t>(i + 1))) {
         if (record_matches_filter(f, store_1m, *rec)) match_count++;
       }
     }
