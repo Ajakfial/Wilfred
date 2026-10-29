@@ -16,4 +16,5 @@ await build({
   define: { "process.env.NODE_ENV": '"production"' },
   outfile: "dist/app.bundle.js",
   logLevel: "info",
+  loader: { ".png": "dataurl", ".jpg": "dataurl", ".svg": "dataurl" },
 });

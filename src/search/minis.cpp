@@ -1,6 +1,7 @@
 #include "wilfred/search/minis.hpp"
 
 #include "wilfred/browser/library.hpp"
+#include "wilfred/core/json.hpp"
 #include "wilfred/core/mmap.hpp"
 #include "wilfred/core/paths.hpp"
 #include "wilfred/core/time_util.hpp"
