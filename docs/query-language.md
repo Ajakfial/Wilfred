@@ -236,6 +236,7 @@ synthetic result card instead of searching the index
 | `chmod <mode>` | `perms`, `permissions` | Explain octal or symbolic Unix permissions (`chmod 755`, `chmod rwxr-xr-x`; enter copies) |
 | `words <text>` | `wc`, `wordcount`, `word-count` | Word, character, and line counts; uses the clipboard when no text is given |
 | `rot13 <text>` | `rot-13` | ROT13 text transform; uses the clipboard when no text is given |
+| `wikipedia <query>` | `wiki`, `w`, `wp` | Wikipedia article search via the official API (enter opens the article) |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,
 `clips code`, `clips ip`, `clips image`, `clips text` (plus an optional text

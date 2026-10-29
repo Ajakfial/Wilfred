@@ -102,6 +102,9 @@ enum class MiniKind {
   Chmod,
   Words,
   Rot13,
+  Wikipedia,
+  Wiki = Wikipedia,
+  Wp = Wikipedia,
 };
 
 struct MiniIntent {

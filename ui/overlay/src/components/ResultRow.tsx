@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import wikipediaIcon from "../assets/wikipedia-resizable.png";
 import { actionsOf, fileUrlForPath, groupOf, highlightRuns, kindLabel, kindOf, parseAnswer, parseSpeed } from "../protocol";
 import { Icon, iconForKind } from "./icons";
 import type { RowEntry } from "../types";
@@ -131,9 +132,11 @@ export function ResultRow({ entry, pos, selected, checked, selectionMode, needle
   } else {
     body = (
       <>
-        <div className={"tile" + (item.icon ? " has-img" : "")} aria-hidden="true">
+        <div className={"tile" + (item.icon || k === "wikipedia" ? " has-img" : "")} aria-hidden="true">
           {item.icon ? (
             <img className="icon" alt="" src={item.icon} draggable={false} />
+          ) : k === "wikipedia" ? (
+            <img className="icon" alt="" src={wikipediaIcon} draggable={false} />
           ) : (
             <Icon name={iconForKind(k, item.action, item.category)} size={16} strokeWidth={2.1} />
           )}

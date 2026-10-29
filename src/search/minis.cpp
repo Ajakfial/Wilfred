@@ -17,6 +17,7 @@
 #include "wilfred/search/clipboard.hpp"
 #include "wilfred/search/convert.hpp"
 #include "wilfred/search/define.hpp"
+#include "wilfred/search/remote.hpp"
 #include "wilfred/search/disktools.hpp"
 #include "wilfred/search/file_ops.hpp"
 #include "wilfred/search/fuzzy.hpp"
@@ -694,6 +695,67 @@ static std::string fetch_weather(const std::string& where) {
   weather_cache = key + "|" + body;
   weather_cache_at = now;
   return body;
+}
+
+static std::string strip_html_simple(const std::string& s) {
+  std::string out;
+  bool in = false;
+  for (char c : s) {
+    if (c == '<') {
+      in = true;
+    } else if (c == '>') {
+      in = false;
+    } else if (!in) {
+      out.push_back(c);
+    }
+  }
+  // Basic entity decode.
+  auto repl = [&](const std::string& from, const std::string& to) {
+    std::size_t pos = 0;
+    while ((pos = out.find(from, pos)) != std::string::npos) {
+      out.replace(pos, from.size(), to);
+      pos += to.size();
+    }
+  };
+  repl("&quot;", "\"");
+  repl("&amp;", "&");
+  repl("&lt;", "<");
+  repl("&gt;", ">");
+  repl("&#39;", "'");
+  repl("&nbsp;", " ");
+  return out;
+}
+
+static std::vector<SearchResult> fetch_wikipedia(const std::string& query) {
+  std::vector<SearchResult> out;
+  if (!g_net || query.empty()) return out;
+  std::string url = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=" +
+                    percent_encode(query) + "&format=json&srlimit=10";
+  auto body = remote_fetch(url, 5000);
+  if (body.empty()) return out;
+  std::string arr = json_extract_array(body, "search");
+  if (arr.empty()) return out;
+  auto objs = json_object_array(arr);
+  int n = 0;
+  for (auto& o : objs) {
+    if (out.size() >= 10) break;
+    std::string title = json_get_string(o, "title");
+    if (title.empty()) continue;
+    std::string snippet = strip_html_simple(json_get_string(o, "snippet"));
+    std::string page_url = "https://en.wikipedia.org/wiki/" + percent_encode(title);
+    SearchResult r;
+    r.title = title;
+    r.subtitle = snippet.empty() ? "Wikipedia" : (snippet + " · Wikipedia");
+    r.path = page_url;
+    r.payload = page_url;
+    r.action = ResultAction::WebSearch;
+    r.score = 9500 - n * 10;
+    r.kind_label = "wikipedia";
+    r.category = "mini";
+    out.push_back(std::move(r));
+    ++n;
+  }
+  return out;
 }
 
 struct DriveUse {
@@ -3577,6 +3639,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Words, rest.empty());
   else if (key == "rot13" || key == "rot-13")
     set(MiniKind::Rot13, rest.empty());
+  else if (key == "wikipedia" || key == "wiki" || key == "wikip" || key == "wp" ||
+           key == "wikipedia-search" || key == "wikipedia_search" || key == "wikipedia-search")
+    set(MiniKind::Wikipedia, false);
   else if (key == "dupes" || key == "dups" || key == "duplicates" || key == "duplicate" ||
            key == "dedup" || key == "dedupe")
     set(MiniKind::Dupes, false);
@@ -3765,6 +3830,20 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
       r.path = url;
       out.push_back(std::move(r));
     }
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Wikipedia) {
+    auto q = intent.remainder;
+    auto results = fetch_wikipedia(q);
+    if (!results.empty()) return results;
+    std::string url = "https://en.wikipedia.org/wiki/Special:Search?search=";
+    if (!q.empty()) url += percent_encode(q);
+    SearchResult r = card(q.empty() ? "Wikipedia" : q, "Wikipedia search", url, "wikipedia", 9900,
+                         ResultAction::WebSearch);
+    r.path = url;
+    r.payload = url;
+    out.push_back(std::move(r));
     return out;
   }
 
