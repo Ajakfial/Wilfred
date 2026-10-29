@@ -4,6 +4,21 @@
 
 <img src="appicon/branding-text.png" alt="Wilfred" width="720">
 
+[![Tests](https://github.com/ajakfial/Wilfred/actions/workflows/tests.yml/badge.svg)](https://github.com/ajakfial/Wilfred/actions/workflows/tests.yml)
+[![Lint](https://github.com/ajakfial/Wilfred/actions/workflows/lint.yml/badge.svg)](https://github.com/ajakfial/Wilfred/actions/workflows/lint.yml)
+[![Nightly](https://github.com/ajakfial/Wilfred/actions/workflows/nightly.yml/badge.svg)](https://github.com/ajakfial/Wilfred/actions/workflows/nightly.yml)
+[![Release](https://github.com/ajakfial/Wilfred/actions/workflows/release.yml/badge.svg)](https://github.com/ajakfial/Wilfred/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/ajakfial/Wilfred?include_prereleases&sort=semver)](https://github.com/ajakfial/Wilfred/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ajakfial/Wilfred/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/ajakfial/Wilfred?style=social)](https://github.com/ajakfial/Wilfred/stargazers)
+[![GitHub downloads](https://img.shields.io/github/downloads/ajakfial/Wilfred/total)](https://github.com/ajakfial/Wilfred/releases)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20BSD%20%7C%20Android%20%7C%20iOS-blue)](https://github.com/ajakfial/Wilfred#packaging)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/)
+[![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)](https://github.com/ajakfial/Wilfred)
+[![Last commit](https://img.shields.io/github/last-commit/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/commits/main)
+[![Contributors](https://img.shields.io/github/contributors/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred/graphs/contributors)
+[![Code size](https://img.shields.io/github/languages/code-size/ajakfial/Wilfred)](https://github.com/ajakfial/Wilfred)
+
 **Website:** https://ajakfial.github.io/Wilfred/
 
 **Languages:**
