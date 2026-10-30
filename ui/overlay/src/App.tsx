@@ -33,6 +33,10 @@ import type { SettingResult, SettingSchema } from "./components/SettingsPanel";
 import { Icon } from "./components/icons";
 import { useId } from "react";
 
+// Latest release badge shown in the corner of the overlay (hidden if offline).
+const VERSION_BADGE_URL =
+  "https://img.shields.io/github/v/release/ajakfial/Wilfred?include_prereleases&sort=semver";
+
 interface SettingsMsg {
   schema?: SettingSchema[];
   values?: Record<string, string>;
@@ -348,6 +352,7 @@ export function App() {
   const [announcement, setAnnouncement] = useState("");
   /** Action id awaiting a destructive-action confirmation (see `runAction`). */
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [badgeOk, setBadgeOk] = useState(true);
   /** Visible-list position where the current Shift range started. */
   const anchorRef = useRef(0);
   const resultsListId = useId();
@@ -1102,6 +1107,16 @@ export function App() {
             </button>
           ) : (
             <kbd className="esc-hint">esc</kbd>
+          )}
+          {badgeOk && (
+            <img
+              className="ver-badge"
+              src={VERSION_BADGE_URL}
+              alt="Latest Wilfred version"
+              draggable={false}
+              referrerPolicy="no-referrer"
+              onError={() => setBadgeOk(false)}
+            />
           )}
         </div>
         <div className="loadbar" aria-hidden="true">

@@ -278,6 +278,19 @@ html.preview .shell { margin: 12vh auto 48px; }
 .clear svg { display: block; }
 .esc-hint { opacity: 0.75; }
 
+/* Latest-release badge (shields.io), pinned to the top-right corner. */
+.ver-badge {
+  flex: 0 0 auto;
+  height: 18px;
+  width: auto;
+  margin-left: 2px;
+  border-radius: 4px;
+  opacity: 0.85;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 kbd {
   display: inline-grid;
   place-items: center;
