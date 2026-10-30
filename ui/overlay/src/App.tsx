@@ -32,8 +32,10 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import type { SettingResult, SettingSchema } from "./components/SettingsPanel";
 import { Icon } from "./components/icons";
 import { useId } from "react";
+import placeholderBadge from "./assets/placeholdersemver.svg";
 
-// Latest release badge shown in the corner of the overlay (hidden if offline).
+// Latest release badge shown in the corner of the overlay. If shields.io can't be
+// reached, it falls back to the bundled placeholder tag.
 const VERSION_BADGE_URL =
   "https://img.shields.io/github/v/release/ajakfial/Wilfred?include_prereleases&sort=semver";
 
@@ -352,7 +354,7 @@ export function App() {
   const [announcement, setAnnouncement] = useState("");
   /** Action id awaiting a destructive-action confirmation (see `runAction`). */
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  const [badgeOk, setBadgeOk] = useState(true);
+  const [badgeSrc, setBadgeSrc] = useState(VERSION_BADGE_URL);
   /** Visible-list position where the current Shift range started. */
   const anchorRef = useRef(0);
   const resultsListId = useId();
@@ -1108,16 +1110,14 @@ export function App() {
           ) : (
             <kbd className="esc-hint">esc</kbd>
           )}
-          {badgeOk && (
-            <img
-              className="ver-badge"
-              src={VERSION_BADGE_URL}
-              alt="Latest Wilfred version"
-              draggable={false}
-              referrerPolicy="no-referrer"
-              onError={() => setBadgeOk(false)}
-            />
-          )}
+          <img
+            className="ver-badge"
+            src={badgeSrc}
+            alt="Latest Wilfred version"
+            draggable={false}
+            referrerPolicy="no-referrer"
+            onError={() => setBadgeSrc(placeholderBadge)}
+          />
         </div>
         <div className="loadbar" aria-hidden="true">
           <span className={s.loading ? "on" : ""} />
