@@ -84,6 +84,36 @@ bool write_file(const std::string& path, const std::vector<std::uint8_t>& data) 
   return f.good();
 }
 
+// Offset of the raw deflate stream in a gzip container (RFC 1952), i.e. the
+// header length: magic, header fields, and any optional FEXTRA/FNAME/
+// FCOMMENT/FHCRC fields. inflate_decompress() only understands raw deflate,
+// so the header must be skipped before inflating.
+std::size_t gzip_header_len(const std::vector<std::uint8_t>& data) {
+  if (data.size() < 10 || data[0] != 0x1F || data[1] != 0x8B || data[2] != 8)
+    return std::string::npos;
+  std::size_t pos = 10;
+  const std::uint8_t flags = data[3];
+  if (flags & 0x04) {  // FEXTRA: 2-byte little-endian length
+    if (pos + 2 > data.size()) return std::string::npos;
+    std::size_t xlen = data[pos] | (data[pos + 1] << 8);
+    if (pos + 2 + xlen > data.size()) return std::string::npos;
+    pos += 2 + xlen;
+  }
+  if (flags & 0x08) {  // FNAME: NUL-terminated
+    while (pos < data.size() && data[pos] != 0) pos++;
+    if (pos >= data.size()) return std::string::npos;
+    pos++;
+  }
+  if (flags & 0x10) {  // FCOMMENT: NUL-terminated
+    while (pos < data.size() && data[pos] != 0) pos++;
+    if (pos >= data.size()) return std::string::npos;
+    pos++;
+  }
+  if (flags & 0x02) pos += 2;  // FHCRC
+  if (pos > data.size()) return std::string::npos;
+  return pos;
+}
+
 // Parse an octal string (tar numeric fields)
 std::uint64_t parse_octal(const char* s, std::size_t len) {
   std::uint64_t result = 0;
@@ -111,9 +141,15 @@ bool extract_tarball(const std::string& archive_path, const std::string& dest_di
     return false;
   }
 
-  // Decompress gzip
+  // Decompress: skip the gzip wrapper (header; the 8-byte trailer after the
+  // final deflate block is simply never read). Non-gzip data is passed
+  // through as raw deflate.
+  std::size_t deflate_off = gzip_header_len(compressed);
+  if (deflate_off == std::string::npos) deflate_off = 0;
+
   std::vector<std::uint8_t> tar_data;
-  if (!inflate_decompress(compressed.data(), compressed.size(), tar_data)) {
+  if (!inflate_decompress(compressed.data() + deflate_off,
+                          compressed.size() - deflate_off, tar_data)) {
     if (error) *error = "gzip decompression failed";
     return false;
   }

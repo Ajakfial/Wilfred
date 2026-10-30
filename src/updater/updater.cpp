@@ -128,27 +128,33 @@ std::string download_url(const std::string& tag, const PlatformInfo& platform) {
          asset_filename(tag, platform);
 }
 
-// Parse the GitHub releases API response to find the latest release info
-bool parse_latest_release(const std::string& json_resp, std::string& tag_out,
-                          std::string& url_out) {
+// Parse the GitHub releases API response for the latest release. Releases
+// carry many asset formats (.zip, .msi, .exe, .deb, .AppImage, .apk, ...), so
+// the first browser_download_url is not reliably this platform's: match on
+// the exact expected asset filename, falling back to the canonical URL built
+// by download_url() when the asset list cannot confirm it.
+bool parse_latest_release(const std::string& json_resp, const PlatformInfo& platform,
+                          std::string& tag_out, std::string& url_out) {
   // Look for "tag_name":"v1.2.3"
   tag_out = json_get_string(json_resp, "tag_name");
   if (tag_out.empty()) return false;
 
-  // Look for the browser_download_url in assets array
-  std::string assets = json_extract_array(json_resp, "assets");
-  if (assets.empty()) return false;
+  const std::string expected = asset_filename(tag_out, platform);
 
+  std::string assets = json_extract_array(json_resp, "assets");
   auto objects = json_object_array(assets);
   for (const auto& obj : objects) {
     std::string url = json_get_string(obj, "browser_download_url");
-    if (!url.empty()) {
+    if (!url.empty() && path_filename(url) == expected) {
       url_out = url;
       return true;
     }
   }
 
-  return false;
+  // Asset not listed under a browser_download_url: use the deterministic
+  // release-download URL for this platform instead.
+  url_out = download_url(tag_out, platform);
+  return true;
 }
 
 // Platform-specific: launch a detached helper process that will wait for
@@ -268,7 +274,7 @@ UpdateCheckResult check_for_update(const std::string& repo_url, const std::strin
   }
 
   std::string tag, asset_url;
-  if (!parse_latest_release(response, tag, asset_url)) {
+  if (!parse_latest_release(response, detect_platform(), tag, asset_url)) {
     result.error = "failed to parse release info";
     return result;
   }
