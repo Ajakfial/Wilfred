@@ -262,4 +262,4 @@ cmake --build build --config Release --target wilfred_bench
 * **数据与灾难恢复。** 索引、历史记录、片段、笔记和日志位于每个操作系统的数据目录中 (见上表)。`backup` / `restore` 移动机器状态; `sync-push` / `sync-pull` 复制它 (见 `docs/sync-and-backup.md`)。在需要之前测试恢复。
 * **观察它。** `wilfred status` 报告索引健康状况; `logging.*` 键控制日志详细程度/保留; 可选本地 HTTP API (`api.*`, 认证) 为仪表板和自动化暴露 `/search`, `/status`, `/index`, `/launch` 以及备份/同步端点。
 * **隐私姿态。** 本地优先: 无账户, 无遥测, 除非您启用 (天气/AI/同步) 否则无网络调用。策略要求时通过 `history.*` 禁用或限制历史记录; AI 提供商需要用户自己的 API 密钥 (`ai.*`, 默认关闭)。
-* **移动端为实验性 (自 v23.0.5 起)。** Android (`.apk`) 和 iOS (模拟器 `.app`) 构建可安装并运行, 但因等待进一步测试和开发而尚未准备好作为日常驱动程序 -- 优先部署桌面端 (见 `docs/android.md`, `docs/ios.md`)。
+* **移动端为实验性 (自 v46.5.8 起)。** Android (`.apk`) 和 iOS (模拟器 `.app`) 构建可安装并运行, 但因等待进一步测试和开发而尚未准备好作为日常驱动程序 -- 优先部署桌面端 (见 `docs/android.md`, `docs/ios.md`)。

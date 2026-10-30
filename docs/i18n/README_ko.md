@@ -262,4 +262,4 @@ cmake --build build --config Release --target wilfred_bench
 * **데이터 및 DR.** 인덱스, 기록, 클립, 노트, 로그는 OS별 데이터 디렉터리에 저장 (위 표 참조). `backup` / `restore`로 머신 상태 이동; `sync-push` / `sync-pull`로 복제 (자세한 내용은 `docs/sync-and-backup.md` 참조). 필요하기 전에 복원 테스트.
 * **관찰.** `wilfred status`로 인덱스 건강 보고; `logging.*` 키로 로그 상세도/보존 제어; 선택적 로컬 HTTP API (`api.*`, 인증됨) 가 `/search`, `/status`, `/index`, `/launch`, 백업/동기화 엔드포인트를 대시보드와 자동화에 노출.
 * **개인정보 보호 태도.** 로컬 우선: 계정 없음, 텔레메트리 없음, 네트워크 호출 없음 (날씨/AI/동기화 활성화하지 않는 한). 정책 요구 시 `history.*`로 기록 비활성화 또는 제한; AI 제공자는 사용자 자체 API 키 필요 (`ai.*`, 기본 꺼짐).
-* **모바일은 실험적 (v23.0.5 기준).** 안드로이드 (`.apk`) 및 iOS (시뮬레이터 `.app`) 빌드는 설치/실행되나, 추가 테스트와 개발 대기 중으로 일상 드라이버 준비 안 됨 -- 데스크톱 우선 배포 (`docs/android.md`, `docs/ios.md` 참조).
+* **모바일은 실험적 (v46.5.8 기준).** 안드로이드 (`.apk`) 및 iOS (시뮬레이터 `.app`) 빌드는 설치/실행되나, 추가 테스트와 개발 대기 중으로 일상 드라이버 준비 안 됨 -- 데스크톱 우선 배포 (`docs/android.md`, `docs/ios.md` 참조).

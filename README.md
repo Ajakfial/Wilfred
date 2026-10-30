@@ -455,7 +455,7 @@ from PFX or Azure Trusted Signing secrets when configured
   calls unless you enable them (weather/AI/sync). Disable or cap history
   via `history.*` where policy requires; AI providers need the user's own
   API keys (`ai.*`, off by default).
-* **Mobile is experimental (as of v23.0.5).** The Android (`.apk`) and iOS
+* **Mobile is experimental (as of v46.5.8).** The Android (`.apk`) and iOS
   (simulator `.app`) builds install and run but are not daily-driver ready
   pending further testing and development -- deploy desktop first
   (see `docs/android.md`, `docs/ios.md`).

@@ -358,7 +358,7 @@ function Install() {
       <div className="install-panel">
         {active.experimental && (
           <p className="warning" role="note">
-            <strong>Experimental build (as of v23.0.5).</strong> It installs and runs, but
+            <strong>Experimental build (as of v46.5.8).</strong> It installs and runs, but
             should not be used as a daily driver until further testing and development
             land. Desktop (Windows, macOS, Linux) remains the stable target.
           </p>
