@@ -222,7 +222,8 @@ std::string sqlite_query(const std::string& db, const std::string& sql) {
   static std::atomic<int> seq{0};
   auto dst = path_join(data_directory(), "sqlite_tmp_" + std::to_string(++seq) + ".db");
   if (!copy_file(db, dst)) return {};
-  std::string cmd = "sqlite3 -separator \t " + shell_dquote(dst) + " " + shell_dquote(sql);
+  std::string cmd = "sqlite3 -separator '" + std::string(1, '\t') + "' " + shell_dquote(dst) + " " +
+                    shell_dquote(sql);
 #ifdef _WIN32
   FILE* f = _popen(cmd.c_str(), "r");
 #else

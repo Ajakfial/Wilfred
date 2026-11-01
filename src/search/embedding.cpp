@@ -193,7 +193,12 @@ bool LocalEmbedder::probe_server(const std::string& endpoint, int timeout_ms) {
   std::string base = endpoint;
   auto pos = base.rfind("/embedding");
   if (pos != std::string::npos) base = base.substr(0, pos);
-  std::string cmd = "curl -fsS --max-time 2 -o /dev/null \"" + base + "/health\" 2>/dev/null";
+  std::string esc_base;
+  for (char c : base) {
+    if (c == '\'') esc_base += "'\\''";
+    else esc_base.push_back(c);
+  }
+  std::string cmd = "curl -fsS --max-time 2 -o /dev/null '" + esc_base + "/health' 2>/dev/null";
   int rc = std::system(cmd.c_str());
   return rc == 0;
 #endif
@@ -324,8 +329,13 @@ std::vector<float> LocalEmbedder::embed_via_server(const std::string& text) cons
     else
       esc.push_back(c);
   }
+  std::string esc_endpoint;
+  for (char c : cfg_.endpoint) {
+    if (c == '\'') esc_endpoint += "'\\''";
+    else esc_endpoint.push_back(c);
+  }
   std::string cmd = "curl -fsS --max-time 8 -H 'Content-Type: application/json' -d '" + esc +
-                    "' \"" + cfg_.endpoint + "\" 2>/dev/null";
+                    "' '" + esc_endpoint + "' 2>/dev/null";
   FILE* f = popen(cmd.c_str(), "r");
   if (!f) return {};
   std::string body;

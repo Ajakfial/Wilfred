@@ -62,8 +62,22 @@ void notify_user(const std::string& title, const std::string& body) {
   (void)body;
 #elif defined(__APPLE__)
   // Notification Center banners appear even when Wilfred has no window.
-  std::string cmd = "osascript -e 'display notification " + shell_quote(body) + " with title " +
-                    shell_quote(title) + "' >/dev/null 2>&1";
+  // AppleScript string literals use double quotes; shell_quote() alone would
+  // leave single-quoted shell tokens that osascript cannot parse.
+  auto as_quote = [](const std::string& s) {
+    std::string out = "\"";
+    for (char c : s) {
+      if (c == '\\' || c == '"') out.push_back('\\');
+      else if (static_cast<unsigned char>(c) < 0x20 || c == static_cast<char>(0x7f))
+        out.push_back(' ');
+      else
+        out.push_back(c);
+    }
+    out.push_back('"');
+    return out;
+  };
+  std::string script = "display notification " + as_quote(body) + " with title " + as_quote(title);
+  std::string cmd = "osascript -e " + shell_quote(script) + " >/dev/null 2>&1";
   std::thread([cmd] { std::system(cmd.c_str()); }).detach();
 #elif defined(__linux__) || defined(WILFRED_BSD)
   std::string cmd = "notify-send --expire-time=15000 " + shell_quote(title) + " " +
