@@ -3,6 +3,7 @@
 #include "wilfred/ipc/protocol.hpp"
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -12,9 +13,12 @@ struct HttpApiRequest {
   std::string method;
   std::string path;
   std::string query;
+  std::map<std::string, std::string> params;
   std::string body;
   std::string token;
   std::string peer;
+  std::string origin;
+  std::string host;
 };
 
 struct HttpApiResponse {

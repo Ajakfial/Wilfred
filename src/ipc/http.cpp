@@ -6,9 +6,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstring>
+#include <map>
 #include <mutex>
+#include <set>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -85,6 +89,17 @@ static std::string url_decode(std::string_view s) {
   return o;
 }
 
+static bool constant_time_equals(const std::string& a, const std::string& b) {
+  std::size_t n = std::max(a.size(), b.size());
+  unsigned char diff = static_cast<unsigned char>(a.size() ^ b.size());
+  for (std::size_t i = 0; i < n; ++i) {
+    unsigned char x = i < a.size() ? static_cast<unsigned char>(a[i]) : 0;
+    unsigned char y = i < b.size() ? static_cast<unsigned char>(b[i]) : 0;
+    diff |= static_cast<unsigned char>(x ^ y);
+  }
+  return diff == 0;
+}
+
 static bool parse_http_request(const std::string& raw, HttpApiRequest& req,
                                std::size_t& body_need) {
   auto hdr_end = raw.find("\r\n\r\n");
@@ -98,12 +113,36 @@ static bool parse_http_request(const std::string& raw, HttpApiRequest& req,
   first >> req.method;
   std::string target;
   first >> target;
+  if (target.empty()) return false;
   auto qpos = target.find('?');
   if (qpos == std::string::npos) {
     req.path = target;
   } else {
     req.path = target.substr(0, qpos);
-    req.query = url_decode(target.substr(qpos + 1));
+    std::string raw_query = target.substr(qpos + 1);
+    req.query = url_decode(raw_query);
+    // Split the RAW query string on literal delimiters first, then decode
+    // each name/value, so encoded delimiters (%26, %3D) cannot corrupt
+    // parsing.
+    std::size_t pos = 0;
+    while (pos <= raw_query.size()) {
+      auto amp = raw_query.find('&', pos);
+      std::string part = raw_query.substr(pos, amp == std::string::npos ? std::string::npos
+                                                                        : amp - pos);
+      if (!part.empty()) {
+        auto eq = part.find('=');
+        std::string key, val;
+        if (eq == std::string::npos) {
+          key = part;
+        } else {
+          key = part.substr(0, eq);
+          val = part.substr(eq + 1);
+        }
+        req.params[url_decode(key)] = url_decode(val);
+      }
+      if (amp == std::string::npos) break;
+      pos = amp + 1;
+    }
   }
   std::size_t content_len = 0;
   std::size_t i = line_end + 2;
@@ -125,6 +164,10 @@ static bool parse_http_request(const std::string& raw, HttpApiRequest& req,
       } else if (k == "x-wilfred-token" || k == "authorization") {
         if (k == "authorization" && v.rfind("Bearer ", 0) == 0) v = v.substr(7);
         req.token = v;
+      } else if (k == "origin") {
+        req.origin = v;
+      } else if (k == "host") {
+        req.host = v;
       }
     }
     i = nl + 2;
@@ -139,20 +182,107 @@ static bool parse_http_request(const std::string& raw, HttpApiRequest& req,
   return true;
 }
 
-static std::string encode_http(const HttpApiResponse& r) {
+static std::string encode_http(const HttpApiResponse& r, const std::string& origin,
+                               bool origin_allowed) {
   std::ostringstream os;
   os << "HTTP/1.1 " << r.status << " "
      << (r.status == 200   ? "OK"
+         : r.status == 204 ? "No Content"
+         : r.status == 400 ? "Bad Request"
          : r.status == 401 ? "Unauthorized"
+         : r.status == 403 ? "Forbidden"
                            : "Error")
      << "\r\n";
-  os << "Content-Type: " << (r.content_type.empty() ? "application/json" : r.content_type)
-     << "\r\n";
-  os << "Content-Length: " << r.body.size() << "\r\n";
+  if (r.status != 204) {
+    os << "Content-Type: " << (r.content_type.empty() ? "application/json" : r.content_type)
+       << "\r\n";
+    os << "Content-Length: " << r.body.size() << "\r\n";
+  } else {
+    os << "Content-Length: 0\r\n";
+  }
   os << "Connection: close\r\n";
-  os << "Access-Control-Allow-Origin: *\r\n\r\n";
-  os << r.body;
+  if (!origin.empty() && origin_allowed) {
+    os << "Access-Control-Allow-Origin: " << origin << "\r\n";
+    os << "Vary: Origin\r\n";
+    os << "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n";
+    os << "Access-Control-Allow-Headers: Content-Type, X-Wilfred-Token, Authorization\r\n";
+  }
+  os << "\r\n";
+  if (r.status != 204) os << r.body;
   return os.str();
+}
+
+static bool is_loopback_bind(const std::string& bind) {
+  return bind == "127.0.0.1" || bind == "localhost" || bind == "::1" || bind == "[::1]";
+}
+
+static bool host_allowed(const std::string& host, const std::string& bind, int port) {
+  if (host.empty()) return false;
+  std::string h = host;
+  std::string p;
+  if (h.front() == '[') {
+    auto rb = h.find(']');
+    if (rb != std::string::npos) {
+      if (rb + 1 < h.size() && h[rb + 1] == ':') p = h.substr(rb + 2);
+      h = h.substr(0, rb + 1);
+    }
+  } else {
+    auto colon = h.find_last_of(':');
+    // Avoid treating an IPv6 address without brackets; host names have no colon.
+    if (colon != std::string::npos && h.find(':') == colon) {
+      p = h.substr(colon + 1);
+      h = h.substr(0, colon);
+    }
+  }
+  std::set<std::string> allowed = {"127.0.0.1", "localhost", "::1", "[::1]"};
+  allowed.insert(bind);
+  if (allowed.find(h) == allowed.end()) return false;
+  if (!p.empty()) {
+    try {
+      if (std::stoi(p) != port) return false;
+    } catch (...) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool origin_allowed(const std::string& origin, const std::string& bind, int port) {
+  if (origin.empty()) return true;
+  std::string o = origin;
+  std::string scheme;
+  if (o.rfind("http://", 0) == 0) scheme = "http";
+  else if (o.rfind("https://", 0) == 0) scheme = "https";
+  else return false;
+  std::string rest = o.substr(scheme.size() + 3);
+  auto slash = rest.find('/');
+  if (slash != std::string::npos) rest = rest.substr(0, slash);
+  std::string host_part = rest;
+  std::string port_part;
+  if (!rest.empty() && rest.front() == '[') {
+    auto rb = rest.find(']');
+    if (rb == std::string::npos) return false;
+    host_part = rest.substr(0, rb + 1);
+    if (rb + 1 < rest.size() && rest[rb + 1] == ':') port_part = rest.substr(rb + 2);
+  } else {
+    auto colon = rest.find_last_of(':');
+    if (colon != std::string::npos) {
+      host_part = rest.substr(0, colon);
+      port_part = rest.substr(colon + 1);
+    }
+  }
+  std::set<std::string> allowed_hosts = {"127.0.0.1", "localhost", "::1", "[::1]"};
+  if (allowed_hosts.find(host_part) == allowed_hosts.end()) return false;
+  if (!port_part.empty()) {
+    try {
+      if (std::stoi(port_part) != port) return false;
+    } catch (...) {
+      return false;
+    }
+  } else {
+    if (port != 80 && port != 443) return false;
+  }
+  return true;
 }
 
 struct HttpApiServer::Impl {
@@ -163,6 +293,120 @@ struct HttpApiServer::Impl {
   std::atomic<bool> running{false};
   Socket listen_fd{kInvalidSock};
   std::thread th;
+  std::mutex clients_mu;
+  std::vector<std::thread> clients;
+  std::atomic<int> active{0};
+  static constexpr int kMaxConnections = 128;
+  static constexpr int kTimeoutSec = 5;
+
+  void set_timeouts(Socket s) {
+#ifdef _WIN32
+    DWORD to = kTimeoutSec * 1000;
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&to), sizeof(to));
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<char*>(&to), sizeof(to));
+#else
+    struct timeval tv;
+    tv.tv_sec = kTimeoutSec;
+    tv.tv_usec = 0;
+    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+  }
+
+  void handle_client(Socket c, const std::string& peer) {
+    set_timeouts(c);
+    std::string raw;
+    char buf[4096];
+    bool parsed = false;
+    HttpApiRequest req;
+    req.peer = peer;
+    std::size_t need = 0;
+    while (running) {
+      int n = sock_recv(c, buf, sizeof(buf));
+      if (n <= 0) break;
+      raw.append(buf, static_cast<std::size_t>(n));
+      HttpApiRequest tmp = req;
+      std::size_t tmp_need = 0;
+      // Re-parse from scratch each time to capture headers; keep peer.
+      HttpApiRequest fresh;
+      fresh.peer = peer;
+      if (parse_http_request(raw, fresh, tmp_need)) {
+        req = fresh;
+        parsed = true;
+        need = 0;
+        break;
+      }
+      need = tmp_need;
+      if (raw.size() > 4 * 1024 * 1024) break;
+    }
+
+    if (!parsed) {
+      close_sock(c);
+      active--;
+      return;
+    }
+
+    // Host validation (DNS rebinding protection).
+    if (!host_allowed(req.host, bind, port)) {
+      auto out = encode_http(HttpApiResponse{400, "application/json", "{\"ok\":false,\"error\":\"bad host\"}"}, req.origin, false);
+      sock_send(c, out.data(), static_cast<int>(out.size()));
+      close_sock(c);
+      active--;
+      return;
+    }
+
+    bool origin_ok_flag = origin_allowed(req.origin, bind, port);
+    if (!req.origin.empty() && !origin_ok_flag) {
+      auto out = encode_http(HttpApiResponse{403, "application/json", "{\"ok\":false,\"error\":\"origin not allowed\"}"}, req.origin, false);
+      sock_send(c, out.data(), static_cast<int>(out.size()));
+      close_sock(c);
+      active--;
+      return;
+    }
+
+    // Authentication.
+    HttpApiResponse resp;
+    bool is_options = (req.method == "OPTIONS");
+    if (!is_options) {
+      if (!token.empty()) {
+        if (!constant_time_equals(req.token, token)) {
+          resp.status = 401;
+          resp.body = "{\"ok\":false,\"error\":\"unauthorized\"}";
+        }
+      } else if (!is_loopback_bind(bind)) {
+        // Should not happen (start refuses), but defend anyway.
+        resp.status = 401;
+        resp.body = "{\"ok\":false,\"error\":\"token required\"}";
+      } else {
+        // Unauthenticated operation only for loopback peers.
+        if (!(req.peer == "127.0.0.1" || req.peer == "::1" || req.peer == "localhost")) {
+          resp.status = 401;
+          resp.body = "{\"ok\":false,\"error\":\"unauthorized\"}";
+        }
+      }
+    }
+
+    if (resp.status != 401 && resp.body.empty() && !is_options && resp.status == 200) {
+      // default; will be overwritten by handler unless auth failed
+    }
+
+    if (is_options) {
+      resp.status = 204;
+      resp.body.clear();
+    } else if (resp.status != 401) {
+      try {
+        resp = handler(req);
+      } catch (...) {
+        resp.status = 500;
+        resp.body = "{\"ok\":false,\"error\":\"handler failed\"}";
+      }
+    }
+
+    auto out = encode_http(resp, req.origin, origin_ok_flag && !req.origin.empty());
+    sock_send(c, out.data(), static_cast<int>(out.size()));
+    close_sock(c);
+    active--;
+  }
 
   void loop() {
     while (running) {
@@ -177,41 +421,23 @@ struct HttpApiServer::Impl {
         if (!running) break;
         continue;
       }
+      if (!running) {
+        close_sock(c);
+        break;
+      }
+      if (active.load() >= kMaxConnections) {
+        close_sock(c);
+        continue;
+      }
       char ip[64]{};
       inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
-      std::string raw;
-      char buf[4096];
-      for (;;) {
-        int n = sock_recv(c, buf, sizeof(buf));
-        if (n <= 0) break;
-        raw.append(buf, static_cast<std::size_t>(n));
-        HttpApiRequest req;
-        req.peer = ip;
-        std::size_t need = 0;
-        if (parse_http_request(raw, req, need)) {
-          HttpApiResponse resp;
-          bool local = req.peer == "127.0.0.1" || req.peer == "::1" || req.peer == "0.0.0.0";
-          if (req.method != "OPTIONS" && !token.empty() && req.token != token) {
-            resp.status = 401;
-            resp.body = "{\"ok\":false,\"error\":\"unauthorized\"}";
-          } else if (req.method != "OPTIONS" && token.empty() && !local) {
-            resp.status = 401;
-            resp.body = "{\"ok\":false,\"error\":\"token required for remote clients\"}";
-          } else {
-            try {
-              resp = handler(req);
-            } catch (...) {
-              resp.status = 500;
-              resp.body = "{\"ok\":false,\"error\":\"handler failed\"}";
-            }
-          }
-          auto out = encode_http(resp);
-          sock_send(c, out.data(), static_cast<int>(out.size()));
-          break;
-        }
-        if (raw.size() > 4 * 1024 * 1024) break;
+      std::string peer = ip;
+      active++;
+      std::thread t([this, c, peer]() { this->handle_client(c, peer); });
+      {
+        std::lock_guard<std::mutex> lock(clients_mu);
+        clients.push_back(std::move(t));
       }
-      close_sock(c);
     }
   }
 };
@@ -229,7 +455,12 @@ bool HttpApiServer::start(const std::string& bind, int port, const std::string& 
                           HttpApiHandler handler) {
   ensure_sockets();
   stop();
-  impl_->bind = bind.empty() ? "127.0.0.1" : bind;
+  std::string b = bind.empty() ? "127.0.0.1" : bind;
+  // Refuse unauthenticated operation on non-loopback interfaces.
+  if (token.empty() && !is_loopback_bind(b)) {
+    return false;
+  }
+  impl_->bind = b;
   impl_->port = port;
   impl_->token = token;
   impl_->handler = std::move(handler);
@@ -256,9 +487,15 @@ bool HttpApiServer::start(const std::string& bind, int port, const std::string& 
     impl_->listen_fd = kInvalidSock;
     return false;
   }
+  // Discover actual port (supports port 0).
+  sockaddr_in actual{};
+  socklen_t alen = sizeof(actual);
+  if (getsockname(impl_->listen_fd, reinterpret_cast<sockaddr*>(&actual), &alen) == 0) {
+    impl_->port = ntohs(actual.sin_port);
+  }
   impl_->running = true;
   impl_->th = std::thread([this] { impl_->loop(); });
-  log_info("api", "HTTP API listening on " + impl_->bind + ":" + std::to_string(port));
+  log_info("api", "HTTP API listening on " + impl_->bind + ":" + std::to_string(impl_->port));
   return true;
 }
 
@@ -266,10 +503,23 @@ void HttpApiServer::stop() {
   if (!impl_) return;
   impl_->running = false;
   if (impl_->listen_fd != kInvalidSock) {
+#ifdef _WIN32
+    shutdown(impl_->listen_fd, SD_BOTH);
+#else
+    shutdown(impl_->listen_fd, SHUT_RDWR);
+#endif
     close_sock(impl_->listen_fd);
     impl_->listen_fd = kInvalidSock;
   }
   if (impl_->th.joinable()) impl_->th.join();
+  std::vector<std::thread> to_join;
+  {
+    std::lock_guard<std::mutex> lock(impl_->clients_mu);
+    to_join.swap(impl_->clients);
+  }
+  for (auto& t : to_join) {
+    if (t.joinable()) t.join();
+  }
 }
 
 #ifdef _WIN32

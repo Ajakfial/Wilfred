@@ -1621,15 +1621,20 @@ int Service::run_daemon() {
               if (path.rfind("/v1/", 0) == 0) path = path.substr(3);
               auto q = req.query;
               auto body = req.body;
-              auto qtext = query_param(q, "q");
+              auto getq = [&](const char* k) {
+                auto it = req.params.find(k);
+                if (it != req.params.end()) return it->second;
+                return query_param(q, k);
+              };
+              auto qtext = getq("q");
               if (qtext.empty()) qtext = json_get_string(body, "q");
               if (qtext.empty()) qtext = json_get_string(body, "query");
-              auto action = query_param(q, "action");
+              auto action = getq("action");
               if (action.empty()) action = json_get_string(body, "action");
-              auto rpath = query_param(q, "path");
+              auto rpath = getq("path");
               if (rpath.empty()) rpath = json_get_string(body, "path");
               int limit = json_get_int(body, "limit", 40);
-              auto n = query_param(q, "limit");
+              auto n = getq("limit");
               if (!n.empty()) {
                 try {
                   limit = std::stoi(n);
