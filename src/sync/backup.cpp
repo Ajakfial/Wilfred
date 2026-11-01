@@ -210,6 +210,24 @@ bool pack_backup_archive(const std::vector<BackupEntry>& files, std::string& out
   return true;
 }
 
+static bool safe_backup_entry_name(const std::string& name, std::string& why) {
+  if (name.empty()) { why = "empty entry name"; return false; }
+  if (name.find('\0') != std::string::npos) { why = "NUL byte in entry name"; return false; }
+  if (name.front() == '/' || name.front() == '\\') { why = "absolute path"; return false; }
+  if (name.find(':') != std::string::npos) { why = "drive-qualified path"; return false; }
+  std::string norm = name;
+  for (char& c : norm) if (c == '\\') c = '/';
+  std::size_t start = 0;
+  while (start <= norm.size()) {
+    auto end = norm.find('/', start);
+    std::string seg = norm.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    if (seg == "..") { why = "parent traversal"; return false; }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  return true;
+}
+
 bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& files,
                            std::string& err) {
   files.clear();
@@ -232,6 +250,11 @@ bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& fi
     BackupEntry e;
     e.name = blob.substr(i, nlen);
     i += nlen;
+    std::string why;
+    if (!safe_backup_entry_name(e.name, why)) {
+      err = "unsafe entry name (" + why + "): " + e.name;
+      return false;
+    }
     std::uint64_t dlen = 0;
     std::uint32_t crc = 0;
     if (!get_u64(blob, i, dlen) || !get_u32(blob, i, crc)) {
@@ -402,6 +425,11 @@ bool unpack_backup_archive_auto(const std::string& blob, const std::string& pass
 
 static bool restore_entries(const std::vector<BackupEntry>& files, std::string& err) {
   for (auto& f : files) {
+    std::string why;
+    if (!safe_backup_entry_name(f.name, why)) {
+      err = "unsafe entry name (" + why + "): " + f.name;
+      return false;
+    }
     std::string dest;
     if (f.name == "wilfred.yml")
       dest = default_config_path();
@@ -413,6 +441,17 @@ static bool restore_entries(const std::vector<BackupEntry>& files, std::string& 
       dest = path_join(default_index_path(), f.name.substr(6));
     else
       dest = path_join(data_directory(), f.name);
+    // Defense in depth: the resolved destination must remain inside one of
+    // the allowed restore roots.
+    auto root = (f.name == "wilfred.yml") ? config_directory()
+               : (f.name == "snippets.yml") ? config_directory()
+               : (f.name == "history.bin") ? data_directory()
+               : (f.name.rfind("index/", 0) == 0) ? default_index_path()
+                                                  : data_directory();
+    if (!path_is_under(dest, root)) {
+      err = "restore target escapes root: " + dest;
+      return false;
+    }
     create_directories(path_parent(dest));
     if (!write_file_atomic(dest, f.data.data(), f.data.size())) {
       err = "unable to restore " + dest;
