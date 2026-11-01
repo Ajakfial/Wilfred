@@ -168,15 +168,26 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
                           const std::string& exe_dir) {
   std::string script_path = path_join(staging, "update-helper.ps1");
 
-  std::ofstream f(script_path);
+  auto ps_escape = [](std::string s) {
+    std::string o;
+    for (char c : s) {
+      if (c == '\'') o += "''";
+      else o.push_back(c);
+    }
+    return o;
+  };
+  std::ofstream f(script_path, std::ios::binary);
   if (!f) return false;
+  // UTF-8 BOM so PowerShell reads non-ASCII paths correctly.
+  const unsigned char bom[] = {0xEF, 0xBB, 0xBF};
+  f.write(reinterpret_cast<const char*>(bom), 3);
 
   f << "$ErrorActionPreference = 'Stop'\n";
   f << "$pid_to_wait = " << GetCurrentProcessId() << "\n";
   f << "Wait-Process -Id $pid_to_wait -Timeout 30 -ErrorAction SilentlyContinue\n";
   f << "Start-Sleep -Milliseconds 500\n";
-  f << "$staging = '" << staging << "'\n";
-  f << "$dest = '" << exe_dir << "'\n";
+  f << "$staging = '" << ps_escape(staging) << "'\n";
+  f << "$dest = '" << ps_escape(exe_dir) << "'\n";
   f << "Get-ChildItem -Path $staging -Recurse | ForEach-Object {\n";
   f << "  $rel = $_.FullName.Substring($staging.Length)\n";
   f << "  $target = Join-Path $dest $rel\n";
@@ -188,7 +199,7 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   f << "    Copy-Item $_.FullName $target -Force\n";
   f << "  }\n";
   f << "}\n";
-  f << "Start-Process -FilePath '" << exe_path << "'\n";
+  f << "Start-Process -FilePath '" << ps_escape(exe_path) << "'\n";
   f << "Remove-Item -Recurse -Force $staging -ErrorAction SilentlyContinue\n";
   f.close();
 
@@ -200,7 +211,7 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   STARTUPINFOW si{};
   si.cb = sizeof(si);
   PROCESS_INFORMATION pi{};
-  std::wstring wcmd(cmd.begin(), cmd.end());
+  std::wstring wcmd = utf8_to_wide(cmd);
 
   BOOL ok = CreateProcessW(nullptr, wcmd.data(), nullptr, nullptr, FALSE,
                            CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, nullptr, &si, &pi);
@@ -226,16 +237,24 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   f << "  sleep 0.2\n";
   f << "done\n";
   f << "sleep 0.5\n";
-  f << "STAGING='" << staging << "'\n";
-  f << "DEST='" << exe_dir << "'\n";
+  auto sh_escape = [](std::string s) {
+    std::string o;
+    for (char c : s) {
+      if (c == '\'') o += "'\\''";
+      else o.push_back(c);
+    }
+    return o;
+  };
+  f << "STAGING='" << sh_escape(staging) << "'\n";
+  f << "DEST='" << sh_escape(exe_dir) << "'\n";
   f << "cd \"$STAGING\"\n";
   f << "find . -type f | while read -r file; do\n";
   f << "  target=\"$DEST/$file\"\n";
   f << "  mkdir -p \"$(dirname \"$target\")\"\n";
   f << "  cp -f \"$file\" \"$target\"\n";
   f << "done\n";
-  f << "chmod +x '" << exe_path << "'\n";
-  f << "nohup '" << exe_path << "' >/dev/null 2>&1 &\n";
+  f << "chmod +x '" << sh_escape(exe_path) << "'\n";
+  f << "nohup '" << sh_escape(exe_path) << "' >/dev/null 2>&1 &\n";
   f << "rm -rf \"$STAGING\"\n";
   f.close();
 

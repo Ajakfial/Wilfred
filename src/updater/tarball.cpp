@@ -196,8 +196,24 @@ bool extract_tarball(const std::string& archive_path, const std::string& dest_di
         }
         out_path += name;
 
-        // Security: prevent path traversal
-        if (out_path.find("..") != std::string::npos) {
+        // Security: reject traversal/absolute/drive-qualified entry names.
+        std::string why;
+        std::string check_name = name;
+        for (char& ch : check_name) if (ch == '\\') ch = '/';
+        bool unsafe = check_name.empty() ||
+                      check_name.front() == '/' || check_name.front() == '\\' ||
+                      check_name.find(':') != std::string::npos;
+        if (!unsafe) {
+          std::size_t start = 0;
+          while (start <= check_name.size()) {
+            auto end = check_name.find('/', start);
+            std::string seg = check_name.substr(start, end == std::string::npos ? std::string::npos : end - start);
+            if (seg == "..") { unsafe = true; break; }
+            if (end == std::string::npos) break;
+            start = end + 1;
+          }
+        }
+        if (unsafe) {
           log_warn("updater", "skipping suspicious path: " + name);
         } else {
           std::vector<std::uint8_t> file_data(tar_data.begin() + pos,
