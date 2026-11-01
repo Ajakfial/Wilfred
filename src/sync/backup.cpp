@@ -243,7 +243,7 @@ bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& fi
   }
   for (std::uint32_t k = 0; k < n; ++k) {
     std::uint32_t nlen = 0;
-    if (!get_u32(blob, i, nlen) || i + nlen > blob.size()) {
+    if (!get_u32(blob, i, nlen) || nlen > blob.size() - i) {
       err = "corrupt entry name";
       return false;
     }
@@ -261,7 +261,7 @@ bool unpack_backup_archive(const std::string& blob, std::vector<BackupEntry>& fi
       err = "corrupt entry header";
       return false;
     }
-    if (i + dlen > blob.size()) {
+    if (dlen > blob.size() - i) {
       err = "truncated backup data";
       return false;
     }
