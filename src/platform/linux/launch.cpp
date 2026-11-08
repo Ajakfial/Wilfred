@@ -247,17 +247,17 @@ static bool sys(const std::string& cmd) {
 }
 
 bool native_launch(const std::string& path) {
-  std::string cmd = "xdg-open \"" + path + "\" >/dev/null 2>&1 &";
+  std::string cmd = "xdg-open " + sh_quote(path) + " >/dev/null 2>&1 &";
   return sys(cmd);
 }
 
 bool native_reveal(const std::string& path) {
-  std::string cmd = "xdg-open \"" + path + "\" >/dev/null 2>&1 &";
+  std::string cmd = "xdg-open " + sh_quote(path) + " >/dev/null 2>&1 &";
   return sys(cmd);
 }
 
 bool native_open_url(const std::string& url) {
-  std::string cmd = "xdg-open \"" + url + "\" >/dev/null 2>&1 &";
+  std::string cmd = "xdg-open " + sh_quote(url) + " >/dev/null 2>&1 &";
   return sys(cmd);
 }
 
@@ -387,7 +387,7 @@ bool native_open_with(const std::string& target, const std::string& file) {
 
 bool native_open_terminal(const std::string& dir) {
   if (dir.empty()) return false;
-  std::string q = dquote(dir);
+  std::string q = sh_quote(dir);
   struct Cand {
     const char* bin;
     const char* flag;  // nullptr => rely on inherited cwd
@@ -418,9 +418,9 @@ bool native_open_terminal(const std::string& dir) {
 
 bool native_open_editor(const std::string& dir) {
   if (dir.empty()) return false;
-  if (have_tool("code") && sys("code --new-window " + dquote(dir) + " >/dev/null 2>&1 &"))
+  if (have_tool("code") && sys("code --new-window " + sh_quote(dir) + " >/dev/null 2>&1 &"))
     return true;
-  if (have_tool("codium") && sys("codium --new-window " + dquote(dir) + " >/dev/null 2>&1 &"))
+  if (have_tool("codium") && sys("codium --new-window " + sh_quote(dir) + " >/dev/null 2>&1 &"))
     return true;
   return native_launch(dir);
 }
@@ -873,8 +873,11 @@ bool native_brightness_status(int& percent, std::string& error) {
       name.push_back(c);
     }
     if (!name.empty()) {
-      auto cur = lin_trim(lin_exec("cat /sys/class/backlight/" + name + "/brightness"));
-      auto max = lin_trim(lin_exec("cat /sys/class/backlight/" + name + "/max_brightness"));
+      std::string qname = "'";
+       for (char c : name) { if (c == '\'') qname += "'\\''"; else qname.push_back(c); }
+       qname.push_back('\'');
+       auto cur = lin_trim(lin_exec("cat /sys/class/backlight/" + qname + "/brightness"));
+      auto max = lin_trim(lin_exec("cat /sys/class/backlight/" + qname + "/max_brightness"));
       try {
         int c = std::stoi(cur);
         int m = std::stoi(max);
@@ -910,11 +913,17 @@ bool native_brightness_set(int percent, std::string& error) {
     name.push_back(c);
   }
   if (!name.empty()) {
-    auto maxs = lin_trim(lin_exec("cat /sys/class/backlight/" + name + "/max_brightness"));
+    std::string qname = "'";
+    for (char c : name) {
+      if (c == '\'') qname += "'\\''";
+      else qname.push_back(c);
+    }
+    qname.push_back('\'');
+    auto maxs = lin_trim(lin_exec("cat /sys/class/backlight/" + qname + "/max_brightness"));
     try {
       int m = std::stoi(maxs);
       int v = static_cast<int>(percent * m / 100);
-      if (sys("echo " + std::to_string(v) + " > /sys/class/backlight/" + name +
+      if (sys("echo " + std::to_string(v) + " > /sys/class/backlight/" + qname +
               "/brightness 2>/dev/null"))
         return true;
     } catch (...) {

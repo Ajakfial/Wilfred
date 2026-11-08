@@ -382,12 +382,10 @@ AiAnswer AiAssistant::ask_conversation(const std::vector<ChatMessage>& history,
     std::string base = cfg.ai.endpoint;
     if (base.empty()) {
       base = "https://generativelanguage.googleapis.com/v1beta/models/" + model +
-             ":generateContent?key=" + cfg.ai.api_key;
-    } else if (base.find("key=") == std::string::npos && !cfg.ai.api_key.empty()) {
-      base +=
-          (base.find('?') == std::string::npos ? "?" : "&") + std::string("key=") + cfg.ai.api_key;
+             ":generateContent";
     }
     url = base;
+    if (!cfg.ai.api_key.empty()) headers.push_back("x-goog-api-key: " + cfg.ai.api_key);
   } else {
     // OpenAI-compatible (OpenAI + Groq + self-hosted).
     if (!cfg.ai.endpoint.empty())
@@ -586,12 +584,10 @@ AiAnswer AiAssistant::ask_with_image(const std::string& prompt,
     std::string base = cfg.ai.endpoint;
     if (base.empty()) {
       base = "https://generativelanguage.googleapis.com/v1beta/models/" + model +
-             ":generateContent?key=" + cfg.ai.api_key;
-    } else if (base.find("key=") == std::string::npos && !cfg.ai.api_key.empty()) {
-      base +=
-          (base.find('?') == std::string::npos ? "?" : "&") + std::string("key=") + cfg.ai.api_key;
+             ":generateContent";
     }
     url = base;
+    if (!cfg.ai.api_key.empty()) headers.push_back("x-goog-api-key: " + cfg.ai.api_key);
     body = build_gemini_vision_body(prompt, image_b64, use_mime);
   } else {
     // OpenAI-compatible (OpenAI + Groq + self-hosted).

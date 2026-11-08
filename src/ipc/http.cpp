@@ -368,21 +368,11 @@ struct HttpApiServer::Impl {
     HttpApiResponse resp;
     bool is_options = (req.method == "OPTIONS");
     if (!is_options) {
-      if (!token.empty()) {
-        if (!constant_time_equals(req.token, token)) {
-          resp.status = 401;
-          resp.body = "{\"ok\":false,\"error\":\"unauthorized\"}";
-        }
-      } else if (!is_loopback_bind(bind)) {
-        // Should not happen (start refuses), but defend anyway.
+      // Token is mandatory.
+      if (token.empty() || !constant_time_equals(req.token, token)) {
         resp.status = 401;
-        resp.body = "{\"ok\":false,\"error\":\"token required\"}";
-      } else {
-        // Unauthenticated operation only for loopback peers.
-        if (!(req.peer == "127.0.0.1" || req.peer == "::1" || req.peer == "localhost")) {
-          resp.status = 401;
-          resp.body = "{\"ok\":false,\"error\":\"unauthorized\"}";
-        }
+        resp.body = token.empty() ? "{\"ok\":false,\"error\":\"token required\"}"
+                                 : "{\"ok\":false,\"error\":\"unauthorized\"}";
       }
     }
 
@@ -456,8 +446,8 @@ bool HttpApiServer::start(const std::string& bind, int port, const std::string& 
   ensure_sockets();
   stop();
   std::string b = bind.empty() ? "127.0.0.1" : bind;
-  // Refuse unauthenticated operation on non-loopback interfaces.
-  if (token.empty() && !is_loopback_bind(b)) {
+  // The API token is mandatory: refuse to start without one on any interface.
+  if (token.empty()) {
     return false;
   }
   impl_->bind = b;

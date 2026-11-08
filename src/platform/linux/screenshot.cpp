@@ -198,7 +198,7 @@ bool try_tool_window(const std::string& path) {
     // Focused-window capture needs the window id; fall back to interactive pick.
     if (have_tool("xdotool")) {
       std::string id = popen_line("xdotool getactivewindow 2>/dev/null");
-      if (!id.empty() && run_and_check("maim -i " + id + " " + q, path)) return true;
+      if (!id.empty() && run_and_check("maim -i " + shell_quote(id) + " " + q, path)) return true;
     }
     if (run_and_check("maim -i root " + q, path)) return true;
   }

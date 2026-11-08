@@ -37,7 +37,14 @@ std::string native_default_browser_id() {
 std::string native_default_browser_executable() {
   auto id = native_default_browser_id();
   if (id.find(".desktop") != std::string::npos) {
-    auto exe = run_cmd(("grep -m1 '^Exec=' /usr/share/applications/" + id +
+    // Quote the id before using it in a shell command.
+    std::string qid = "'";
+    for (char c : id) {
+      if (c == '\'') qid += "'\\''";
+      else qid.push_back(c);
+    }
+    qid.push_back('\'');
+    auto exe = run_cmd(("grep -m1 '^Exec=' /usr/share/applications/" + qid +
                         " 2>/dev/null | cut -d= -f2 | awk '{print $1}'")
                            .c_str());
     if (!exe.empty()) return exe;

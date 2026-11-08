@@ -24,6 +24,50 @@ std::string json_escape(const std::string& s) {
   return o;
 }
 
+namespace {
+unsigned int json_hex4(const std::string& s, std::size_t pos) {
+  unsigned int v = 0;
+  for (int i = 0; i < 4; ++i) {
+    char c = s[pos + static_cast<std::size_t>(i)];
+    unsigned int d = 0;
+    if (c >= '0' && c <= '9') d = c - '0';
+    else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+    else return 0xFFFFFFFFu;
+    v = (v << 4) | d;
+  }
+  return v;
+}
+
+bool json_is_hex4(const std::string& s, std::size_t pos) {
+  if (pos + 4 > s.size()) return false;
+  for (int i = 0; i < 4; ++i) {
+    char c = s[pos + static_cast<std::size_t>(i)];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+      return false;
+  }
+  return true;
+}
+
+void json_append_utf8(std::string& out, unsigned int cp) {
+  if (cp <= 0x7F) {
+    out.push_back(static_cast<char>(cp));
+  } else if (cp <= 0x7FF) {
+    out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  } else if (cp <= 0xFFFF) {
+    out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  } else {
+    out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  }
+}
+}  // namespace
+
 std::string json_get_string(const std::string& s, const char* key) {
   std::string k = std::string("\"") + key + "\"";
   auto pos = s.find(k);
@@ -46,8 +90,36 @@ std::string json_get_string(const std::string& s, const char* key) {
           v.push_back('\t');
         else if (n == 'r')
           v.push_back('\r');
-        else
+        else if (n == 'b')
+          v.push_back('\b');
+        else if (n == 'f')
+          v.push_back('\f');
+        else if (n == '"' || n == '\\' || n == '/')
           v.push_back(n);
+        else if (n == 'u' && pos + 6 <= s.size() && json_is_hex4(s, pos + 2)) {
+          unsigned int cp = json_hex4(s, pos + 2);
+          // Handle UTF-16 surrogate pairs.
+          if (cp >= 0xD800 && cp <= 0xDBFF && pos + 12 <= s.size() &&
+              s[pos + 6] == '\\' && s[pos + 7] == 'u' && json_is_hex4(s, pos + 8)) {
+            unsigned int lo = json_hex4(s, pos + 8);
+            if (lo >= 0xDC00 && lo <= 0xDFFF) {
+              cp = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+              pos += 12;
+              json_append_utf8(v, cp);
+              continue;
+            }
+          }
+          if (cp >= 0xD800 && cp <= 0xDFFF) {
+            // Lone surrogate: emit replacement character.
+            json_append_utf8(v, 0xFFFDu);
+          } else {
+            json_append_utf8(v, cp);
+          }
+          pos += 6;
+          continue;
+        } else {
+          v.push_back(n);
+        }
         pos += 2;
       } else
         v.push_back(s[pos++]);

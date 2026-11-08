@@ -1610,7 +1610,10 @@ int Service::run_daemon() {
 
   if (cfg_.api.enabled) {
     http_ = std::make_unique<HttpApiServer>();
-    if (!http_->start(
+    if (cfg_.api.token.empty()) {
+      log_error("api", "api.token is required to enable the HTTP API; API not started");
+      http_.reset();
+    } else if (!http_->start(
             cfg_.api.bind, cfg_.api.port, cfg_.api.token, [this](const HttpApiRequest& req) {
               HttpApiResponse out;
               if (req.method == "OPTIONS") {
