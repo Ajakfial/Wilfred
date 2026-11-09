@@ -1362,8 +1362,20 @@ int Service::run_daemon() {
   running_ = true;
   g_running = &running_;
 
-  // Background update check on startup
-  startup_update_check();
+  // Background update check on startup (optional via updates: config)
+  {
+    bool auto_updating = cfg_.updates.enabled && cfg_.updates.auto_check &&
+                         cfg_.updates.auto_update && cfg_.updates.check &&
+                         cfg_.updater.enabled && cfg_.updater.auto_check &&
+                         cfg_.updater.auto_update && cfg_.updater.check &&
+                         cfg_.update.enabled && cfg_.update.auto_check &&
+                         cfg_.update.auto_update && cfg_.update.check &&
+                         cfg_.auto_updates.enabled && cfg_.auto_updates.auto_check &&
+                         cfg_.auto_updates.auto_update && cfg_.auto_updates.check &&
+                         cfg_.auto_update.enabled && cfg_.auto_update.auto_check &&
+                         cfg_.auto_update.auto_update && cfg_.auto_update.check;
+    if (auto_updating) startup_update_check();
+  }
 #ifdef _WIN32
   SetConsoleCtrlHandler(console_handler, TRUE);
 #else

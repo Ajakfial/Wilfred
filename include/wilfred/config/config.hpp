@@ -381,6 +381,15 @@ struct Config {
   // nothing. "mod" means Cmd on macOS and Ctrl elsewhere.
   std::unordered_map<std::string, std::string> keybinds;
 
+  // Auto-update (background startup check). Optional: when disabled, Wilfred
+  // never phones home on startup; `wilfred update` still works manually.
+  struct Updates {
+    bool enabled{true};
+    bool auto_check{true};
+    bool auto_update{true};
+    bool check{true};
+  } updates, updater, update, auto_updates, auto_update;
+
   std::string source_path;
 };
 

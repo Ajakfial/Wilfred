@@ -579,6 +579,15 @@ See [ipc-and-api.md](ipc-and-api.md) for the request/response format.
 
 See [sync-and-backup.md](sync-and-backup.md).
 
+## `updates:` -- auto-update checks (desktop)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Run the background GitHub release check on daemon startup |
+| `auto_check` | `true` | Alias for `enabled` (either false disables auto checks) |
+
+Manual `wilfred update` / `wilfred update --check` still work when disabled.
+
 ## `snippets:`
 
 | Key | Default | Meaning |

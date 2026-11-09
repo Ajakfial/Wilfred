@@ -420,7 +420,12 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
                                           "keybinds",
                                           "hotkeys",
                                           "pins",
-                                          "favorites"};
+                                          "favorites",
+                                          "updates",
+                                          "updater",
+                                          "update",
+                                          "auto_updates",
+                                          "auto_update"};
     if (!check_unknown_keys(root, top_valid, "config", err)) {
       if (!err.message.empty()) {
         err.message +=
@@ -1635,6 +1640,31 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
       return false;
     }
   }
+
+  // Auto-update (background startup check) toggles.
+  for (const char* secname : {"updates", "updater", "update", "auto_updates", "auto_update"}) {
+    if (auto* u = root.get(secname)) {
+      if (!u->is_map()) {
+        err.message = std::string(secname) + ": must be a mapping";
+        return false;
+      }
+      std::vector<std::string> valid = {"enabled", "auto_check", "auto_update", "check", "auto"};
+      if (!check_unknown_keys(*u, valid, secname, err)) return false;
+      for (auto* k : {"enabled", "auto_check", "auto_update", "check", "auto"})
+        if (!expect_bool(u, k, secname, err)) return false;
+      bool en = u->boolean("enabled", true) && u->boolean("auto_check", true) &&
+                u->boolean("auto_update", true) && u->boolean("check", true) &&
+                u->boolean("auto", true);
+      c.updates.enabled = c.updates.enabled && en;
+      c.updates.auto_check = c.updates.enabled;
+      c.updates.auto_update = c.updates.enabled;
+      c.updates.check = c.updates.enabled;
+    }
+  }
+  c.updater = c.updates;
+  c.update = c.updates;
+  c.auto_updates = c.updates;
+  c.auto_update = c.updates;
 
   if (c.index.system_directories.empty()) c.index.system_directories = default_system_directories();
 

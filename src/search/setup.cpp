@@ -327,8 +327,14 @@ std::vector<SearchResult> setup_results(const std::string& remainder, const Conf
 
 std::vector<SearchResult> update_results(const std::string& remainder, const Config& cfg) {
   (void)remainder;
-  (void)cfg;
   std::vector<SearchResult> out;
+  if (!cfg.updates.enabled || !cfg.updater.enabled || !cfg.update.enabled ||
+      !cfg.auto_updates.enabled || !cfg.auto_update.enabled) {
+    out.push_back(scard("Auto-update checks disabled",
+                        "enable updates.enabled in wilfred.yml · `wilfred update --check` checks now",
+                        wilfred_version(), "update", "update"));
+    return out;
+  }
   PendingUpdate p = pending_update();
   if (p.available) {
     out.push_back(scard("Update available: " + p.current_version + " → " + p.latest_version,

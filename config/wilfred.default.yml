@@ -400,6 +400,12 @@ app_actions:
 #     big downloads: "size:>100mb in Downloads"
 searches: {}
 
+# Auto-update checks on startup (background GitHub release check). Disable to
+# prevent any network call on boot; `wilfred update` still works manually.
+updates:
+  enabled: true
+  auto_check: true
+
 # Overlay keybindings. "mod" is Command on macOS and Ctrl elsewhere; chords
 # are case-insensitive and joined with '+'. Valid actions: preview, actions,
 # settings, next, prev, page_down, page_up, first, last, complete.
