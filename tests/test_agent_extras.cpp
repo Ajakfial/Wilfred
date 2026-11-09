@@ -1,4 +1,4 @@
-﻿// Tests for the fork additions: saved searches, overlay keybindings, the
+// Tests for the fork additions: saved searches, overlay keybindings, the
 // recent/saved/meta minis, and the hardened ZIP extractor.
 
 #include "test.hpp"
@@ -217,6 +217,11 @@ void test_agent_extras() {
     fs::remove_all(root, ec);
     fs::create_directories(root / "files", ec);
     fs::create_directories(root / "idx", ec);
+    // Capture the reference time before touching mtimes so the one-hour
+    // filter window stays anchored to the files' actual modification times.
+    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
     CHECK(wilfred::write_file_atomic((root / "files" / "old.txt").string(), "old", 3));
     CHECK(wilfred::write_file_atomic((root / "files" / "new.txt").string(), "new", 3));
     // Give the two files distinct mtimes so the ordering is deterministic.
@@ -235,9 +240,6 @@ void test_agent_extras() {
     CHECK(recent.front().path.find("new.txt") != std::string::npos);
 
     // A one-hour window excludes the 48h-old file.
-    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
     auto hour = wilfred::recent_file_results(eng, icfg, "", 10, now - 3600);
     CHECK_EQ(hour.size(), 1u);
     CHECK(hour.front().path.find("new.txt") != std::string::npos);
