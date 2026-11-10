@@ -289,7 +289,7 @@ function Plugins() {
 
 function Comparison() {
   const rows = [
-    { feature: 'Cross-platform (Win/macOS/Linux)', wilfred: 'Yes', alfred: 'macOS only', raycast: 'macOS/Win', flow: 'Windows only', ulauncher: 'Linux only' },
+    { feature: 'Cross-platform (Win/macOS/Linux/BSD/Android/iOS)', wilfred: 'Yes', alfred: 'macOS only', raycast: 'macOS/Win', flow: 'Windows only', ulauncher: 'Linux only' },
     { feature: 'Open source', wilfred: 'Yes (MIT)', alfred: 'No', raycast: 'No', flow: 'Yes', ulauncher: 'Yes' },
     { feature: 'No third-party dependencies', wilfred: 'Yes', alfred: 'N/A', raycast: 'N/A', flow: 'No', ulauncher: 'No' },
     { feature: 'Files + apps + calc in one bar', wilfred: 'Yes', alfred: 'Yes', raycast: 'Yes', flow: 'Yes', ulauncher: 'Yes' },
