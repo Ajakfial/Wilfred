@@ -1,0 +1,8 @@
+{
+  "uuid": "wilfred-layer-shell@wilfred",
+  "name": "Wilfred Layer Shell",
+  "description": "Keeps the Wilfred overlay on top and out of the taskbar on GNOME, which has no native wlr-layer-shell support.",
+  "version": 1,
+  "shell-version": ["45", "46", "47", "48"],
+  "url": "https://github.com/Ajakfial/Wilfred"
+}
