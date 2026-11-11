@@ -601,7 +601,7 @@ std::string normalize_project_path(std::string p) {
   return p;
 }
 
-std::vector<std::string> collect_git_repos() {
+std::vector<std::string> collect_git_repos_impl() {
   std::vector<std::string> out;
   std::set<std::string> seen;
   auto roots = default_project_roots();
@@ -755,6 +755,10 @@ std::vector<std::string> collect_jetbrains_projects() {
 }
 }  // namespace
 
+std::vector<std::string> collect_git_repos() {
+  return collect_git_repos_impl();
+}
+
 std::vector<SearchResult> ProjectsProvider::query(const std::string& text, const Config& cfg,
                                                   std::size_t limit) {
   std::vector<SearchResult> out;
@@ -771,7 +775,7 @@ std::vector<SearchResult> ProjectsProvider::query(const std::string& text, const
   if (cache.empty() || now - cache_at > 120) {
     cache.clear();
     cache_at = now;
-    for (auto& p : collect_git_repos()) cache.push_back({p, "Git repo"});
+    for (auto& p : collect_git_repos_impl()) cache.push_back({p, "Git repo"});
     for (auto& p : collect_vscode_projects()) cache.push_back({p, "VS Code"});
     for (auto& p : collect_jetbrains_projects()) cache.push_back({p, "JetBrains"});
   }

@@ -105,6 +105,18 @@ enum class MiniKind {
   Wikipedia,
   Wiki = Wikipedia,
   Wp = Wikipedia,
+  Ssh,
+  Projects,
+  GitRepos = Projects,
+  Repos = Projects,
+  Repositories = Projects,
+  Md5,
+  Sha1,
+  Sha384,
+  Sha512,
+  Crc32,
+  Crc = Crc32,
+  Hash = Sha256,
 };
 
 struct MiniIntent {

@@ -24,6 +24,7 @@ namespace wilfred {
 std::vector<std::string> default_calendar_roots();
 std::vector<std::string> default_contacts_roots();
 std::vector<std::string> default_notes_roots();
+std::vector<std::string> collect_git_repos();
 
 class CalendarProvider : public SearchProvider {
 public:

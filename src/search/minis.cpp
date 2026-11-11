@@ -3515,8 +3515,6 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Base64, rest.empty());
   else if (key == "sha256")
     set(MiniKind::Sha256, rest.empty());
-  else if ((key == "sha" || key == "hash") && !rest.empty())
-    set(MiniKind::Sha256, false);
   else if (key == "lorem" || key == "ipsum" || key == "loremipsum")
     set(MiniKind::Lorem, true);
   else if (key == "json" || key == "prettyjson" || key == "jsonfmt")
@@ -3642,6 +3640,8 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "wikipedia" || key == "wiki" || key == "wikip" || key == "wp" ||
            key == "wikipedia-search" || key == "wikipedia_search" || key == "wikipedia-search")
     set(MiniKind::Wikipedia, false);
+  else if (key == "ssh" || key == "sshs")
+    set(MiniKind::Ssh, false);
   else if (key == "dupes" || key == "dups" || key == "duplicates" || key == "duplicate" ||
            key == "dedup" || key == "dedupe")
     set(MiniKind::Dupes, false);
@@ -4726,6 +4726,71 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
     if (convert_devutil("sha256 " + payload, m) && m.ok)
       out.push_back(card(m.display, "SHA-256 · enter copies", m.display, "sha256", 10000,
                          ResultAction::Convert));
+    return out;
+  }
+
+  auto hash_card = [&](const char* name, const char* key, MiniKind /*k*/) {
+    auto payload = intent.remainder.empty() ? clipboard : intent.remainder;
+    if (payload.empty()) {
+      out.push_back(card(name, std::string("Type ") + key + " <text>, or copy text first", "", key, 8000,
+                        ResultAction::None));
+      return;
+    }
+    MathResult m;
+    if (convert_devutil(std::string(key) + " " + payload, m) && m.ok)
+      out.push_back(card(m.display, std::string(name) + " · enter copies", m.display, key, 10000,
+                        ResultAction::Convert));
+  };
+  if (intent.kind == MiniKind::Md5) { hash_card("MD5", "md5", MiniKind::Md5); return out; }
+  if (intent.kind == MiniKind::Sha1) { hash_card("SHA-1", "sha1", MiniKind::Sha1); return out; }
+  if (intent.kind == MiniKind::Sha384) { hash_card("SHA-384", "sha384", MiniKind::Sha384); return out; }
+  if (intent.kind == MiniKind::Sha512) { hash_card("SHA-512", "sha512", MiniKind::Sha512); return out; }
+  if (intent.kind == MiniKind::Crc32) { hash_card("CRC-32", "crc32", MiniKind::Crc32); return out; }
+
+  if (intent.kind == MiniKind::Ssh) {
+    auto host = trim_sv(intent.remainder);
+    if (host.empty()) {
+      out.push_back(card("SSH", "Type ssh <host>", "", "ssh", 8000, ResultAction::None));
+      return out;
+    }
+    // Take first token as host.
+    auto sp = host.find(' ');
+    if (sp != std::string::npos) host = host.substr(0, sp);
+    std::string cmd = "ssh " + host;
+    out.push_back(card(cmd, "SSH · enter copies command", cmd, "ssh", 10000, ResultAction::Copy));
+    return out;
+  }
+
+  if (intent.kind == MiniKind::Projects) {
+    auto needle = to_lower_utf8(trim_sv(intent.remainder));
+    auto repos = collect_git_repos();
+    int idx = 0;
+    for (auto& p : repos) {
+      if ((int)out.size() >= 40) break;
+      std::string title = p;
+      auto pos = title.find_last_of("/\\");
+      if (pos != std::string::npos) title = title.substr(pos + 1);
+      if (title.empty()) title = p;
+      if (!needle.empty()) {
+        auto hay = to_lower_utf8(title + " " + p);
+        if (hay.find(needle) == std::string::npos) continue;
+      }
+      SearchResult r;
+      r.title = title;
+      r.subtitle = p + " · Git repo · enter opens";
+      r.path = p;
+      r.payload = p;
+      r.action = ResultAction::Open;
+      r.kind_label = "git";
+      r.category = "project";
+      r.score = 9000 - idx;
+      out.push_back(std::move(r));
+      ++idx;
+    }
+    if (out.empty()) {
+      out.push_back(card(needle.empty() ? "No git repositories found" : "No matching repository",
+                        "Scanned ~/code, ~/dev, ~/projects, ...", "", "git", 8000, ResultAction::None));
+    }
     return out;
   }
 
