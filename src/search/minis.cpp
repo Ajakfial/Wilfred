@@ -3642,6 +3642,35 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Wikipedia, false);
   else if (key == "ssh" || key == "sshs")
     set(MiniKind::Ssh, false);
+  else if (key == "repos" || key == "repo" || key == "repositories" || key == "repository" ||
+           key == "projects" || key == "project" || key == "git" || key == "gitrepos" ||
+           key == "git-repos" || key == "git_repos" || key == "workspaces")
+    set(MiniKind::Projects, false);
+  else if (key == "md5")
+    set(MiniKind::Md5, rest.empty());
+  else if (key == "sha1" || key == "sha-1")
+    set(MiniKind::Sha1, rest.empty());
+  else if (key == "sha384" || key == "sha-384")
+    set(MiniKind::Sha384, rest.empty());
+  else if (key == "sha512" || key == "sha-512")
+    set(MiniKind::Sha512, rest.empty());
+  else if (key == "crc32" || key == "crc" || key == "cksum")
+    set(MiniKind::Crc32, rest.empty());
+  else if (key == "sha256")
+    set(MiniKind::Sha256, rest.empty());
+  else if ((key == "sha" || key == "hash") && !rest.empty()) {
+    auto rl = to_lower_utf8(rest);
+    auto sp = rl.find(' ');
+    std::string algo = sp == std::string::npos ? rl : rl.substr(0, sp);
+    std::string payload = sp == std::string::npos ? std::string() : trim_sv(rest.substr(sp + 1));
+    if (algo == "md5") { it.kind = MiniKind::Md5; it.remainder = payload; it.exact = false; }
+    else if (algo == "sha1" || algo == "sha-1") { it.kind = MiniKind::Sha1; it.remainder = payload; it.exact = false; }
+    else if (algo == "sha256" || algo == "sha-256") { it.kind = MiniKind::Sha256; it.remainder = payload; it.exact = false; }
+    else if (algo == "sha384" || algo == "sha-384") { it.kind = MiniKind::Sha384; it.remainder = payload; it.exact = false; }
+    else if (algo == "sha512" || algo == "sha-512") { it.kind = MiniKind::Sha512; it.remainder = payload; it.exact = false; }
+    else if (algo == "crc32" || algo == "crc") { it.kind = MiniKind::Crc32; it.remainder = payload; it.exact = false; }
+    else { set(MiniKind::Sha256, false); }
+  }
   else if (key == "dupes" || key == "dups" || key == "duplicates" || key == "duplicate" ||
            key == "dedup" || key == "dedupe")
     set(MiniKind::Dupes, false);
