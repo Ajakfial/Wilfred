@@ -478,6 +478,8 @@ bool load_config_text(const std::string& text, Config& out, ConfigError& err) {
     c.search.context_aware = search->boolean("context_aware", true);
     c.search.clipboard = search->boolean("clipboard", true);
     c.search.minis = search->boolean("minis", true);
+    c.search.agenda = search->boolean("agenda", true);
+    c.search.today = search->boolean("today", true);
     c.search.macros = search->boolean("macros", true);
     c.search.snippets = search->boolean("snippets", true);
     c.search.plugins = search->boolean("plugins", true);

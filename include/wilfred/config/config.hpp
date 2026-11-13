@@ -50,6 +50,8 @@ struct Config {
     bool context_aware{true};
     bool clipboard{true};
     bool minis{true};
+    bool agenda{true};
+    bool today{true};
     bool macros{true};
     bool snippets{true};
     bool plugins{true};

@@ -3346,6 +3346,282 @@ static std::vector<SearchResult> rot13_results(const std::string& remainder,
   return out;
 }
 
+// --- Agenda / today ---------------------------------------------------------
+
+static std::string day_key(std::int64_t secs) {
+  std::time_t t = static_cast<std::time_t>(secs);
+  std::tm tm{};
+#ifdef _WIN32
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  char buf[16]{};
+  std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+  return std::string(buf);
+}
+
+static std::vector<SearchResult> agenda_results(const std::string& remainder, const Config& cfg) {
+  std::vector<SearchResult> out;
+  (void)cfg;
+  auto now = unix_seconds();
+  char datebuf[64]{};
+  std::time_t t = static_cast<std::time_t>(now);
+  std::tm tm{};
+#ifdef _WIN32
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  std::strftime(datebuf, sizeof(datebuf), "%A, %B %d, %Y", &tm);
+  out.push_back(card(std::string(datebuf), "Today · agenda · enter copies", std::string(datebuf),
+                     "today", 10000));
+
+  auto today = day_key(now);
+  auto& store = ReminderStore::instance();
+  int n = 0;
+  for (auto& e : store.list()) {
+    if (day_key(e.due_ms / 1000) != today) continue;
+    std::string title = e.notified ? "Missed · " + e.label : "#" + std::to_string(e.id) + " · " + e.label;
+    std::string sub = e.notified ? "Rang " + format_reminder_when(e.due_ms)
+                                 : format_reminder_eta(e.due_ms, unix_millis()) + " · " +
+                                       format_reminder_when(e.due_ms);
+    out.push_back(card(title, sub, e.label, "today", 9900 - n));
+    if (++n >= 12) break;
+  }
+  if (n == 0) {
+    out.push_back(card("No reminders today", "Type remind 30m <text> to add one", "",
+                       "today", 9800, ResultAction::None));
+  }
+  auto rest = trim_sv(remainder);
+  if (!rest.empty()) {
+    out.push_back(card(rest, "Agenda note · enter copies", rest, "today", 9700));
+  }
+  return out;
+}
+
+// --- Sort text utility ------------------------------------------------------
+
+static std::vector<std::string> split_lines(const std::string& text) {
+  std::vector<std::string> out;
+  std::string cur;
+  for (char c : text) {
+    if (c == '\n') {
+      out.push_back(cur);
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  out.push_back(cur);
+  return out;
+}
+
+static std::vector<SearchResult> sort_results(const std::string& remainder,
+                                              const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  bool from_clipboard = trim_sv(remainder).empty();
+  std::string text = from_clipboard ? clipboard : remainder;
+  if (text.empty()) {
+    out.push_back(card("Sort", "Type sort <text>, or copy text first", "", "sort", 8000,
+                        ResultAction::None));
+    return out;
+  }
+  if (text.find('\n') != std::string::npos) {
+    auto lines = split_lines(text);
+    std::sort(lines.begin(), lines.end());
+    std::string payload;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+      if (i) payload += "\n";
+      payload += lines[i];
+    }
+    out.push_back(card(payload.empty() ? text : payload,
+                       from_clipboard ? "Sort lines · from clipboard · enter copies"
+                                      : "Sort lines · enter copies",
+                       payload, "sort", 10000));
+    return out;
+  }
+  std::istringstream iss(text);
+  std::vector<std::string> toks;
+  std::string w;
+  while (iss >> w) toks.push_back(w);
+  std::sort(toks.begin(), toks.end());
+  std::string payload;
+  for (std::size_t i = 0; i < toks.size(); ++i) {
+    if (i) payload += " ";
+    payload += toks[i];
+  }
+  if (payload.empty()) payload = text;
+  out.push_back(card(payload,
+                     from_clipboard ? "Sort words · from clipboard · enter copies"
+                                    : "Sort words · enter copies",
+                     payload, "sort", 10000));
+  return out;
+}
+
+// --- Dedupe text utility ----------------------------------------------------
+
+static std::vector<SearchResult> dedupe_results(const std::string& remainder,
+                                                const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  bool from_clipboard = trim_sv(remainder).empty();
+  std::string text = from_clipboard ? clipboard : remainder;
+  if (text.empty()) {
+    out.push_back(card("Dedupe", "Type dedupe <text>, or copy text first", "", "dedupe", 8000,
+                        ResultAction::None));
+    return out;
+  }
+  if (text.find('\n') != std::string::npos) {
+    auto lines = split_lines(text);
+    std::vector<std::string> seen;
+    std::string payload;
+    bool first = true;
+    for (auto& ln : lines) {
+      if (std::find(seen.begin(), seen.end(), ln) != seen.end()) continue;
+      seen.push_back(ln);
+      if (!first) payload += "\n";
+      first = false;
+      payload += ln;
+    }
+    if (payload.empty()) payload = text;
+    out.push_back(card(payload,
+                       from_clipboard ? "Dedupe lines · from clipboard · enter copies"
+                                      : "Dedupe lines · enter copies",
+                       payload, "dedupe", 10000));
+    return out;
+  }
+  std::istringstream iss(text);
+  std::vector<std::string> toks;
+  std::string w;
+  while (iss >> w) toks.push_back(w);
+  std::vector<std::string> seen;
+  std::string payload;
+  bool first = true;
+  for (auto& tk : toks) {
+    if (std::find(seen.begin(), seen.end(), tk) != seen.end()) continue;
+    seen.push_back(tk);
+    if (!first) payload += " ";
+    first = false;
+    payload += tk;
+  }
+  if (payload.empty()) payload = text;
+  out.push_back(card(payload,
+                     from_clipboard ? "Dedupe words · from clipboard · enter copies"
+                                    : "Dedupe words · enter copies",
+                     payload, "dedupe", 10000));
+  return out;
+}
+
+// --- Slugify text utility ---------------------------------------------------
+
+static std::string slugify_text(const std::string& text) {
+  std::string out;
+  bool dash = false;
+  for (unsigned char c : text) {
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+      out.push_back(static_cast<char>(c));
+      dash = false;
+    } else if (c >= 'A' && c <= 'Z') {
+      out.push_back(static_cast<char>(c - 'A' + 'a'));
+      dash = false;
+    } else {
+      if (!dash && !out.empty()) {
+        out.push_back('-');
+        dash = true;
+      }
+    }
+  }
+  while (!out.empty() && out.back() == '-') out.pop_back();
+  if (out.empty()) out = "slug";
+  return out;
+}
+
+static std::vector<SearchResult> slugify_results(const std::string& remainder,
+                                                 const std::string& clipboard) {
+  std::vector<SearchResult> out;
+  bool from_clipboard = trim_sv(remainder).empty();
+  std::string text = from_clipboard ? clipboard : remainder;
+  if (text.empty()) {
+    out.push_back(card("Slugify", "Type slugify <text>, or copy text first", "", "slugify", 8000,
+                        ResultAction::None));
+    return out;
+  }
+  auto transformed = slugify_text(text);
+  out.push_back(card(transformed,
+                     from_clipboard ? "Slugify · from clipboard · enter copies"
+                                    : "Slugify · enter copies",
+                     transformed, "slugify", 10000));
+  return out;
+}
+
+// --- Timestamp diff ---------------------------------------------------------
+
+static bool parse_ts_value(const std::string& s, std::int64_t& secs) {
+  if (parse_epoch_number(s, secs)) {
+    if (std::llabs(secs) >= 100000000000ll) secs /= 1000;
+    return true;
+  }
+  return parse_epoch_date(s, secs);
+}
+
+static std::string human_duration(std::int64_t seconds) {
+  if (seconds < 0) seconds = -seconds;
+  std::int64_t d = seconds / 86400;
+  std::int64_t h = (seconds % 86400) / 3600;
+  std::int64_t m = (seconds % 3600) / 60;
+  std::int64_t s = seconds % 60;
+  std::ostringstream os;
+  if (d) os << d << "d ";
+  if (h || d) os << h << "h ";
+  if (m || h || d) os << m << "m ";
+  os << s << "s";
+  return trim_sv(os.str());
+}
+
+static std::vector<SearchResult> timestamp_diff_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  auto rest = trim_sv(remainder);
+  if (rest.empty()) {
+    out.push_back(card("Timestamp diff", "Type timediff <a> <b> (numbers, dates, or 'a to b')",
+                       "", "timediff", 8000, ResultAction::None));
+    return out;
+  }
+  std::string a, b;
+  auto pos = rest.find(" to ");
+  if (pos != std::string::npos) {
+    a = trim_sv(rest.substr(0, pos));
+    b = trim_sv(rest.substr(pos + 4));
+  } else {
+    pos = rest.find(" - ");
+    if (pos != std::string::npos) {
+      a = trim_sv(rest.substr(0, pos));
+      b = trim_sv(rest.substr(pos + 3));
+    } else {
+      auto sp = rest.find(' ');
+      if (sp == std::string::npos) {
+        out.push_back(card("Timestamp diff", "Need two values · timediff 1700000000 1700086400",
+                           "", "timediff", 8000, ResultAction::None));
+        return out;
+      }
+      a = trim_sv(rest.substr(0, sp));
+      b = trim_sv(rest.substr(sp + 1));
+    }
+  }
+  std::int64_t sa = 0, sb = 0;
+  if (!parse_ts_value(a, sa) || !parse_ts_value(b, sb)) {
+    out.push_back(card("Can't parse those timestamps",
+                       "Try timediff 1700000000 1700086400 · timediff 2024-01-01 2024-01-02",
+                       "", "timediff", 8000, ResultAction::None));
+    return out;
+  }
+  auto diff = sb - sa;
+  auto title = human_duration(diff) + " difference";
+  auto payload = std::to_string(diff) + " seconds";
+  out.push_back(card(title, payload + " · enter copies", payload, "timediff", 10000));
+  out.push_back(card(payload, "Absolute seconds · enter copies", payload, "timediff", 9900));
+  return out;
+}
+
 }  // namespace
 
 void set_mini_network_enabled(bool enabled) {
@@ -3637,6 +3913,22 @@ MiniIntent parse_mini_intent(std::string_view query) {
     set(MiniKind::Words, rest.empty());
   else if (key == "rot13" || key == "rot-13")
     set(MiniKind::Rot13, rest.empty());
+  else if (key == "agenda" || key == "today" || key == "schedule" || key == "calendar" ||
+           key == "dayplan" || key == "daily")
+    set(MiniKind::Agenda, rest.empty());
+  else if (key == "sort" || key == "sortlines" || key == "sort-lines" || key == "sorttext" ||
+           key == "sort-text" || key == "sorted" || key == "sortwords" || key == "sort-words")
+    set(MiniKind::Sort, rest.empty());
+  else if (key == "dedupe" || key == "dedup" || key == "unique" || key == "uniq" ||
+           key == "distinct" || key == "deduplicate" || key == "deduplines")
+    set(MiniKind::Dedupe, rest.empty());
+  else if (key == "slugify" || key == "slug" || key == "slugify-text" || key == "slug-text" ||
+           key == "slugifytext")
+    set(MiniKind::Slugify, rest.empty());
+  else if (key == "timediff" || key == "time-diff" || key == "timestampdiff" ||
+           key == "timestamp-diff" || key == "datediff" || key == "date-diff" ||
+           key == "timedifference" || key == "time-difference" || key == "datedifference")
+    set(MiniKind::TimestampDiff, rest.empty());
   else if (key == "wikipedia" || key == "wiki" || key == "wikip" || key == "wp" ||
            key == "wikipedia-search" || key == "wikipedia_search" || key == "wikipedia-search")
     set(MiniKind::Wikipedia, false);
@@ -3836,6 +4128,14 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
   if (intent.kind == MiniKind::Chmod) return chmod_results(intent.remainder);
   if (intent.kind == MiniKind::Words) return words_results(intent.remainder, clipboard);
   if (intent.kind == MiniKind::Rot13) return rot13_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::Agenda) {
+    if (!cfg.search.agenda || !cfg.search.today) return out;
+    return agenda_results(intent.remainder, cfg);
+  }
+  if (intent.kind == MiniKind::Sort) return sort_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::Dedupe) return dedupe_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::Slugify) return slugify_results(intent.remainder, clipboard);
+  if (intent.kind == MiniKind::TimestampDiff) return timestamp_diff_results(intent.remainder);
 
   if (intent.kind == MiniKind::Speedtest) {
     auto rest = to_lower_utf8(intent.remainder);

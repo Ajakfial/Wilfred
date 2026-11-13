@@ -236,6 +236,11 @@ synthetic result card instead of searching the index
 | `chmod <mode>` | `perms`, `permissions` | Explain octal or symbolic Unix permissions (`chmod 755`, `chmod rwxr-xr-x`; enter copies) |
 | `words <text>` | `wc`, `wordcount`, `word-count` | Word, character, and line counts; uses the clipboard when no text is given |
 | `rot13 <text>` | `rot-13` | ROT13 text transform; uses the clipboard when no text is given |
+| `agenda` | `today`, `schedule` | Today's agenda: date plus reminders due today (optional: `search.agenda`) |
+| `sort <text>` | `sortlines` | Sort lines or words; uses the clipboard when no text is given |
+| `dedupe <text>` | `dedup`, `unique` | Remove duplicate lines or words; uses the clipboard when no text is given |
+| `slugify <text>` | `slug` | Convert text to a URL-friendly slug; uses the clipboard when no text is given |
+| `timediff <a> <b>` | `timestampdiff`, `datediff` | Difference between two timestamps or dates |
 | `wikipedia <query>` | `wiki`, `w`, `wp` | Wikipedia article search via the official API (enter opens the article) |
 
 `clips` also filters by type: `clips url`, `clips email`, `clips path`,

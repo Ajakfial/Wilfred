@@ -16,6 +16,8 @@ search:
   context_aware: true
   clipboard: true
   minis: true
+  agenda: true
+  today: true
   macros: true
   snippets: true
   plugins: true
