@@ -3382,7 +3382,8 @@ static std::vector<SearchResult> agenda_results(const std::string& remainder, co
   int n = 0;
   for (auto& e : store.list()) {
     if (day_key(e.due_ms / 1000) != today) continue;
-    std::string title = e.notified ? "Missed · " + e.label : "#" + std::to_string(e.id) + " · " + e.label;
+    std::string title =
+        e.notified ? "Missed · " + e.label : "#" + std::to_string(e.id) + " · " + e.label;
     std::string sub = e.notified ? "Rang " + format_reminder_when(e.due_ms)
                                  : format_reminder_eta(e.due_ms, unix_millis()) + " · " +
                                        format_reminder_when(e.due_ms);
@@ -3390,8 +3391,8 @@ static std::vector<SearchResult> agenda_results(const std::string& remainder, co
     if (++n >= 12) break;
   }
   if (n == 0) {
-    out.push_back(card("No reminders today", "Type remind 30m <text> to add one", "",
-                       "today", 9800, ResultAction::None));
+    out.push_back(card("No reminders today", "Type remind 30m <text> to add one", "", "today", 9800,
+                       ResultAction::None));
   }
   auto rest = trim_sv(remainder);
   if (!rest.empty()) {
@@ -3423,8 +3424,8 @@ static std::vector<SearchResult> sort_results(const std::string& remainder,
   bool from_clipboard = trim_sv(remainder).empty();
   std::string text = from_clipboard ? clipboard : remainder;
   if (text.empty()) {
-    out.push_back(card("Sort", "Type sort <text>, or copy text first", "", "sort", 8000,
-                        ResultAction::None));
+    out.push_back(
+        card("Sort", "Type sort <text>, or copy text first", "", "sort", 8000, ResultAction::None));
     return out;
   }
   if (text.find('\n') != std::string::npos) {
@@ -3435,16 +3436,17 @@ static std::vector<SearchResult> sort_results(const std::string& remainder,
       if (i) payload += "\n";
       payload += lines[i];
     }
-    out.push_back(card(payload.empty() ? text : payload,
-                       from_clipboard ? "Sort lines · from clipboard · enter copies"
-                                      : "Sort lines · enter copies",
-                       payload, "sort", 10000));
+    out.push_back(card(
+        payload.empty() ? text : payload,
+        from_clipboard ? "Sort lines · from clipboard · enter copies" : "Sort lines · enter copies",
+        payload, "sort", 10000));
     return out;
   }
   std::istringstream iss(text);
   std::vector<std::string> toks;
   std::string w;
-  while (iss >> w) toks.push_back(w);
+  while (iss >> w)
+    toks.push_back(w);
   std::sort(toks.begin(), toks.end());
   std::string payload;
   for (std::size_t i = 0; i < toks.size(); ++i) {
@@ -3452,10 +3454,10 @@ static std::vector<SearchResult> sort_results(const std::string& remainder,
     payload += toks[i];
   }
   if (payload.empty()) payload = text;
-  out.push_back(card(payload,
-                     from_clipboard ? "Sort words · from clipboard · enter copies"
-                                    : "Sort words · enter copies",
-                     payload, "sort", 10000));
+  out.push_back(card(
+      payload,
+      from_clipboard ? "Sort words · from clipboard · enter copies" : "Sort words · enter copies",
+      payload, "sort", 10000));
   return out;
 }
 
@@ -3468,7 +3470,7 @@ static std::vector<SearchResult> dedupe_results(const std::string& remainder,
   std::string text = from_clipboard ? clipboard : remainder;
   if (text.empty()) {
     out.push_back(card("Dedupe", "Type dedupe <text>, or copy text first", "", "dedupe", 8000,
-                        ResultAction::None));
+                       ResultAction::None));
     return out;
   }
   if (text.find('\n') != std::string::npos) {
@@ -3493,7 +3495,8 @@ static std::vector<SearchResult> dedupe_results(const std::string& remainder,
   std::istringstream iss(text);
   std::vector<std::string> toks;
   std::string w;
-  while (iss >> w) toks.push_back(w);
+  while (iss >> w)
+    toks.push_back(w);
   std::vector<std::string> seen;
   std::string payload;
   bool first = true;
@@ -3531,7 +3534,8 @@ static std::string slugify_text(const std::string& text) {
       }
     }
   }
-  while (!out.empty() && out.back() == '-') out.pop_back();
+  while (!out.empty() && out.back() == '-')
+    out.pop_back();
   if (out.empty()) out = "slug";
   return out;
 }
@@ -3543,14 +3547,14 @@ static std::vector<SearchResult> slugify_results(const std::string& remainder,
   std::string text = from_clipboard ? clipboard : remainder;
   if (text.empty()) {
     out.push_back(card("Slugify", "Type slugify <text>, or copy text first", "", "slugify", 8000,
-                        ResultAction::None));
+                       ResultAction::None));
     return out;
   }
   auto transformed = slugify_text(text);
-  out.push_back(card(transformed,
-                     from_clipboard ? "Slugify · from clipboard · enter copies"
-                                    : "Slugify · enter copies",
-                     transformed, "slugify", 10000));
+  out.push_back(
+      card(transformed,
+           from_clipboard ? "Slugify · from clipboard · enter copies" : "Slugify · enter copies",
+           transformed, "slugify", 10000));
   return out;
 }
 
@@ -3582,8 +3586,8 @@ static std::vector<SearchResult> timestamp_diff_results(const std::string& remai
   std::vector<SearchResult> out;
   auto rest = trim_sv(remainder);
   if (rest.empty()) {
-    out.push_back(card("Timestamp diff", "Type timediff <a> <b> (numbers, dates, or 'a to b')",
-                       "", "timediff", 8000, ResultAction::None));
+    out.push_back(card("Timestamp diff", "Type timediff <a> <b> (numbers, dates, or 'a to b')", "",
+                       "timediff", 8000, ResultAction::None));
     return out;
   }
   std::string a, b;
@@ -3599,8 +3603,8 @@ static std::vector<SearchResult> timestamp_diff_results(const std::string& remai
     } else {
       auto sp = rest.find(' ');
       if (sp == std::string::npos) {
-        out.push_back(card("Timestamp diff", "Need two values · timediff 1700000000 1700086400",
-                           "", "timediff", 8000, ResultAction::None));
+        out.push_back(card("Timestamp diff", "Need two values · timediff 1700000000 1700086400", "",
+                           "timediff", 8000, ResultAction::None));
         return out;
       }
       a = trim_sv(rest.substr(0, sp));
@@ -3610,8 +3614,8 @@ static std::vector<SearchResult> timestamp_diff_results(const std::string& remai
   std::int64_t sa = 0, sb = 0;
   if (!parse_ts_value(a, sa) || !parse_ts_value(b, sb)) {
     out.push_back(card("Can't parse those timestamps",
-                       "Try timediff 1700000000 1700086400 · timediff 2024-01-01 2024-01-02",
-                       "", "timediff", 8000, ResultAction::None));
+                       "Try timediff 1700000000 1700086400 · timediff 2024-01-01 2024-01-02", "",
+                       "timediff", 8000, ResultAction::None));
     return out;
   }
   auto diff = sb - sa;
