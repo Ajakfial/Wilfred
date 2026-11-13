@@ -116,7 +116,6 @@ enum class MiniKind {
   Sha512,
   Crc32,
   Crc = Crc32,
-  Hash = Sha256,
   Agenda,
   Today = Agenda,
   Sort,
@@ -136,6 +135,9 @@ enum class MiniKind {
   Timediff = TimestampDiff,
   TimeDifference = TimestampDiff,
   DateDifference = TimestampDiff,
+  // Aliases to earlier enumerators must not sit mid-enum: the next implicit
+  // enumerator would continue from the alias's value and collide.
+  Hash = Sha256,
 };
 
 struct MiniIntent {

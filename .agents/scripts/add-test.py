@@ -24,7 +24,7 @@ void {name}() {{
     {act}
 
     // Assert
-    {assert}
+    {assert_}
 }}
 '''
 
@@ -50,7 +50,7 @@ def main():
         header=header,
         arrange=args.arrange,
         act=args.act,
-        assert=args.assert_
+        assert_=args.assert_
     )
 
     output.parent.mkdir(parents=True, exist_ok=True)
