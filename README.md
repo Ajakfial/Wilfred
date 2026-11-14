@@ -32,6 +32,10 @@
 
 **SourceForge:** https://sourceforge.net/projects/wilfred/
 
+**GitLab mirror:** https://gitlab.com/gakifdezel/WilfredLauncher
+
+**Codeberg mirror:** https://codeberg.org/fzdtestacc/Wilfred
+
 **Languages:**
 [Deutsch](docs/i18n/README_de.md) · [Español](docs/i18n/README_es.md) ·
 [Français](docs/i18n/README_fr.md) · [Italiano](docs/i18n/README_it.md) ·
