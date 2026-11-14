@@ -1,0 +1,46 @@
+
+name: GitLab Mirror
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    name: Sync GitHub to GitLab
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Mirror repository
+      env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GL_USERNAME: ${{ secrets.GITLABUSER }}
+          GL_TOKEN: ${{ secrets.WRITE_GITLAB_REPOSITORY }}
+
+      run: |
+        set -e
+
+        echo "Cloning GitHub repository..."
+
+        git clone --mirror \
+        "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+        mirror.git
+
+        cd mirror.git
+
+        echo "Fetching latest GitHub changes..."
+
+        git fetch -p origin
+
+        echo "Pushing mirror to GitLab..."
+
+        AUTH=$(printf '%s:%s' "$GL_USERNAME" "$GL_TOKEN" | base64 -w0)
+
+        git -c http.extraheader="AUTHORIZATION: Basic $AUTH" \
+        push --mirror \
+        "https://gitlab.com/gakifdezel/WilfredLauncher.git"
+
+        echo "GitLab synchronization completed successfully!"
