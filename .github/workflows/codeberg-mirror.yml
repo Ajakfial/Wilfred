@@ -1,5 +1,5 @@
 
-name: Repository Mirroring
+name: Codeberg Mirror
 
 on:
   push:
@@ -10,17 +10,13 @@ permissions:
 
 jobs:
   mirror:
-    name: Sync GitHub to GitLab and Codeberg
+    name: Sync GitHub to Codeberg
     runs-on: ubuntu-latest
 
     steps:
-    - name: Mirror repositories
+    - name: Mirror repository
       env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-          GL_USERNAME: ${{ secrets.GITLABUSER }}
-          GL_TOKEN: ${{ secrets.WRITE_GITLAB_REPOSITORY }}
-
           CB_USERNAME: fzdtestacc
           CB_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
 
@@ -36,15 +32,8 @@ jobs:
         cd mirror.git
 
         echo "Fetching latest changes..."
+
         git fetch -p origin
-
-        echo "Pushing to GitLab..."
-
-        GL_AUTH=$(printf '%s:%s' "$GL_USERNAME" "$GL_TOKEN" | base64 -w0)
-
-        git -c http.extraheader="AUTHORIZATION: Basic $GL_AUTH" \
-        push --mirror \
-        "https://gitlab.com/gakifdezel/WilfredLauncher.git"
 
         echo "Pushing to Codeberg..."
 
@@ -54,4 +43,4 @@ jobs:
         push --mirror \
         "https://codeberg.org/fzdtestacc/Wilfred.git"
 
-        echo "All mirrors synchronized successfully!"
+        echo "Codeberg synchronization completed successfully!"
