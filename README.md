@@ -30,6 +30,8 @@
 
 **Website:** https://ajakfial.github.io/Wilfred/
 
+**SourceForge:** https://sourceforge.net/projects/wilfred/
+
 **Languages:**
 [Deutsch](docs/i18n/README_de.md) · [Español](docs/i18n/README_es.md) ·
 [Français](docs/i18n/README_fr.md) · [Italiano](docs/i18n/README_it.md) ·
