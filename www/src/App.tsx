@@ -1,7 +1,53 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { FEATURES, IMPORT_COMMANDS, IMPORT_SOURCES, INSTALL_OPTIONS, QUERY_EXAMPLES, RELEASES_URL, REPO_URL } from './data';
 
 export const PLUGIN_REGISTRY_URL = 'https://ajakfial.github.io/Wilfred/plugins/registry.json';
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+}
+
+function detectOS(): string {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (/Android|iPhone|iPad/i.test(ua)) return 'desktop';
+  if (/Mac/i.test(ua)) return 'macOS';
+  if (/Linux|X11/i.test(ua)) return 'Linux';
+  return 'Windows';
+}
+
+function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+  const [done, setDone] = useState(false);
+  const onClick = async () => {
+    await copyText(text);
+    setDone(true);
+    window.setTimeout(() => setDone(false), 1600);
+  };
+  return (
+    <button type="button" className="copy" onClick={() => void onClick()} aria-live="polite">
+      {done ? 'Copied' : label}
+    </button>
+  );
+}
+
+function CodeBlock({ code }: { code: string }) {
+  return (
+    <div className="code">
+      <pre>
+        <code>{code}</code>
+      </pre>
+      <CopyButton text={code} />
+    </div>
+  );
+}
 
 function Logo() {
   return (
@@ -17,31 +63,45 @@ function Logo() {
 }
 
 function Hero() {
+  const os = detectOS();
+  const keys = os === 'macOS' ? ['⌘', '⌥', 'W'] : ['Ctrl', 'Alt', 'W'];
   return (
     <section className="hero">
-      <p className="eyebrow">Fast &middot; Deep &middot; Modular &middot; Low-resource &middot; Cross-platform</p>
-      <h1>
-        One search bar for
-        <br />
-        everything on your machine.
-      </h1>
-      <p className="lede">
-        Wilfred is a fast, lightweight desktop search engine and application launcher for
-        Windows, macOS, and Linux -- files, apps, calculations, timers, notes, clipboard,
-        media, and more.
-      </p>
-      <div className="cta-row">
-        <a className="btn primary" href={RELEASES_URL}>
-          Download latest
-        </a>
-        <a className="btn" href={REPO_URL}>
-          View on GitHub
-        </a>
+      <div className="hero-copy">
+        <p className="badge">Free and open source under the MIT license</p>
+        <h1>One search bar for everything on your machine.</h1>
+        <p className="lede">
+          Wilfred is a fast, lightweight search tool and app launcher for Windows, macOS and
+          Linux. Find files and apps, do quick math, run timers, take notes and search your
+          clipboard without leaving the keyboard.
+        </p>
+        <div className="cta-row">
+          <a className="btn primary lg" href={RELEASES_URL}>
+            Download for {os}
+          </a>
+          <a className="btn lg" href="#install">
+            Other platforms
+          </a>
+        </div>
+        <p className="fine">No account needed. Works offline.</p>
+        <p className="hotkey">
+          Open it from anywhere with{' '}
+          {keys.map((k, i) => (
+            <span key={k}>
+              {i > 0 && ' + '}
+              <kbd>{k}</kbd>
+            </span>
+          ))}
+        </p>
       </div>
-      <p className="hotkey">
-        Summon anywhere with{' '}
-        <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd>
-      </p>
+      <figure className="hero-shot">
+        <img
+          src="screenshots/wilfred-query-help.png"
+          alt="The Wilfred overlay listing mini commands for a help search"
+          width={932}
+          height={545}
+        />
+      </figure>
     </section>
   );
 }
@@ -60,7 +120,7 @@ function Screenshots() {
       <div className="shot-grid">
         {SCREENSHOTS.map((s) => (
           <figure key={s.src} className="shot">
-            <img src={s.src} alt={s.alt} loading="lazy" />
+            <img src={s.src} alt={s.alt} width={932} height={545} loading="lazy" />
             <figcaption>{s.caption}</figcaption>
           </figure>
         ))}
@@ -69,43 +129,117 @@ function Screenshots() {
   );
 }
 
+const KINDS = ['all', ...Array.from(new Set(QUERY_EXAMPLES.map((e) => e.kind)))];
+
 function QueryDemo() {
   const [q, setQ] = useState('');
+  const [kind, setKind] = useState('all');
+  const [sel, setSel] = useState(0);
+  const [copied, setCopied] = useState<string | null>(null);
   const hits = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return QUERY_EXAMPLES.slice(0, 8);
     return QUERY_EXAMPLES.filter(
       (e) =>
-        e.query.toLowerCase().includes(needle) ||
-        e.meaning.toLowerCase().includes(needle) ||
-        e.kind.includes(needle),
+        (kind === 'all' || e.kind === kind) &&
+        (!needle ||
+          e.query.toLowerCase().includes(needle) ||
+          e.meaning.toLowerCase().includes(needle) ||
+          e.kind.includes(needle)),
     ).slice(0, 8);
-  }, [q]);
+  }, [q, kind]);
+  const pick = async (query: string) => {
+    await copyText(query);
+    setCopied(query);
+    window.setTimeout(() => setCopied((c) => (c === query ? null : c)), 1400);
+  };
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSel((v) => Math.min(v + 1, hits.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSel((v) => Math.max(v - 1, 0));
+    } else if (e.key === 'Enter' && hits[sel]) {
+      void pick(hits[sel].query);
+    }
+  };
   return (
     <section id="queries" className="section">
       <h2>Try the query language</h2>
-      <p className="muted">Type below to filter real queries Wilfred understands.</p>
-      <div className="demo-bar">
-        <span className="demo-prompt" aria-hidden="true">
-          ⌕
-        </span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="timer 10m"
-          aria-label="Filter example queries"
-        />
+      <p className="muted">
+        Type to filter real queries Wilfred understands. Use the arrow keys and Enter, or click a
+        row, to copy it.
+      </p>
+      <div className="overlay">
+        <div className="demo-bar">
+          <span className="demo-prompt" aria-hidden="true">
+            ⌕
+          </span>
+          <input
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setSel(0);
+            }}
+            onKeyDown={onKey}
+            placeholder="Try: timer 10m"
+            aria-label="Filter example queries"
+          />
+          {q && (
+            <button
+              type="button"
+              className="clear"
+              onClick={() => {
+                setQ('');
+                setSel(0);
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="filters" role="group" aria-label="Filter by type">
+          {KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className="filter"
+              aria-pressed={kind === k}
+              onClick={() => {
+                setKind(k);
+                setSel(0);
+              }}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+        <ul className="demo-list">
+          {hits.map((h, i) => (
+            <li key={h.query}>
+              <button
+                type="button"
+                className={i === sel ? 'demo-row selected' : 'demo-row'}
+                onClick={() => void pick(h.query)}
+                onMouseEnter={() => setSel(i)}
+              >
+                <code>{h.query}</code>
+                <span className="demo-meaning">{h.meaning}</span>
+                <span className="row-end">
+                  <span className={`chip kind-${h.kind}`}>{h.kind}</span>
+                  <span className="hint">{copied === h.query ? 'Copied' : 'Copy'}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+          {hits.length === 0 && (
+            <li className="demo-row empty">No examples match. Try “timer” or clear the filters.</li>
+          )}
+        </ul>
+        <p className="overlay-foot" aria-live="polite">
+          Showing {hits.length} of {QUERY_EXAMPLES.length} examples
+        </p>
       </div>
-      <ul className="demo-list">
-        {hits.map((h) => (
-          <li key={h.query} className="demo-row">
-            <code>{h.query}</code>
-            <span className="demo-meaning">{h.meaning}</span>
-            <span className={`chip kind-${h.kind}`}>{h.kind}</span>
-          </li>
-        ))}
-        {hits.length === 0 && <li className="demo-row empty">No examples match -- try timer.</li>}
-      </ul>
     </section>
   );
 }
@@ -149,9 +283,7 @@ function Import() {
       </ul>
       <div className="install-panel">
         {IMPORT_COMMANDS.map((c) => (
-          <pre key={c}>
-            <code>{c}</code>
-          </pre>
+          <CodeBlock key={c} code={c} />
         ))}
         <p className="muted">See docs/import.md for per-launcher mapping and merge semantics.</p>
       </div>
@@ -223,15 +355,11 @@ function Plugins() {
         install by id:
       </p>
       <div className="install-panel">
-        <pre>
-          <code>wilfred config-set plugins.registry {PLUGIN_REGISTRY_URL}</code>
-        </pre>
-        <pre>
-          <code>wilfred plugin install dice</code>
-        </pre>
+        <CodeBlock code={`wilfred config-set plugins.registry ${PLUGIN_REGISTRY_URL}`} />
+        <CodeBlock code="wilfred plugin install dice" />
         <p className="muted">
           New installs need trust approval (<code>wilfred plugin approve &lt;id&gt;</code>).
-          Submit yours with a <code>plugins/&lt;id&gt;/</code> pull request -- see the gallery readme.
+          Submit yours with a <code>plugins/&lt;id&gt;/</code> pull request – see the gallery readme.
         </p>
       </div>
       <div className="demo-bar">
@@ -250,7 +378,7 @@ function Plugins() {
       ) : hits.length === 0 ? (
         <p className="muted">
           {entries.length === 0
-            ? 'The gallery index is not published yet -- check back after the next plugins workflow run.'
+            ? 'The gallery index is not published yet – check back after the next plugins workflow run.'
             : 'No plugins match.'}
         </p>
       ) : (
@@ -287,6 +415,14 @@ function Plugins() {
   );
 }
 
+const COMPARE_COLS = [
+  ['wilfred', 'Wilfred'],
+  ['alfred', 'Alfred'],
+  ['raycast', 'Raycast'],
+  ['flow', 'Flow Launcher'],
+  ['ulauncher', 'Ulauncher'],
+] as const;
+
 function Comparison() {
   const rows = [
     { feature: 'Cross-platform (Win/macOS/Linux/BSD/Android/iOS)', wilfred: 'Yes', alfred: 'macOS only', raycast: 'macOS/Win', flow: 'Windows only', ulauncher: 'Linux only' },
@@ -305,27 +441,36 @@ function Comparison() {
       <p className="muted">
         A quick, honest comparison against the launchers Wilfred can import settings from.
       </p>
-      <div className="install-panel" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="table-wrap" role="region" aria-label="Launcher comparison table" tabIndex={0}>
+        <table>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Feature</th>
-              <th style={{ padding: '6px 8px' }}>Wilfred</th>
-              <th style={{ padding: '6px 8px' }}>Alfred</th>
-              <th style={{ padding: '6px 8px' }}>Raycast</th>
-              <th style={{ padding: '6px 8px' }}>Flow Launcher</th>
-              <th style={{ padding: '6px 8px' }}>Ulauncher</th>
+              <th scope="col">Feature</th>
+              {COMPARE_COLS.map(([k, name]) => (
+                <th key={k} scope="col" className={k === 'wilfred' ? 'col-us' : undefined}>
+                  {name}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.feature}>
-                <td style={{ padding: '6px 8px' }}>{r.feature}</td>
-                <td style={{ padding: '6px 8px', fontWeight: 600 }}>{r.wilfred}</td>
-                <td style={{ padding: '6px 8px' }}>{r.alfred}</td>
-                <td style={{ padding: '6px 8px' }}>{r.raycast}</td>
-                <td style={{ padding: '6px 8px' }}>{r.flow}</td>
-                <td style={{ padding: '6px 8px' }}>{r.ulauncher}</td>
+                <th scope="row">{r.feature}</th>
+                {COMPARE_COLS.map(([k]) => {
+                  const v = r[k];
+                  const cls = [k === 'wilfred' ? 'col-us' : '', v === 'No' ? 'no' : ''].join(' ').trim();
+                  return (
+                    <td key={k} className={cls || undefined}>
+                      {v.startsWith('Yes') && (
+                        <span className="tick" aria-hidden="true">
+                          ✓{' '}
+                        </span>
+                      )}
+                      {v}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -336,26 +481,48 @@ function Comparison() {
 }
 
 function Install() {
-  const [tab, setTab] = useState('Windows');
+  const [tab, setTab] = useState(() => {
+    const d = detectOS();
+    return INSTALL_OPTIONS.some((o) => o.os === d) ? d : 'Windows';
+  });
   const active = INSTALL_OPTIONS.find((o) => o.os === tab) ?? INSTALL_OPTIONS[0];
+  const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const n = INSTALL_OPTIONS.length;
+    const next = INSTALL_OPTIONS[(i + (e.key === 'ArrowRight' ? 1 : n - 1)) % n];
+    setTab(next.os);
+    document.getElementById(`tab-${next.os}`)?.focus();
+  };
   return (
     <section id="install" className="section">
       <h2>Install</h2>
+      <p className="muted">Choose your platform, then copy the commands.</p>
       <div className="tabs" role="tablist" aria-label="Platform">
-        {INSTALL_OPTIONS.map((o) => (
+        {INSTALL_OPTIONS.map((o, i) => (
           <button
             key={o.os}
+            id={`tab-${o.os}`}
+            type="button"
             role="tab"
             aria-selected={o.os === tab}
+            aria-controls="install-panel"
+            tabIndex={o.os === tab ? 0 : -1}
             className={o.os === tab ? 'tab active' : 'tab'}
             onClick={() => setTab(o.os)}
+            onKeyDown={(e) => onKey(e, i)}
           >
-            {o.label}{' '}
+            {o.label}
             {o.experimental && <span className="chip experimental">Experimental</span>}
           </button>
         ))}
       </div>
-      <div className="install-panel">
+      <div
+        className="install-panel"
+        id="install-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${active.os}`}
+      >
         {active.experimental && (
           <p className="warning" role="note">
             <strong>Experimental build (as of v46.5.8).</strong> It installs and runs, but
@@ -364,13 +531,13 @@ function Install() {
           </p>
         )}
         {active.commands.map((c) => (
-          <pre key={c}>
-            <code>{c}</code>
-          </pre>
+          <CodeBlock key={c} code={c} />
         ))}
         <p className="muted">{active.note}</p>
         <p>
-          <a href={RELEASES_URL}>Get the latest release →</a>
+          <a className="btn primary" href={RELEASES_URL}>
+            Get the latest release
+          </a>
         </p>
       </div>
     </section>
@@ -396,7 +563,7 @@ function Docs() {
       <div className="grid">
         {links.map((l) => (
           <a key={l.title} className="card link" href={l.href}>
-            <h3>{l.title} →</h3>
+            <h3>{l.title}</h3>
             <p>{l.body}</p>
           </a>
         ))}
@@ -405,26 +572,79 @@ function Docs() {
   );
 }
 
+const NAV = [
+  ['screens', 'Screens'],
+  ['queries', 'Try it'],
+  ['features', 'Features'],
+  ['compare', 'Compare'],
+  ['plugins', 'Plugins'],
+  ['import', 'Import'],
+  ['install', 'Install'],
+  ['docs', 'Docs'],
+] as const;
+const NAV_IDS: readonly string[] = NAV.map(([id]) => id);
+
+function useActiveSection(ids: readonly string[]) {
+  const [active, setActive] = useState('');
+  useEffect(() => {
+    const els = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    const io = new IntersectionObserver(
+      (entries) => {
+        const top = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (top) setActive(top.target.id);
+      },
+      { rootMargin: '-80px 0px -60% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ids]);
+  return active;
+}
+
 export default function App() {
+  const active = useActiveSection(NAV_IDS);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="page">
+    <div className="page" id="top">
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
       <header className="nav">
-        <Logo />
-        <nav>
-          <a href="#screens">Screens</a>
-          <a href="#features">Features</a>
-          <a href="#compare">Compare</a>
-          <a href="#queries">Queries</a>
-          <a href="#plugins">Plugins</a>
-          <a href="#import">Import</a>
-          <a href="#install">Install</a>
-          <a href="#docs">Docs</a>
-          <a className="btn small" href={REPO_URL}>
-            GitHub
+        <div className="nav-in">
+          <a className="brand" href="#top" aria-label="Wilfred home">
+            <Logo />
           </a>
-        </nav>
+          <button
+            type="button"
+            className="btn small menu-btn"
+            aria-expanded={open}
+            aria-controls="site-nav"
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? 'Close' : 'Menu'}
+          </button>
+          <nav id="site-nav" className={open ? 'open' : undefined} aria-label="Sections">
+            {NAV.map(([id, label]) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                aria-current={active === id ? 'true' : undefined}
+                onClick={() => setOpen(false)}
+              >
+                {label}
+              </a>
+            ))}
+            <a className="btn small" href={REPO_URL}>
+              GitHub
+            </a>
+          </nav>
+        </div>
       </header>
-      <main>
+      <main id="main">
         <Hero />
         <Screenshots />
         <QueryDemo />
@@ -436,10 +656,15 @@ export default function App() {
         <Docs />
       </main>
       <footer>
-        <p>
-          Wilfred is MIT-licensed. Publisher: Wilfred Open Contributors.{' '}
-          <a href={REPO_URL}>Contribute on GitHub</a>.
-        </p>
+        <div className="foot-in">
+          <p>Wilfred is MIT-licensed. Publisher: Wilfred Open Contributors.</p>
+          <nav aria-label="Footer">
+            <a href={REPO_URL}>GitHub</a>
+            <a href={RELEASES_URL}>Releases</a>
+            <a href={`${REPO_URL}/blob/main/CONTRIBUTING.md`}>Contribute</a>
+            <a href="#top">Back to top</a>
+          </nav>
+        </div>
       </footer>
     </div>
   );
