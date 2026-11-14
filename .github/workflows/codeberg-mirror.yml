@@ -23,6 +23,9 @@ jobs:
       run: |
         set -e
 
+        # Remove accidental whitespace and newlines
+        CB_TOKEN=$(printf '%s' "$CB_TOKEN" | tr -d '\r\n')
+
         echo "Cloning GitHub repository..."
 
         git clone --mirror \
@@ -32,13 +35,14 @@ jobs:
         cd mirror.git
 
         echo "Fetching latest changes..."
-
         git fetch -p origin
 
         echo "Pushing to Codeberg..."
 
-        git push --mirror \
-        "https://${CB_USERNAME}:${CB_TOKEN}@codeberg.org/fzdtestacc/Wilfred.git"
+        AUTH=$(printf '%s:%s' "$CB_USERNAME" "$CB_TOKEN" | base64 -w0)
+
+        git -c http.extraheader="AUTHORIZATION: Basic $AUTH" \
+        push --mirror \
+        "https://codeberg.org/fzdtestacc/Wilfred.git"
 
         echo "Codeberg synchronization completed successfully!"
-
