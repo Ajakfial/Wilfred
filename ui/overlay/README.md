@@ -1,6 +1,6 @@
 # Overlay UI
 
-React + TypeScript glass command palette (Raycast-grade) shared by Windows
+React + TypeScript command palette (flat terminal theme; the original glass styling is still above it in `style.css`) shared by Windows
 (WebView2), macOS (WKWebView) and Linux (WebKitGTK). The X11 canvas overlay
 is a separate native fallback in `src/ui/x11_overlay.cpp` with a matching
 palette -- no HTML needed there.
@@ -64,3 +64,12 @@ build does not run npm.
 Open `index.html?preview` directly in a browser (no native host): the app
 falls back to the `demo.ts` backend with sample results, including a
 simulated live speedtest, so UI changes can be iterated without Wilfred.
+
+## Theme
+
+`style.css` ends with a "Flat terminal theme" block that overrides the glass
+styling: solid panel (760x560, `--panel-h`), square corners, `>` prompt,
+text-only rows, plain-text shortcut footer and bundled JetBrains Mono
+(`vendor/fonts/jbm-*.woff2`, OFL -- see `JETBRAINSMONO-LICENSE.txt`). Delete
+that block to get the glass look back.  App icons stay visible
+(real icons untouched, category glyphs as flat tinted squares).

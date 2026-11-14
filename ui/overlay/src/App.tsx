@@ -10,6 +10,8 @@ import {
   hotkeyHint,
   isSpeedtestQuery,
   kindLabel,
+  chordLabel,
+  keybindFor,
   kindOf,
   nativeSend,
   platformId,
@@ -1193,31 +1195,18 @@ export function App() {
                 ))}
               </div>
             ) : showEmpty ? (
-              <div className="empty">
-                <span className="empty-icon" aria-hidden="true">
-                  <Icon name={s.query.trim() ? "fileSearch" : "search"} size={22} strokeWidth={1.8} />
-                </span>
-                <strong>
-                  {s.query.trim()
-                    ? uiStr("overlay.empty_title_none", "No results for “{q}”", { q: s.query.trim() })
-                    : uiStr("overlay.empty_title_idle", "Search, calculate, or run a command")}
-                </strong>
-                <span>
-                  {s.query.trim()
-                    ? s.correction
-                      ? uiStr(
-                          "overlay.empty_sub_none_correction",
-                          "Press Tab to use the suggestion above, or start with ? to search the web.",
-                        )
-                      : uiStr(
-                          "overlay.empty_sub_none",
-                          "Check the spelling, or start with ? to search the web.",
-                        )
-                    : uiStr("overlay.empty_sub_idle", "Press {hotkey} anywhere to open Wilfred. Try one of these:", {
-                        hotkey: hotkeyHint(),
-                      })}
-                </span>
-                {!s.query.trim() && (
+              s.query.trim() ? (
+                <div className="empty empty--none">
+                  {uiStr("overlay.empty_plain", "(no matches -- typo-tolerant search active)")}
+                </div>
+              ) : (
+                <div className="empty">
+                  <strong>{uiStr("overlay.empty_title_idle", "Search, calculate, or run a command")}</strong>
+                  <span>
+                    {uiStr("overlay.empty_sub_idle", "Press {hotkey} anywhere to open Wilfred. Try one of these:", {
+                      hotkey: hotkeyHint(),
+                    })}
+                  </span>
                   <div className="chips chips--center">
                     {tips.map((t) => (
                       <button key={t} type="button" className="chip" onMouseDown={(e) => { e.preventDefault(); onTip(t); }}>
@@ -1225,8 +1214,8 @@ export function App() {
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )
             ) : s.firstLaunch ? (
               <div className="welcome" role="dialog" aria-label="Welcome to Wilfred">
                 <div className="welcome-content">
@@ -1347,6 +1336,21 @@ export function App() {
                 {uiStr("overlay.confirm_delete_action", "Move to trash")}
               </button>
             </div>
+          </div>
+        )}
+        {!pendingDelete && !(rows.length > 0 || s.settingsOpen) && (
+          <div className="hints" aria-hidden="true">
+            {[
+              [chordLabel(keybindFor("complete"), modLabel).replace(/ /g, "+"), uiStr("overlay.bar_fix", "Fix")],
+              [chordLabel(keybindFor("actions"), modLabel).replace(/ /g, "+"), uiStr("overlay.bar_actions", "Actions")],
+              ["Ctrl+U", uiStr("overlay.bar_clear", "Clear")],
+              [chordLabel(keybindFor("preview"), modLabel).replace(/ /g, "+"), uiStr("overlay.bar_details", "Details")],
+              ["Esc", uiStr("overlay.bar_back", "Back")],
+            ].map(([k, label]) => (
+              <span key={label}>
+                {k} {label.toLowerCase()}
+              </span>
+            ))}
           </div>
         )}
         {!pendingDelete && (rows.length > 0 || s.settingsOpen) && (
