@@ -84,6 +84,16 @@ android {
         }
     }
 
+    // AGP wires "lint vital" (lintVitalAnalyzeRelease) into assembleRelease and
+    // bundleRelease. It resolves a separate, large lint toolchain (lint-gradle,
+    // groovy, kotlin-reflect, httpclient, ...) at the very end of the build,
+    // and release CI died there on Maven Central HTTP 429 even though every
+    // compile step had already succeeded. Skip it for release builds; run
+    // `./gradlew lint` explicitly when you want lint results.
+    lint {
+        checkReleaseBuilds = false
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
