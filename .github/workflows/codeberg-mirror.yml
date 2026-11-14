@@ -37,10 +37,8 @@ jobs:
 
         echo "Pushing to Codeberg..."
 
-        CB_AUTH=$(printf '%s:%s' "$CB_USERNAME" "$CB_TOKEN" | base64 -w0)
-
-        git -c http.extraheader="AUTHORIZATION: Basic $CB_AUTH" \
-        push --mirror \
-        "https://codeberg.org/fzdtestacc/Wilfred.git"
+        git push --mirror \
+        "https://${CB_USERNAME}:${CB_TOKEN}@codeberg.org/fzdtestacc/Wilfred.git"
 
         echo "Codeberg synchronization completed successfully!"
+
