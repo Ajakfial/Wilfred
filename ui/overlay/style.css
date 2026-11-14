@@ -1603,6 +1603,31 @@ html:not(.fit) .results { max-height: var(--list-h); }
   margin: 2px 0 4px;
 }
 .row--answer.is-sel, .row--speed.is-sel { box-shadow: none; background: var(--sel); }
+
+/* The flat-theme `.row` rule above comes later in the file than `.row--speed`
+   and has the same specificity, so it used to win: the card's 3-up stats grid
+   got squeezed into the 28px icon column and every label/value overlapped.
+   Re-assert the card's single-column layout with a two-class selector. */
+.row.row--speed {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  padding: 8px 12px;
+  align-items: stretch;
+}
+.row--speed .sp-stats { gap: 12px; }
+.row--speed .sp-value b { font-size: 20px; }
+/* Split view: the list column is only ~300px wide. Size the three stats to
+   their content (so "186.0 Mbps 38.0 Mbps" can't run together) and drop the
+   absolutely placed Ctrl+N badge, which would sit on top of the Ping label --
+   the same trade-off the split view already makes for .sub / .kind. */
+.launcher.has-preview .row--speed .sp-stats {
+  grid-template-columns: repeat(3, auto);
+  justify-content: space-between;
+  gap: 8px;
+}
+.launcher.has-preview .row--speed .sp-value b { font-size: 18px; }
+.launcher.has-preview .row--speed .quick--card { display: none; }
 .ans-arrow { border-radius: 0; background: transparent; box-shadow: none; }
 .ans-out { font-weight: 500; letter-spacing: 0; }
 .ans-out[data-size="xl"] { font-size: 30px; letter-spacing: 0; }
