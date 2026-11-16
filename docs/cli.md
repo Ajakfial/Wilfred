@@ -15,6 +15,10 @@ wilfred exec <action> [target]    Run any result action directly
 wilfred index            Scan configured roots and persist the index
 wilfred status           Print index statistics
 wilfred preview <path>   Print a file preview (text head, directory listing, or image info)
+wilfred define <word>    Look up an offline definition and synonyms
+wilfred pin <path|title> Pin a favorite (boosted via ranking.pinned)
+wilfred unpin <query>    Remove a pinned favorite
+wilfred pins             List pinned favorites
 wilfred backup [path]    Write config/snippets/index archive
 wilfred restore [path]   Restore from a backup archive
 wilfred sync-push        Upload backup to sync.url
@@ -166,6 +170,28 @@ Prints a bounded preview of a file or directory without opening it: kind,
 size, and modification time, plus a text head for text files, a child
 listing for directories, or image metadata for images. Same backend as the
 overlay's `F3` preview pane, useful for scripts.
+
+## `wilfred define <word>` / `def` / `thesaurus` / `synonym`
+
+Looks up an offline definition (and synonyms, when available) for `word` and
+prints `word (part of speech) -- definition`, followed by a `synonyms:` line
+when any exist. Exits `1` with `no definition for "..."` when the word isn't
+in the bundled catalog. Same backend as the overlay `define`/`thesaurus` minis.
+
+## `wilfred pin <path or title>` / `unpin` / `pins`
+
+Manages the pinned-favorites store (`ranking.pinned`):
+
+```
+wilfred pin ~/notes/todo.md
+wilfred pin "Firefox"
+wilfred unpin firefox
+wilfred pins
+```
+
+`pin` adds an entry (prints `pinned:` or `already pinned:`), `unpin` removes
+the first matching entry (`unpinned:` / `no pin matching:`), and `pins` prints
+one entry per line. The store lives in the data dir (`default_pins_path()`).
 
 ## `wilfred backup [path] [--no-index]`
 

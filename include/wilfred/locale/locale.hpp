@@ -44,7 +44,7 @@ public:
   std::unordered_map<std::string, std::string> overlay_strings() const;
 
   static bool valid_code_syntax(const std::string& code);
-  static std::vector<std::string> shipped_codes();  // {"en","de","fr","es"}
+  static std::vector<std::string> shipped_codes();  // {"en","de","fr","es","pt","it","nl","ja","ko","zh","ru","pl","tr","uk"}
   // Every key in the compiled-in English table (for catalog validation).
   static std::vector<std::string> english_keys();
 

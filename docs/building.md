@@ -105,6 +105,7 @@ Useful cache variables (all boolean, `ON`/`OFF`):
 | `WILFRED_BUILD_TESTS` | `ON` | Build the `wilfred_tests` target |
 | `WILFRED_BUILD_BENCH` | `ON` | Build the `wilfred_bench` target |
 | `WILFRED_ENABLE_SANITIZERS` | `OFF` | Add `-fsanitize=address,undefined` (non-MSVC only) |
+| `WILFRED_WITH_SPOKE` | `ON` | Build with the in-process `spoke.cpp` transcription engine (disables `transcription.engine: spoke` when off) |
 
 To skip tests/benchmarks for a faster configure:
 

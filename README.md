@@ -347,6 +347,7 @@ See `docs/import.md` (and `wilfred import --list`) for per-launcher mapping.
 
 Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 
+* `ai` -- optional AI assistant (OpenAI/Anthropic/Gemini/Groq, chat, vision)
 * `config` -- YAML parse + schema validation
 * `index` -- string intern pool, compact records, inverted/trigram indexes, WAL
 * `fs` -- walker, classification, volumes, watcher
@@ -355,9 +356,12 @@ Platform I/O lives behind `wilfred/platform/native.hpp`. Core modules:
 * `math` -- recursive-descent calculator
 * `apps` / `browser` / `history` / `hotkey` / `ipc` / `ui` / `service`
 * `plugin` -- native `.dll`/`.so`/`.dylib` ABI and stdio plugins, trust store, registry index
-* `sync` -- local backup archives and optional remote push/pull
-* `import` -- cross-OS launcher settings importer (hotkeys, searches, snippets)
 * `providers` -- registry for additional search backends (semantic, browser library, calendar/contacts/notes, remotes, packages)
+* `import` -- cross-OS launcher settings importer (hotkeys, searches, snippets)
+* `locale` -- dependency-free UI localization (lang/*.yml catalogs)
+* `sources` -- calendar (.ics), contacts (.vcf), notes (Markdown) backends
+* `sync` -- local backup archives and optional remote push/pull
+* `updater` -- version checks, download/extract, self-update
 
 ## Tests and benchmarks
 

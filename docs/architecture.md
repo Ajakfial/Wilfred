@@ -10,30 +10,36 @@ the life of a query from keypress to launched result.
 
 ```
 include/wilfred/
-├── core/       shared low-level utilities (no dependencies on other modules)
-├── config/     YAML config parsing + the Config struct
-├── index/      on-disk index: records, string pool, WAL, engine
-├── fs/         filesystem walking, watching, classification, volumes
-├── search/     fuzzy matching, ranking, filters, macros, minis, engine
-├── query/      classifies raw query text, drives the search engine
+├── ai/         optional AI assistant (OpenAI/Anthropic/Gemini/Groq, chat, vision)
 ├── apps/       platform application discovery + launch/reveal/open
-├── browser/    default-browser detection and web search URLs
+├── browser/    default-browser detection, web search URLs, browser library
+├── config/     YAML config parsing + the Config struct + settings helpers
+├── core/       shared low-level utilities (no dependencies on other modules)
+├── fs/         filesystem walking, watching, classification, volumes
 ├── history/    local search/selection history used as a ranking signal
 ├── hotkey/     global hotkey registration
+├── import/     cross-launcher settings importer (Alfred, Raycast, ...)
+├── index/      on-disk index: records, string pool, WAL, engine
+├── ipc/        local control-socket protocol + optional local HTTP API
+├── locale/     dependency-free UI localization (lang/*.yml catalogs)
+├── math/       recursive-descent calculator + unit/currency/color/date exprs
+├── platform/   OS abstraction layer (native.hpp / platform.hpp)
 ├── plugin/     native (.dll/.so/.dylib) and stdio plugin hosting
 ├── providers/  extension point for additional search backends
-├── ipc/        local control-socket protocol + optional local HTTP API
+├── query/      classifies raw query text, drives the search engine
+├── search/     fuzzy matching, ranking, filters, macros, minis, engine
+├── service/    top-level daemon/CLI orchestration (wires everything together)
+├── sources/    calendar (.ics), contacts (.vcf), notes (Markdown) backends
 ├── sync/       backup archive format + remote sync
 ├── ui/         overlay window glue (native windowing + embedded web UI)
-├── service/    top-level daemon/CLI orchestration (wires everything together)
-└── platform/   OS abstraction layer (native.hpp / platform.hpp)
+└── updater/    version parsing, update checks, download/extract, install
 ```
 
 Each `include/wilfred/<module>/*.hpp` has a matching `src/<module>/*.cpp`.
-Dependencies flow roughly top-to-bottom in the list above: `core` has no
-internal dependencies, `config` depends only on `core`, `index` depends on
-`config` and `core`, and so on up to `service`, which depends on nearly
-everything. `platform` sits below all of it as the only place `#ifdef`s for
+Dependencies are layered rather than alphabetical: `core` has no internal
+dependencies, `config` depends only on `core`, `index` depends on `config`
+and `core`, and so on up to `service`, which depends on nearly everything.
+`platform` sits below all of it as the only place `#ifdef`s for
 Windows/macOS/Linux are allowed -- see [Platform layer](#platform-layer).
 
 ## Startup and the `Service` class
@@ -48,18 +54,21 @@ subcommand (`daemon`, `search`, `index`, `status`, `backup`, `restore`,
 `Service` owns one instance of each long-lived subsystem:
 
 ```
-Config          cfg_          -- loaded once at boot
-IndexEngine     index_        -- the on-disk index (records + WAL)
-SearchEngine    search_       -- fuzzy match + ranking over the index
-SnippetStore    snippets_     -- text-expansion snippets
-PluginHost      plugins_      -- loaded native/stdio plugins
-QueryInterpreter interpreter_ -- classifies + dispatches a raw query string
-HistoryStore    history_      -- recency/frequency signals
-FsWatcher       watcher_      -- filesystem change notifications (daemon only)
-GlobalHotkey    hotkey_       -- OS hotkey registration (daemon only)
-IpcServer       ipc_          -- local socket for the CLI to talk to the daemon
-HttpApiServer   http_         -- optional localhost HTTP API
-OverlayUi       ui_           -- the search popup window (daemon only)
+Config           cfg_           -- loaded once at boot
+IndexEngine      index_         -- the on-disk index (records + WAL)
+SearchEngine     search_        -- fuzzy match + ranking over the index
+SnippetStore     snippets_      -- text-expansion snippets
+GlobalExpander   expander_      -- global abbreviation expansion
+PluginHost       plugins_       -- loaded native/stdio plugins
+QueryInterpreter interpreter_   -- classifies + dispatches a raw query string
+HistoryStore     history_       -- recency/frequency signals
+FsWatcher        watcher_       -- filesystem change notifications (daemon only)
+GlobalHotkey     hotkey_        -- OS hotkey registration (daemon only)
+std::vector<GlobalHotkey> extra_hotkeys_  -- extra global hotkeys from config
+IpcServer        ipc_           -- local socket for the CLI to talk to the daemon
+HttpApiServer    http_          -- optional localhost HTTP API
+OverlayUi        ui_            -- the search popup window (daemon only)
+AsyncProviders   async_providers_ -- async provider merge for the overlay (optional)
 ```
 
 `Service::boot()` loads the config (`load_or_create_user_config`, writing
@@ -277,6 +286,31 @@ under `src/platform/`, split by OS. Modules like `fs/watcher.hpp`,
 their own `#ifdef _WIN32` / `#ifdef __APPLE__` / else-Linux branches directly
 (rather than going through `platform/`) where the OS API surface is small
 and specific to that module -- see each header's `.cpp` for the exact split.
+
+## Other modules
+
+A few modules don't fit the layers above but are worth knowing about:
+
+* **`ai/`** -- optional AI assistant (`ai ...`, `ask ...`, `ai chat ...`,
+  `ai see ...`) backed by OpenAI/Anthropic/Gemini/Groq over HTTPS, plus
+  conversation and vision support (`ai/assistant.hpp`, `ai/chat.hpp`,
+  `ai/vision.hpp`).
+* **`import/`** -- cross-launcher settings importer (Alfred, Raycast,
+  PowerToys Run, Flow Launcher, Wox, Keypirinha, Listary, Ulauncher,
+  Albert, KRunner, Rofi) producing the normalized `ImportedSettings` form
+  merged into `Config` (`import/import.hpp`).
+* **`locale/`** -- dependency-free UI localization: English compiled in,
+  `lang/<code>.yml` catalogs, `ui.language` handling, placeholders
+  (`locale/locale.hpp`).
+* **`math/`** -- recursive-descent calculator and expression evaluator
+  (arithmetic, functions, unit/currency/color/date conversion, dev
+  utilities) shared by the `Math` query class and minis (`math/expr.hpp`).
+* **`sources/`** -- calendar (`.ics`), contacts (`.vcf`), and notes
+  (Markdown) search backends plus the menu/vault helpers
+  (`sources/sources.hpp`, `sources/menu.hpp`, `sources/vault.hpp`).
+* **`updater/`** -- version parsing, platform detection, GitHub release
+  checks, download/extract, and the `wilfred update` flow
+  (`updater/updater.hpp`).
 
 ## Cross-cutting concerns
 
