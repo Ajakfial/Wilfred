@@ -301,13 +301,11 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     if (entries_out) ++*entries_out;
 
     std::size_t next_offset2 = offset + 46 + name_len + extra_len + comment_len;
-    \r if (next_offset2 > data.size()) {
-      \r if (error)* error = "invalid ZIP: central directory out of bounds";
-      \r return false;
-      \r
+    if (next_offset2 > data.size()) {
+      if (error) *error = "invalid ZIP: central directory out of bounds";
+      return false;
     }
-    \r offset = next_offset2;
-    \r
+    offset = next_offset2;
   }
 
   return true;

@@ -622,7 +622,7 @@ static bool run_curl(const std::vector<std::string>& args, const std::string& st
     for (const auto& a : args)
       argv.push_back(const_cast<char*>(a.c_str()));
     argv.push_back(nullptr);
-    execvp(argv[0].c_str(), argv.data());
+    execvp(argv[0], argv.data());
     _exit(127);
   }
   close(inpipe[0]);

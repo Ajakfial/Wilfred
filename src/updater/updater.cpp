@@ -450,7 +450,8 @@ bool perform_update(bool dry_run, std::string* error) {
     std::vector<std::filesystem::path> top;
     for (auto& e : std::filesystem::directory_iterator(extract_dir, ec2))
       top.push_back(e.path());
-    if (!ec2 && top.size() == 1 && top[0].is_directory()) content_root = top[0].string();
+    if (!ec2 && top.size() == 1 && std::filesystem::is_directory(top[0], ec2))
+      content_root = top[0].string();
   }
 
   // Launch helper to replace and restart
