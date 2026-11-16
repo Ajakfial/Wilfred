@@ -39,8 +39,20 @@ jobs:
 
         AUTH=$(printf '%s:%s' "$GL_USERNAME" "$GL_TOKEN" | base64 -w0)
 
+        GL_URL="https://gitlab.com/gakifdezel/WilfredLauncher.git"
+
+        # Plain (non-force) pushes: GitLab protects main against force
+        # pushes, which is what `push --mirror` always attempts. Hidden
+        # GitHub refs (refs/pull/*) are not pushed either.
+        echo "Pushing branches..."
         git -c http.extraheader="AUTHORIZATION: Basic $AUTH" \
-        push --mirror \
-        "https://gitlab.com/gakifdezel/WilfredLauncher.git"
+        push "$GL_URL" 'refs/heads/*:refs/heads/*'
+
+        # Tags that already exist on GitLab pointing elsewhere cannot be
+        # moved without force; warn instead of failing the whole sync.
+        echo "Pushing tags..."
+        git -c http.extraheader="AUTHORIZATION: Basic $AUTH" \
+        push "$GL_URL" 'refs/tags/*:refs/tags/*' \
+        || echo "::warning::Some tags were rejected by GitLab (already exist with a different commit or are protected)"
 
         echo "GitLab synchronization completed successfully!"
