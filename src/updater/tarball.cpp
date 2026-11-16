@@ -148,8 +148,9 @@ bool extract_tarball(const std::string& archive_path, const std::string& dest_di
   if (deflate_off == std::string::npos) deflate_off = 0;
 
   std::vector<std::uint8_t> tar_data;
-  if (!inflate_decompress(compressed.data() + deflate_off,
-                          compressed.size() - deflate_off, tar_data)) {
+  static const std::size_t kMaxTarBytes = 256u * 1024u * 1024u;
+  if (!inflate_decompress(compressed.data() + deflate_off, compressed.size() - deflate_off,
+                          tar_data, kMaxTarBytes)) {
     if (error) *error = "gzip decompression failed";
     return false;
   }
@@ -215,6 +216,8 @@ bool extract_tarball(const std::string& archive_path, const std::string& dest_di
         }
         if (unsafe) {
           log_warn("updater", "skipping suspicious path: " + name);
+        } else if (static_cast<std::size_t>(pos) + file_size > tar_data.size()) {
+          log_warn("updater", "skipping oversized/truncated file: " + name);
         } else {
           std::vector<std::uint8_t> file_data(tar_data.begin() + pos,
                                               tar_data.begin() + pos + file_size);
@@ -225,8 +228,29 @@ bool extract_tarball(const std::string& archive_path, const std::string& dest_di
         }
       }
     } else if (type == '5') {
-      // Directory - create it
-      if (!name.empty()) {
+      // Directory - create it, with the same traversal guard as file entries.
+      std::string check_name2 = name;
+      for (char& ch : check_name2)
+        if (ch == '\\') ch = '/';
+      bool unsafe_dir = check_name2.empty() || check_name2.front() == '/' ||
+                        check_name2.front() == '\\' || check_name2.find(':') != std::string::npos;
+      if (!unsafe_dir) {
+        std::size_t start = 0;
+        while (start <= check_name2.size()) {
+          auto end = check_name2.find('/', start);
+          std::string seg =
+              check_name2.substr(start, end == std::string::npos ? std::string::npos : end - start);
+          if (seg == "..") {
+            unsafe_dir = true;
+            break;
+          }
+          if (end == std::string::npos) break;
+          start = end + 1;
+        }
+      }
+      if (unsafe_dir) {
+        log_warn("updater", "skipping suspicious directory: " + name);
+      } else if (!name.empty()) {
         std::string dir_path = dest_dir;
         if (!dir_path.empty() && dir_path.back() != '/' && dir_path.back() != '\\') {
           dir_path += '/';

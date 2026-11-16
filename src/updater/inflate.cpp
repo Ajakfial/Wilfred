@@ -118,7 +118,7 @@ static const int kCLengthOrder[] = {16, 17, 18, 0, 8,  7, 9,  6, 10, 5,
                                     11, 4,  12, 3, 13, 2, 14, 1, 15};
 
 bool inflate_decompress(const std::uint8_t* src, std::size_t src_len,
-                        std::vector<std::uint8_t>& out) {
+                        std::vector<std::uint8_t>& out, std::size_t max_out) {
   BitReader br(src, src_len);
   Huffman ldecode, ddecode;
 
@@ -142,6 +142,7 @@ bool inflate_decompress(const std::uint8_t* src, std::size_t src_len,
         if (byte < 0) return false;
         out.push_back(static_cast<std::uint8_t>(byte));
       }
+      if (max_out && out.size() > max_out) return false;
     } else if (btype == 1) {
       // Fixed Huffman
       int lengths[288];
@@ -161,6 +162,7 @@ bool inflate_decompress(const std::uint8_t* src, std::size_t src_len,
       if (!ddecode.build(dlengths, 30)) return false;
 
       if (!decode_block(br, ldecode, ddecode, out)) return false;
+      if (max_out && out.size() > max_out) return false;
     } else if (btype == 2) {
       // Dynamic Huffman
       int hlit = br.read_bits(5);
@@ -221,6 +223,7 @@ bool inflate_decompress(const std::uint8_t* src, std::size_t src_len,
       if (!ddecode.build(lengths + hlit, hdist)) return false;
 
       if (!decode_block(br, ldecode, ddecode, out)) return false;
+      if (max_out && out.size() > max_out) return false;
     } else {
       return false;  // reserved block type
     }

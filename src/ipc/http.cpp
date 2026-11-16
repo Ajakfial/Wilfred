@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstring>
 #include <map>
@@ -73,14 +74,22 @@ static std::string url_decode(std::string_view s) {
   std::string o;
   for (std::size_t i = 0; i < s.size(); ++i) {
     if (s[i] == '%' && i + 2 < s.size()) {
-      auto hex = [](char c) {
+      auto hex = [](char c, bool& ok) {
         if (c >= '0' && c <= '9') return c - '0';
         if (c >= 'a' && c <= 'f') return c - 'a' + 10;
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        ok = false;
         return 0;
       };
-      o.push_back(static_cast<char>((hex(s[i + 1]) << 4) | hex(s[i + 2])));
-      i += 2;
+      bool ok = true;
+      int hi = hex(s[i + 1], ok);
+      int lo = hex(s[i + 2], ok);
+      if (ok) {
+        o.push_back(static_cast<char>((hi << 4) | lo));
+        i += 2;
+      } else {
+        o.push_back(s[i]);
+      }
     } else if (s[i] == '+')
       o.push_back(' ');
     else
@@ -409,6 +418,7 @@ struct HttpApiServer::Impl {
       Socket c = accept(listen_fd, reinterpret_cast<sockaddr*>(&addr), &len);
       if (c == kInvalidSock) {
         if (!running) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         continue;
       }
       if (!running) {
@@ -423,11 +433,7 @@ struct HttpApiServer::Impl {
       inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
       std::string peer = ip;
       active++;
-      std::thread t([this, c, peer]() { this->handle_client(c, peer); });
-      {
-        std::lock_guard<std::mutex> lock(clients_mu);
-        clients.push_back(std::move(t));
-      }
+      std::thread([this, c, peer]() { this->handle_client(c, peer); }).detach();
     }
   }
 };
@@ -502,13 +508,8 @@ void HttpApiServer::stop() {
     impl_->listen_fd = kInvalidSock;
   }
   if (impl_->th.joinable()) impl_->th.join();
-  std::vector<std::thread> to_join;
-  {
-    std::lock_guard<std::mutex> lock(impl_->clients_mu);
-    to_join.swap(impl_->clients);
-  }
-  for (auto& t : to_join) {
-    if (t.joinable()) t.join();
+  for (int i = 0; i < 100 && impl_->active.load() > 0; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
@@ -576,6 +577,99 @@ static bool parse_url_posix(const std::string& url, bool& https, std::string& ho
 }
 #endif
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#include <unistd.h>
+
+static bool run_curl(const std::vector<std::string>& args, const std::string& stdin_data,
+                     std::string& stdout_out, std::string& stderr_out) {
+  int inpipe[2], outpipe[2], errpipe[2];
+  if (pipe(inpipe) != 0) return false;
+  if (pipe(outpipe) != 0) {
+    close(inpipe[0]);
+    close(inpipe[1]);
+    return false;
+  }
+  if (pipe(errpipe) != 0) {
+    close(inpipe[0]);
+    close(inpipe[1]);
+    close(outpipe[0]);
+    close(outpipe[1]);
+    return false;
+  }
+  pid_t pid = fork();
+  if (pid < 0) {
+    close(inpipe[0]);
+    close(inpipe[1]);
+    close(outpipe[0]);
+    close(outpipe[1]);
+    close(errpipe[0]);
+    close(errpipe[1]);
+    return false;
+  }
+  if (pid == 0) {
+    close(inpipe[1]);
+    dup2(inpipe[0], STDIN_FILENO);
+    close(inpipe[0]);
+    close(outpipe[0]);
+    dup2(outpipe[1], STDOUT_FILENO);
+    close(outpipe[1]);
+    close(errpipe[0]);
+    dup2(errpipe[1], STDERR_FILENO);
+    close(errpipe[1]);
+    std::vector<char*> argv;
+    argv.reserve(args.size() + 1);
+    for (const auto& a : args)
+      argv.push_back(const_cast<char*>(a.c_str()));
+    argv.push_back(nullptr);
+    execvp(argv[0].c_str(), argv.data());
+    _exit(127);
+  }
+  close(inpipe[0]);
+  close(outpipe[1]);
+  close(errpipe[1]);
+
+  if (!stdin_data.empty()) {
+    std::size_t off = 0;
+    while (off < stdin_data.size()) {
+      ssize_t w = write(inpipe[1], stdin_data.data() + off, stdin_data.size() - off);
+      if (w < 0) {
+        if (errno == EINTR) continue;
+        break;
+      }
+      off += static_cast<std::size_t>(w);
+    }
+  }
+  close(inpipe[1]);
+
+  char buf[4096];
+  for (;;) {
+    ssize_t n = read(outpipe[0], buf, sizeof(buf));
+    if (n < 0) {
+      if (errno == EINTR) continue;
+      break;
+    }
+    if (n == 0) break;
+    stdout_out.append(buf, static_cast<std::size_t>(n));
+  }
+  close(outpipe[0]);
+  for (;;) {
+    ssize_t n = read(errpipe[0], buf, sizeof(buf));
+    if (n < 0) {
+      if (errno == EINTR) continue;
+      break;
+    }
+    if (n == 0) break;
+    stderr_out.append(buf, static_cast<std::size_t>(n));
+  }
+  close(errpipe[0]);
+
+  int status = 0;
+  if (waitpid(pid, &status, 0) < 0) return false;
+  return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+#endif
+
 std::string http_get(const std::string& url, const std::string& token, int timeout_ms) {
 #ifdef _WIN32
   bool https = false;
@@ -620,45 +714,23 @@ std::string http_get(const std::string& url, const std::string& token, int timeo
   WinHttpCloseHandle(ses);
   return body;
 #else
-  bool https = false;
-  std::string host, path;
-  int port = 80;
-  if (!parse_url_posix(url, https, host, port, path)) return {};
-  if (https) return {};
-  ensure_sockets();
-  addrinfo hints{};
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_family = AF_INET;
-  addrinfo* res = nullptr;
-  if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &res) != 0) return {};
-  Socket s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-  if (s == kInvalidSock) {
-    freeaddrinfo(res);
-    return {};
+  int secs = timeout_ms > 0 ? (timeout_ms + 999) / 1000 : 30;
+  std::vector<std::string> args = {"curl",
+                                   "-sS",
+                                   "-f",
+                                   "-L",
+                                   "--max-time",
+                                   std::to_string(secs),
+                                   "--connect-timeout",
+                                   std::to_string(secs)};
+  if (!token.empty()) {
+    args.push_back("-H");
+    args.push_back("X-Wilfred-Token: " + token);
   }
-  if (connect(s, res->ai_addr, static_cast<int>(res->ai_addrlen)) != 0) {
-    close_sock(s);
-    freeaddrinfo(res);
-    return {};
-  }
-  freeaddrinfo(res);
-  std::ostringstream req;
-  req << "GET " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: close\r\n";
-  if (!token.empty()) req << "X-Wilfred-Token: " << token << "\r\n";
-  req << "\r\n";
-  auto rq = req.str();
-  sock_send(s, rq.data(), static_cast<int>(rq.size()));
-  std::string raw;
-  char buf[4096];
-  for (;;) {
-    int n = sock_recv(s, buf, sizeof(buf));
-    if (n <= 0) break;
-    raw.append(buf, static_cast<std::size_t>(n));
-  }
-  close_sock(s);
-  auto pos = raw.find("\r\n\r\n");
-  return pos == std::string::npos ? raw : raw.substr(pos + 4);
-  (void)timeout_ms;
+  args.push_back(url);
+  std::string out, err;
+  if (!run_curl(args, {}, out, err)) return {};
+  return out;
 #endif
 }
 
@@ -694,49 +766,48 @@ bool http_put(const std::string& url, const std::string& token, const std::strin
   BOOL ok = WinHttpSendRequest(req, hdr.c_str(), static_cast<DWORD>(-1), (LPVOID)body.data(),
                                static_cast<DWORD>(body.size()), static_cast<DWORD>(body.size()), 0);
   if (ok) ok = WinHttpReceiveResponse(req, nullptr);
-  if (!ok && err) *err = "http put failed";
+  bool http_ok = (ok == TRUE);
+  if (http_ok) {
+    DWORD status = 0;
+    DWORD sz = sizeof(status);
+    if (WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                            WINHTTP_HEADER_NAME_BY_INDEX, &status, &sz, WINHTTP_NO_HEADER_INDEX)) {
+      http_ok = (status >= 200 && status < 300);
+    }
+  }
+  if (!http_ok && err) *err = "http put failed";
   WinHttpCloseHandle(req);
   WinHttpCloseHandle(con);
   WinHttpCloseHandle(ses);
-  return ok == TRUE;
+  return http_ok;
 #else
-  bool https = false;
-  std::string host, path;
-  int port = 80;
-  if (!parse_url_posix(url, https, host, port, path) || https) {
-    if (err) *err = https ? "https sync requires Windows" : "invalid url";
-    return false;
+  int secs = timeout_ms > 0 ? (timeout_ms + 999) / 1000 : 30;
+  std::vector<std::string> args = {"curl",
+                                   "-sS",
+                                   "-f",
+                                   "-L",
+                                   "--max-time",
+                                   std::to_string(secs),
+                                   "--connect-timeout",
+                                   std::to_string(secs),
+                                   "-X",
+                                   "PUT",
+                                   "-H",
+                                   "Content-Type: application/octet-stream",
+                                   "--data-binary",
+                                   "@-"};
+  if (!token.empty()) {
+    args.push_back("-H");
+    args.push_back("X-Wilfred-Token: " + token);
   }
-  ensure_sockets();
-  addrinfo hints{};
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_family = AF_INET;
-  addrinfo* res = nullptr;
-  if (getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &res) != 0) return false;
-  Socket s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-  if (s == kInvalidSock) {
-    freeaddrinfo(res);
-    return false;
+  args.push_back(url);
+  std::string out, errstr;
+  bool ok = run_curl(args, body, out, errstr);
+  if (!ok) {
+    if (errstr.empty()) errstr = "http put failed";
+    if (err) *err = errstr;
   }
-  if (connect(s, res->ai_addr, static_cast<int>(res->ai_addrlen)) != 0) {
-    close_sock(s);
-    freeaddrinfo(res);
-    return false;
-  }
-  freeaddrinfo(res);
-  std::ostringstream req;
-  req << "PUT " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: close\r\n";
-  req << "Content-Type: application/octet-stream\r\nContent-Length: " << body.size() << "\r\n";
-  if (!token.empty()) req << "X-Wilfred-Token: " << token << "\r\n";
-  req << "\r\n";
-  auto head = req.str();
-  sock_send(s, head.data(), static_cast<int>(head.size()));
-  sock_send(s, body.data(), static_cast<int>(body.size()));
-  char buf[256];
-  sock_recv(s, buf, sizeof(buf));
-  close_sock(s);
-  (void)timeout_ms;
-  return true;
+  return ok;
 #endif
 }
 

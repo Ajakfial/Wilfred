@@ -9,8 +9,10 @@ class BitReader;
 class Huffman;
 
 // Decompress a raw deflate stream (RFC 1951) into out.
+// max_out == 0 means no limit; otherwise decompression aborts once out
+// exceeds max_out (zip-bomb guard).
 bool inflate_decompress(const std::uint8_t* src, std::size_t src_len,
-                        std::vector<std::uint8_t>& out);
+                        std::vector<std::uint8_t>& out, std::size_t max_out = 0);
 
 // Decode a compressed block using the given literal/length and distance Huffman trees.
 bool decode_block(class BitReader& br, class Huffman& ldecode, class Huffman& ddecode,

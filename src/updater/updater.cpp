@@ -188,7 +188,8 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   f << "Start-Sleep -Milliseconds 500\n";
   f << "$staging = '" << ps_escape(staging) << "'\n";
   f << "$dest = '" << ps_escape(exe_dir) << "'\n";
-  f << "Get-ChildItem -Path $staging -Recurse | ForEach-Object {\n";
+  f << "Get-ChildItem -Path $staging -Recurse | Where-Object { $_.Name -ne 'update-helper.ps1' "
+       "-and $_.Name -ne 'update-helper.sh' } | ForEach-Object {\n";
   f << "  $rel = $_.FullName.Substring($staging.Length)\n";
   f << "  $target = Join-Path $dest $rel\n";
   f << "  if ($_.PSIsContainer) {\n";
@@ -248,7 +249,8 @@ bool launch_update_helper(const std::string& staging, const std::string& exe_pat
   f << "STAGING='" << sh_escape(staging) << "'\n";
   f << "DEST='" << sh_escape(exe_dir) << "'\n";
   f << "cd \"$STAGING\"\n";
-  f << "find . -type f | while read -r file; do\n";
+  f << "find . -type f ! -name 'update-helper.sh' ! -name 'update-helper.ps1' | while read -r "
+       "file; do\n";
   f << "  target=\"$DEST/$file\"\n";
   f << "  mkdir -p \"$(dirname \"$target\")\"\n";
   f << "  cp -f \"$file\" \"$target\"\n";
@@ -439,9 +441,21 @@ bool perform_update(bool dry_run, std::string* error) {
     return false;
   }
 
+  // Release archives wrap their payload in a wilfred-<tag>-<id>/ folder.
+  // The helper copies the staging tree as-is, so point it at the inner
+  // content root instead of the wrapper directory.
+  std::string content_root = extract_dir;
+  {
+    std::error_code ec2;
+    std::vector<std::filesystem::path> top;
+    for (auto& e : std::filesystem::directory_iterator(extract_dir, ec2))
+      top.push_back(e.path());
+    if (!ec2 && top.size() == 1 && top[0].is_directory()) content_root = top[0].string();
+  }
+
   // Launch helper to replace and restart
   log_info("updater", "staging update, will restart...");
-  if (!launch_update_helper(extract_dir, exe_path, exe_dir)) {
+  if (!launch_update_helper(content_root, exe_path, exe_dir)) {
     if (error) *error = "failed to launch update helper";
     return false;
   }

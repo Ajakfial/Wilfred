@@ -671,7 +671,7 @@ static std::string fetch_weather(const std::string& where) {
   std::string key = to_lower_utf8(where);
   {
     std::lock_guard<std::mutex> lock(weather_mu);
-    if (weather_cache_at && now - weather_cache_at < 600 && weather_cache.find(key) == 0)
+    if (weather_cache_at && now - weather_cache_at < 600 && weather_cache.rfind(key + "|", 0) == 0)
       return weather_cache.substr(key.size() + 1);
   }
   std::string loc = where.empty() ? "" : percent_encode(where);

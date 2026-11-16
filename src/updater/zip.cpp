@@ -178,10 +178,10 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
   // On LE hosts this is a no-op
 
   std::uint16_t total = eocd.total_entries;
-  std::uint32_t offset = eocd.central_offset;
+  std::size_t offset = eocd.central_offset;
 
   for (std::uint16_t i = 0; i < total; ++i) {
-    if (offset + 46 > data.size()) {
+    if (static_cast<std::size_t>(offset) + 46 > data.size()) {
       if (error) *error = "invalid ZIP: central directory entry out of bounds";
       return false;
     }
@@ -198,6 +198,13 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     std::uint16_t comment_len = rd16(c + 32);
     std::uint32_t local_offset = rd32(c + 42);
 
+    if (static_cast<std::size_t>(offset) + 46 + name_len > data.size() ||
+        static_cast<std::size_t>(offset) + 46 + name_len + extra_len > data.size() ||
+        static_cast<std::size_t>(offset) + 46 + name_len + extra_len + comment_len > data.size()) {
+      if (error) *error = "invalid ZIP: central directory entry out of bounds";
+      return false;
+    }
+
     std::string name(reinterpret_cast<const char*>(data.data() + offset + 46), name_len);
     // Normalize Windows-style archive paths (e.g. zips made by
     // PowerShell's Compress-Archive use '\' separators) to '/'.
@@ -206,13 +213,18 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
 
     // Skip directories
     if (!name.empty() && name.back() == '/') {
-      offset += 46 + name_len + extra_len + comment_len;
+      std::size_t next_offset = offset + 46 + name_len + extra_len + comment_len;
+      if (next_offset > data.size()) {
+        if (error) *error = "invalid ZIP: central directory out of bounds";
+        return false;
+      }
+      offset = next_offset;
       continue;
     }
 
     // Read local header to find data offset (local fixed part is 30 bytes).
     std::uint32_t local_off = local_offset;
-    if (local_off + 30 > data.size()) {
+    if (static_cast<std::size_t>(local_off) + 30 > data.size()) {
       if (error) *error = "invalid ZIP: local header out of bounds";
       return false;
     }
@@ -222,10 +234,19 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
       return false;
     }
 
-    std::uint32_t data_off = local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
+    std::size_t name_len_local = rd16(lh + 26);
+    std::size_t extra_len_local = rd16(lh + 28);
+    std::size_t data_off =
+        static_cast<std::size_t>(local_off) + 30 + name_len_local + extra_len_local;
 
-    if (data_off + comp_size > data.size()) {
+    if (data_off + comp_size > data.size() || data_off + comp_size < data_off) {
       if (error) *error = "invalid ZIP: compressed data out of bounds";
+      return false;
+    }
+
+    static const std::size_t kMaxExtractBytes = 256u * 1024u * 1024u;
+    if (comp_size > kMaxExtractBytes) {
+      if (error) *error = "invalid ZIP: entry too large";
       return false;
     }
 
@@ -235,7 +256,7 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
       file_data.assign(data.begin() + data_off, data.begin() + data_off + comp_size);
     } else if (method == 8) {
       // Deflate
-      if (!inflate_decompress(data.data() + data_off, comp_size, file_data)) {
+      if (!inflate_decompress(data.data() + data_off, comp_size, file_data, kMaxExtractBytes)) {
         if (error) *error = "inflate failed for: " + name;
         return false;
       }
@@ -257,7 +278,12 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     std::string why;
     if (!safe_entry_name(name, why)) {
       log_warn("updater", "skipping unsafe path (" + why + "): " + name);
-      offset += 46 + name_len + extra_len + comment_len;
+      std::size_t next_offset = offset + 46 + name_len + extra_len + comment_len;
+      if (next_offset > data.size()) {
+        if (error) *error = "invalid ZIP: central directory out of bounds";
+        return false;
+      }
+      offset = next_offset;
       continue;
     }
 
@@ -274,7 +300,14 @@ bool extract_zip(const std::string& archive_path, const std::string& dest_dir, s
     }
     if (entries_out) ++*entries_out;
 
-    offset += 46 + name_len + extra_len + comment_len;
+    std::size_t next_offset2 = offset + 46 + name_len + extra_len + comment_len;
+    \r if (next_offset2 > data.size()) {
+      \r if (error)* error = "invalid ZIP: central directory out of bounds";
+      \r return false;
+      \r
+    }
+    \r offset = next_offset2;
+    \r
   }
 
   return true;

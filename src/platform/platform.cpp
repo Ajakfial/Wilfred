@@ -10,6 +10,10 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(WILFRED_IOS)
+#include <csignal>
+#endif
+
 namespace wilfred {
 
 std::string platform_name() {
@@ -79,6 +83,10 @@ bool is_bsd() {
 void platform_init() {
 #ifdef _WIN32
   CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+#elif !defined(__ANDROID__) && !defined(WILFRED_IOS)
+  // Ignore SIGPIPE so writes to broken pipes (clipboard helpers, curl,
+  // HTTP sockets) return EPIPE instead of terminating the process.
+  std::signal(SIGPIPE, SIG_IGN);
 #endif
 }
 
