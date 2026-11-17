@@ -139,7 +139,6 @@ Legend: ✅ Full support | ⚠️ Partial/needs tools | ❌ Not applicable/unsup
 - [ ] Spotlight federation (`os query`)
 - [ ] WKWebView overlay with transparency/blur
 - [ ] LaunchAgent autostart works
-- [ ] Homebrew formula installs correctly
 - [ ] Code signing / notarization passes
 - [ ] Native media keys (HID) control Music/Spotify/VLC
 - [ ] AppleScript fallbacks for media/volume work
@@ -148,8 +147,10 @@ Legend: ✅ Full support | ⚠️ Partial/needs tools | ❌ Not applicable/unsup
 - [ ] inotify watcher works on ext4/btrfs/xfs
 - [ ] X11 overlay works without compositor
 - [ ] WebKitGTK overlay with compositor
-- [ ] Wayland layer-shell on Sway/KDE (gtk-layer-shell)
-- [ ] X11 fallback on GNOME/other Wayland
+- [x] Wayland layer-shell on Sway/KDE (gtk-layer-shell)
+- [x] GNOME Shell extension overlay (wilfred-layer-shell) on GNOME Wayland
+- [ ] X11 fallback on other Wayland compositors
+- [x] AT-SPI menu search (libatspi) on Linux
 - [ ] XDG autostart entry created
 - [ ] MPRIS media control via D-Bus
 - [ ] AppImage/Flatpak/package manager builds work
@@ -241,7 +242,7 @@ Legend: ✅ Full support | ⚠️ Partial/needs tools | ❌ Not applicable/unsup
 
 #### Packaging Verification
 - [ ] Windows: Portable ZIP, MSI, Chocolatey
-- [ ] macOS: .tar.gz, Homebrew formula
+- [ ] macOS: .tar.gz
 - [ ] Linux: .tar.gz, AppImage, Flatpak, distro packages
 - [ ] FreeBSD: .tar.gz, ports submission ready
 - [ ] OpenBSD: .tar.gz, ports submission ready
@@ -274,7 +275,6 @@ Legend: ✅ Full support | ⚠️ Partial/needs tools | ❌ Not applicable/unsup
 - [ ] Creates release artifacts
 - [ ] Signs Windows binaries (if secrets)
 - [ ] Publishes to GitHub Releases
-- [ ] Updates Homebrew tap
 - [ ] Updates Chocolatey package
 
 ## Regression Testing

@@ -228,8 +228,9 @@ cmake --build build --config Release
 On Linux, X11 development headers enable the overlay (`libx11-dev`); on
 Wayland sessions the WebKit overlay additionally becomes a native
 layer-shell surface when `libgtk-layer-shell-dev` is installed
-(Sway/wlroots, KDE Plasma -- GNOME has no layer-shell protocol, where the
-window stays a plain toplevel).
+(Sway/wlroots, KDE Plasma). GNOME has no layer-shell protocol, so a
+companion GNOME Shell extension (`packaging/gnome-shell-extension/`)
+keeps the Wilfred window on top and out of the taskbar there.
 
 ## Run
 

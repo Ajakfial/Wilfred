@@ -97,6 +97,7 @@ enum class MiniKind {
   Focus,
   PickColor,
   QrCode,
+  Totp,
   HttpStatus,
   CaseText,
   Chmod,
@@ -138,6 +139,9 @@ enum class MiniKind {
   // Aliases to earlier enumerators must not sit mid-enum: the next implicit
   // enumerator would continue from the alias's value and collide.
   Hash = Sha256,
+  Otp = Totp,
+  TwoFa = Totp,
+  TotpCode = Totp,
 };
 
 struct MiniIntent {

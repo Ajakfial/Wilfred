@@ -138,6 +138,8 @@ static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldle
 #define sysctlbyname openbsd_sysctlbyname
 #endif
 
+extern std::string sha1_hex(const std::string& msg);
+
 namespace wilfred {
 namespace {
 
@@ -2119,6 +2121,203 @@ static std::vector<SearchResult> password_results(const std::string& remainder) 
   return out;
 }
 
+static std::string hex_decode(const std::string& hex) {
+  std::string out;
+  for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+    unsigned int byte = 0;
+    std::sscanf(hex.c_str() + i, "%2x", &byte);
+    out.push_back(static_cast<char>(byte));
+  }
+  return out;
+}
+
+static std::string base32_decode(const std::string& input) {
+  static const char* alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  std::string s;
+  for (char c : input) {
+    if (std::isspace(static_cast<unsigned char>(c))) continue;
+    if (c == '=') break;
+    s.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+  }
+  std::string out;
+  int buffer = 0, bits_left = 0;
+  for (char c : s) {
+    const char* p = std::strchr(alpha, c);
+    if (!p) return {};
+    int v = static_cast<int>(p - alpha);
+    buffer = (buffer << 5) | v;
+    bits_left += 5;
+    if (bits_left >= 8) {
+      out.push_back(static_cast<char>((buffer >> (bits_left - 8)) & 0xff));
+      bits_left -= 8;
+    }
+  }
+  return out;
+}
+
+static std::string hmac_sha1_hex(const std::string& key, const std::string& msg) {
+  std::string k = key;
+  if (k.size() > 64) {
+    k = hex_decode(sha1_hex(k));
+  }
+  k.resize(64, '\0');
+  std::string ipad, opad;
+  ipad.reserve(64);
+  opad.reserve(64);
+  for (int i = 0; i < 64; ++i) {
+    ipad.push_back(static_cast<char>(static_cast<unsigned char>(k[i]) ^ 0x36));
+    opad.push_back(static_cast<char>(static_cast<unsigned char>(k[i]) ^ 0x5c));
+  }
+  std::string inner = ipad + msg;
+  std::string inner_hash = hex_decode(sha1_hex(inner));
+  std::string outer = opad + inner_hash;
+  return sha1_hex(outer);
+}
+
+static std::string totp_code(const std::string& secret) {
+  std::string key = base32_decode(secret);
+  if (key.empty()) return {};
+  std::time_t now = std::time(nullptr);
+  uint64_t counter = static_cast<uint64_t>(now) / 30;
+  std::string msg(8, '\0');
+  uint64_t c = counter;
+  for (int i = 7; i >= 0; --i) {
+    msg[i] = static_cast<char>(c & 0xff);
+    c >>= 8;
+  }
+  std::string h = hmac_sha1_hex(key, msg);
+  std::string bytes = hex_decode(h);
+  if (bytes.size() < 20) return {};
+  int offset = bytes[19] & 0x0f;
+  if (offset + 3 >= (int)bytes.size()) return {};
+  uint32_t bin = ((bytes[offset] & 0x7f) << 24) |
+                 ((bytes[offset + 1] & 0xff) << 16) |
+                 ((bytes[offset + 2] & 0xff) << 8) |
+                 (bytes[offset + 3] & 0xff);
+  bin %= 1000000;
+  char buf[8];
+  std::snprintf(buf, sizeof(buf), "%06u", bin);
+  return std::string(buf);
+}
+
+static std::vector<std::string> totp_candidate_files() {
+  std::vector<std::string> out;
+  if (const char* env = std::getenv("WILFRED_TOTP_FILE")) {
+    if (env && *env) out.push_back(env);
+  }
+  out.push_back(path_join(config_directory(), "totp"));
+  out.push_back(path_join(config_directory(), "totp.secrets"));
+  out.push_back(path_join(config_directory(), "secrets"));
+  out.push_back(path_join(config_directory(), "totp.txt"));
+  out.push_back(path_join(home_directory(), ".wilfred", "totp"));
+  out.push_back(path_join(home_directory(), ".totp"));
+  out.push_back(std::string(".totp"));
+  return out;
+}
+
+static std::map<std::string, std::string> totp_load_secrets() {
+  std::map<std::string, std::string> m;
+  for (const auto& f : totp_candidate_files()) {
+    std::ifstream in(f);
+    if (!in) continue;
+    std::string line;
+    while (std::getline(in, line)) {
+      std::string s = trim_ws(line);
+      if (s.empty() || s[0] == '#') continue;
+      std::size_t pos = s.find('=');
+      if (pos == std::string::npos) pos = s.find(':');
+      if (pos == std::string::npos) pos = s.find_first_of(" \t");
+      std::string name, secret;
+      if (pos == std::string::npos) {
+        name = s;
+      } else {
+        name = trim_ws(s.substr(0, pos));
+        secret = trim_ws(s.substr(pos + 1));
+      }
+      if (!name.empty() && !secret.empty()) m[name] = secret;
+    }
+  }
+  return m;
+}
+
+static std::vector<SearchResult> totp_results(const std::string& remainder) {
+  std::vector<SearchResult> out;
+  std::string q = trim_ws(remainder);
+  std::string secret;
+  if (!q.empty()) {
+    std::string compact;
+    for (char c : q) {
+      if (std::isspace(static_cast<unsigned char>(c))) continue;
+      compact.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
+    }
+    bool is_secret = compact.size() >= 8;
+    for (char c : compact) {
+      if (std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=").find(c) == std::string::npos) {
+        is_secret = false;
+        break;
+      }
+    }
+    if (is_secret) {
+      secret = compact;
+    } else {
+      auto secrets = totp_load_secrets();
+      auto it = secrets.find(q);
+      if (it != secrets.end()) secret = it->second;
+      else {
+        for (const auto& kv : secrets) {
+          if (to_lower_utf8(kv.first) == to_lower_utf8(q)) {
+            secret = kv.second;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (secret.empty()) {
+    if (q.empty()) {
+      auto secrets = totp_load_secrets();
+      if (secrets.empty()) {
+        out.push_back(card("TOTP / 2FA",
+                           "No secrets found. Add lines like 'github JBSWY3DPEHPK3PXP' to " +
+                               totp_candidate_files().front(),
+                           "", "totp", 8000, ResultAction::None));
+      } else {
+        for (const auto& kv : secrets) {
+          out.push_back(card(kv.first, "TOTP account · enter to generate code", kv.first, "totp",
+                             8000, ResultAction::None));
+        }
+      }
+      return out;
+    }
+    out.push_back(card("TOTP / 2FA",
+                       "Unknown secret '" + q +
+                           "'. Add it to a local secrets file or pass a base32 secret.",
+                       "", "totp", 8000, ResultAction::None));
+    return out;
+  }
+
+  std::string code = totp_code(secret);
+  if (code.empty()) {
+    out.push_back(card("TOTP / 2FA", "Invalid base32 secret", "", "totp", 8000, ResultAction::None));
+    return out;
+  }
+  std::time_t now = std::time(nullptr);
+  int remaining = 30 - static_cast<int>(now % 30);
+  SearchResult r;
+  r.title = code;
+  r.subtitle = "TOTP · 6 digits · expires in " + std::to_string(remaining) + "s · enter copies";
+  r.payload = code;
+  r.path = code;
+  r.action = ResultAction::Copy;
+  r.score = 10000;
+  r.kind_label = "totp";
+  r.category = "totp";
+  r.meter = 100;
+  out.push_back(std::move(r));
+  return out;
+}
+
 // --- QR Code Generator with Reed-Solomon -----------------------------------
 
 struct QRCode {
@@ -2557,6 +2756,9 @@ static QRCode generate_qr(const std::string& data, QRECCLevel ecc_level) {
   add_terminator(data_bits, max_bits);
   add_pad_bytes(data_bits, max_bits);
   auto codewords = bits_to_codewords(data_bits);
+  int total_data_codewords = vi.blocks_group1 * vi.data_codewords_group1 + vi.blocks_group2 * vi.data_codewords_group2;
+  if (total_data_codewords < 0) total_data_codewords = 0;
+  if ((int)codewords.size() < total_data_codewords) codewords.resize(total_data_codewords, 0);
 
   // Reed-Solomon encoding
   GaloisField gf;
@@ -3785,6 +3987,9 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "qr" || key == "qrcode" || key == "qr-code" || key == "qr_code" ||
            key == "qrgen" || key == "qrcodegen")
     set(MiniKind::QrCode, true);
+  else if (key == "totp" || key == "otp" || key == "2fa" || key == "twofa" || key == "tfa" ||
+           key == "authenticator" || key == "otpcode")
+    set(MiniKind::Totp, true);
   else if (key == "uuid" || key == "uuid4" || key == "guid" || key == "uuidv4")
     set(MiniKind::Uuid, true);
   else if (key == "base64" || key == "b64" || key == "base64encode" || key == "encode64" ||
@@ -5006,6 +5211,10 @@ std::vector<SearchResult> mini_results(const std::string& query, const Config& c
 
   if (intent.kind == MiniKind::QrCode) {
     return qrcode_results(intent.remainder, clipboard);
+  }
+
+  if (intent.kind == MiniKind::Totp) {
+    return totp_results(intent.remainder);
   }
 
   if (intent.kind == MiniKind::Uuid) {
