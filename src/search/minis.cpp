@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <fstream>
 #include <cctype>
 #include <chrono>
 #include <cstdio>
@@ -2209,7 +2210,7 @@ static std::vector<std::string> totp_candidate_files() {
   out.push_back(path_join(config_directory(), "totp.secrets"));
   out.push_back(path_join(config_directory(), "secrets"));
   out.push_back(path_join(config_directory(), "totp.txt"));
-  out.push_back(path_join(home_directory(), ".wilfred", "totp"));
+  out.push_back(path_join(path_join(home_directory(), ".wilfred"), "totp"));
   out.push_back(path_join(home_directory(), ".totp"));
   out.push_back(std::string(".totp"));
   return out;
@@ -2222,7 +2223,7 @@ static std::map<std::string, std::string> totp_load_secrets() {
     if (!in) continue;
     std::string line;
     while (std::getline(in, line)) {
-      std::string s = trim_ws(line);
+      std::string s = trim_sv(line);
       if (s.empty() || s[0] == '#') continue;
       std::size_t pos = s.find('=');
       if (pos == std::string::npos) pos = s.find(':');
@@ -2231,8 +2232,8 @@ static std::map<std::string, std::string> totp_load_secrets() {
       if (pos == std::string::npos) {
         name = s;
       } else {
-        name = trim_ws(s.substr(0, pos));
-        secret = trim_ws(s.substr(pos + 1));
+        name = trim_sv(s.substr(0, pos));
+        secret = trim_sv(s.substr(pos + 1));
       }
       if (!name.empty() && !secret.empty()) m[name] = secret;
     }
@@ -2242,7 +2243,7 @@ static std::map<std::string, std::string> totp_load_secrets() {
 
 static std::vector<SearchResult> totp_results(const std::string& remainder) {
   std::vector<SearchResult> out;
-  std::string q = trim_ws(remainder);
+  std::string q = trim_sv(remainder);
   std::string secret;
   if (!q.empty()) {
     std::string compact;
@@ -3852,6 +3853,11 @@ MiniIntent parse_mini_intent(std::string_view query) {
     it.remainder = rest;
     it.exact = exact;
   };
+  if (key == "totp" || key == "otp" || key == "2fa" || key == "twofa" || key == "tfa" ||
+      key == "authenticator" || key == "otpcode") {
+    set(MiniKind::Totp, true);
+    return it;
+  }
   if (key == "weather" || key == "wttr" || key == "forecast")
     set(MiniKind::Weather, rest.empty());
   else if (key == "time" || key == "date" || key == "clock" || key == "now")
@@ -3987,9 +3993,6 @@ MiniIntent parse_mini_intent(std::string_view query) {
   else if (key == "qr" || key == "qrcode" || key == "qr-code" || key == "qr_code" ||
            key == "qrgen" || key == "qrcodegen")
     set(MiniKind::QrCode, true);
-  else if (key == "totp" || key == "otp" || key == "2fa" || key == "twofa" || key == "tfa" ||
-           key == "authenticator" || key == "otpcode")
-    set(MiniKind::Totp, true);
   else if (key == "uuid" || key == "uuid4" || key == "guid" || key == "uuidv4")
     set(MiniKind::Uuid, true);
   else if (key == "base64" || key == "b64" || key == "base64encode" || key == "encode64" ||
