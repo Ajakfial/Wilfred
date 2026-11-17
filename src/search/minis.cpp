@@ -139,8 +139,6 @@ static int openbsd_sysctlbyname(const char* name, void* oldp, std::size_t* oldle
 #define sysctlbyname openbsd_sysctlbyname
 #endif
 
-extern std::string sha1_hex(const std::string& msg);
-
 namespace wilfred {
 namespace {
 
@@ -2120,6 +2118,59 @@ static std::vector<SearchResult> password_results(const std::string& remainder) 
                          " · enter copies",
                      pw, "password", 10000, ResultAction::Copy, meter));
   return out;
+}
+
+static std::string sha1_hex(const std::string& msg) {
+  std::uint32_t h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+  auto rol = [](std::uint32_t x, int n) { return (x << n) | (x >> (32 - n)); };
+  std::vector<unsigned char> data(msg.begin(), msg.end());
+  auto bitlen = static_cast<std::uint64_t>(msg.size()) * 8;
+  data.push_back(0x80);
+  while ((data.size() % 64) != 56) data.push_back(0);
+  for (int i = 7; i >= 0; --i) data.push_back(static_cast<unsigned char>((bitlen >> (i * 8)) & 0xff));
+  for (std::size_t off = 0; off < data.size(); off += 64) {
+    std::uint32_t w[80];
+    for (int i = 0; i < 16; ++i)
+      w[i] = (data[off + i * 4] << 24) | (data[off + i * 4 + 1] << 16) |
+             (data[off + i * 4 + 2] << 8) | data[off + i * 4 + 3];
+    for (int i = 16; i < 80; ++i)
+      w[i] = rol(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+    std::uint32_t a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (int i = 0; i < 80; ++i) {
+      std::uint32_t f, k;
+      if (i < 20) {
+        f = (b & c) | (~b & d);
+        k = 0x5A827999;
+      } else if (i < 40) {
+        f = b ^ c ^ d;
+        k = 0x6ED9EBA1;
+      } else if (i < 60) {
+        f = (b & c) | (b & d) | (c & d);
+        k = 0x8F1BBCDC;
+      } else {
+        f = b ^ c ^ d;
+        k = 0xCA62C1D6;
+      }
+      std::uint32_t temp = rol(a, 5) + f + e + k + w[i];
+      e = d;
+      d = c;
+      c = rol(b, 30);
+      b = a;
+      a = temp;
+    }
+    h0 += a;
+    h1 += b;
+    h2 += c;
+    h3 += d;
+    h4 += e;
+  }
+  std::uint32_t h[5] = {h0, h1, h2, h3, h4};
+  std::string o;
+  o.resize(40);
+  static const char* hex = "0123456789abcdef";
+  for (int i = 0; i < 5; ++i)
+    for (int n = 0; n < 8; ++n) o[i * 8 + n] = hex[(h[i] >> (28 - n * 4)) & 0xf];
+  return o;
 }
 
 static std::string hex_decode(const std::string& hex) {
