@@ -33,6 +33,13 @@
 html,
 body {
   height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Keep every top-level region inside the viewport; scroll only where intended. */
+.shell {
+  overflow: hidden;
 }
 
 body {
@@ -55,8 +62,13 @@ button {
 
 .shell {
   display: grid;
-  grid-template-columns: 268px 1fr;
+  grid-template-columns: minmax(180px, 268px) minmax(0, 1fr);
   height: 100vh;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+  transform-origin: top left;
 }
 
 /* ---------- left rail ---------- */
@@ -65,11 +77,14 @@ button {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  padding: 28px 22px 22px;
+  padding: clamp(16px, 3vh, 28px) clamp(14px, 2vw, 22px) clamp(14px, 2vh, 22px);
   background:
     radial-gradient(120% 60% at 0% 0%, rgba(127, 140, 255, 0.13), transparent 60%),
     var(--panel);
   border-right: 1px solid var(--line);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .brand {
@@ -194,16 +209,18 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   background:
     radial-gradient(90% 55% at 100% 0%, rgba(127, 140, 255, 0.06), transparent 55%),
     var(--bg);
 }
 
 .view {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 40px 48px 20px;
+  overflow-x: hidden;
+  padding: clamp(16px, 4vh, 40px) clamp(16px, 4vw, 48px) clamp(12px, 2vh, 20px);
   animation: rise 260ms var(--ease);
 }
 
@@ -229,7 +246,7 @@ button {
 
 h1 {
   margin: 0 0 10px;
-  font-size: 30px;
+  font-size: clamp(22px, 3.2vw, 30px);
   font-weight: 650;
   letter-spacing: -0.022em;
 }
@@ -239,17 +256,17 @@ h1.tight {
 }
 
 .lede {
-  margin: 0 0 26px;
-  max-width: 62ch;
+  margin: 0 0 clamp(14px, 2.5vh, 26px);
+  max-width: min(62ch, 100%);
   color: var(--muted);
-  font-size: 14px;
+  font-size: clamp(12.5px, 1.4vw, 14px);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 10px;
-  margin: 26px 0;
+  margin: clamp(14px, 2.5vh, 26px) 0;
 }
 
 .card {
@@ -304,8 +321,8 @@ h1.tight {
 /* ---------- license ---------- */
 
 .license {
-  height: 268px;
-  margin: 18px 0 14px;
+  height: clamp(140px, 32vh, 268px);
+  margin: clamp(10px, 2vh, 18px) 0 clamp(8px, 1.5vh, 14px);
   padding: 18px 20px;
   overflow-y: auto;
   border: 1px solid var(--line);
@@ -367,11 +384,13 @@ h1.tight {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 12px 20px;
   padding: 16px 18px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-2);
+  max-width: 100%;
 }
 
 .option-row + .option-row {
@@ -386,9 +405,10 @@ h1.tight {
 
 .option-row p {
   margin: 0;
-  max-width: 48ch;
+  max-width: min(48ch, 100%);
   color: var(--muted);
   font-size: 12.5px;
+  overflow-wrap: anywhere;
 }
 
 .option-row .path {
@@ -454,7 +474,7 @@ h1.tight {
 /* ---------- progress ---------- */
 
 .progress-wrap {
-  max-width: 640px;
+  max-width: min(640px, 100%);
   padding-top: 6px;
 }
 
@@ -538,7 +558,7 @@ h1.tight {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  max-width: 620px;
+  max-width: min(620px, 100%);
 }
 
 .result .badge {
@@ -602,10 +622,12 @@ h1.tight {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 16px 48px 20px;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: clamp(10px, 2vh, 16px) clamp(16px, 4vw, 48px) clamp(12px, 2vh, 20px);
   border-top: 1px solid var(--line);
   background: rgba(16, 17, 22, 0.7);
+  flex: 0 0 auto;
 }
 
 .status {
@@ -620,11 +642,11 @@ h1.tight {
 }
 
 .btn {
-  min-width: 104px;
-  padding: 8px 18px;
+  min-width: 0;
+  padding: 8px clamp(12px, 2vw, 18px);
   border-radius: 8px;
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: clamp(12px, 1.3vw, 13px);
   font-weight: 550;
   cursor: pointer;
   transition:
@@ -697,6 +719,92 @@ h1.tight {
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ---------- responsive / auto-fit ---------- */
+
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 14px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    flex: 1 1 auto;
+  }
+  .steps {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .steps li {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .rail-foot {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    flex: 1 1 100%;
+  }
+  .view {
+    padding: 20px 18px 14px;
+  }
+  .actions {
+    padding: 12px 18px 14px;
+  }
+  .buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-height: 520px) {
+  .shell {
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .license {
+    height: clamp(120px, 28vh, 180px);
+  }
+  .view {
+    padding-top: 16px;
+    padding-bottom: 10px;
+  }
+  .rail {
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+/* Ensure long unbroken strings never escape their container. */
+.shell,
+.view,
+.rail,
+.actions,
+.card,
+.note,
+.option-row,
+.detail,
+.error-text {
+  min-width: 0;
+}
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
